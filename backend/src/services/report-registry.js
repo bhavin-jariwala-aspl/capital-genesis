@@ -27,13 +27,13 @@
  *    related-object path.
  *
  * 2. **`rollups` — parent→children aggregates.**
- *    `ROLLUP('claims', 'Claims', 'insuranceClaim', 'policy_id', [...])` yields
- *    `claims.$count` and `claims.paid_amount` on the *policies* source. These are
- *    computed by a separate `groupBy` on the child table and attached to each
- *    parent row, **never by a row-multiplying join**. Salesforce calls the same
- *    thing a roll-up summary field, and keeps it separate from joins for exactly
- *    this reason: joining `policies → claims` and summing premium counts a policy
- *    with three claims three times.
+ *    `ROLLUP('opportunities', 'Opportunities', 'crmOpportunity', 'account_id', [...])`
+ *    yields `opportunities.$count` and `opportunities.amount` on the *accounts*
+ *    source. These are computed by a separate `groupBy` on the child table and
+ *    attached to each parent row, **never by a row-multiplying join**. Salesforce
+ *    calls the same thing a roll-up summary field, and keeps it separate from joins
+ *    for exactly this reason: joining `accounts → opportunities` and summing annual
+ *    revenue counts an account with three deals three times.
  *
  * Arbitrary user-defined joins are intentionally not supported — see
  * docs/developer-guide/REPORTING.md#the-join-model.
@@ -126,13 +126,6 @@ const CONTACT_FIELDS = [
   F('department', 'Department', 'string'),
 ];
 
-const CARRIER_FIELDS = [
-  F('name', 'Name', 'string', { group: true, primary: true }),
-  F('code', 'Code', 'string'),
-  F('carrier_type', 'Type', 'enum', { options: ['life', 'health', 'p_and_c', 'multi_line'] }),
-  F('am_best_rating', 'A.M. Best rating', 'string'),
-];
-
 const SOURCES = {
   leads: {
     key: 'leads', label: 'Leads', model: 'crmLead', category: 'sales', icon: 'UserPlus',
@@ -158,6 +151,32 @@ const SOURCES = {
     relations: [REL('owner', 'Owner', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS)],
   },
 
+  accounts: {
+    key: 'accounts', label: 'Accounts', model: 'crmAccount', category: 'sales', icon: 'Building2',
+    description: 'One row per customer or prospect company, with roll-ups of its deals and cases.',
+    dateField: 'created_at', ownerField: 'owner_id', titleField: 'name',
+    fields: [
+      F('name', 'Name', 'string', { group: false }),
+      F('industry', 'Industry', 'string'),
+      F('account_type', 'Type', 'enum', { options: ['prospect', 'customer', 'partner', 'competitor'] }),
+      F('annual_revenue', 'Annual revenue', 'currency', { agg: true }),
+      F('employee_count', 'Employees', 'number', { agg: true }),
+      F('billing_city', 'City', 'string'),
+      F('billing_state', 'State', 'string'),
+      F('billing_country', 'Country', 'string'),
+      F('owner_id', 'Owner', 'string', { employee: true }),
+      F('created_at', 'Created', 'date'),
+    ],
+    relations: [REL('owner', 'Owner', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS)],
+    rollups: [
+      ROLLUP('opportunities', 'Opportunities', 'crmOpportunity', 'account_id', [
+        F('amount', 'Total deal value', 'currency', { rollup: 'sum' }),
+        F('probability', 'Average probability', 'percent', { rollup: 'avg' }),
+      ]),
+      ROLLUP('cases', 'Cases', 'crmCase', 'account_id', []),
+    ],
+  },
+
   opportunities: {
     key: 'opportunities', label: 'Opportunities', model: 'crmOpportunity', category: 'sales', icon: 'TrendingUp',
     description: 'One row per deal in the pipeline, with its value, stage and expected close date.',
@@ -181,12 +200,6 @@ const SOURCES = {
       REL('owner', 'Owner', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS),
       REL('account', 'Account', ACCOUNT_FIELDS),
       REL('contact', 'Contact', CONTACT_FIELDS, [REL('account', 'Account', ACCOUNT_FIELDS)]),
-    ],
-    rollups: [
-      ROLLUP('quotes', 'Quotes', 'quote', 'opportunity_id', [
-        F('total_amount', 'Total quoted', 'currency', { rollup: 'sum' }),
-        F('discount_amount', 'Total discount', 'currency', { rollup: 'sum' }),
-      ]),
     ],
   },
 
@@ -248,137 +261,6 @@ const SOURCES = {
     relations: [REL('employee', 'Employee', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS)],
   },
 
-  quotes: {
-    key: 'quotes', label: 'Quotes', model: 'quote', category: 'sales', icon: 'FileText',
-    description: 'One row per quote sent to a prospect or customer.',
-    dateField: 'created_at', ownerField: 'owner_id', titleField: 'quote_number',
-    fields: [
-      F('quote_number', 'Quote number', 'string', { group: false }),
-      F('name', 'Name', 'string', { group: false }),
-      F('status', 'Status', 'enum', { options: ['draft', 'sent', 'accepted', 'rejected', 'expired'] }),
-      F('total_amount', 'Total', 'currency', { agg: true }),
-      F('discount_amount', 'Discount', 'currency', { agg: true }),
-      F('owner_id', 'Owner', 'string', { employee: true }),
-      F('created_at', 'Created', 'date'),
-    ],
-    relations: [
-      REL('owner', 'Owner', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS),
-      REL('account', 'Account', ACCOUNT_FIELDS),
-      REL('opportunity', 'Opportunity', [
-        F('name', 'Name', 'string', { group: false }),
-        F('stage', 'Stage', 'enum', { options: ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost'] }),
-        F('amount', 'Amount', 'currency', { agg: true }),
-      ], [REL('account', 'Account', ACCOUNT_FIELDS)]),
-    ],
-    rollups: [
-      ROLLUP('line_items', 'Line items', 'quoteLineItem', 'quote_id', [
-        F('line_total', 'Total of lines', 'currency', { rollup: 'sum' }),
-        F('quantity', 'Total quantity', 'number', { rollup: 'sum' }),
-      ]),
-    ],
-  },
-
-  policies: {
-    key: 'policies', label: 'Policies', model: 'insurancePolicy', category: 'insurance', icon: 'Shield',
-    description: 'One row per insurance policy, with its coverage and premium.',
-    dateField: 'effective_date', ownerField: 'agent_id', titleField: 'policy_number',
-    fields: [
-      F('policy_number', 'Policy number', 'string', { group: false }),
-      F('product_type', 'Product', 'enum', { options: ['term_life', 'whole_life', 'universal_life', 'variable_life', 'iul', 'final_expense'] }),
-      F('status', 'Status', 'enum', { options: ['pending', 'active', 'lapsed', 'surrendered', 'matured', 'cancelled'] }),
-      F('coverage_amount', 'Coverage', 'currency', { agg: true, hint: 'The face amount / sum assured' }),
-      F('premium_amount', 'Premium', 'currency', { agg: true, hint: 'Premium per payment, not annualised' }),
-      F('premium_frequency', 'Payment frequency', 'enum', { options: ['monthly', 'quarterly', 'semi_annual', 'annual'] }),
-      F('agent_id', 'Agent', 'string', { employee: true }),
-      F('effective_date', 'Effective date', 'date'),
-      F('expiry_date', 'Expiry date', 'date'),
-      F('created_at', 'Created', 'date'),
-    ],
-    relations: [
-      REL('agent', 'Agent', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS),
-      REL('carrier', 'Carrier', CARRIER_FIELDS),
-      REL('contact', 'Insured contact', CONTACT_FIELDS, [REL('account', 'Account', ACCOUNT_FIELDS)]),
-      REL('account', 'Account', ACCOUNT_FIELDS),
-    ],
-    rollups: [
-      ROLLUP('claims', 'Claims', 'insuranceClaim', 'policy_id', [
-        F('amount', 'Total claimed', 'currency', { rollup: 'sum' }),
-        F('paid_amount', 'Total paid', 'currency', { rollup: 'sum' }),
-      ]),
-      ROLLUP('commissions', 'Commissions', 'commissionEntry', 'policy_id', [
-        F('commission_amount', 'Total commission', 'currency', { rollup: 'sum' }),
-      ]),
-      ROLLUP('beneficiaries', 'Beneficiaries', 'insurancePolicyBeneficiary', 'policy_id', []),
-    ],
-  },
-
-  claims: {
-    key: 'claims', label: 'Claims', model: 'insuranceClaim', category: 'insurance', icon: 'AlertTriangle',
-    description: 'One row per claim filed against a policy.',
-    dateField: 'filed_at', ownerField: 'adjuster_id', titleField: 'claim_number',
-    fields: [
-      F('claim_number', 'Claim number', 'string', { group: false }),
-      F('claim_type', 'Claim type', 'enum', { options: ['death', 'disability', 'critical_illness', 'accident', 'other'] }),
-      F('status', 'Status', 'enum', { options: ['fnol', 'filed', 'under_investigation', 'approved', 'denied', 'paid', 'closed'] }),
-      F('priority', 'Priority', 'enum', { options: ['low', 'medium', 'high'] }),
-      F('amount', 'Claimed amount', 'currency', { agg: true }),
-      F('paid_amount', 'Paid amount', 'currency', { agg: true }),
-      F('adjuster_id', 'Adjuster', 'string', { employee: true }),
-      F('filed_at', 'Filed on', 'date'),
-      F('paid_at', 'Paid on', 'date', { hint: 'When the claim was settled' }),
-    ],
-    relations: [
-      REL('adjuster', 'Adjuster', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS),
-      REL('policy', 'Policy', [
-        F('policy_number', 'Number', 'string', { group: false }),
-        F('product_type', 'Product', 'enum', { options: ['term_life', 'whole_life', 'universal_life', 'variable_life', 'iul', 'final_expense'] }),
-        F('status', 'Status', 'enum', { options: ['pending', 'active', 'lapsed', 'surrendered', 'matured', 'cancelled'] }),
-        F('coverage_amount', 'Coverage', 'currency', { agg: true }),
-        F('premium_amount', 'Premium', 'currency', { agg: true }),
-      ], [
-        // Without this hop, "loss ratio by carrier" cannot be asked at all.
-        REL('carrier', 'Carrier', CARRIER_FIELDS),
-        REL('agent', 'Writing agent', EMPLOYEE_FIELDS),
-        REL('account', 'Account', ACCOUNT_FIELDS),
-      ]),
-      REL('contact', 'Claimant', CONTACT_FIELDS),
-    ],
-    rollups: [
-      ROLLUP('payment_events', 'Payments', 'claimPaymentEvent', 'claim_id', [
-        F('amount', 'Total paid out', 'currency', { rollup: 'sum' }),
-      ]),
-    ],
-  },
-
-  commissions: {
-    key: 'commissions', label: 'Commissions', model: 'commissionEntry', category: 'finance', icon: 'DollarSign',
-    description: 'One row per commission entry earned by an agent.',
-    dateField: 'created_at', ownerField: 'agent_id', titleField: 'commission_period',
-    fields: [
-      F('agent_id', 'Agent', 'string', { employee: true }),
-      F('commission_type', 'Commission type', 'enum', { options: ['first_year', 'renewal', 'override', 'bonus'] }),
-      F('product_type', 'Product', 'string'),
-      F('commission_amount', 'Commission', 'currency', { agg: true }),
-      F('source_premium', 'Source premium', 'currency', { agg: true, hint: 'The premium the commission was calculated on' }),
-      F('status', 'Status', 'enum', { options: ['pending', 'paid', 'clawed_back'] }),
-      F('commission_period', 'Period', 'string', { hint: 'The payout period, e.g. 2026-08' }),
-      F('created_at', 'Created', 'date'),
-    ],
-    relations: [
-      REL('agent', 'Agent', EMPLOYEE_FIELDS, EMPLOYEE_RELATIONS),
-      REL('carrier', 'Carrier', CARRIER_FIELDS),
-      REL('policy', 'Policy', [
-        F('policy_number', 'Number', 'string', { group: false }),
-        F('product_type', 'Product', 'enum', { options: ['term_life', 'whole_life', 'universal_life', 'variable_life', 'iul', 'final_expense'] }),
-        F('coverage_amount', 'Coverage', 'currency', { agg: true }),
-        F('premium_amount', 'Premium', 'currency', { agg: true }),
-      ], [
-        REL('carrier', 'Carrier', CARRIER_FIELDS),
-        REL('agent', 'Writing agent', EMPLOYEE_FIELDS),
-      ]),
-    ],
-  },
-
   sla: {
     key: 'sla', label: 'Service levels (SLA)', model: 'slaInstance', category: 'support', icon: 'Timer',
     description: 'One row per SLA timer — used to report on response and resolution targets.',
@@ -437,8 +319,8 @@ function composeLabel(relLabels, field) {
  *   `amount`                     → own scalar
  *   `owner.employee_name`        → one to-one hop
  *   `agent.branch.branch_name`   → two to-one hops
- *   `claims.$count`              → roll-up count
- *   `claims.paid_amount`         → roll-up aggregate
+ *   `opportunities.$count`       → roll-up count
+ *   `opportunities.amount`       → roll-up aggregate
  *
  * Related fields come back with `path` (the relation chain) and `leaf` so the engine
  * can build a nested `select`/`where`; roll-ups come back with `kind: 'rollup'` and

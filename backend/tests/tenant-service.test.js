@@ -37,7 +37,7 @@ const PRO = { name: 'professional', max_users: 50, max_storage_mb: 5000, max_api
 
 describe('slugify', () => {
   it('produces a slug the API will accept', () => {
-    expect(slugify('Acme Insurance Group, Inc.')).toBe('acme-insurance-group-inc');
+    expect(slugify('Acme Holdings Group, Inc.')).toBe('acme-holdings-group-inc');
     expect(slugify('  Hello   World  ')).toBe('hello-world');
     // Accents are folded, not dropped, so real organisation names survive.
     expect(slugify('Ünïcode & Co')).toBe('unicode-co');
@@ -60,8 +60,8 @@ describe('create', () => {
 
   it('derives the slug from the name when none is given', async () => {
     const { svc, created } = fakeDb();
-    await svc.create({ name: 'Acme Insurance Group' });
-    expect(created[0].slug).toBe('acme-insurance-group');
+    await svc.create({ name: 'Acme Holdings Group' });
+    expect(created[0].slug).toBe('acme-holdings-group');
   });
 
   it('rejects a malformed slug rather than storing an unroutable one', async () => {

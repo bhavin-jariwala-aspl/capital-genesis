@@ -26,7 +26,7 @@ describe('resolveRoleLevel — an unresolvable role is not a platform admin', ()
 
   it('falls back to the built-in ladder when there is no row', () => {
     expect(resolveRoleLevel('admin', undefined)).toBe(BUILTIN_ROLE_LEVEL.admin);
-    expect(resolveRoleLevel('underwriter', null)).toBe(BUILTIN_ROLE_LEVEL.underwriter);
+    expect(resolveRoleLevel('user', null)).toBe(BUILTIN_ROLE_LEVEL.user);
   });
 
   it('fails closed for a role it cannot place at all', () => {

@@ -7,8 +7,8 @@ import { featureForPath, ROUTE_FEATURE, FEATURE_LABEL } from '../src/utils/featu
 
 describe('featureForPath', () => {
   it('maps every gated page to a feature, longest prefix first', () => {
-    expect(featureForPath('/insurance/claims')).toBe('ins_claims');
-    expect(featureForPath('/insurance/underwriting/42')).toBe('ins_underwriting');
+    expect(featureForPath('/builder/assignment')).toBe('auto_assignment');
+    expect(featureForPath('/documents/42')).toBe('docs_management');
     expect(featureForPath('/builder/integration-health')).toBe('plat_integrations');
     expect(featureForPath('/reports/7/edit')).toBe('analytics_reports');
   });
@@ -48,7 +48,7 @@ const { default: ProtectedRoute } = await import('../src/components/layout/Prote
 
 function Probe() {
   const { has, loaded, plan } = useEntitlements();
-  return <div data-testid="probe">{`${loaded}|${plan ?? '-'}|${has('ins_claims')}|${has('ins_quoting')}`}</div>;
+  return <div data-testid="probe">{`${loaded}|${plan ?? '-'}|${has('auto_assignment')}|${has('analytics_reports')}`}</div>;
 }
 
 const renderAt = (path, tree) => render(<MemoryRouter initialEntries={[path]}>{tree}</MemoryRouter>);
@@ -64,7 +64,7 @@ describe('useEntitlements', () => {
   });
 
   it('reads the plan and gates on the delivered features', () => {
-    meta.entitlements = { plan: 'starter', features: ['ins_quoting'], locked: {} };
+    meta.entitlements = { plan: 'starter', features: ['analytics_reports'], locked: {} };
     render(<Probe />);
     expect(screen.getByTestId('probe').textContent).toBe('true|starter|false|true');
   });
@@ -81,8 +81,8 @@ describe('FeatureGate', () => {
   beforeEach(() => {
     meta.entitlements = {
       plan: 'starter',
-      features: ['ins_quoting'],
-      locked: { ins_claims: { source: 'plan_excluded', reason: 'Not included in the starter plan — requires professional' } },
+      features: ['analytics_reports'],
+      locked: { auto_assignment: { source: 'plan_excluded', reason: 'Not included in the starter plan — requires professional' } },
     };
     auth.isPlatformAdmin = () => false;
     auth.isAdmin = () => false;
@@ -91,24 +91,24 @@ describe('FeatureGate', () => {
   const tree = (
     <Routes>
       <Route element={<FeatureGate />}>
-        <Route path="/insurance/claims" element={<div>CLAIMS PAGE</div>} />
-        <Route path="/insurance/quotes" element={<div>QUOTES PAGE</div>} />
+        <Route path="/builder/assignment" element={<div>ASSIGNMENT PAGE</div>} />
+        <Route path="/reports" element={<div>REPORTS PAGE</div>} />
         <Route path="/reminders" element={<div>REMINDERS PAGE</div>} />
       </Route>
     </Routes>
   );
 
   it('renders an entitled page', () => {
-    renderAt('/insurance/quotes', tree);
-    expect(screen.getByText('QUOTES PAGE')).toBeInTheDocument();
+    renderAt('/reports', tree);
+    expect(screen.getByText('REPORTS PAGE')).toBeInTheDocument();
   });
 
   it('replaces a locked page with an explanation, using the server reason', () => {
     // A redirect home reads as a bug; a page that names the feature and the
     // tier turns the dead end into the one moment an upgrade is relevant.
-    renderAt('/insurance/claims', tree);
-    expect(screen.queryByText('CLAIMS PAGE')).not.toBeInTheDocument();
-    expect(screen.getByText('Claims management')).toBeInTheDocument();
+    renderAt('/builder/assignment', tree);
+    expect(screen.queryByText('ASSIGNMENT PAGE')).not.toBeInTheDocument();
+    expect(screen.getByText('Assignment rules')).toBeInTheDocument();
     expect(screen.getByText(/requires professional/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Back to dashboard/i })).toBeInTheDocument();
   });
@@ -119,16 +119,16 @@ describe('FeatureGate', () => {
   });
 
   it('offers the upgrade path only to an admin', () => {
-    renderAt('/insurance/claims', tree);
+    renderAt('/builder/assignment', tree);
     expect(screen.queryByText(/Ask about upgrading/)).not.toBeInTheDocument();
     auth.isAdmin = () => true;
-    renderAt('/insurance/claims', tree);
+    renderAt('/builder/assignment', tree);
     expect(screen.getByText(/Ask about upgrading/)).toBeInTheDocument();
   });
 
   it('falls back to a generic sentence when the server gave no reason', () => {
     meta.entitlements = { plan: 'starter', features: [], locked: {} };
-    render(<MemoryRouter><LockedFeature featureKey="ins_claims" /></MemoryRouter>);
+    render(<MemoryRouter><LockedFeature featureKey="auto_assignment" /></MemoryRouter>);
     expect(screen.getByText(/not included in the starter plan/)).toBeInTheDocument();
   });
 });

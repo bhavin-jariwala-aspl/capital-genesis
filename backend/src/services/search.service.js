@@ -18,8 +18,13 @@ const { ROLE_LEVEL, ADMIN_THRESHOLD, MANAGER_THRESHOLD } = require('../middlewar
  *   manager             → own + direct/indirect reports
  *   user                → own + assigned
  */
+const AccessScopeService = require('./access-scope.service');
+
 class SearchService {
-  constructor(prisma) { this.db = prisma; }
+  constructor(prisma, accessScope = null) {
+    this.db = prisma;
+    this.scope = accessScope ?? new AccessScopeService(prisma);
+  }
 
   async search(query, { limit = 20, viewer } = {}) {
     if (!query || query.trim().length < 2) return [];
@@ -44,9 +49,12 @@ class SearchService {
       : {};
 
     // Owner filter for Record-anchored rows (custom objects use created_by / assigned_to)
-    const recordOwnerFilter = ownerIds
-      ? { OR: [{ created_by: { in: ownerIds } }, { assigned_to: { in: ownerIds } }] }
-      : {};
+    // plus business-unit scope and information barriers — search must never
+    // surface a record the viewer could not open.
+    const recordOwnerFilter = {
+      ...(ownerIds ? { OR: [{ created_by: { in: ownerIds } }, { assigned_to: { in: ownerIds } }] } : {}),
+      ...this.scope.whereFor(await this.scope.forViewer(viewer)),
+    };
 
     // ── Fan out search across all five CRM entity tables ─────────────────────
     const contains = { contains: q };

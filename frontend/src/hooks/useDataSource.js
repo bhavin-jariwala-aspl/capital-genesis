@@ -13,9 +13,12 @@ import { reportService } from '../services/report.service';
  *         render time to every report-backed widget at once.
  *         This is the primary mode: anything a business user can build in the
  *         report builder can be placed on a dashboard, with no developer needed.
- *   { type: 'endpoint', dataset: 'premium-revenue-monthly' }
+ *   { type: 'object', object: 'loan_application', metric, field?, group_by?, filters? }
+ *       → POST /api/analytics/object — numbers over any Builder object, so a
+ *         dashboard for a configured vertical needs no developer dataset.
+ *   { type: 'endpoint', dataset: 'leads-by-source' }
  *       → GET /api/analytics/data/<dataset> — a built-in, pre-computed dataset.
- *   { type: 'endpoint', url: '/insurance/policies', dataPath: 'items' }
+ *   { type: 'endpoint', url: '/runtime/records', dataPath: 'items' }
  *       → any internal API path, through the axios client (JWT attached).
  *   { type: 'json', data: [...] }
  *       → static payload. Read-only back-compatibility for widgets authored
@@ -81,13 +84,21 @@ export function useDataSource(dataSource, { enabled = true } = {}) {
   const ds = dataSource || null;
   const type = ds?.type ?? 'json';
   const isReport = type === 'report' && !!ds.report_id;
-  const isRemote = isReport || (type === 'endpoint' && (ds.dataset || ds.url));
+  const isObject = type === 'object' && !!ds.object;
+  const isRemote = isReport || isObject || (type === 'endpoint' && (ds.dataset || ds.url));
 
   const query = useQuery({
     // Serialising the descriptor keeps the key stable for inline-built objects
     // (the builder canvas rebuilds `data_source` on every render).
     queryKey: ['widget-data', JSON.stringify(ds ?? null)],
-    queryFn: () => (isReport ? fetchReport(ds) : fetchInternal(ds)),
+    queryFn: () => {
+      if (isReport) return fetchReport(ds);
+      if (isObject) {
+        const { type: _t, ...spec } = ds;
+        return analyticsService.getObjectData(spec);
+      }
+      return fetchInternal(ds);
+    },
     enabled: enabled && !!isRemote,
     staleTime: 60_000,
   });

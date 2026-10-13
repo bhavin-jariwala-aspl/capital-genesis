@@ -162,10 +162,9 @@ npx prisma migrate dev
 
 ### Step 4: Seed Demo Data
 
-The seed script wipes the database and fills it with a complete Life
-Insurance CRM dataset — modules, objects, fields, forms, wizards,
-dashboards, pipelines, workflows, and demo users with realistic
-insurance data.
+The seed script wipes the database and fills it with a complete CRM
+dataset — modules, objects, fields, forms, wizards, dashboards,
+pipelines, workflows, and demo users with realistic sample data.
 
 ```bash
 # From the backend directory
@@ -176,24 +175,18 @@ node prisma/seed.js
 Expected output (abbreviated):
 
 ```text
-Seeding Genesis Life Insurance CRM database...
+Seeding Genesis CRM database...
 Database cleared
-Modules created (Leads · Prospects · Clients · Quotes · Applications ·
-                 Policies · Claims · Underwriting · Commissions · Settings)
+Modules created (Leads · Prospects · Clients · Settings · Products · …)
 Lead: 14 fields · 4 validations · form
 Prospect: 19 fields · 9 validations · 1 custom fn · 1 dep · form
 Client: 23 fields · 10 validations · 1 custom fn · form
 …
-Wizard: Life Insurance Application (5 steps)
 Dashboard: Agency Dashboard · 4 KPIs + 3 charts
-Pipelines: Quote (5) · Application (5) · Claims (5) · Prospect (5)
-Workflows: Application Auto-Assign · Claim Filed Notification · Policy Renewal Reminder
+Pipelines: Prospect (5) · …
 CRM Leads: 5 prospects · Contacts: 5 · Accounts: 3 · Opportunities: 3
-Insurance: 2 Carriers · 3 Products · 8 Applications · 5 Policies · 5 Claims
-Commission Entries: 8 · Underwriting Cases: 3
-Application/Policy/Claim EAV fields seeded
 Platform: Plans · Feature Flags · Tenant Config · Security Policy
-Seed complete — Life Insurance CRM!
+Seed complete!
 ```
 
 > **Warning:** `node prisma/seed.js` deletes ALL existing data before
@@ -275,11 +268,8 @@ Enter your **Employee ID** and **Password**, then click **Sign in**.
 | Platform Admin | PLATFORM01 | Platform@123 | Platform management (tenants, plans, flags) |
 | Agency Owner | ADMIN001 | Admin@123 | Full system access + Builder tools |
 | Sales Manager | MGR001 | Manager@123 | Team management + records |
-| Senior Agent | USR001 | User@123 | Insurance CRM access |
-| Agent | USR002 | User@123 | Insurance CRM access |
-| Chief Underwriter | UWMGR001 | Underwriter@123 | UW cases + view apps/policies |
-| Senior Underwriter | SRUW001 | Underwriter@123 | UW cases + view apps/policies |
-| Underwriter | UW001 | Underwriter@123 | Assigned UW cases only |
+| Senior Agent | USR001 | User@123 | CRM access |
+| Agent | USR002 | User@123 | CRM access |
 
 > **Employee ID is case-sensitive** — use uppercase exactly as shown.
 
@@ -309,15 +299,9 @@ kept in `sessionStorage` and is discarded when the tab or browser closes.
 1. **Login** with any demo account (try `ADMIN001` / `Admin@123`)
 2. **Dashboard** should load with Agency KPI metrics and charts
 3. **Prospects** module should show 5 demo lead records
-4. **Clients** module should show 5 contacts with insurance data
-5. **Insurance** sidebar section should show Quote Engine,
-   Applications (8), Policies (5), Claims (5),
-   Underwriting (8 cases), and Commissions (8)
-6. **Underwriter login** (UWMGR001) should see only
-   Underwriting, Documents, and read-only Applications/Policies
-   — no Prospects, Quotes, Commissions, or Settings
-7. **Admin Access** (ADMIN001) should see Builder section in sidebar
-8. **Platform Admin** (PLATFORM01) should see Platform section
+4. **Clients** module should show 5 demo client records
+5. **Admin Access** (ADMIN001) should see Builder section in sidebar
+6. **Platform Admin** (PLATFORM01) should see Platform section
 
 ---
 

@@ -53,5 +53,5 @@ export function elapsedFraction(timer, nowMs = Date.now()) {
 }
 
 export const PRIORITY_LABEL = (p) => (p === '*' ? 'Default' : String(p).replace(/_/g, ' '));
-export const ENTITY_LABEL = { case: 'Cases', lead: 'Leads', task: 'Tasks' };
-export const ENTITY_SINGULAR = { case: 'Case', lead: 'Lead', task: 'Task' };
+export const ENTITY_LABEL = { case: 'Cases', lead: 'Leads', task: 'Tasks', record: 'Records of an object' };
+export const ENTITY_SINGULAR = { case: 'Case', lead: 'Lead', task: 'Task', record: 'Record' };

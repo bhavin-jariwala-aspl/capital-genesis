@@ -199,7 +199,7 @@ export default function AskPanel({ scope = 'all', onBack }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={busy}
-            placeholder={showLanding ? 'e.g. Top 5 agents by in-force premium this fiscal year' : 'Refine it — "only the top 5", "by month instead", "compare with last year"…'}
+            placeholder={showLanding ? 'e.g. Top 5 owners by won revenue this fiscal year' : 'Refine it — "only the top 5", "by month instead", "compare with last year"…'}
             className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-primary-500 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
             aria-label="Ask a question"
           />

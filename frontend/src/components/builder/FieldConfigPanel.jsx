@@ -8,6 +8,8 @@ import TextArea from '../ui/TextArea';
 import ValidationEditor from './ValidationEditor';
 import DependencyEditor from './DependencyEditor';
 import FunctionEditor from './FunctionEditor';
+import FormulaEditor from './FormulaEditor';
+import ObjectPicker from '../ui/ObjectPicker';
 import { EntityPermissionPanel } from './PermissionPanel';
 import { useBuilderStore } from '../../store/builderStore';
 import { FIELD_TYPES } from '../../utils/constants';
@@ -164,6 +166,18 @@ export default function FieldConfigPanel() {
                 />
                 <Checkbox label="Allow negative amounts" checked={!!cfg.allow_negative} onChange={(e) => setCfg({ allow_negative: e.target.checked })} />
               </>
+            )}
+            {ft === 'lookup' && (
+              <ObjectPicker
+                label="Points at"
+                valueKey="name"
+                value={cfg.target_object || ''}
+                onChange={(name) => { setCfg({ target_object: name }); update({ data_type: 'number' }); }}
+                help="Which object's records this field links to. Those records then list this one on their Related tab."
+              />
+            )}
+            {ft === 'formula' && (
+              <FormulaEditor cfg={cfg} setCfg={setCfg} dataType={field.data_type} onDataType={(dt) => update({ data_type: dt })} />
             )}
             {ft === 'rating' && (
               <Input label="Maximum rating" type="number" min={1} max={10} value={cfg.max ?? 5} onChange={(e) => setCfg({ max: Number(e.target.value) || 5 })} />

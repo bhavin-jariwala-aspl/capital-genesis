@@ -118,7 +118,7 @@ export default function ValidationEditor({ validations = [], onChange, allFields
             />
 
             {meta.hint && (
-              <p className={`flex items-start gap-1 text-[11px] leading-relaxed ${meta.type === 'custom' ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
+              <p className={`flex items-start gap-1 text-[11px] leading-relaxed ${meta.type === 'expression' ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}`}>
                 <Info className="mt-0.5 h-3 w-3 shrink-0" /> {meta.hint}
               </p>
             )}

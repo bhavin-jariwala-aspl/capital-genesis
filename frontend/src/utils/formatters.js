@@ -1,5 +1,5 @@
 /**
- * Shared formatting utilities used across insurance and runtime pages.
+ * Shared formatting utilities used across runtime pages.
  * Centralised here to avoid duplicate definitions.
  */
 import { formatCurrency } from './currency';
@@ -48,7 +48,3 @@ export function formatSize(bytes) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-/** Derive a contact's full name from a record */
-export const contactName = (a) =>
-  a?.contact ? `${a.contact.first_name} ${a.contact.last_name}`.trim() : '—';

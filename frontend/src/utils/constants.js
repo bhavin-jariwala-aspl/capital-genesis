@@ -32,8 +32,8 @@ export const FIELD_TYPES = [
   { field_type: 'file',         data_type: 'string',  label: 'File Upload',    icon: 'Upload',     group: 'Special' },
   { field_type: 'image',        data_type: 'string',  label: 'Image',          icon: 'Image',      group: 'Special' },
   { field_type: 'code',         data_type: 'string',  label: 'Code Editor',    icon: 'Code',       group: 'Special' },
-  { field_type: 'lookup',       data_type: 'object',  label: 'Lookup',         icon: 'Search',     group: 'Special' },
-  { field_type: 'formula',      data_type: 'string',  label: 'Formula',        icon: 'Function',   group: 'Special' },
+  { field_type: 'lookup',       data_type: 'number',  label: 'Lookup',         icon: 'Search',     group: 'Special' },
+  { field_type: 'formula',      data_type: 'number',  label: 'Formula',        icon: 'Function',   group: 'Special' },
   { field_type: 'auto_number',  data_type: 'string',  label: 'Auto Number',    icon: 'Zap',        group: 'Special' },
   { field_type: 'status_tracker', data_type: 'none',  label: 'Status Tracker', icon: 'Truck',      group: 'Special' },
 ];
@@ -101,7 +101,7 @@ export const VALIDATION_TYPES = [
   { type: 'lte_field',  label: 'At most another field',      hasValue: 'field', group: 'Compare', valueLabel: 'Other field' },
   // group: Data
   { type: 'unique',     label: 'Unique across records',  hasValue: false, group: 'Data', hint: 'Checked on the server when the record is saved.' },
-  { type: 'custom',     label: 'Custom JS (browser only)', hasValue: true, group: 'Data', valueLabel: 'JS expression using `value` (returns true/false)', hint: 'Runs in the browser only — never enforced by the API. Prefer a built-in rule.' },
+  { type: 'expression', label: 'Formula condition',     hasValue: true,  group: 'Data', valueLabel: 'Formula that must be true, e.g. AGE(date_of_birth) + tenure_months / 12 <= 65', hint: 'Uses the formula language (fields, IF, AGE, LOOKUP…). Checked on the server when the record is saved; skipped while this field is empty.' },
 ];
 
 export const VALIDATION_GROUPS = ['Presence', 'Text', 'Number', 'Date', 'Compare', 'Data'];
@@ -174,8 +174,27 @@ export const WIDGET_TYPES = [
  */
 export const MODULE_CATEGORIES = [
   { key: 'crm',       label: 'Modules',   order: 1 },
-  { key: 'insurance', label: 'Insurance',  order: 2 },
-  { key: 'tools',     label: 'Tools',      order: 3 },
+  { key: 'tools',     label: 'Tools',     order: 2 },
 ];
 
 export const MODULE_CATEGORY_OPTIONS = MODULE_CATEGORIES.map(c => ({ value: c.key, label: c.label }));
+
+/** Section header for a module category key: the known label, else the key titled. */
+export function categoryLabel(key) {
+  const known = MODULE_CATEGORIES.find((c) => c.key === key);
+  if (known) return known.label;
+  return String(key || 'crm').replace(/[_-]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+/**
+ * Turn `{ categoryKey: modules[] }` into ordered sidebar sections: known
+ * categories first in their declared order, then any other category in the
+ * order its first module appears.
+ */
+export function sidebarSections(grouped) {
+  const known = MODULE_CATEGORIES.filter((c) => grouped[c.key]?.length);
+  const custom = Object.keys(grouped)
+    .filter((k) => grouped[k]?.length && !MODULE_CATEGORIES.some((c) => c.key === k))
+    .map((k) => ({ key: k, label: categoryLabel(k) }));
+  return [...known, ...custom].map((c) => ({ ...c, modules: grouped[c.key] }));
+}

@@ -3,14 +3,12 @@
 > Status: **Implemented — standalone module**
 > Storage backends: local disk · Amazon S3 (and S3-compatible) · Azure Blob · Google Cloud Storage
 > Scope: a domain-neutral document platform used by the whole CRM — generic attachments,
-> insurance application documents, auto-archived reports, compliance artifacts, generated
-> documents, and e-signed documents.
+> auto-archived reports, generated documents, and e-signed documents.
 
-The DMS started life inside the INSURANCE domain and is now a **standalone, configurable,
-top-level module** with its own navigation, an admin **builder**, pluggable multi-cloud
+The DMS started life inside the former INSURANCE domain (removed 2026-10-13) and is now a
+**standalone, configurable, top-level module** with its own navigation, an admin **builder**, pluggable multi-cloud
 storage, folders, full-text search, public sharing with engagement analytics, merge
-templates, and native e-signature. The insurance document flow is unchanged — it is now one
-consumer of a shared platform.
+templates, and native e-signature.
 
 The DMS is assembled by the following migrations:
 
@@ -74,7 +72,7 @@ Every document is stored under a **tenant-first, relative key**:
 {tenant_id}/{entity_type}/{entity_id}/{category}/{uuid}_{sanitized_filename}
 ```
 
-Example: `7/application/42/proof_of_income/49f3c13135ba16c0_passport.pdf`
+Example: `7/opportunity/42/contract/49f3c13135ba16c0_signed_contract.pdf`
 
 The `stored_key` column holds this **relative** key — never an absolute path or a provider
 URL — which is what makes the backend swappable with **no database or code changes**. Object
@@ -148,7 +146,7 @@ configuration exercise, not a rewrite.
 
 **`documents`** (core) — adds `folder_id` (organising folder) and `content_text` (extracted
 plain text for search; never returned over the API) to the columns already documented: owner
-(`entity_type`/`entity_id`/`application_id`), `stored_key`, `file_size`/`mime_type`/`file_hash`,
+(`entity_type`/`entity_id`), `stored_key`, `file_size`/`mime_type`/`file_hash`,
 `category`, `version`, `status`, `is_public`, review + soft-delete + `tenant_id`, plus a
 `documents_fulltext` FULLTEXT index over `(original_filename, description, content_text)`.
 
@@ -172,15 +170,14 @@ Configuration and feature tables:
 ### Standalone module
 A domain-neutral **Documents** page (`/documents`) with its own top-level sidebar section,
 built on the generic `/api/documents` API. Stats, category + full-text filters, a folder rail,
-and per-row view/download/share/sign/delete actions. The insurance `DocumentCollectionPage`
-(`/insurance/documents`) is unchanged.
+and per-row view/download/share/sign/delete actions.
 
 ### Document Management builder (`/builder/documents`, admin)
 Configure the DMS without code:
 
 - **Categories** — machine code + label, per-category allowed MIME types, max size, retention,
   "requires review" (uploads land in `under_review`), "required document", colour.
-- **Checklists** — required-document sets per entity type (e.g. `application`).
+- **Checklists** — required-document sets per entity type (e.g. `opportunity`).
 - **Merge templates** — see below.
 
 Uploads consult the matching category at write time and enforce its MIME allow-list / size cap
@@ -262,10 +259,6 @@ behind the same request/signatory model.
 
 ### Builder config — `/api/builder` (read: auth · write: admin)
 `document-categories[/:id]` · `document-checklists[/:id]` · `document-templates[/:id]`
-
-### Insurance — `/api/insurance/application-documents`
-List / get / upload / `PATCH /:id/review` / download / `GET /:id/preview` (inline preview) /
-`POST /templates/render-and-archive`. (Flow otherwise unchanged.)
 
 ---
 

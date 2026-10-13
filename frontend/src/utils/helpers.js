@@ -115,26 +115,9 @@ export function buildValidationRules(field) {
       case 'unique':
         // Server-side only (needs the database); the API reports it inline.
         break;
-      case 'custom':
-        rules.validate = (value) => {
-          try {
-            // Admin-defined custom validator. Dangerous browser globals are shadowed
-            // to reduce XSS attack surface (CWE-94). Only trusted admins may set these.
-            // eslint-disable-next-line no-new-func
-            const fn = new Function(
-              'value',
-              'window', 'document', 'fetch', 'XMLHttpRequest',
-              'localStorage', 'sessionStorage', 'indexedDB', 'navigator', 'location',
-              `'use strict';\nreturn (${v.value})`,
-            );
-            return fn(value,
-              undefined, undefined, undefined, undefined,
-              undefined, undefined, undefined, undefined, undefined,
-            ) === true || v.error_message;
-          } catch {
-            return v.error_message || 'Validation failed';
-          }
-        };
+      case 'expression':
+        // Formula-language rule — enforced by the server when the record is
+        // saved (it may read other records), so nothing to compile here.
         break;
     }
   }

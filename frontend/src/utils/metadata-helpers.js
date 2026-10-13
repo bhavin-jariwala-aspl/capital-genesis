@@ -1,5 +1,5 @@
 /**
- * Shared helpers for metadata-driven insurance pages.
+ * Shared helpers for metadata-driven pages.
  * Used by pages that load field definitions from the Module > Object > Fields system.
  */
 
@@ -19,16 +19,6 @@ const COLOR_TO_VARIANT = {
 export function statusVariant(statusValue, statusOptions) {
   const opt = statusOptions.find((o) => o.value === statusValue);
   return COLOR_TO_VARIANT[opt?.color] ?? 'default';
-}
-
-/** Get the label for a field from its metadata definition */
-export function fieldLabel(fieldName, fields) {
-  return fields.find((f) => f.name === fieldName)?.label ?? fieldName;
-}
-
-/** Get the options array for a named field */
-export function fieldOptions(fieldName, fields) {
-  return fields.find((f) => f.name === fieldName)?.options ?? [];
 }
 
 /** Resolve a display label from a value in an options array */

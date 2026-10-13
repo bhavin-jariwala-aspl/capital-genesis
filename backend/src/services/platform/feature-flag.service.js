@@ -155,10 +155,9 @@ class FeatureFlagService extends BaseRepository {
    * Delegates to {@link EntitlementService}, which is the only thing that knows
    * the whole answer. This method used to resolve tenant override -> rollout
    * percentage -> global default and **never consult the plan**, so a `premium`
-   * flag was not gated behind a paid plan at all. Existing call sites (the
-   * underwriting guards in `routes/insurance` and `routes/runtime`) keep
-   * working unchanged, and become plan-aware by doing so — `underwriting_workflow`
-   * resolves through the catalogue's legacy alias.
+   * flag was not gated behind a paid plan at all. Existing call sites keep
+   * working unchanged, and become plan-aware by doing so — a legacy name such
+   * as `advanced_workflows` resolves through the catalogue's legacy alias.
    *
    * @param {string} flagName a catalogue feature key, or a legacy flag name
    * @param {number} tenantId

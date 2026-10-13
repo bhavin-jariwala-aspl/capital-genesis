@@ -88,7 +88,7 @@ class DashboardService {
    *
    * The code asked `minLevel <= viewerLevel`, which inverts the gate: a board
    * restricted to managers (4) was hidden from admins (3) and super admins (2)
-   * and shown to every ordinary user (5) and underwriter (6) instead. That is
+   * and shown to every ordinary user (5) instead. That is
    * not just a display quirk — `min_role` is the only restriction on a
    * dashboard with no explicit `UiPermission` row, which is the default for
    * anything built by hand.

@@ -95,7 +95,7 @@ duplicated rather than imported. **Change one, change the other.** Both are pure
 
 ## Backend resolution
 
-Money is formatted synchronously deep inside the insurance PDF builders and the report HTML
+Money is formatted synchronously deep inside the report HTML
 exporter, so threading a currency argument through every signature was not practical.
 `CurrencyService` therefore puts the resolved profile in an `AsyncLocalStorage` — the same
 mechanism [`tenant-scope.js`](../../backend/src/middleware/tenant-scope.js) already uses for
@@ -146,7 +146,7 @@ Three formatters are exported from
 | Function | Output for `1234567` in USD | Use |
 | --- | --- | --- |
 | `fmtCurrency` | `$1,234,567` | tables, lists, detail fields |
-| `fmtCurrencyPrecise` | `$1,234,567.00` | quotes, premiums, anything auditable |
+| `fmtCurrencyPrecise` | `$1,234,567.00` | invoices, prices, anything auditable |
 | `fmtCurrencyCompact` | `$1.2M` | stat tiles, chart axes |
 
 `CurrencyInput` takes its symbol from the registry rather than the three-way
@@ -223,7 +223,7 @@ better. For a tenant that closes deals in three, it is not a candidate.
 
 In the order they would need to be built:
 
-1. **Per-record transaction currency.** The `currency` columns already exist on `quotes`,
+1. **Per-record transaction currency.** The `currency` columns already exist on
    `products`, `opportunities`, `sales_quotas` and the social campaign tables — they are written
    and stored but never read back for display. Wiring `CurrencyInput`'s existing `currency` prop to
    those columns is the smallest first step.

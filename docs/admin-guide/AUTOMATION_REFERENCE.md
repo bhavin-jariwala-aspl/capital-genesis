@@ -166,7 +166,7 @@ leave the assignee blank to use it.
 
 ### The shipped starter model
 
-Eleven rules across three groups, for a life-insurance agency. Maximum positive total 130, against
+Eleven rules across three groups. Maximum positive total 130, against
 grade bands A ≥ 80, B ≥ 60, C ≥ 40, D ≥ 20.
 
 | Group | Rule | Field | Points |
@@ -183,8 +183,8 @@ grade bands A ≥ 80, B ≥ 60, C ≥ 40, D ≥ 20.
 | Engagement | Reachable by phone | `phone` not empty | +15 |
 | Engagement | Reachable by email | `email` not empty | +10 |
 
-`annual_revenue` is read as the prospect's **annual household income** — the figure life cover is
-sized and underwritten against.
+`annual_revenue` is read as the prospect's **annual household income** — the figure the
+recommended cover is sized against.
 
 The two negative rules are deliberate. In a model where every rule adds, every lead eventually scores
 highly and the ranking stops meaning anything.

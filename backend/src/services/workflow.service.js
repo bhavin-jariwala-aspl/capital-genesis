@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { logger } = require('./logging.service');
 const { tenantContext } = require('../middleware/tenant-scope');
 const IntegrationService = require('./integration.service');
+const { evaluate: evaluateFormula, truthy } = require('./formula');
 const {
   MODEL_MAP,
   CRM_FIELDS,
@@ -50,7 +51,7 @@ const {
  * `pipeline_stage_id` live on the `records` row itself. #loadFields merges all
  * three for reads and #writeField routes writes to the right one, so condition,
  * action, create_record and update_related steps behave identically on a CRM
- * object and on an insurance/custom object. See services/crm-storage-map.js.
+ * object and on a custom (EAV-backed) object. See services/crm-storage-map.js.
  */
 class WorkflowEngineService {
   // Prevents overlapping scheduler ticks from stacking open DB connections.
@@ -84,6 +85,14 @@ class WorkflowEngineService {
    *  through the app's single outbound-delivery path (SSRF + signing + client). */
   setIntegrationService(integrationService) {
     this.integrationService = integrationService;
+    return this;
+  }
+
+  /** RecordService used by `create_record`, so created records run the full
+   *  record path (formulas, validation-free system write, scope stamping,
+   *  auto-assignment, record.created event). */
+  setRecordService(recordService) {
+    this.recordService = recordService;
     return this;
   }
 
@@ -292,8 +301,8 @@ class WorkflowEngineService {
    *
    *   per_record: true — the workflow runs once for every live record of its
    *     object, exactly like a Salesforce scheduled-triggered Flow or a Zoho
-   *     scheduled rule. This is what makes date-driven sweeps ("policies
-   *     expiring within 30 days", "quotes past their validity date") possible,
+   *     scheduled rule. This is what makes date-driven sweeps ("leads with
+   *     no activity for 7 days", "clients missing contact details") possible,
    *     since the condition step can then read that record's own fields.
    *
    * `trigger_config.limit` caps a per-record sweep (default 500) so a large
@@ -464,7 +473,12 @@ class WorkflowEngineService {
           // Default: read current value from CRM fields or record struct
           actual = fields[cfg.field] ?? record?.[cfg.field];
         }
-        const matched = this.#evaluate(actual, cfg.operator, cfg.value);
+        // `expression` gates on a formula over the whole record (with LOOKUP /
+        // related roll-ups when the record service is wired), e.g. an
+        // approval-matrix band: `amount > 5000000 AND risk_grade != 'A'`.
+        const matched = cfg.operator === 'expression'
+          ? await this.#evaluateExpression(cfg.value, { ...fields, id: record?.id ?? null }, record?.id ?? null)
+          : this.#evaluate(actual, cfg.operator, cfg.value);
         logEntry.result = matched ? 'true' : 'false';
         // Pass → explicit link or fall through to the next step. Fail → explicit
         // false-branch, else stop the chain (a failed gate blocks what follows).
@@ -484,6 +498,8 @@ class WorkflowEngineService {
             : cfg.value;
           const written = await this.#writeField(record, cfg.field, value);
           crmCache.fields = null; // invalidate — the record was just mutated
+          // Formulas (and parents' roll-ups) depending on the field follow it.
+          if (written && cfg.field !== 'stage' && this.recordService) await this.recordService.recompute(record.id).catch(() => {});
           logEntry.result = written
             ? `set ${cfg.field}=${value}`
             : `no-op (could not resolve storage for field '${cfg.field}')`;
@@ -736,17 +752,54 @@ class WorkflowEngineService {
       // overflow fields on a CRM object land in EAV rather than being dropped.
       // cfg.fields values support {{field}} interpolation from the current record.
       //
-      // Config: { object_id, fields: {}, assigned_to?, stage_id? }
+      // Config: { object_id, fields: {}, assigned_to?, stage_id?,
+      //          link_field?, store_as? }
+      //   link_field — lookup field on the NEW record set to this record's id
+      //                (e.g. a Loan Application's `enquiry`), so it shows in
+      //                this record's related list.
+      //   store_as   — field on THIS record that receives the new record's id
+      //                (e.g. an Enquiry's `party`), linking the other way.
+      // Values support {{field}} and {{id}} (this record's id).
       case 'create_record': {
         if (!cfg.object_id) {
           logEntry.result = 'no-op (missing object_id)';
           return step.on_true_id ?? defaultNextId;
         }
         if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-        const fieldCtx   = crmCache.fields;
+        const fieldCtx   = { ...crmCache.fields, id: record?.id ?? '' };
         const entityData = {};
         for (const [k, v] of Object.entries(cfg.fields ?? cfg.data ?? {})) {
           entityData[k] = typeof v === 'string' ? this.#interpolate(v, fieldCtx) : v;
+        }
+        if (cfg.link_field && record?.id) entityData[cfg.link_field] = Number(record.id);
+
+        // `stage` names the new record's starting stage by its API name.
+        let startStageId = cfg.stage_id ? Number(cfg.stage_id) : null;
+        if (!startStageId && cfg.stage) {
+          const st = await this.db.uiPipelineStage.findFirst({
+            where: { name: String(cfg.stage), pipeline: { object_id: Number(cfg.object_id) } }, select: { id: true },
+          });
+          startStageId = st?.id ?? null;
+        }
+
+        // Preferred path: the full record service. The record is created as a
+        // system write in the source record's tenant.
+        if (this.recordService) {
+          const created = await this.recordService.createRecord(
+            Number(cfg.object_id),
+            startStageId,
+            actorId ?? null,
+            cfg.assigned_to ?? record?.assigned_to ?? null,
+            { tenant_id: record?.tenant_id ?? null },
+            entityData,
+            { draft: true },
+          );
+          if (cfg.store_as && record?.id) {
+            await this.#writeField(record, cfg.store_as, created.id);
+            crmCache.fields = null;
+          }
+          logEntry.result = `created record #${created.id} in object ${cfg.object_id}`;
+          return step.on_true_id ?? defaultNextId;
         }
         // Resolve target object type for storage routing
         const targetObj = await this.db.uiObject.findUnique({
@@ -855,11 +908,82 @@ class WorkflowEngineService {
           const recordIds = [...new Set(matches.map(m => m.record_id))];
           for (const rid of recordIds) {
             await this.#writeEavFields(rid, cfg.object_id, { [cfg.field]: newValue });
+            if (this.recordService) await this.recordService.recompute(rid).catch(() => {});
           }
           updatedCount = recordIds.length;
         }
 
         logEntry.result = `updated ${updatedCount} related records in object ${cfg.object_id}`;
+        return step.on_true_id ?? defaultNextId;
+      }
+
+      // ── Send email ────────────────────────────────────────────────────────
+      // Sends an email template to an address on the record (or a literal /
+      // interpolated `to`). With `language_field`, a template named
+      // `<template>_<lang>` (e.g. enquiry_ack_fr) is preferred when it exists,
+      // so bilingual communications are templates, not code.
+      //
+      // Config: { template, to_field? = 'email', to?, language_field? }
+      case 'send_email': {
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const ctx = { ...crmCache.fields, id: record?.id ?? '' };
+        const to = cfg.to ? this.#interpolate(cfg.to, ctx) : ctx[cfg.to_field ?? 'email'];
+        if (!to || !cfg.template) {
+          logEntry.result = 'no-op (missing template or recipient address)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        const lang = cfg.language_field ? String(ctx[cfg.language_field] ?? '').trim().toLowerCase() : '';
+        const names = lang ? [`${cfg.template}_${lang}`, cfg.template] : [cfg.template];
+        const candidates = await this.db.emailTemplate.findMany({
+          where: { name: { in: names }, is_active: true }, select: { id: true, name: true },
+        });
+        const tpl = names.map((n) => candidates.find((c) => c.name === n)).find(Boolean);
+        if (!tpl) {
+          logEntry.result = `no-op (email template '${cfg.template}' not found)`;
+          return step.on_true_id ?? defaultNextId;
+        }
+        if (!this.emailSender) {
+          const EmailSendService = require('./email-send.service');
+          const EmailTemplateService = require('./email-template.service');
+          this.emailSender = new EmailSendService(this.db, new EmailTemplateService(this.db));
+        }
+        const sent = await this.emailSender.sendWithTemplate({
+          template_id: tpl.id, variables: ctx, to_email: String(to),
+          related_record_id: record?.id ?? null, related_type: 'record', sent_by: actorId ?? null,
+        });
+        logEntry.result = `email ${sent.status} → ${to} (${tpl.name})`;
+        return step.on_true_id ?? defaultNextId;
+      }
+
+      // ── Generate document ─────────────────────────────────────────────────
+      // Renders a merge template (offer letter, decline letter, KYC refresh
+      // request…) from this record's values and files it on the record, so it
+      // appears in the record's Docs tab and can be shared or sent for e-sign.
+      //
+      // Config: { template, filename? }   (filename supports {{field}})
+      case 'generate_document': {
+        if (!record?.id || !cfg.template) {
+          logEntry.result = 'no-op (missing template or record)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        const tpl = await this.db.documentTemplate.findFirst({ where: { name: String(cfg.template), is_active: true }, select: { id: true, name: true } });
+        if (!tpl) {
+          logEntry.result = `no-op (document template '${cfg.template}' not found)`;
+          return step.on_true_id ?? defaultNextId;
+        }
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const ctx = { ...crmCache.fields, record_id: record.id, today: new Date().toISOString().slice(0, 10) };
+        const DocumentService = require('./document.service');
+        const DocumentTemplateService = require('./document-template.service');
+        const obj = await this.db.uiObject.findUnique({ where: { id: Number(record.object_id) }, select: { name: true } });
+        const doc = await new DocumentTemplateService(this.db, new DocumentService(this.db)).render(tpl.id, {
+          data: ctx,
+          filename: cfg.filename ? this.#interpolate(cfg.filename, ctx) : undefined,
+          entityType: obj?.name ?? null,
+          entityId: Number(record.id),
+          uploadedBy: actorId ?? null,
+        });
+        logEntry.result = `generated document #${doc?.id} from '${tpl.name}'`;
         return step.on_true_id ?? defaultNextId;
       }
 
@@ -879,6 +1003,8 @@ class WorkflowEngineService {
    *   field         — record data field whose value is an employee_id
    *   role          — broadcast to all active employees with this role name
    *   notify_actor  — true → include the user who triggered the workflow
+   *   exclude_actor — true → never the user who triggered it (maker-checker)
+   *   exclude_field — record field naming someone to leave out (e.g. `maker`)
    */
   async #resolveRecipients(cfg, record, actorId, crmCache = { fields: null }) {
     const ids = new Set();
@@ -899,6 +1025,15 @@ class WorkflowEngineService {
         select: { employee_id: true },
       });
       employees.forEach((e) => ids.add(String(e.employee_id)));
+    }
+
+    // Maker-checker: the person who triggered the step (and/or whoever a
+    // record field names, e.g. `maker`) can never be among its approvers.
+    if (cfg.exclude_actor && actorId) ids.delete(String(actorId));
+    if (cfg.exclude_field) {
+      if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+      const maker = crmCache.fields[cfg.exclude_field] ?? record?.[cfg.exclude_field];
+      if (maker) ids.delete(String(maker));
     }
 
     return [...ids];
@@ -947,6 +1082,19 @@ class WorkflowEngineService {
   }
 
   /** Replace {{fieldName}} placeholders with values from record data. */
+  /** Truthiness of a formula over a record's values; a broken formula is false. */
+  async #evaluateExpression(expression, values, recordId) {
+    try {
+      const ctx = this.recordService?.compute
+        ? this.recordService.compute.context(values, recordId)
+        : { values };
+      return truthy(await evaluateFormula(String(expression ?? ''), ctx));
+    } catch (err) {
+      logger?.warn?.('[WorkflowEngine] expression condition failed', { error: err.message });
+      return false;
+    }
+  }
+
   #interpolate(template, data = {}) {
     return String(template).replace(/\{\{(\w+)\}\}/g, (_, k) => data[k] ?? '');
   }
@@ -1004,8 +1152,7 @@ class WorkflowEngineService {
    *
    * A record's data lives in one of two places (see crm-storage-map.js):
    *   • a first-class CRM table  — `prospect`/`lead_intake`/`contact`/… objects
-   *   • the typed EAV table      — insurance domain objects, `client`, and all
-   *                                custom objects
+   *   • the typed EAV table      — `client` and all custom objects
    * Objects with a CRM entity may ALSO carry overflow fields in EAV, so both
    * are read and merged the same way RecordService hydrates a record for the
    * API: EAV first, then non-null CRM columns on top (mapped back through
@@ -1023,6 +1170,7 @@ class WorkflowEngineService {
       where:   { id: Number(record.id) },
       include: {
         object:          { select: { name: true } },
+        pipeline_stage:  { select: { name: true } },
         field_values:    true,
         crm_lead:        true,
         crm_lead_intake: true,
@@ -1060,7 +1208,12 @@ class WorkflowEngineService {
     fields.assigned_to       = full.assigned_to ?? null;
     fields.pipeline_stage_id = full.pipeline_stage_id ?? null;
     fields.record_id         = full.id;
+    fields.id                = full.id;
     fields.created_by        = full.created_by ?? null;
+    // Readable context for conditions and {{placeholders}}: the stage by its
+    // API name (`stage eq 'offer_issued'`) and today's date for stamping.
+    fields.stage             = full.pipeline_stage?.name ?? null;
+    fields.today             = new Date().toISOString().slice(0, 10);
 
     return fields;
   }
@@ -1082,6 +1235,20 @@ class WorkflowEngineService {
   async #writeField(record, field, value) {
     if (!record?.id || !field) return false;
     const recordId = Number(record.id);
+
+    // `stage` — move the record to a stage by its API name. Goes through the
+    // record service so stage gates, the status timeline and stage events
+    // (and so any workflow listening for that stage) all apply.
+    if (field === 'stage') {
+      const rec = await this.db.record.findUnique({ where: { id: recordId }, select: { object_id: true } });
+      const stage = rec && await this.db.uiPipelineStage.findFirst({
+        where: { name: String(value), pipeline: { object_id: rec.object_id } }, select: { id: true },
+      });
+      if (!stage) return false;
+      if (this.recordService) await this.recordService.updateRecordStage(recordId, stage.id, null, null);
+      else await this.db.record.update({ where: { id: recordId }, data: { pipeline_stage_id: stage.id } });
+      return true;
+    }
 
     // ── Record-level columns ──────────────────────────────────────────────
     if (RECORD_COLUMNS.has(field)) {

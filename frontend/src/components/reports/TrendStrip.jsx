@@ -8,7 +8,7 @@ import { formatValue, trendClass, trendOf, formatDelta } from '../../utils/repor
  *
  * Reads the report's snapshot history (one entry per scope per day, written each
  * time the saved report is run or emailed) and draws one sparkline per measure.
- * A report that reads *current state* — open pipeline, active policies — cannot
+ * A report that reads *current state* — open pipeline, active accounts — cannot
  * otherwise answer "how did this look last month"; this is the lightweight
  * version of Salesforce's historical trending that needs no extra table.
  */

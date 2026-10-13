@@ -38,17 +38,20 @@ Both views share the same search, filters, colour coding, selection, and collaps
 ## Interacting with the chart
 
 ### Navigate the canvas
+
 - **Pan** — click and drag any empty area of the canvas to move around.
 - **Zoom** — use the `−` / `+` buttons, or **Fit to screen** (the expand icon) to frame everything at once. The
   current zoom percentage is shown between the buttons.
 
 ### Collapse and expand
+
 - Every manager card has a small pill at its bottom edge. Click it to **collapse** that person's team (the pill then
   shows the total number of people hidden below) or **expand** it again.
 - **Collapse** / **Expand** buttons in the toolbar fold or unfold the entire chart at once. Start collapsed to see the
   top of the company, then open the branches you care about.
 
 ### Focus on a team
+
 - Open any member's detail panel and click **Focus team** to re-root the chart on that person — the chart now shows
   only them and everyone below. A banner appears at the top; click **Show full org** to return to the whole company.
 

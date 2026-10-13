@@ -39,8 +39,17 @@ class ConflictError extends AppError {
   }
 }
 
+/** 429 with a Retry-After hint; the global error handler emits the header. */
+class RateLimitedError extends AppError {
+  constructor(message, retryAfterSec) {
+    super(message, 429, 'RATE_LIMITED');
+    this.retryAfterSec = retryAfterSec;
+  }
+}
+
 module.exports = {
   AppError,
+  RateLimitedError,
   NotFoundError,
   ValidationError,
   AuthenticationError,

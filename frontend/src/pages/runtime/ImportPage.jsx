@@ -37,7 +37,7 @@ const sampleValue = (f) => {
     case 'checkbox':
     case 'boolean':              return 'false';
     case 'number':
-      if (/(revenue|income|amount|coverage|premium|value|salary)/.test(name)) return '50000';
+      if (/(revenue|income|amount|price|value|salary)/.test(name)) return '50000';
       if (name.includes('age'))          return '35';
       if (name.includes('probability'))  return '50';
       return '100';

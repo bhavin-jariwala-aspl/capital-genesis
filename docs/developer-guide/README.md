@@ -10,7 +10,7 @@ Technical reference for developers building on, extending, or deploying Genesis 
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | All Developers | Every table, what it stores, columns/types, and relationships (from the Prisma SQL migrations) |
 | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) | All Developers | For every one of the 169 tables: **why it exists**, **when/how its rows are written**, and what each column represents (data lifecycle companion to DATABASE_SCHEMA.md) |
 | [API_REFERENCE.md](API_REFERENCE.md) | All Developers | Every REST endpoint (497 across 20 route groups): its purpose/relevance and **when & how it is invoked** (frontend action, scheduler, or webhook) |
-| [BUILD_EFFORT_AND_CAPABILITIES.md](BUILD_EFFORT_AND_CAPABILITIES.md) | Architects & Decision-makers | No-code envelope, build-effort estimates for CRM flows and Insurance CRM |
+| [BUILD_EFFORT_AND_CAPABILITIES.md](BUILD_EFFORT_AND_CAPABILITIES.md) | Architects & Decision-makers | No-code envelope, build-effort estimates for CRM flows |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Frontend Developers | The "widget" design language — tokens, shared components (`PageHeader`, `StatTile`, `EmptyState`, widget `DataTable`/`Card`), patterns, and a new-page checklist |
 | [WORKFLOW_ENGINE.md](WORKFLOW_ENGINE.md) | Developers & Advanced Admins | Step types, operators, functions, workflow API |
 | [SLA_ENGINE.md](SLA_ENGINE.md) | Developers & Advanced Admins | The reconcile loop, policy/target matching, instance lifecycle, business-hours math, escalation firing & manager resolution, extension recipes |
@@ -48,7 +48,7 @@ key patterns, and common troubleshooting.
 
 **Looking up a table or a column?**
 [DATA_DICTIONARY.md](DATA_DICTIONARY.md) — per-table purpose, write path, and column meaning for all
-106 models; pair it with [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for exact column types.
+91 models; pair it with [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for exact column types.
 
 **Calling or integrating with the API?**
 [API_REFERENCE.md](API_REFERENCE.md) — every endpoint with its purpose and the exact UI action,
@@ -77,8 +77,8 @@ new-page checklist so every screen stays consistent in light and dark.
 - **All UI components use default exports** — `import Button from '...'` not `{ Button }`
 - **React Query v5**: `useMutation` takes single options object, use `isPending` not `isLoading`
 - **Workflow execution**: fire-and-forget, failures never block HTTP responses, MAX_STEPS=50 cycle guard
-- **169 Prisma models** across CRM core, metadata, org, permissions, sales ops, integrations,
-  insurance/AMS, and the platform control plane — see [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
+- **Prisma models** across CRM core, metadata, org, permissions, sales ops, integrations,
+  and the platform control plane — see [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 - **497 REST endpoints** across 20 route groups — see [API_REFERENCE.md](API_REFERENCE.md)
 - **Dashboards read live data** — widgets store a dataset key, not numbers; see
   [DASHBOARD_ANALYTICS.md](DASHBOARD_ANALYTICS.md)

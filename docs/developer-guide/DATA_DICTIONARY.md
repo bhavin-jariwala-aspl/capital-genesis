@@ -10,7 +10,7 @@
 > nullability, defaults). **This** document explains, for every table: **why it exists**, **when & how its rows are
 > written**, and **what the stored data represents and why**.
 >
-> **Source of truth:** [`backend/prisma/schema.prisma`](../../backend/prisma/schema.prisma) (106 models) and the
+> **Source of truth:** [`backend/prisma/schema.prisma`](../../backend/prisma/schema.prisma) (97 models) and the
 > services under [`backend/src/services/`](../../backend/src/services/) that read and write these tables.
 > **Engine:** MySQL (AWS RDS) via Prisma.
 
@@ -40,8 +40,8 @@ Each table is documented as:
   (`owner_id`, `assigned_to`, `created_by`, `updated_by`, …) are `VARCHAR(20)` employee IDs.
 - **Timestamps.** `created_at` / `updated_at` are `DATETIME(3)`; `created_at` defaults to the insert time, `updated_at`
   is stamped by Prisma `@updatedAt` on every write.
-- **The polymorphic bridge.** `records` is a universal anchor row for any object instance. Typed CRM/insurance tables
-  (`crm_*`, `insurance_*`) each hold a one-to-one nullable `record_id → records.id` so that shared machinery
+- **The polymorphic bridge.** `records` is a universal anchor row for any object instance. Typed CRM tables
+  (`crm_*`) each hold a one-to-one nullable `record_id → records.id` so that shared machinery
   (activities, tasks, audit logs, pipeline stage, assignment) can reference any entity uniformly. `CrmService` performs
   a **dual-write**: it writes the typed row and its `records` anchor together.
 
@@ -55,7 +55,7 @@ Each table is documented as:
 - [Permissions](#permissions)
 - [Assignment, Quotas, Import & Integrations](#assignment-quotas-import--integrations)
 - [CRM Core](#crm-core)
-- [Products & Quoting](#products--quoting)
+- [Products](#products)
 - [Email, Campaigns & Lead Scoring](#email-campaigns--lead-scoring)
 - [Calendar, Meetings & Calls](#calendar-meetings--calls)
 - [Reporting & Analytics](#reporting--analytics)
@@ -65,9 +65,8 @@ Each table is documented as:
 - [Social Media](#social-media)
 - [Partners & Channel](#partners--channel)
 - [Multi-Tenant Platform & Administration](#multi-tenant-platform--administration)
-- [Insurance Core (Carriers, Policies, Underwriting, Claims)](#insurance-core-carriers-policies-underwriting-claims)
-- [Insurance AMS (Compliance, Billing, Payments, Commissions)](#insurance-ams-compliance-billing-payments-commissions)
 - [SLA Engine](#sla-engine)
+- [Access Segmentation & Audit Chain](#access-segmentation--audit-chain)
 
 ---
 
@@ -144,7 +143,7 @@ resolves it against `roles` via the `(tenant_id, name)` pair (see comment in `Em
 
 **Why this table exists (relevance):** The core identity/user table — every human actor (agent, manager, admin) that
 logs in, owns records, is assigned work, and appears in the org hierarchy. It is the authentication principal and the
-assignee target for nearly all operational tables. Nothing in the CRM/AMS runs without it.
+assignee target for nearly all operational tables. Nothing in the CRM runs without it.
 **When & how rows are written:** Created by admins through the platform routes (`prisma.employee.create`, e.g.
 platform/org-admin employee provisioning). Updated by the same admin routes and by the auth routes
 (`prisma.employee.update`) for profile edits and password-reset flows. Deletions cascade closure-table rows.
@@ -163,9 +162,7 @@ platform/org-admin employee provisioning). Updated by the same admin routes and 
 **Related to:** Optionally belongs to a `branch` and a `region`. Appears on both sides of `employee_hierarchy` (as
 ancestor and descendant). Is the FK target for a large set of operational relations — activities, tasks
 (assignee/creator), notifications, audit logs, assigned `records`, quotas, CRM ownership
-(leads/contacts/accounts/opportunities/cases), quotes, calendar/meeting, territory/team membership, and the insurance
-domain (policy agent, application agent, underwriter, claim adjuster, commissions, endorsement approver, renewal agent,
-producer appointments). Belongs to a `tenant`.
+(leads/contacts/accounts/opportunities/cases), calendar/meeting, and territory/team membership. Belongs to a `tenant`.
 
 ### `employee_hierarchy`  ·  Prisma model `EmployeeHierarchy`
 
@@ -210,7 +207,7 @@ admin manages modules in the Builder.
 
 - `name` / `label` — machine name and display label.
 - `icon` — Lucide icon name; `color` — Tailwind color token (e.g. `"blue"`).
-- `category` — sidebar grouping bucket, default `"crm"` (values seen: `crm | insurance | tools`).
+- `category` — sidebar grouping bucket, default `"crm"` (values seen: `crm | tools`).
 - `order_index` — sidebar sort order; `is_active` — show/hide.
 
 **Related to:** Parent of `ui_objects` (one module → many objects).
@@ -227,6 +224,8 @@ Object Builder. Delete runs in a transaction that also removes dependent metadat
 - `module_id` — FK to the owning module.
 - `name`, `label`, `plural_label` — singular/plural display naming.
 - `icon`, `order_index`, `is_active`.
+- `config` (JSON) — record settings: `title_field` (what lookups and related lists show), `business_unit_field`,
+  `barrier_zone`, `barrier_zone_field` (how records are stamped for access segmentation).
 
 **Related to:** Child of `ui_modules`. Parent/anchor of `ui_fields`, `ui_forms`, `ui_pages`, `ui_pipelines`,
 `ui_workflows`, `ui_wizards`, `records`, `assignment_rules`, `import_jobs`, `quotas`, and `email_templates`.
@@ -273,6 +272,9 @@ Form Builder.
 - `form_type` — `create | edit | view | search | modal`.
 - `columns` — default grid column count (1–4, default 2).
 - `is_active`.
+- `public_key` / `config.public` — set only by `POST /api/builder/forms/:id/publish` (never by the ordinary form update):
+  a random key that makes the form an unauthenticated web-to-record form at `/f/<key>`, and its settings (consent,
+  capture fields, result fields, captcha, success message).
 
 **Related to:** Child of `ui_objects`. Parent of `ui_form_field_layouts` (field placements) and referenced by
 `ui_wizard_steps` (each wizard step maps to a form).
@@ -537,7 +539,7 @@ when the pipeline is configured. Cascade-deletes with the pipeline.
 
 ## Generic Records & Activity Engine
 
-> A polymorphic record layer. `records` is the universal identity/stage anchor for any UI object; typed CRM/insurance
+> A polymorphic record layer. `records` is the universal identity/stage anchor for any UI object; typed CRM
 > field data lives in dedicated `crm_*` tables, while custom objects (with no relational table) store dynamic values
 > EAV-style in `record_field_values`. Activities, tasks, notifications, audit and status-timeline events all hang off
 > records/employees. Every table in this domain carries `tenant_id` (INTEGER, indexed → `tenants.id`) for tenant
@@ -546,7 +548,7 @@ when the pipeline is configured. Cascade-deletes with the pipeline.
 ### `records`  ·  Prisma model `Record`
 
 **Why this table exists (relevance):** The base container/identity row for every business object managed by the low-code
-engine. It anchors activities, tasks, audit logs, status events, and bridges one-to-one to the typed CRM/insurance
+engine. It anchors activities, tasks, audit logs, status events, and bridges one-to-one to the typed CRM
 entities. It does not store field values itself (except for custom objects, via `record_field_values`).
 **When & how rows are written:** Inserted by `RecordService.createRecord()` (route: records API; also invoked by
 ImportService for non-CRM objects and by CrmService dual-write). It resolves `tenant_id` from the JWT or
@@ -569,8 +571,7 @@ the Trash) or hard-deletes, depending on the object's pipeline `config.delete_mo
 
 **Related to:** Belongs to `UiObject` and optional `UiPipelineStage`; assigned to an `Employee`. Parent (cascade) of
 `Activity`, `Task`, `AuditLog`, `StatusEvent`, `RecordFieldValue`. One-to-one bridge (via each child's `record_id`) to
-`CrmLead`, `CrmContact`, `CrmAccount`, `CrmOpportunity`, `CrmCase`, `Product`, `Quote`, `EmailTemplate`, `Document`,
-`InsurancePolicy`, `InsuranceApplication`, `InsuranceClaim`.
+`CrmLead`, `CrmContact`, `CrmAccount`, `CrmOpportunity`, `CrmCase`, `Product`, `EmailTemplate`, `Document`.
 
 ### `record_field_values`  ·  Prisma model `RecordFieldValue`
 
@@ -596,7 +597,7 @@ is removed.
 ### `activities`  ·  Prisma model `Activity`
 
 **Why this table exists (relevance):** Interaction log for a record — the timeline of calls, emails, notes, and meetings
-against a CRM/insurance record.
+against a CRM record.
 **When & how rows are written:** Created via the activities API / CRM service when a user logs an interaction on a
 record; updated when an activity is edited or completed. Cascade-deleted with the parent record.
 **What the data represents & notable columns:**
@@ -942,8 +943,7 @@ CRM Core, Products & Quoting, Email/Campaigns/Lead Scoring.
 ### `crm_accounts`  ·  Prisma model `CrmAccount`
 
 **Why this table exists (relevance):** First-class relational store for company/organization records — the businesses
-the tenant sells to and insures. Parent anchor for contacts, opportunities, cases, quotes, and insurance
-policies/applications.
+the tenant sells to. Parent anchor for contacts, opportunities, cases, and lead conversions.
 **When & how rows are written:** Inserted by `CrmService.createAccount` (dual-write: `tx.record.create` +
 `tx.crmAccount.create`); also created inline during lead conversion (`CrmService.convertLead` → `tx.crmAccount.create`
 with its own record). Updated by `CrmService.updateAccount` (detects field changes, propagates `owner_id` →
@@ -959,7 +959,7 @@ with its own record). Updated by `CrmService.updateAccount` (detects field chang
 - `external_id` — integration dedupe key (indexed); used by the dedupe finder in crm.service.
 
 **Related to:** owned by an `employees` row (`owner_id`); parent of `crm_contacts`, `crm_opportunities`, `crm_cases`,
-`quotes`, `crm_lead_conversions`, contracts, portal users, and insurance policies/applications.
+`crm_lead_conversions`, contracts, and portal users.
 
 ### `crm_contacts`  ·  Prisma model `CrmContact`
 
@@ -979,7 +979,7 @@ change → `records.assigned_to`).
 - `owner_id` (FK→employees), `external_id` (dedupe), `created_by`.
 
 **Related to:** belongs to `crm_accounts`; owned by `employees`; parent of opportunities (via `OpportunityContact`),
-cases, quotes, lead conversions, insurance policies/claims/beneficiaries, quote scenarios, compliance artifacts.
+cases, and lead conversions.
 
 ### `crm_lead_intake`  ·  Prisma model `CrmLeadIntake`
 
@@ -1043,7 +1043,7 @@ metadata.
 - `owner_id`, `external_id`, `created_by`.
 
 **Related to:** belongs to `crm_accounts` and `crm_contacts`; FK to `ui_pipeline_stages`; owned by `employees`; parent
-of `quotes`, `crm_lead_conversions`, contracts, partner opportunity.
+of `crm_lead_conversions`, contracts, partner opportunity.
 
 ### `crm_cases`  ·  Prisma model `CrmCase`
 
@@ -1098,14 +1098,14 @@ table).
 
 **Related to:** polymorphic (resolved in application code by type+id); no DB-level FK to CRM tables.
 
-## Products & Quoting
+## Products
 
-> Multi-tenant: all tables carry a non-null indexed `tenant_id`. `products` and `quotes` participate in the
-> CrmService-style dual-write (nullable UNIQUE `record_id` → `records.id`); `quote_line_items` does not.
+> Multi-tenant: all tables carry a non-null indexed `tenant_id`. `products` participates in the
+> CrmService-style dual-write (nullable UNIQUE `record_id` → `records.id`).
 
 ### `products`  ·  Prisma model `Product`
 
-**Why this table exists (relevance):** Catalog of sellable products/services referenced by quote line items and
+**Why this table exists (relevance):** Catalog of sellable products/services referenced by
 opportunities.
 **When & how rows are written:** Inserted by `ProductService.create` (`backend/src/services/product.service.js`) via
 dual-write (`tx.record.create` + `tx.product.create`, `record_id: record?.id ?? null`). Updated by
@@ -1122,50 +1122,7 @@ dual-write (`tx.record.create` + `tx.product.create`, `record_id: record?.id ?? 
   `warranty_months`, `image_url`.
 - `created_by`.
 
-**Related to:** references `records`; referenced by `quote_line_items.product_id` (SetNull on delete).
-
-### `quotes`  ·  Prisma model `Quote`
-
-**Why this table exists (relevance):** Sales quote/proposal for an opportunity, with totals, billing/shipping addresses,
-and lifecycle status.
-**When & how rows are written:** Inserted by `QuoteService.create` (`backend/src/services/quote.service.js`) via
-dual-write; `quote_number` is auto-generated inside the transaction (`#generateQuoteNumber` reads the max existing
-number via raw SQL and increments) unless supplied; monetary totals initialized to 0 and recomputed as line items
-change. Updated by `QuoteService.update`/status setters; deletion also removes the bridged `records` row
-(`tx.record.delete`).
-**What the data represents & notable columns:**
-
-- `record_id` — nullable UNIQUE bridge to `records.id`.
-- `opportunity_id`, `account_id`, `contact_id` — nullable FKs (SetNull).
-- `quote_number` (UNIQUE, generated), `name` (required).
-- `status` default `draft` — draft | sent | accepted | rejected | expired.
-- `valid_until` (Date).
-- Money: `subtotal`, `discount_amount`, `tax_amount`, `total_amount` all Decimal(18,2) default 0; `discount_percent`
-  Decimal(5,2); `currency` default USD.
-- `terms`, `notes`.
-- Full billing + shipping address blocks (`billing_*`, `shipping_*`).
-- `accepted_at`, `sent_at` timestamps stamped on status transitions.
-- `owner_id` (FK→employees), `created_by`.
-
-**Related to:** belongs to `crm_opportunities`, `crm_accounts`, `crm_contacts`; owned by `employees`; parent of
-`quote_line_items`.
-
-### `quote_line_items`  ·  Prisma model `QuoteLineItem`
-
-**Why this table exists (relevance):** Individual line items on a quote, snapshotting product name/price at quote time.
-**When & how rows are written:** Inserted by `QuoteService.addLineItem` (`tx.quoteLineItem.create`) with computed
-`line_total`; the parent quote's totals are recalculated after line-item changes. Cascade-deleted with the quote.
-**What the data represents & notable columns:**
-
-- `quote_id` — FK→quotes (`onDelete: Cascade`, indexed).
-- `product_id` — nullable FK→products (SetNull).
-- `name` (product name copied at quote time), `description`.
-- `quantity` Decimal(10,2), `unit_price` Decimal(18,2).
-- `discount` Decimal(5,2) default 0 (percentage).
-- `line_total` Decimal(18,2) — computed at insert.
-- `order_index` default 0.
-
-**Related to:** belongs to a `quotes` row; optionally references a `products` row.
+**Related to:** references `records`.
 
 ## Email, Campaigns & Lead Scoring
 
@@ -1173,8 +1130,8 @@ change. Updated by `QuoteService.update`/status setters; deletion also removes t
 > dual-write (nullable UNIQUE `record_id` → `records.id`); the campaign/list/tracking tables and lead-scoring tables do
 > not. Note: the campaign-management models (`email_campaigns`, `campaign_recipients`, `campaign_email_sends`,
 > `email_lists`, `email_list_subscriptions`, `campaign_list_assignments`, `email_click_events`, `email_unsubscribes`)
-> are defined in the schema but are NOT written by any of the six services reviewed here
-> (crm/product/quote/email-template/email-send/lead-scoring); they back the marketing-campaign subsystem and are
+> are defined in the schema but are NOT written by any of the five services reviewed here
+> (crm/product/email-template/email-send/lead-scoring); they back the marketing-campaign subsystem and are
 > populated by its own flows.
 
 ### `email_templates`  ·  Prisma model `EmailTemplate`
@@ -1220,20 +1177,20 @@ via `related_record_id`.
 
 ### `documents`  ·  Prisma model `Document`
 
-**Why this table exists (relevance):** Unified metadata store for ALL document types (generic CRM attachments, insurance
-application docs, auto-archived reports, compliance artifacts, generated documents, e-signed documents) in the
+**Why this table exists (relevance):** Unified metadata store for ALL document types (generic CRM attachments,
+auto-archived reports, generated documents, e-signed documents) in the
 **standalone Document Management System**. Bytes live in a pluggable `StorageProvider` (local / S3 / Azure / GCS) under
 `stored_key`; this row holds only metadata.
 **When & how rows are written:** Inserted by `DocumentService` (`backend/src/services/document.service.js`) after the
-file is streamed to storage (`db.document.create`, storing `stored_key`, `entity_type`/`entity_id` or `application_id`).
+file is streamed to storage (`db.document.create`, storing `stored_key`, `entity_type`/`entity_id`).
 Dedup + versioning are scoped to the owner (or, for owner-less DMS uploads, the target folder). Soft-deleted via
 `deleted_at` for atomic GC; storage bytes removed alongside.
 **What the data represents & notable columns:**
 
 - `record_id` — nullable UNIQUE bridge to `records.id`.
-- `document_ref` — human reference, e.g. `DOC-APP2026001-001`.
-- Polymorphic owner: `entity_type` (lead | contact | account | opportunity | case | quote | application | policy) +
-  `entity_id`; `application_id` is a typed FK→insurance_applications (Cascade).
+- `document_ref` — human reference, e.g. `DOC-GEN-001`.
+- Polymorphic owner: `entity_type` (lead | contact | account | opportunity | case) +
+  `entity_id`.
 - `original_filename` (required), `stored_key` (required, RELATIVE storage key), `file_size` bytes, `mime_type`,
   `file_hash` SHA-256 (integrity + dedup).
 - `category` (contract | proof_of_income | reports | photo | other), `folder_id` (FK→document_folders; SetNull on
@@ -1247,8 +1204,7 @@ Dedup + versioning are scoped to the owner (or, for owner-less DMS uploads, the 
 - Review workflow: `uploaded_by`/`uploaded_at`, `reviewed_by`/`reviewed_at`, `rejection_reason`.
 - `deleted_at` — soft-delete marker.
 
-**Related to:** references `records`, `document_folders`; typed link to `insurance_applications`; parent of compliance
-artifacts, submission-checklist items, share links, and signature requests.
+**Related to:** references `records`, `document_folders`; parent of share links and signature requests.
 
 ### `document_folders`  ·  Prisma model `DocumentFolder`
 
@@ -1673,7 +1629,7 @@ inside `tenantContext.run()` — see
 - `fields`, `filters`, `grouping`, `sorting`, `chart_config` (JSON) — **mirrors** of parts of
   `data_source`, kept for SQL readability and list queries. Never read by `run()`; do not edit them
   expecting the report to change.
-- `report_type` (table | chart | pivot | summary) and `category` (sales | insurance | finance |
+- `report_type` (table | chart | pivot | summary) and `category` (sales | finance |
   support | productivity | custom) — both used for grouping in the library UI.
 - `visibility` (private | team | shared | everyone) — who may *open* the report.
   `shared_with` (JSON: role names and/or employee IDs) is consulted **only** when
@@ -1691,9 +1647,8 @@ inside `tenantContext.run()` — see
   nothing — so that write was removed.
 
 **Cross-table reads.** A report on this source may also read **related records** (up to two to-one
-hops, e.g. `policies → agent → region`, resolved as a nested Prisma `select`) and **roll-ups** of a
-child collection (`insurance_claims`, `commission_entries`, `quotes`, `quote_line_items`,
-`claim_payment_events`). Roll-ups are read with a separate `groupBy` on the child table keyed by its
+hops, e.g. `opportunities → owner → region`, resolved as a nested Prisma `select`) and **roll-ups** of a
+child collection. Roll-ups are read with a separate `groupBy` on the child table keyed by its
 foreign key — **never a join** — so the parent row is never duplicated and its measures cannot be
 inflated. See [REPORTING.md](REPORTING.md#the-join-model).
 
@@ -3050,461 +3005,7 @@ in-app notifications, `pushNotificationLog.create` records the send. Insert-only
 
 Source of truth: `backend/prisma/schema.prisma`. Column types cross-checked against
 `docs/developer-guide/DATABASE_SCHEMA.md`. Write behavior verified against
-`backend/src/services/insurance-domain.service.js`, `backend/src/services/calculation-engine.service.js`,
-`backend/src/services/rating-adapter.js`, `backend/src/services/sla.service.js`, and the routes in
-`backend/src/routes/insurance/index.js` and `backend/src/routes/sla/index.js`.
-
-## Insurance Core (Carriers, Policies, Underwriting, Claims)
-
-> Every table in this domain carries `tenant_id` (INT, indexed, FK → `tenants.id`) and is filtered by it on every
-> read/write; the service layer always injects `tenant_id` into `create` data and `where: { id, tenant_id }` guards on
-> fetch. Most human-facing references (`policy_number`, `app_number`, `case_number`, `claim_number`) are unique per
-> tenant, and are generated by `InsuranceDomainService.#nextSeq(prefix, model, field, tx)` inside the create
-> transaction. `record_id` on the policy/application/claim tables is the bridge to the polymorphic `records` table so
-> activities/tasks/documents and CRM pipeline stages attach to the insurance object.
-
-### `insurance_carriers`  ·  Prisma model `InsuranceCarrier`
-
-**Why this table exists (relevance):** The master list of insurer companies the agency represents. Every product,
-policy, application, commission, appointment and commission statement hangs off a carrier.
-**When & how rows are written:** Inserted by `createCarrier()` (route `POST /insurance/carriers`); mutated by
-`updateCarrier()`. No delete path — carriers are deactivated via `is_active`.
-**What the data represents & notable columns:**
-
-- `name`, `code` (short id e.g. "PRUD"); `code` is `@@unique([code, tenant_id])`.
-- `naic_code` — NAIC company code; `am_best_rating` — financial-strength grade (A++, A+, A, A-, B++, …).
-- `carrier_type` default `"life"` — one of `life | health | p_and_c | multi_line`.
-- Contact fields `phone`, `email`, `website`; `is_active` (indexed) drives carrier availability in rating.
-- `created_by` = employee_id.
-
-**Related to:** Parent of `CarrierProduct`, `InsurancePolicy`, `InsuranceApplication`, `CommissionEntry`,
-`ProducerAppointment`, `CommissionStatement`; has an optional 1:1 `CarrierAdapterConfig`.
-
-### `carrier_adapter_configs`  ·  Prisma model `CarrierAdapterConfig`
-
-**Why this table exists (relevance):** Per-carrier integration configuration that tells the rating engine how to source
-quotes for a carrier (internal simulation vs. real carrier API vs. disabled). Note: this model has NO `tenant_id` — it
-is keyed 1:1 to a carrier (`carrier_id @unique`), so tenant scoping is inherited through the parent carrier.
-**When & how rows are written:** Upserted by `PUT`-style admin route in `routes/insurance/index.js`
-(`fastify.prisma.carrierAdapterConfig.upsert({ where: { carrier_id } })`). On any config change `health_status` is reset
-to `"unknown"`, `health_detail` cleared, and the in-process adapter registry is flagged for re-boot. Read at boot by
-`rating-adapter.js` `loadCarriersFromDb(prisma, tenantId)` which joins `adapter_config` and branches on `adapter_type`.
-**What the data represents & notable columns:**
-
-- `adapter_type` default `"simulated"` — `simulated | api | disabled`. `api` requires `api_key_env_var` (route
-  validates).
-- `api_base_url` — HTTPS endpoint for a real carrier API.
-- `api_key_env_var` — the NAME of an env var only (e.g. `CARRIER_GLA_API_KEY`); secrets are NEVER stored in the DB —
-  runtime reads `process.env[api_key_env_var]`.
-- `timeout_ms` default 10000; `is_enabled` default true; `environment` default `"sandbox"` (`sandbox | production`).
-- `supported_products` (JSON) — array of product_type strings this adapter handles.
-- `last_health_check_at`, `health_status` (`ok | error | unconfigured | degraded | unknown`), `health_detail` — health
-  monitoring surface.
-
-**Related to:** 1:1 with `InsuranceCarrier` (`onDelete: Cascade`).
-
-### `carrier_products`  ·  Prisma model `CarrierProduct`
-
-**Why this table exists (relevance):** A carrier's specific filed product/plan (maps to the carrier's plan code) with
-eligibility bounds. Policies and applications can reference the exact carrier product they were sold under.
-**When & how rows are written:** Inserted by `createCarrierProduct()` (route `POST /insurance/carrier-products`). Listed
-via `listCarrierProducts()`.
-**What the data represents & notable columns:**
-
-- `product_type` (indexed) — `term_life | whole_life | universal_life | variable_life | iul | final_expense`.
-- `name`, `plan_code` (carrier's internal plan code), `description`.
-- Eligibility bounds `min_coverage` / `max_coverage` (Decimal 18,2), `min_age` / `max_age`.
-- `is_active`.
-
-**Related to:** `carrier_id` FK → `InsuranceCarrier` (Cascade). Referenced by `InsurancePolicy.carrier_product_id` and
-`InsuranceApplication.carrier_product_id`.
-
-### `insurance_policies`  ·  Prisma model `InsurancePolicy`
-
-**Why this table exists (relevance):** The first-class issued policy — the core in-force contract that claims,
-endorsements, renewals, billing and commissions all attach to.
-**When & how rows are written:** Two insert paths, both transactional with retry: (1) `createPolicy()` for a
-directly-booked policy — also writes an initial `InsurancePolicyStatusHistory` (`null → active`, "Policy issued") and
-any `beneficiaries`; (2) `issuePolicy(appId, …)` which issues from an **approved** application (guards
-`app.status === 'approved'` and no existing policy), writes status history, flips the application to `issued`, syncs the
-CRM pipeline stage, creates a CRM `records` row via `#createRecordWithEav('policy', …)`, links `record_id` back, and
-writes a first-year `CommissionEntry` at a default 45% rate when an agent is set. `updatePolicy()` handles status
-transitions (sets `is_lapsed`, `lapsed_at`, `reinstated_at`) and appends status history via `#policyStatusChange`.
-`recordPayment()` stamps `last_payment_date`; `applyEndorsement()` may patch coverage/premium.
-**What the data represents & notable columns:**
-
-- `policy_number` — `@@unique([policy_number, tenant_id])`, generated `POL…`.
-- Party links: `carrier_id`, `carrier_product_id`, `contact_id` (policyholder → `crm_contacts`), `account_id` (corporate
-  owner), `agent_id` (producer → employees), `application_id` (`@unique`, source app).
-- `product_type` (same enum as carrier product), `product_name`.
-- Money: `coverage_amount`, `premium_amount` (both NOT NULL Decimal 18,2), `premium_frequency` default `"monthly"`
-  (`monthly | quarterly | semi_annual | annual`), `surrender_value`, `death_benefit`.
-- `status` default `"active"` — `pending | active | lapsed | surrendered | matured | cancelled` (indexed).
-- Dates: `effective_date` (NOT NULL), `expiry_date`, `renewal_due_date` (indexed), `lapsed_at`, `reinstated_at`,
-  `last_payment_date`.
-- `is_lapsed` flag; `record_id` (`@unique`) bridge.
-
-**Related to:** FKs to carrier, carrier product, contact, account, agent, application. Parent of
-`InsurancePolicyBeneficiary`, `InsurancePolicyStatusHistory`, `InsuranceClaim`, `CommissionEntry`, `PolicyEndorsement`,
-`RenewalTask`, `BillingSchedule` (1:1), `PolicyInvoice`, and `ComplianceArtifact`.
-
-### `insurance_policy_beneficiaries`  ·  Prisma model `InsurancePolicyBeneficiary`
-
-**Why this table exists (relevance):** Who receives the policy proceeds and in what proportion — primary vs. contingent
-allocation.
-**When & how rows are written:** Inserted in the `createPolicy()` transaction from the `beneficiaries[]` payload; also
-`create`/`update` via beneficiary endpoints (`insurancePolicyBeneficiary.create/update` around service L433–440).
-Soft-managed via `is_active`.
-**What the data represents & notable columns:**
-
-- `name`, `relationship` (`spouse | child | parent | sibling | trust | other`).
-- `beneficiary_type` default `"primary"` (`primary | contingent`).
-- `allocation_pct` default 100 (Decimal 5,2, 0–100).
-- Optional `contact_id` link to an existing `CrmContact`; `date_of_birth`; `is_active`.
-
-**Related to:** `policy_id` FK → `InsurancePolicy` (Cascade); optional `contact_id` FK → `CrmContact`.
-
-### `insurance_policy_status_history`  ·  Prisma model `InsurancePolicyStatusHistory`
-
-**Why this table exists (relevance):** Append-only audit trail of every policy status transition (issuance, lapse,
-reinstatement, endorsement-driven changes).
-**When & how rows are written:** Inserted on policy creation/issuance (`null → active`) and by
-`#policyStatusChange(tx, …)` whenever `updatePolicy()` changes status or `applyEndorsement()` records a premium impact.
-Never updated/deleted.
-**What the data represents & notable columns:**
-
-- `from_status` (nullable for the initial row), `to_status`.
-- `reason` (free text, e.g. "Policy issued", "Issued from application APP-…", endorsement note).
-- `changed_by` = employee_id.
-
-**Related to:** `policy_id` FK → `InsurancePolicy` (Cascade).
-
-### `insurance_applications`  ·  Prisma model `InsuranceApplication`
-
-**Why this table exists (relevance):** Pre-policy intake and the underwriting queue — the applicant + product + health
-snapshot that becomes a policy once approved and issued.
-**When & how rows are written:** Inserted by `createApplication()` (transactional, generates `APP…`). Mutated by
-`updateApplication()` (allow-listed fields). Status is also advanced by side effects: `convertToUnderwriting()` sets
-`under_review`; UW decision (`updateUnderwritingCase`) propagates `approved`/`declined`; `issuePolicy()` sets `issued`.
-Each transition syncs the CRM pipeline stage when `record_id` is set.
-**What the data represents & notable columns:**
-
-- `app_number` — `@@unique([app_number, tenant_id])`.
-- Parties: `contact_id` (applicant), `account_id`, `agent_id`, `carrier_id`, `carrier_product_id`.
-- Product: `product_type`, `product_name`, `coverage_amount` (NOT NULL), `premium_amount` (nullable), `term_years`,
-  `payment_frequency`.
-- `status` default `"submitted"` (indexed) —
-  `submitted | under_review | pending_medical | approved | declined | withdrawn | issued`.
-- Underwriting snapshot: `age`, `gender` (`male | female | non_binary`), `date_of_birth`, `is_smoker`, `health_class`
-  (`preferred_plus | preferred | standard_plus | standard | substandard`), `height_in`, `weight_lbs`.
-- `record_id` (`@unique`) bridge; `submitted_at` defaults now.
-
-**Related to:** FKs to contact/account/agent/carrier/carrier_product. Has 1:1 `UnderwritingCase` and 1:1
-`InsurancePolicy`; parent of `CommissionEntry`, `QuoteScenario`, `ComplianceArtifact`, `SubmissionChecklist`, and
-application `Document`s.
-
-### `underwriting_cases`  ·  Prisma model `UnderwritingCase`
-
-**Why this table exists (relevance):** Drives the underwriting decision for one application — assigned underwriter,
-medical/risk data, and the final risk class + decision.
-**When & how rows are written:** Inserted by `convertToUnderwriting()` (transactional; re-checks for a duplicate inside
-the tx since `application_id @unique`; also seeds a CRM `underwriting_case` record via `#createRecordWithEav`). Updated
-by `updateUnderwritingCase()` which stamps `decided_at` for `approved | declined | referred` and, on approve/decline,
-atomically updates the parent application status + pipeline stage.
-**What the data represents & notable columns:**
-
-- `case_number` — `@@unique([case_number, tenant_id])`, generated `UW…`.
-- `application_id` (`@unique`) — one case per application.
-- `assigned_underwriter` = employee_id (indexed).
-- `status` default `"pending"` (indexed) — `pending | in_progress | approved | declined | referred`.
-- `risk_class` — `preferred_plus | preferred | standard | substandard | high_risk | decline`.
-- Medical data: `bmi` (Float), `blood_pressure`, `cholesterol`, `medical_conditions`, `medications`, `family_history`
-  (Text).
-- `decision_notes`, `decided_at`.
-
-**Related to:** `application_id` FK → `InsuranceApplication` (Cascade); `assigned_underwriter` FK → `Employee`; parent
-of `UnderwritingRequirement`.
-
-### `underwriting_requirements`  ·  Prisma model `UnderwritingRequirement`
-
-**Why this table exists (relevance):** The outstanding-items checklist on an underwriting case (medical exam, labs,
-records, APS, inspection).
-**When & how rows are written:** Inserted by `addRequirement()`; updated by `updateRequirement()` which stamps
-`received_at = now` when status becomes `received`.
-**What the data represents & notable columns:**
-
-- `description` (VarChar 500), `requirement_type` —
-  `medical_exam | lab_work | records | attending_physician | inspection | other`.
-- `status` default `"pending"` — `pending | received | waived | not_required`.
-- `due_date`, `received_at`, `notes`.
-
-**Related to:** `case_id` FK → `UnderwritingCase` (Cascade).
-
-### `insurance_claims`  ·  Prisma model `InsuranceClaim`
-
-**Why this table exists (relevance):** A claim filed against a policy, from First Notice of Loss (FNOL) through
-investigation, decision, reserve, and payout. The hub for the claims-ops sub-domain.
-**When & how rows are written:** Inserted by `createClaim()` (transactional; verifies the policy is in-tenant, generates
-`CLM…`, writes a `filed` `ClaimEvent`). `updateClaim()` allow-lists
-`status/priority/adjuster_id/description/paid_at/paid_amount/denial_reason`, auto-stamps `paid_at`/`paid_amount` on
-transition to `paid`, and appends a `decision` `ClaimEvent` on status change. Reserve totals are written by
-`setReserve()` (updates `reserve_amount`); running paid total by `recordClaimPayment()` (updates `paid_amount`);
-`flagFraud()` toggles `is_fraud_flagged` and appends an event.
-**What the data represents & notable columns:**
-
-- `claim_number` — `@@unique([claim_number, tenant_id])`.
-- `policy_id` (indexed), `contact_id` (claimant).
-- `claim_type` (indexed) — `death | disability | critical_illness | accident | other`.
-- `amount` (NOT NULL), `paid_amount`, `reserve_amount` (Decimal 18,2).
-- `status` default `"filed"` (indexed) — `fnol | filed | under_investigation | approved | denied | paid | closed`.
-- `priority` default `"medium"` (`high | medium | low`); `adjuster_id` (indexed) = employee_id.
-- FNOL intake fields (present on the model; populated at intake): `reporter_name`, `reporter_phone`,
-  `reporter_relationship` (`insured | beneficiary | third_party | agent`), `loss_date`, `loss_location`,
-  `loss_description`, `fnol_received_at`. (Note: the base `createClaim()` allow-list does not set these; they are
-  captured through claim intake/direct field mapping, not the core create path.)
-- Fraud/litigation: `is_fraud_flagged`, `is_litigation`, `litigation_details`.
-- `denial_reason`, `filed_at` (default now), `paid_at`, `record_id` (`@unique`) bridge.
-
-**Related to:** `policy_id` FK → `InsurancePolicy` (Cascade); `contact_id` FK → `CrmContact`; `adjuster_id` FK →
-`Employee`; parent of `ClaimEvent`, `ClaimReserve`, `ClaimPaymentEvent`.
-
-### `claim_events`  ·  Prisma model `ClaimEvent`
-
-**Why this table exists (relevance):** Append-only timeline for a claim — every filing, note, document, decision,
-reserve change, payment and fraud flag.
-**When & how rows are written:** Inserted throughout the claim lifecycle: on `createClaim` (`filed`), status change
-(`decision`), `setReserve` (`reserve_set` / `reserve_adjusted`), `recordClaimPayment` (`payment_issued`), `flagFraud`
-(`fraud_flagged`), and the manual `POST /claims/:id/events` route.
-**What the data represents & notable columns:**
-
-- `event_type` — `filed | note | document_received | decision | payment | other` (services also emit
-  `reserve_set | reserve_adjusted | payment_issued | fraud_flagged`).
-- `description` (VarChar 500), `created_by` = employee_id.
-
-**Related to:** `claim_id` FK → `InsuranceClaim` (Cascade).
-
-### `commission_entries`  ·  Prisma model `CommissionEntry`
-
-**Why this table exists (relevance):** One producer-compensation line per commissionable event (policy issued /
-application approved), with expected-vs-actual variance and clawback tracking. Feeds producer statements and
-reconciliation.
-**When & how rows are written:** Auto-created inside `issuePolicy()` (first-year at default 45% of premium when an agent
-is set) and manually by `createCommission()`. `updateCommissionStatus()` stamps `paid_at` (status `paid`) or
-`clawback_reason` (status `clawed_back`). `reconcileStatement()` reads matching entries to compute expected totals;
-entries can be linked to a statement via `statement_id`.
-**What the data represents & notable columns:**
-
-- `agent_id` (indexed, NOT NULL) = producer employee_id; optional `split_agent_id` + `split_percent` for co-producer
-  splits.
-- `policy_id` / `application_id` / `carrier_id` (all indexed / nullable) source references; `product_type`.
-- `commission_type` default `"first_year"` — `first_year | renewal | override | bonus`.
-- `source_premium`, `commission_rate` (Decimal 5,2, e.g. 55.00 = 55%), `commission_amount`, `expected_amount`,
-  `variance` (actual − expected).
-- `commission_period` (VarChar 7, `"2026-03"`, indexed).
-- `status` default `"pending"` (indexed) — `pending | paid | clawed_back`.
-- `statement_id` (indexed) → `CommissionStatement`.
-
-**Related to:** FKs to `Employee` (agent + split_agent), `InsurancePolicy`, `InsuranceApplication`, `InsuranceCarrier`,
-`CommissionStatement` (all `SetNull`).
-
-## Insurance AMS (Compliance, Billing, Payments, Commissions)
-
-> These P0–P4 Agency-Management tables also carry `tenant_id` (INT, indexed, FK → `tenants.id`) and are filtered by it
-> everywhere. Reference numbers (`scenario_ref`, `endorsement_ref`, `invoice_number`, `statement_ref`) are unique per
-> tenant.
-
-### `quote_scenarios`  ·  Prisma model `QuoteScenario`
-
-**Why this table exists (relevance):** A persisted rated-quote scenario with full input and output snapshots for
-side-by-side comparison, audit, and conversion into an application/policy (P0 rating architecture).
-**When & how rows are written:** Written by `CalculationEngineService.persistQuote()` after a quote is rated
-(route-driven quoting), and in bulk by `persistComparison()` which stamps a shared `comparison_group`. `scenario_ref`
-(`QS-YYYY-######`) and a 30-day `valid_until` are set at persist time. The rating source is decided by
-`rating-adapter.js` (internal engine vs. carrier API) and captured in `rate_source` / `rate_source_meta`.
-**What the data represents & notable columns:**
-
-- `scenario_ref` — `@@unique([scenario_ref, tenant_id])`.
-- `contact_id`, `application_id` (both indexed / nullable).
-- `product_type` (indexed), `coverage_amount`, `term_years`, `payment_frequency` default `"monthly"`.
-- `applicant_data` (JSON, NOT NULL) — `{ age, gender, smoker_status, health_class }`; `riders` (JSON) — array of rider
-  keys.
-- `rate_source` default `"internal"` — `internal | carrier_api | manual`; `rate_source_meta` (JSON) —
-  `{ adapter, version, rated_at }`.
-- `quote_result` (JSON, NOT NULL) — full rated output; derived `monthly_premium` / `annual_premium`.
-- `status` default `"active"` (indexed) — `active | expired | converted`; `valid_until` (NOT NULL); `comparison_group`
-  (indexed).
-
-**Related to:** `contact_id` FK → `CrmContact`; `application_id` FK → `InsuranceApplication` (both `SetNull`).
-
-### `compliance_artifacts`  ·  Prisma model `ComplianceArtifact`
-
-**Why this table exists (relevance):** Regulatory compliance evidence attached to a contact/application/policy —
-statement of advice, consent, attestation, e-signature, disclosure — with signer identity, retention, and expiry (P1
-compliance pack).
-**When & how rows are written:** Inserted by `createComplianceArtifact()`; updated by `updateComplianceArtifact()` which
-auto-stamps `completed_at` when status becomes `completed`.
-**What the data represents & notable columns:**
-
-- `artifact_type` (indexed) — `soa | consent | attestation | esign | disclosure`.
-- Polymorphic links: `contact_id`, `application_id`, `policy_id`, `document_id` (all nullable/indexed).
-- `status` default `"pending"` (indexed) — `pending | completed | expired | waived`.
-- `completed_at`, `expires_at`, `signed_by`, `signature_ip` (VarChar 45), `retention_until`, `metadata` (JSON).
-
-**Related to:** FKs (all `SetNull`) → `CrmContact`, `InsuranceApplication` (`AppCompliance`), `InsurancePolicy`
-(`PolicyCompliance`), `Document` (`ComplianceDocument`).
-
-### `submission_checklists`  ·  Prisma model `SubmissionChecklist`
-
-**Why this table exists (relevance):** Per-application submission-readiness checklist — the required
-documents/compliance/signatures that must be gathered before an application is sent to the carrier (P1).
-**When & how rows are written:** Bulk-inserted by `createSubmissionChecklist()` (`createMany` from an `items[]`
-payload). `updateChecklistItem()` stamps `received_at` on status `received` and sets `waived_by`/`waived_reason` on
-status `waived`. `getSubmissionReadiness()` reads it to compute a ready/pending rollup.
-**What the data represents & notable columns:**
-
-- `item_name`, `item_type` — `document | compliance | info | signature`.
-- `is_required` default true; `status` default `"pending"` (indexed) — `pending | received | waived | na`.
-- `document_id` link; `received_at`, `waived_by`, `waived_reason`, `notes`.
-
-**Related to:** `application_id` FK → `InsuranceApplication` (Cascade); optional `document_id` FK → `Document`
-(`ChecklistDocument`).
-
-### `policy_endorsements`  ·  Prisma model `PolicyEndorsement`
-
-**Why this table exists (relevance):** A tracked mid-term policy change request (beneficiary/coverage/rider/address
-changes) with before/after values, premium impact, and an approve → apply workflow (P2 servicing).
-**When & how rows are written:** Inserted by `createEndorsement()` (transactional, generates `END…`).
-`approveEndorsement()` sets `status='approved'` + `approved_by` (guards `pending`). `applyEndorsement()` (guards
-`approved`) transactionally patches the parent policy from `new_values` (only
-`coverage_amount | premium_amount | death_benefit | premium_frequency`), records a status-history note when there's a
-premium impact, then sets `status='applied'` + `applied_at`.
-**What the data represents & notable columns:**
-
-- `endorsement_ref` — `@@unique([endorsement_ref, tenant_id])`.
-- `endorsement_type` —
-  `beneficiary_change` | `coverage_increase` | `coverage_decrease` |
-  `rider_add` | `rider_remove` | `address_change` |
-  `name_change` | `other`.
-- `description` (Text, NOT NULL), `effective_date` (NOT NULL).
-- `status` default `"pending"` (indexed) — `pending | approved | applied | rejected`.
-- `old_values` / `new_values` (JSON), `premium_impact` (Decimal 18,2), `approved_by`, `applied_at`.
-
-**Related to:** `policy_id` FK → `InsurancePolicy` (Cascade); `approved_by` FK → `Employee` (`EndorsementApprover`).
-
-### `renewal_tasks`  ·  Prisma model `RenewalTask`
-
-**Why this table exists (relevance):** Tracks the renewal outreach workflow for an upcoming policy renewal — who owns
-it, contact cadence, and outcome (P2 servicing).
-**When & how rows are written:** Inserted by `createRenewalTask()` (defaults `agent_id`/`renewal_date` from the policy).
-`updateRenewalTask()` allow-lists `status/outreach_count/last_contacted/renewal_premium/notes` and coerces
-`last_contacted` to a Date.
-**What the data represents & notable columns:**
-
-- `renewal_date` (NOT NULL, indexed), `agent_id` (indexed).
-- `status` default `"upcoming"` (indexed) — `upcoming | in_progress | renewed | lapsed | not_renewing`.
-- `outreach_count` default 0, `last_contacted`, `renewal_premium`.
-
-**Related to:** `policy_id` FK → `InsurancePolicy` (Cascade); `agent_id` FK → `Employee` (`RenewalAgent`).
-
-### `billing_schedules`  ·  Prisma model `BillingSchedule`
-
-**Why this table exists (relevance):** The recurring billing plan for a policy (1:1) — frequency, amount, next due date,
-autopay and grace period. Source for invoice generation (P2 billing).
-**When & how rows are written:** Inserted by `createBillingSchedule()` (defaults
-`frequency`/`amount_due`/`next_due_date` from the policy). `policy_id` is `@unique` → exactly one schedule per policy.
-**What the data represents & notable columns:**
-
-- `frequency`, `amount_due` (NOT NULL), `next_due_date` (NOT NULL, indexed).
-- `auto_pay` default false, `grace_period_days` default 31.
-- `status` default `"active"` (indexed) — `active | suspended | closed`.
-
-**Related to:** `policy_id` FK (`@unique`) → `InsurancePolicy` (Cascade); parent of `PolicyInvoice`.
-
-### `policy_invoices`  ·  Prisma model `PolicyInvoice`
-
-**Why this table exists (relevance):** An individual bill generated from a billing schedule; the unit that gets paid,
-goes overdue, or is voided/waived (P2 billing).
-**When & how rows are written:** Inserted by `generateInvoice(billingScheduleId)` (transactional, generates `INV…`,
-copies `amount`/`due_date` from the schedule). Marked `paid` + `paid_at` by `recordPayment()`.
-**What the data represents & notable columns:**
-
-- `invoice_number` — `@@unique([invoice_number, tenant_id])`.
-- `billing_schedule_id` (indexed), `policy_id` (indexed).
-- `amount` (NOT NULL), `due_date` (NOT NULL, indexed).
-- `status` default `"pending"` (indexed) — `pending | paid | overdue | void | waived`; `paid_at`.
-
-**Related to:** FKs → `BillingSchedule` and `InsurancePolicy` (both Cascade); parent of `PolicyPayment`.
-
-### `policy_payments`  ·  Prisma model `PolicyPayment`
-
-**Why this table exists (relevance):** A payment received against a policy invoice — the remittance record (P2 billing).
-**When & how rows are written:** Inserted by `recordPayment(invoiceId, …)` inside a transaction that also flips the
-invoice to `paid` and stamps the policy's `last_payment_date`.
-**What the data represents & notable columns:**
-
-- `payment_ref`, `amount` (NOT NULL), `payment_method` — `ach | check | credit_card | wire`.
-- `payment_date` default now; `notes`, `created_by`. (Append-only — no update path.)
-
-**Related to:** `invoice_id` FK → `PolicyInvoice` (Cascade).
-
-### `claim_reserves`  ·  Prisma model `ClaimReserve`
-
-**Why this table exists (relevance):** Reserve-ledger entries on a claim — the initial reserve plus
-adjustments/releases, with a running total (P3 claims ops).
-**When & how rows are written:** Inserted by `setReserve(claimId, …)`. The service reads the latest reserve to derive
-`reserve_type` (`initial` for the first, else `adjustment`) and computes `running_total`; the same transaction updates
-`InsuranceClaim.reserve_amount` and appends a `ClaimEvent`. Append-only.
-**What the data represents & notable columns:**
-
-- `reserve_type` — `initial | adjustment | release`.
-- `amount`, `running_total` (both NOT NULL Decimal 18,2), `reason`, `created_by`.
-
-**Related to:** `claim_id` FK → `InsuranceClaim` (Cascade).
-
-### `claim_payment_events`  ·  Prisma model `ClaimPaymentEvent`
-
-**Why this table exists (relevance):** Individual claim payouts/recoveries against a claim (partial, settlement, final,
-recovery), summed to derive the claim's total paid (P3 claims ops).
-**When & how rows are written:** Inserted by `recordClaimPayment(claimId, …)`, which then sums all events to update
-`InsuranceClaim.paid_amount` and appends a `payment_issued` `ClaimEvent`. Append-only.
-**What the data represents & notable columns:**
-
-- `payment_type` — `partial | settlement | final | recovery`.
-- `amount` (NOT NULL), `payee_name`, `payment_ref`, `payment_date` default now, `notes`.
-
-**Related to:** `claim_id` FK → `InsuranceClaim` (Cascade).
-
-### `producer_appointments`  ·  Prisma model `ProducerAppointment`
-
-**Why this table exists (relevance):** A producer's licensing/appointment with a specific carrier in a specific state —
-the compliance gate for who can sell what where (P4 producer ops).
-**When & how rows are written:** Inserted by `createAppointment()`; updated by `updateAppointment()`, which auto-stamps
-`terminated_at` when status becomes `terminated` and coerces `expires_at`/`terminated_at` to Dates.
-**What the data represents & notable columns:**
-
-- `agent_id` (indexed), `carrier_id` (indexed), `state_code` (VarChar 5) —
-  `@@unique([agent_id, carrier_id, state_code, tenant_id])`.
-- `license_number`, `license_type` — `life | health | p_and_c | variable`.
-- `appointment_status` default `"active"` (indexed) — `active | pending | terminated | suspended`.
-- `appointed_at`, `expires_at`, `terminated_at`.
-
-**Related to:** `agent_id` FK → `Employee` (`AgentAppointment`); `carrier_id` FK → `InsuranceCarrier` (Cascade).
-
-### `commission_statements`  ·  Prisma model `CommissionStatement`
-
-**Why this table exists (relevance):** A carrier's commission statement for a period, reconciled against
-internally-recorded commission entries to surface variance (P4 producer ops).
-**When & how rows are written:** Inserted by `createCommissionStatement()` (transactional, generates `CST…`, computes
-`variance = actual − expected`). `reconcileStatement(id)` re-sums matching `CommissionEntry` rows (same carrier +
-period) into `total_expected`, recomputes `variance`, and sets `status='reconciled'` + `reconciled_at`/`reconciled_by`.
-**What the data represents & notable columns:**
-
-- `statement_ref` — `@@unique([statement_ref, tenant_id])`.
-- `carrier_id` (indexed), `statement_period` (VarChar 7, `"2026-03"`, indexed), `received_date`.
-- `total_expected`, `total_actual`, `variance` (all NOT NULL Decimal 18,2).
-- `status` default `"pending"` (indexed) — `pending | reconciled | disputed`; `reconciled_at`, `reconciled_by`.
-
-**Related to:** `carrier_id` FK → `InsuranceCarrier` (Cascade); parent of `CommissionEntry` via `statement_id`.
+`backend/src/services/sla.service.js` and the routes in `backend/src/routes/sla/index.js`.
 
 ## SLA Engine
 
@@ -3539,7 +3040,9 @@ targets/escalations); updated/deleted via the SLA config routes. Read every tick
 `escalations`, and `business_hours` included.
 **What the data represents & notable columns:**
 
-- `name`, `description`, `entity_type` — `case | lead | task`.
+- `name`, `description`, `entity_type` — `case | lead | task | record`.
+- `object_id`, `config` (JSON) — for `record` policies only: the object timed and its stage mapping
+  (`first_response_stages`, `closed_stages`, `canceled_stages`, `dimension_field`).
 - `is_active`, `order_index` default 0 (indexed together as `[tenant_id, entity_type, is_active, order_index]`).
 - `conditions` (JSON) — `[{ field, op, value }]` AND-matched (ops: `equals | not_equals | in | contains | gt | lt`).
 - `pause_statuses` (JSON) — record statuses that PAUSE the clock (e.g. `["on_hold"]`).
@@ -3604,3 +3107,54 @@ instance.
 
 **Related to:** `policy_id` FK → `SlaPolicy` (Cascade); `entity_id` is a soft reference into `crm_cases` / `crm_leads` /
 `tasks` by `entity_type` (no DB-level FK).
+
+---
+
+## Access Segmentation & Audit Chain
+
+Added October 2026 (migration `20261013180000_platform_builder_extensions`) for multi-entity tenants. Enforced by
+[`access-scope.service.js`](../../backend/src/services/access-scope.service.js); administered at `/api/access` and
+**Tools ▸ Access & Barriers**. Records carry `business_unit_id` and `barrier_zone_id`, stamped on every create/update
+from the object's `config`.
+
+### `business_units`  ·  Prisma model `BusinessUnit`
+
+**Why this table exists (relevance):** A tenant may be a group of legal entities (SWAN: lending, wealth, funds,
+securities, advisory, FX). A record tagged with a unit is visible only to that unit's members.
+**When & how rows are written:** `SegmentationService` (`/api/access/business-units`, admin) or a vertical pack install.
+**What the data represents & notable columns:** `code` (unique per tenant; what formulas and object config refer to),
+`legal_name`, `regulator`, `licence`, `base_currency`.
+**Related to:** members in `employee_business_units`; `records.business_unit_id` (SetNull).
+
+### `employee_business_units`  ·  Prisma model `EmployeeBusinessUnit`
+
+**Why this table exists (relevance):** Which units an employee works in. An employee with **no** rows is unrestricted
+by unit (group functions); admins are always unrestricted by unit.
+**When & how rows are written:** `SegmentationService.setUnitMembers` (replace-all), audited to the chain.
+**What the data represents & notable columns:** `is_primary` marks the home unit.
+
+### `barrier_zones`  ·  Prisma model `BarrierZone`
+
+**Why this table exists (relevance):** Information barriers (Chinese walls). A record in a zone is visible only to zone
+members and to roles holding the `barrier_override` operational permission — **administrators included**.
+**When & how rows are written:** `/api/access/barrier-zones` (compliance) or a vertical pack.
+
+### `barrier_members`  ·  Prisma model `BarrierMember`
+
+**Why this table exists (relevance):** Who is inside a wall. `source = member` is standing; `source = wall_crossing` was
+created by an approved wall-crossing and ends at `valid_to`.
+**When & how rows are written:** add/remove member routes, and `decideCrossing` on approval (never shortening a standing
+membership). Every change is chained.
+
+### `wall_crossings`  ·  Prisma model `WallCrossing`
+
+**Why this table exists (relevance):** The request-and-approve record for bringing someone over a wall temporarily — the
+evidence a regulator asks for.
+**When & how rows are written:** `requestCrossing` (anyone) then `decideCrossing` (compliance; never the requester).
+
+### `audit_chain_events`  ·  Prisma model `AuditChainEvent`
+
+**Why this table exists (relevance):** Tamper evidence. Each event's `hash` covers its canonical content and the previous
+event's hash, so any edit, insert or delete breaks `GET /api/access/audit-chain/verify` from that point.
+**When & how rows are written:** `AuditChainService.append` (serialised per tenant) for permission changes, unit and
+barrier membership, wall-crossings and public-form publishing. Never updated or deleted.

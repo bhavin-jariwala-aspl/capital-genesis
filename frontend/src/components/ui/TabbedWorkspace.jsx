@@ -4,9 +4,7 @@ import clsx from 'clsx';
 /**
  * TabbedWorkspace — a generic, metadata-driven tabbed container.
  *
- * Useful for any multi-section page: underwriting case reviews,
- * policies (endorsements/billing/renewal), commissions (commissions/statements/
- * appointments), or any future page that needs tab-based navigation.
+ * Useful for any multi-section page that needs tab-based navigation.
  *
  * Props:
  *   tabs         — array of { key, label, icon?, badge?, disabled? }

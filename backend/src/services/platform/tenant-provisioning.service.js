@@ -66,7 +66,7 @@ const DROPPED_COLUMNS = ['id', 'created_at', 'updated_at', 'tenant_id'];
  * tenant's employee id, which means nothing in the new tenant.
  *
  * What is deliberately absent is as important as what is here. Business data
- * (records, leads, policies, claims, quotes, documents, reports, social
+ * (records, leads, contacts, opportunities, documents, reports, social
  * accounts) is never copied - a new customer gets a configured product, not
  * somebody else's book of business. `assignment_rules` is skipped for a
  * narrower reason: every branch of it points at an employee (`assignee_id`,
@@ -90,8 +90,6 @@ const CLONE_PLAN = [
   { model: 'uiDocumentChecklist', label: 'document checklists',     key: ['entity_type', 'label'] },
   { model: 'operationalPermission', label: 'operational permissions' },
   { model: 'leadScoringRule',     label: 'lead-scoring rules',      nullify: ['created_by'] },
-  { model: 'insuranceCarrier',    label: 'carriers',                key: ['code'], nullify: ['created_by'] },
-  { model: 'carrierProduct',      label: 'carrier products',        remap: { carrier_id: 'insuranceCarrier' } },
   {
     model: 'uiPermission', label: 'metadata permissions',
     polymorphic: {
@@ -114,9 +112,6 @@ const TENANT_ROLE_SEED = [
   ['admin',              'Administrator',       'Administrative access; can manage modules and users'],
   ['manager',            'Manager',             'Can view and manage records of direct and indirect reports'],
   ['user',               'User',                'Standard user; can only access own records'],
-  ['uw_manager',         'UW Manager',          'Chief underwriter; can decide all cases and override limits'],
-  ['senior_underwriter', 'Senior Underwriter',  'Complex cases, higher coverage limits, impaired-risk assessments'],
-  ['underwriter',        'Underwriter',         'Standard underwriting within binding authority limits'],
 ].map(([name, label, description]) => ({ name, label, description, level: BUILTIN_ROLE_LEVEL[name] }));
 
 /** Steps in the order they must run, and what each one is called in the UI. */

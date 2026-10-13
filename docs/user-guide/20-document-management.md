@@ -5,8 +5,7 @@
 
 ## What it is
 
-The Document Management module is a standalone home for all your files. It is no longer part of
-the Insurance section — it has its own **Documents** entry in the sidebar and works for any
+The Document Management module is a standalone home for all your files. It has its own **Documents** entry in the sidebar and works for any
 record type. You can upload and categorise files, organise them into folders, search **inside**
 documents (not just by name), share a file via a tracked public link, generate documents from
 templates, and collect legally-binding **e-signatures** — all from one page.
@@ -42,7 +41,7 @@ delete.
 **Preview** opens the document right in the app — no download needed. PDFs and images show as-is;
 Word and Excel files are converted for on-screen viewing; other file types offer a **Download** button
 instead. The Preview button appears everywhere a Download button does (the Documents list, the record
-document panel, application-document collections, underwriting case review, and public share links).
+document panel, and public share links).
 Admins can hide it — see [Admin setup](#admin-setup-builder--document-management).
 
 ## Share a document & see engagement

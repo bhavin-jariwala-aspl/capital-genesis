@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore';
  *
  * ── Why the client needs this at all ────────────────────────────────────────
  * The server is the authority — every gated route checks the plan — but a
- * product that shows you a Claims page and then refuses it is worse than one
+ * product that shows you a Forecasting page and then refuses it is worse than one
  * that never showed it. Entitlements arrive with the bootstrap payload, so
  * every screen has them from the first render with no extra round-trip, and
  * the sidebar, the route guards and the feature-locked pages all read from one

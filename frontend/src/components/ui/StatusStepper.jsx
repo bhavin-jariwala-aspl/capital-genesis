@@ -7,8 +7,8 @@ import clsx from 'clsx';
  * Renders an ordered list of status stages with visual indicators showing
  * which stages are completed, which is current, and which are upcoming.
  *
- * Can be used anywhere a status workflow exists (claims, applications,
- * policies, commissions, documents, etc.) and is fully metadata-driven.
+ * Can be used anywhere a status workflow exists (cases, deals,
+ * orders, documents, etc.) and is fully metadata-driven.
  *
  * Props:
  *   stages       — array of { value, label, color? } (ordered)

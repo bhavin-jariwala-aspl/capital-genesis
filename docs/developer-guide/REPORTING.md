@@ -199,25 +199,25 @@ Branch ▸ Name". At one hop the leaf label is kept, so existing labels ("Owner 
 
 #### 2. Parent→children roll-ups (`rollups`)
 
-This is the answer to "report on policies *and* their claims", and the reason it is not a join:
+This is the answer to "report on accounts *and* their opportunities", and the reason it is not a
+join (illustrative descriptor):
 
 ```js
-ROLLUP('claims', 'Claims', 'insuranceClaim', 'policy_id', [
-  F('paid_amount', 'Total paid', 'currency', { rollup: 'sum' }),
+ROLLUP('opportunities', 'Opportunities', 'crmOpportunity', 'account_id', [
+  F('amount', 'Total amount', 'currency', { rollup: 'sum' }),
 ])
 ```
 
 `#attachRollups` runs **one `groupBy` on the child table**, keyed by the foreign key over the parent
 ids just fetched, and writes the result onto each parent row under the collection name — so
-`row.claims = { $count: 3, paid_amount: 300 }`. To everything downstream a roll-up is
-indistinguishable from a to-one relation and `readPath('claims.paid_amount')` reads it unchanged:
+`row.opportunities = { $count: 3, amount: 300 }`. To everything downstream a roll-up is
+indistinguishable from a to-one relation and `readPath('opportunities.amount')` reads it unchanged:
 grouping, measures, formulas, totals and comparison needed no special case.
 
-**Why not a join.** `policies ⋈ claims` multiplies the parent row once per child. A policy with
-£1,200 premium and three claims then contributes £3,600 to "total premium". Roll-ups cannot do this
-because the parent row is never duplicated — a property pinned by
-`report-joins.test.js` ("counts a policy premium once, however many claims it has"), and verified
-against the real database: premium totals are byte-identical with and without roll-ups in play.
+**Why not a join.** `accounts ⋈ opportunities` multiplies the parent row once per child. An account
+with £1,200 annual revenue and three opportunities then contributes £3,600 to "total revenue".
+Roll-ups cannot do this because the parent row is never duplicated — a property pinned by the
+fan-out arithmetic tests in `report-joins.test.js`.
 Salesforce draws the same distinction, calling these **roll-up summary fields** and keeping them
 separate from report-type joins.
 
@@ -464,8 +464,8 @@ column is the legacy result cache, which used to receive a 20 000-row blob on ev
 never read; it now holds ~10 KB of history. `GET /reports/:id/snapshots?scope=` returns the
 history and `TrendStrip` draws a sparkline per measure with the change since the first snapshot.
 
-This answers "how has this KPI moved" for reports that read *current state* (open pipeline, active
-policies, overdue tasks) without a warehouse or a snapshot table. It is not a substitute for a
+This answers "how has this KPI moved" for reports that read *current state* (open pipeline, open
+cases, overdue tasks) without a warehouse or a snapshot table. It is not a substitute for a
 dated fact table: a snapshot only exists for a day the report ran, and the schedule sweeper is what
 guarantees a daily point.
 
@@ -658,14 +658,14 @@ Against Salesforce, HubSpot, Zoho CRM/Analytics, Dynamics 365 and Pipedrive:
 | Threshold alerts / exception reports | ✓ | ~ | ✓ | ✓ | ✗ | ✓ |
 | Automatic insights | ✓ (Einstein) | ✗ | ✓ (Zia) | ✓ | ✗ | ✓ (statistics, no LLM needed) |
 | Natural-language report building | ✓ (cloud) | ✓ (cloud) | ✓ (cloud) | ✓ (cloud) | ✗ | ✓ **local model, config-only** |
-| **Genesis-specific: insurance sources** | ✗ | ✗ | ✗ | ~ | ✗ | ✓ policies, claims, commissions, SLA |
+| **Genesis-specific: SLA source** | ✗ | ✗ | ✗ | ~ | ✗ | ✓ SLA instances |
 
 Where Genesis is still behind, and why each was left out:
 
 | Gap | Note |
 |---|---|
-| **Relation paths beyond 2 hops** | `MAX_RELATION_HOPS` is 2, which covers every path identified as valuable (territory via owner, carrier via policy). Salesforce allows ~4 levels. Raising it is a constant plus registry entries; the cost is catalogue size, not correctness. |
-| **Two primary sources in one report** | One source per report, plus its related paths and roll-ups. Salesforce's *joined reports* (up to 5 blocks sharing a grouping) would be the equivalent — a presentation feature, not a join, and the safer way to put pipeline, policies and claims side by side. |
+| **Relation paths beyond 2 hops** | `MAX_RELATION_HOPS` is 2, which covers every path identified as valuable (territory via owner). Salesforce allows ~4 levels. Raising it is a constant plus registry entries; the cost is catalogue size, not correctness. |
+| **Two primary sources in one report** | One source per report, plus its related paths and roll-ups. Salesforce's *joined reports* (up to 5 blocks sharing a grouping) would be the equivalent — a presentation feature, not a join, and the safer way to put pipeline, cases and activities side by side. |
 | **Filtering on a roll-up total** | Needs a `HAVING`-style pass after aggregation. Currently reported to the user rather than silently ignored. |
 | **Snapshots need a run** | Trend history is written when a report runs; a report nobody opens and nobody schedules has no history. A nightly sweep over every saved report would close this at the cost of running every report every night. |
 | **Global filters beyond date and owner** | The dashboard bar applies a date range (and the API an owner); an arbitrary field filter across widgets would need a per-widget field mapping. |
@@ -678,7 +678,7 @@ Where Genesis is still behind, and why each was left out:
 
 | Suite | Covers |
 |---|---|
-| `backend/tests/report-registry-schema.test.js` | **Every registry field, relation and declared type against Prisma's own DMMF.** The other suites use a Prisma double that accepts any field name, so a registry entry naming a column that does not exist passes them all and throws at runtime — `claims.closed_at` shipped exactly that way (`InsuranceClaim` has `paid_at`). Also asserts no relation is to-many, since a to-many join would multiply rows and inflate every measure. Needs no database. |
+| `backend/tests/report-registry-schema.test.js` | **Every registry field, relation and declared type against Prisma's own DMMF.** The other suites use a Prisma double that accepts any field name, so a registry entry naming a column that does not exist passes them all and throws at runtime — a registry entry naming a non-existent `closed_at` column once shipped exactly that way. Also asserts no relation is to-many, since a to-many join would multiply rows and inflate every measure. Needs no database. |
 | `backend/tests/report-joins.test.js` | Multi-hop resolution and label collapsing, depth cap, merged nested selects, nested filter/drill-down clauses, roll-up descriptors, the child `groupBy` (shape, id chunking, skipped when unreferenced), **the fan-out arithmetic**, roll-up guard rails, and the public catalogue's whitelist |
 | `backend/tests/report-hardening.test.js` | The fail-closed rules above, folder ownership, scheduled-delivery scope clamping and bounce accounting, `between` date windows including the final day, totals covering rows hidden by the row limit, and prior-period composition under an `OR` filter |
 | `backend/tests/report-engine.test.js` | Filter trees (incl. the same-field regression), relation routing, select narrowing, buckets, date periods, formulas, totals, comparison, drill-down replay, CSV/XLSX/HTML export, registry and template integrity |

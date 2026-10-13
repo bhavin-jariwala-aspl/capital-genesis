@@ -122,6 +122,7 @@ module.exports = async function slaRoutes(fastify) {
       throw new ValidationError(`entity_type must be one of: ${ENTITY_TYPES.join(' | ')}`);
     }
     assertPolicyShape(entity_type, req.body);
+    await assertRecordPolicy(P, entity_type, req.body);
     const policy = await P.slaPolicy.create({ data: buildPolicyData(req.body) });
     await writeChildren(P, policy.id, req.body);
     return ok(await P.slaPolicy.findUnique({ where: { id: policy.id }, include }));
@@ -132,6 +133,9 @@ module.exports = async function slaRoutes(fastify) {
     const existing = await P.slaPolicy.findUnique({ where: { id }, select: { entity_type: true } });
     if (!existing) throw new ValidationError('Policy not found');
     assertPolicyShape(req.body.entity_type ?? existing.entity_type, req.body);
+    if ((req.body.entity_type ?? existing.entity_type) === 'record' && (req.body.object_id !== undefined || req.body.config !== undefined)) {
+      await assertRecordPolicy(P, 'record', { ...req.body, object_id: req.body.object_id ?? (await P.slaPolicy.findUnique({ where: { id }, select: { object_id: true } }))?.object_id });
+    }
     await P.slaPolicy.update({ where: { id }, data: buildPolicyData(req.body, true) });
     if (req.body.targets || req.body.escalations) {
       await P.slaTarget.deleteMany({ where: { policy_id: id } });
@@ -213,6 +217,29 @@ function assertPolicyShape(entityType, body = {}) {
   }
 }
 
+/**
+ * A `record` policy must name a live object, and its stage lists must name
+ * stages that object's pipeline actually has — a typo would otherwise leave a
+ * timer that never stops.
+ */
+async function assertRecordPolicy(P, entityType, body = {}) {
+  if (entityType !== 'record') return;
+  if (!body.object_id) throw new ValidationError('A record SLA must name the object it times (object_id)');
+  const obj = await P.uiObject.findUnique({ where: { id: Number(body.object_id) }, select: { id: true } });
+  if (!obj) throw new ValidationError(`Object ${body.object_id} not found`);
+  const cfg = body.config ?? {};
+  const named = [...(cfg.first_response_stages ?? []), ...(cfg.closed_stages ?? []), ...(cfg.canceled_stages ?? [])];
+  if (named.length) {
+    const stages = await P.uiPipelineStage.findMany({ where: { pipeline: { object_id: obj.id } }, select: { name: true } });
+    const known = new Set(stages.map((st) => st.name));
+    const unknown = named.filter((n) => !known.has(n));
+    if (unknown.length) throw new ValidationError(`Unknown stage(s) for this object: ${unknown.join(', ')}`);
+  }
+  if (!(cfg.closed_stages ?? []).length) {
+    throw new ValidationError('A record SLA needs at least one closed stage — otherwise its resolution clock never stops');
+  }
+}
+
 function buildPolicyData(body, isUpdate = false) {
   const d = {};
   const f = ['name', 'description', 'entity_type'];
@@ -222,6 +249,8 @@ function buildPolicyData(body, isUpdate = false) {
   if (body.conditions !== undefined) d.conditions = body.conditions;
   if (body.pause_statuses !== undefined) d.pause_statuses = body.pause_statuses;
   if (body.business_hours_id !== undefined) d.business_hours_id = body.business_hours_id ? Number(body.business_hours_id) : null;
+  if (body.object_id !== undefined) d.object_id = body.object_id ? Number(body.object_id) : null;
+  if (body.config !== undefined) d.config = body.config;
   if (!isUpdate && d.order_index === undefined) d.order_index = 0;
   return d;
 }

@@ -23,7 +23,7 @@ Sidebar → **Builder** → **Connect** → **Push Notifications**. Requires an 
 1. Click **Send Notification** (top right). The **Send Push Notification** dialog opens.
 2. Enter a **Title** (required), for example `Important: Q4 pricing update`.
 3. Optionally add a **Message** with more detail.
-4. Optionally add a **Link** that opens when the notification is clicked. This can be an in-app path such as `/quotes`
+4. Optionally add a **Link** that opens when the notification is clicked. This can be an in-app path such as `/reports`
    or a full `https://` URL.
 5. Choose the **Target Audience**:
    - **All Users** — every active employee.
@@ -38,7 +38,7 @@ Sidebar → **Builder** → **Connect** → **Push Notifications**. Requires an 
 | --- | --- | --- |
 | Title | The headline recipients see | Required. The Send button stays disabled until this is filled. |
 | Message | Optional body text under the title | Optional. |
-| Link (optional) | Destination opened from the notification | Accepts an in-app path (`/quotes`) or a full URL. |
+| Link (optional) | Destination opened from the notification | Accepts an in-app path (`/reports`) or a full URL. |
 | Target Audience | Who receives the notification | All Users, By Role, or Specific Employees. |
 | Select Roles | Shown when "By Role" is chosen | Admin, Manager, User. At least one must be selected. |
 | Select Employees | Shown when "Specific Employees" is chosen | Pick one or more from the list; a count is shown. |

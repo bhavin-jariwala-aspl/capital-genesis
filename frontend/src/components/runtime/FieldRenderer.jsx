@@ -7,6 +7,7 @@ import CurrencyInput from '../ui/CurrencyInput';
 import Checkbox from '../ui/Checkbox';
 import RadioGroup from '../ui/RadioGroup';
 import StatusTracker from '../ui/StatusTracker';
+import RecordPicker from '../ui/RecordPicker';
 
 /**
  * FieldRenderer — renders a single field based on its field_type.
@@ -117,6 +118,22 @@ export default function FieldRenderer({
           rows={Number(cfg.rows) || (ft === 'rich_text' ? 5 : 4)}
           placeholder={field.placeholder}
           {...register(fieldName, validationRules)}
+        />
+      );
+    }
+
+    // Lookup — a searchable picker over the target object's records. Without a
+    // target (legacy rows) it falls back to the static option list below.
+    if (ft === 'lookup' && cfg.target_object) {
+      return (
+        <Controller
+          name={fieldName}
+          control={control}
+          rules={validationRules}
+          render={({ field: f }) => (
+            <RecordPicker targetObject={cfg.target_object} value={f.value ?? null} onChange={f.onChange}
+              label={ctl.label} error={error} help={commonProps.help} disabled={disabled} placeholder={field.placeholder} />
+          )}
         />
       );
     }
@@ -316,9 +333,10 @@ export default function FieldRenderer({
       );
     }
 
-    // Auto-calculated / auto-number / formula — read-only display
+    // Auto-calculated / auto-number / formula — read-only display. Formulas
+    // are evaluated by the server on save, so a new record shows a hint.
     if (ft === 'auto_calculate' || ft === 'auto_number' || ft === 'formula') {
-      return <Input {...ctl} type="text" readOnly disabled placeholder={ft === 'auto_number' ? 'Assigned on save' : 'Calculated'} {...register(fieldName, {})} />;
+      return <Input {...ctl} type="text" readOnly disabled placeholder={ft === 'auto_number' ? 'Assigned on save' : 'Calculated on save'} {...register(fieldName, {})} />;
     }
 
     // Default — text input

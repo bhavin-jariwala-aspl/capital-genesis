@@ -11,7 +11,7 @@
  *      typed columns. Only the object names listed in MODEL_MAP land here.
  *   2. `crm_lead_intake` — the raw inbound Lead object (`lead_intake`).
  *   3. The typed EAV table `record_field_values` — every other object
- *      (insurance domain objects, `client`, and all custom objects).
+ *      (`client` and all custom objects).
  *
  * Both RecordService (the write path used by the API) and
  * WorkflowEngineService (the automation engine) need this mapping, so it lives
@@ -126,11 +126,6 @@ const MODEL_MAP = {
   case:        'crmCase',
 };
 
-/** Objects that additionally mirror into the insurance domain tables. */
-const INSURANCE_OBJECTS = new Set([
-  'application', 'policy', 'claim', 'underwriting_case', 'commission',
-]);
-
 /**
  * Columns that live on `records` itself rather than on any entity/EAV row.
  * Workflow steps address these by their plain names (e.g. an action step that
@@ -143,7 +138,7 @@ const RECORD_COLUMNS = new Set(['assigned_to', 'pipeline_stage_id']);
  *
  * @param {string} objectName – UiObject.name
  * @returns {{ kind: 'crm'|'eav', model: string|null, fields: Set<string>|null,
- *             aliases: Object, reverseAliases: Object, isInsurance: boolean }}
+ *             aliases: Object, reverseAliases: Object }}
  */
 function resolveStorage(objectName) {
   const name  = String(objectName ?? '');
@@ -154,7 +149,6 @@ function resolveStorage(objectName) {
     fields:         CRM_FIELDS[name] ?? null,
     aliases:        FIELD_ALIAS[name] ?? {},
     reverseAliases: REVERSE_ALIAS[name] ?? {},
-    isInsurance:    INSURANCE_OBJECTS.has(name),
   };
 }
 
@@ -205,7 +199,6 @@ module.exports = {
   FIELD_ALIAS,
   REVERSE_ALIAS,
   MODEL_MAP,
-  INSURANCE_OBJECTS,
   RECORD_COLUMNS,
   resolveStorage,
   toTypedValue,

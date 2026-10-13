@@ -29,11 +29,7 @@ Role-based **view** and **edit** access to individual metadata entities:
 | ---- | -------- | -------- |
 | `super_admin` / `admin` | always `true` (bypasses all rows) | always `true` (bypasses all rows) |
 | `manager` / `user` | `true` | `true` |
-| `uw_manager` / `senior_underwriter` / `underwriter` | per seed row | per seed row |
 
-> **Underwriter roles** have restricted access — they can only
-> view/edit UW-related objects. See section 3a for details.
->
 > **Note (v3.1.3):** Both the field-level and object-level `can_edit`
 > defaults were changed from `false` to `true`. Previously, form fields
 > were read-only and record create/update/delete returned 403 for
@@ -106,10 +102,7 @@ Five scope dimensions for **tasks** and **activities**:
 | `super_admin` | `all` | `all` | `all` | `all` | `all` |
 | `admin` | `all` | `all` | `all` | `all` | `all` |
 | `manager` | `team` | `team` | `team` | `own` | `own` |
-| `uw_manager` | `all` | `all` | `all` | `all` | `all` |
 | `user` | `own` | `own` | `own` | `own` | `none` |
-| `senior_underwriter` | `all` | `all` | `all` | `none` | `none` |
-| `underwriter` | `all` | `all` | `own` | `none` | `none` |
 
 ### Parent record access
 
@@ -157,80 +150,6 @@ All operational endpoints also enforce **parent record access** before any actio
 
 ---
 
-## 3a. Underwriting Decision Authority
-
-Underwriting decisions (approve / decline / refer) carry regulatory and financial weight and are gated by
-a **dedicated `underwriting` operational permission** — separate from task/activity scopes.
-
-### Enforcement mechanism
-
-`PermissionService.assertCanDecideUnderwriting(roleName, tenantId)` is called before:
-
-| Endpoint | Why |
-| -------- | --- |
-| `PATCH /api/insurance/underwriting/:id` | Updates any field, including `status` |
-| `POST /api/insurance/underwriting/:id/decision` | Formal approve / decline / refer action |
-
-**Bypass rule**: `admin`, `super_admin`, and `platform_admin` (roles at or below `ADMIN_THRESHOLD`)
-always pass — no DB row required.
-
-**All other roles** require an explicit `operational_permissions` row with:
-
-- `entity_type = 'underwriting'`
-- `edit_scope != 'none'`
-
-### Seeded defaults
-
-The seed grants UW decision authority to admin and all three
-dedicated underwriter roles:
-
-| Role | view | create | edit | delete | assign |
-| ---- | ---- | ------ | ---- | ------ | ------ |
-| `admin` | all | all | all | all | all |
-| `uw_manager` | all | all | all | all | all |
-| `senior_underwriter` | all | all | all | none | none |
-| `underwriter` | all | all | own | none | none |
-
-Agent roles (`manager`, `user`) have **no** underwriting
-operational permission row — they cannot make UW decisions.
-
-### UiPermission access for underwriter roles
-
-Underwriter logins see a restricted sidebar. The seed creates
-`ui_permissions` rows that enforce:
-
-| Object | UW roles |
-| ------ | -------- |
-| Underwriting Cases | view + edit |
-| Application Documents | view + edit |
-| Applications | view only |
-| Policies | view only |
-| Claims | view only |
-| Clients | view only |
-| Prospects | hidden |
-| Quotes | hidden |
-| Commissions | hidden |
-| Settings | hidden |
-| Declarations | hidden |
-
-### Granting underwriting authority to a non-admin role
-
-Upsert a row via the Prisma client or Admin UI:
-
-```sql
-INSERT INTO operational_permissions
-  (entity_type, role_name, view_scope, create_scope,
-   edit_scope, delete_scope, assign_scope, tenant_id)
-VALUES
-  ('underwriting', 'manager', 'all', 'all',
-   'all', 'own', 'none', <tenant_id>);
-```
-
-> Setting `edit_scope = 'none'` on an existing row revokes
-> decision authority for that role immediately.
-
----
-
 ## 4. Frontend Behaviour
 
 | Condition | Rendering |
@@ -262,11 +181,11 @@ Unique index on `(entity_type, entity_id, role_name)`.
 ### `operational_permissions` table
 
 ```sql
-entity_type   VARCHAR(30)  -- task | activity | underwriting
+entity_type   VARCHAR(30)  -- task | activity
 role_name     VARCHAR(50)  -- FK → roles.name
 view_scope    VARCHAR(20)  DEFAULT 'own'
 create_scope  VARCHAR(20)  DEFAULT 'own'
-edit_scope    VARCHAR(20)  DEFAULT 'own'   -- 'none' revokes decision authority for underwriting rows
+edit_scope    VARCHAR(20)  DEFAULT 'own'
 delete_scope  VARCHAR(20)  DEFAULT 'own'
 assign_scope  VARCHAR(20)  DEFAULT 'none'
 updated_by    VARCHAR(20)

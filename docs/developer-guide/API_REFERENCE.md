@@ -1,6 +1,6 @@
 # API Reference — Endpoints, Relevance & Invocation
 
-> A complete reference to the Genesis Insure backend REST API (**Fastify 5**). For every endpoint it states **what it is
+> A complete reference to the Genesis CRM backend REST API (**Fastify 5**). For every endpoint it states **what it is
 > for (relevance)** and **when & how it is invoked** across the application (which frontend action, background
 > scheduler, or external webhook triggers it).
 >
@@ -55,13 +55,14 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 | `/api/email`, `/api/documents` | Email send/templates, document storage | Compose, attachments |
 | `/api/social-media` | Social media management & listening | Social console + 5-min sync |
 | `/api/lead-scoring` | Lead scoring rules & analytics | Lead screens |
-| `/api/insurance` | Insurance / AMS domain | Underwriting, quoting, policy, claims, billing |
 | `/api/sla` | SLA policies & instances | SLA admin + 60s reconciler |
 | `/api/reports` | Reporting & analytics | Reports module |
 | `/api/analytics` | Live dashboard datasets | Dashboard widgets + Dashboard Builder |
 | `/api/settings` | Tenant application settings | Settings page |
 | `/api/platform` | Super-admin multi-tenant control plane | Platform/super-admin console |
 | `/api/integrations` | Inbound integration webhook | External systems |
+| `/api/access` | Business units, information barriers, wall-crossings, audit chain | Tools ▸ Access & Barriers |
+| `/api/public` | Published web forms (**no authentication**) | Websites, `/f/:key` |
 
 ---
 
@@ -73,7 +74,6 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 - [Integrations (inbound)  ·  `/api/integrations`](#integrations-inbound----apiintegrations)
 - [Builder  ·  `/api/builder`](#builder----apibuilder)
 - [Runtime  ·  `/api/runtime`](#runtime----apiruntime)
-- [Insurance & AMS  ·  `/api/insurance`](#insurance--ams----apiinsurance)
 - [Platform (Super-Admin)  ·  `/api/platform`](#platform-super-admin----apiplatform)
 - [Settings  ·  `/api/settings`](#settings----apisettings)
 - [SLA · `/api/sla`](#sla--apisla)
@@ -87,6 +87,8 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 - [Tasks · `/api/tasks`](#tasks--apitasks)
 - [Reminders · `/api/reminders`](#reminders--apireminders)
 - [Notifications · `/api/notifications`](#notifications--apinotifications)
+- [Access · `/api/access`](#access--apiaccess)
+- [Public forms · `/api/public`](#public-forms--apipublic)
 
 ---
 
@@ -208,7 +210,7 @@ rate limit (120/min per integration+IP), and Redis idempotency/replay dedup (24 
 
 ## Builder  ·  `/api/builder`
 
-The Builder API is the admin/config surface for Genesis Insure's metadata-driven, low-code UI. It backs the "Builder"
+The Builder API is the admin/config surface for Genesis CRM's metadata-driven, low-code UI. It backs the "Builder"
 section of the app (`frontend/src/pages/builder/*`, reached from the Sidebar) where administrators design the runtime
 experience: dashboards & widgets, charts, sales pipelines, automation workflows, multi-step wizards, entity/operational
 permissions, assignment rules, sales quotas, outbound integrations, and ad-hoc push notifications. Every endpoint
@@ -373,19 +375,29 @@ remains in the service for backward compatibility but is superseded by event sub
 | GET `/api/builder/push-notifications` | History of sent push notifications (latest 100) | requireAdmin | `PushNotificationsPage` loads send history (`getPushNotifications`) |
 | POST `/api/builder/push-notifications` | Send an ad-hoc push notification; resolves recipients by `target_type` (`all\|role\|employee`) via `NotificationService.broadcastNotification`, then logs it | requireAdmin | "Send" in `PushNotificationsPage` (`sendPushNotification`, body `{ title, body, link, target_type, target_value }`) |
 
+### Formulas and public web forms
+
+| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
+|---|---|---|---|
+| POST `/api/builder/formula/check` | Parse a formula; body `{ expression }`. Returns `{ error, functions }` (`error` null when valid). | Admin | `builderService.checkFormula` — `FormulaEditor.jsx` as the admin types. |
+| POST `/api/builder/forms/:id/publish` | Publish a form as a public web form, or update its settings; body `{ success_message?, consent_field?, consent_text_version?, capture_fields?, result_fields?, stage?, channel?, captcha?, rotate? }` (`rotate: true` issues a new key). Returns `{ id, public_key, path, settings }`. Audited to the chain. | Admin | `builderService.publishForm` — Form Builder ▸ **Public web form**. |
+| DELETE `/api/builder/forms/:id/publish` | Take the form offline; the key stops working. 204. Audited. | Admin | `builderService.unpublishForm`. |
+
+`PUT /api/metadata/forms/:id` cannot set `config` or `public_key`; publishing is only through these routes.
+
 ## Runtime  ·  `/api/runtime`
 
-The Runtime API is the data plane used by end-users of the CRM+AMS runtime renderer. It serves fully-resolved,
+The Runtime API is the data plane used by end-users of the CRM runtime renderer. It serves fully-resolved,
 permission-filtered metadata (modules/objects/forms/wizards/pipelines/dashboards) plus generic per-object record CRUD,
-pipeline stage moves (with insurance-domain automation), status timelines, imports, quota/forecast, workflow approvals,
-first-class CRM relational entities (leads/contacts/accounts/opportunities/cases/associations), products, quotes, and
+pipeline stage moves (with lead-conversion automation), status timelines, imports, quota/forecast, workflow approvals,
+first-class CRM relational entities (leads/contacts/accounts/opportunities/cases/associations), products, and
 system announcements. Route file: `backend/src/routes/runtime/index.js`, mounted at prefix `/api/runtime`.
 
 **Auth:** Every endpoint is guarded by the `authenticate` preHandler (JWT Bearer token → `req.user` with `employee_id`,
 `role`, `tenant_id`). There is no anonymous access. Beyond authentication, metadata reads are additionally
 role/tenant-filtered through `PermissionService` (returns 404 when the viewer lacks `can_view`), and record reads/writes
 are ownership/role-scoped inside `RecordService`. Most metadata responses are Redis-cached (TTL ~1h). Primary frontend
-callers: `frontend/src/services/metadata.service.js` (bootstrap, metadata, records, products, quotes),
+callers: `frontend/src/services/metadata.service.js` (bootstrap, metadata, records, products),
 `frontend/src/services/runtime.service.js` (forecast, import, assign), `frontend/src/services/statusEvent.service.js`
 (status timeline), and `frontend/src/components/layout/AnnouncementBanner.jsx` (announcements). The CRM relational
 endpoints (`/crm/*`) have no direct frontend caller.
@@ -414,12 +426,23 @@ endpoints (`/crm/*`) have no direct frontend caller.
 | GET `/api/runtime/records/:id` | Single record with resolved field values; enforces view access. | JWT + `RecordService` scoping | `metadataService.getRecord(id)` — record detail/drawer. |
 | POST `/api/runtime/records` | Creates a record (coerces `object_id` to int against injection); body `{ object_id, stage_id?, assigned_to?, data }`. Returns 201. | JWT | `metadataService.createRecord(data)` — form/wizard submit to create a new record. |
 | PUT `/api/runtime/records/:id` | Updates a record's field values / assignee; body `{ assigned_to?, data }`. | JWT | `metadataService.updateRecord(id, data)` — edit form submit. |
-| PATCH `/api/runtime/records/:id/stage` | Moves a record to a pipeline stage AND runs domain automation (lead→"Converted" creates a Prospect, prospect→"Converted" converts to Client, application→create UW case / status sync, claim→status sync). Returns `{ ...record, automation }`. A Prospect→"Converted" move is **blocked with 400 `{ error, missing_fields }` before moving** if required Prospect fields are incomplete. | JWT | `metadataService.updateRecordStage(id, stageId)` — **Kanban drag-and-drop** of a card to a new stage. |
+| PATCH `/api/runtime/records/:id/stage` | Moves a record to a pipeline stage AND runs domain automation (lead→"Converted" creates a Prospect, prospect→"Converted" converts to Client). Returns `{ ...record, automation }`. A Prospect→"Converted" move is **blocked with 400 `{ error, missing_fields }` before moving** if required Prospect fields are incomplete. | JWT | `metadataService.updateRecordStage(id, stageId)` — **Kanban drag-and-drop** of a card to a new stage. |
 | DELETE `/api/runtime/records/:id` | Deletes a record; 204. **Soft** (moves to admin Trash, recoverable) or **hard** (permanent) per the record's pipeline `config.delete_mode` (resolved in `RecordService`) — the deleting user never sees the mode, the record just disappears from their list. | JWT | `metadataService.deleteRecord(id)` — delete action on list/detail. |
 | POST `/api/runtime/records/bulk-delete` | Deletes many records; body `{ ids }`. Resolves soft/hard per record from its pipeline, same as the single delete. | JWT | `metadataService.bulkDeleteRecords(ids)` — multi-select "Delete" on list page. |
 | POST `/api/runtime/records/bulk-stage` | Moves many records to a stage; body `{ ids, stage_id }`. | JWT | `metadataService.bulkUpdateRecordStage(ids, stageId)` — multi-select "Change stage". |
 | GET `/api/runtime/records/export?object_id=X` | Streams a CSV export of the object's records (attachment). | JWT + `RecordService` scoping | `metadataService.exportRecords(...)` (via `apiWrapper.blob`) — "Export CSV" button on list page. |
 | GET `/api/runtime/records/:id/audit` | Returns the record's last 50 audit-log entries (with actor); asserts view access first. | JWT | `metadataService.getRecordAudit(id)` — "History/Audit" tab on record detail. |
+
+### Lookups, related lists and record actions
+
+| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
+|---|---|---|---|
+| GET `/api/runtime/records/:id/related` | Every record that points at this one through a lookup field, grouped by object and field, filtered by the viewer's access. | JWT + `RecordService` scoping | `metadataService.getRelated(id)` — the **Related** tab (`RelatedPanel.jsx`). |
+| GET `/api/runtime/lookup/:objectName?q=&limit=` / `?id=` | Search the target object's records by title, or resolve one id to its title. Scoped like the list. | JWT + scoping | `metadataService.searchLookup(...)` — `RecordPicker.jsx` for lookup fields. |
+| GET `/api/runtime/objects/:id/actions` | Active manual workflows on the object (record action buttons). | JWT | `metadataService.getObjectActions(objectId)` — `RecordActions.jsx`. |
+| POST `/api/runtime/records/:id/actions/:workflowId` | Run a manual workflow on a record. Re-checks that the caller can see and edit the record and that the workflow is a manual workflow of the record's object. Returns the step log. | JWT + edit access | `metadataService.runRecordAction(id, workflowId)` — a record action button. |
+
+Record writes also: compute formula fields, enforce `expression` validation rules and stage gates (`PATCH …/stage` and `bulk-stage` answer **400** with the gate's message), and stamp `business_unit_id` / `barrier_zone_id`. Records outside the viewer's unit or barrier scope answer **404**.
 
 ### Status Timeline (status_tracker)
 
@@ -439,7 +462,7 @@ endpoints (`/crm/*`) have no direct frontend caller.
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
 | POST `/api/runtime/records/:id/convert-to-prospect` | **Lead → Prospect** convert-by-record-ID: finds (or synthesizes from EAV) the linked `crm_lead_intake` row and creates a `crm_leads` (Prospect) record from it via `CrmService.convertLeadToProspect`; marks the lead converted + links `converted_prospect_id`. 201; 409 if already converted. | JWT | `metadataService.convertToProspect(recordId)` — "Convert to Prospect" button on a **Lead** record. Also auto-fired when a lead is dragged to the "Converted" stage. |
-| POST `/api/runtime/records/:id/convert-lead` | **Prospect → Client** convert-by-record-ID: finds (or synthesizes from EAV) the linked `crm_leads` row, converts it to account/contact, and copies mapped prospect→client EAV fields. 201; 409 if already converted; **400 `{ error, missing_fields }` if required Prospect fields are incomplete** (required-field gating). | JWT | `metadataService.convertLead(recordId, options)` — "Convert" button on a prospect record (e.g. `ApplicationsPage`). |
+| POST `/api/runtime/records/:id/convert-lead` | **Prospect → Client** convert-by-record-ID: finds (or synthesizes from EAV) the linked `crm_leads` row, converts it to account/contact, and copies mapped prospect→client EAV fields. 201; 409 if already converted; **400 `{ error, missing_fields }` if required Prospect fields are incomplete** (required-field gating). | JWT | `metadataService.convertLead(recordId, options)` — "Convert" button on a prospect record. |
 
 ### Workflows
 
@@ -523,245 +546,17 @@ endpoints (`/crm/*`) have no direct frontend caller.
 
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
-| GET `/api/runtime/products` | Lists insurance products (query filters). | JWT | `metadataService.getProducts()` — product catalog / quote line-item picker. |
+| GET `/api/runtime/products` | Lists products (query filters). | JWT | `metadataService.getProducts()` — product catalog. |
 | GET `/api/runtime/products/:id` | Single product; 404 if missing. | JWT | `metadataService.getProduct(id)` — product detail. |
 | POST `/api/runtime/products` | Creates a product. 201. | JWT | `metadataService.createProduct(data)` — product admin create. |
 | PUT `/api/runtime/products/:id` | Updates a product. | JWT | `metadataService.updateProduct(id, data)` — product admin edit. |
 | DELETE `/api/runtime/products/:id` | Deletes a product; 204. | JWT | `metadataService.deleteProduct(id)` — product admin delete. |
-
-### Quotes
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/runtime/quotes` | Lists quotes (query filters). | JWT | `metadataService.getQuotes()` — quotes list (e.g. `QuotesPage`). |
-| GET `/api/runtime/quotes/:id` | Single quote; 404 if missing. | JWT | `metadataService.getQuote(id)` — quote detail. |
-| POST `/api/runtime/quotes` | Creates a quote. 201. | JWT | `metadataService.createQuote(data)` — new-quote flow. |
-| PUT `/api/runtime/quotes/:id` | Updates a quote. | JWT | `metadataService.updateQuote(id, data)` — quote edit. |
-| DELETE `/api/runtime/quotes/:id` | Deletes a quote; 204. | JWT | `metadataService.deleteQuote(id)` — quote delete. |
-| POST `/api/runtime/quotes/:id/line-items` | Adds a line item to a quote. 201. | JWT | `metadataService.addLineItem(quoteId, data)` — add product line to a quote. |
-| PUT `/api/runtime/quotes/:id/line-items/:lineItemId` | Updates a line item. | JWT | `metadataService.updateLineItem(quoteId, itemId, data)` — edit a quote line. |
-| DELETE `/api/runtime/quotes/:id/line-items/:lineItemId` | Removes a line item; 204. | JWT | `metadataService.deleteLineItem(quoteId, itemId)` — remove a quote line. |
-| PATCH `/api/runtime/quotes/:id/submit` | Transitions a quote to "submitted". | JWT | `metadataService.submitQuote(id)` — "Submit quote" action. |
-| PATCH `/api/runtime/quotes/:id/approve` | Transitions a quote to "approved". | JWT | `metadataService.approveQuote(id)` — "Approve quote" action. |
-| PATCH `/api/runtime/quotes/:id/reject` | Rejects a quote; body `{ rejection_reason }`. | JWT | `metadataService.rejectQuote(id, reason)` — "Reject quote" action. |
 
 ### Misc — Announcements
 
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
 | GET `/api/runtime/announcements` | Returns active system announcements for the current user's role. | JWT | `api.get('/runtime/announcements')` in `components/layout/AnnouncementBanner.jsx` — polled to render the top-of-app announcement banner. |
-
-## Insurance & AMS  ·  `/api/insurance`
-
-The Insurance/AMS API is the backend for the Genesis Insure Agency Management System. It is registered from
-`backend/src/routes/insurance/index.js` under the prefix `/api/insurance` and exposes 96 endpoints spanning the full
-insurance lifecycle: product catalog & rating (calculation engine + carrier rating adapters), document/report
-templating, carriers and carrier products, applications, underwriting, quote scenarios, policies & beneficiaries,
-compliance & submission packs, declarations, endorsements, renewals, billing/invoices/payments, claims (incl. reserves,
-claim payments, fraud, adjuster queue), producer appointments, carrier commission statements/reconciliation, agent
-commissions, the agent workbench, and application-document storage.
-
-**Auth:** Every route in this group requires a valid JWT. The plugin installs
-`fastify.addHook('preHandler', authenticate)`, so all endpoints below are authenticated and the caller's `tenant_id` is
-enforced on every service call (a missing tenant context returns 403). Two endpoints add role checks beyond plain auth:
-`PATCH /underwriting/:id` and `POST /underwriting/:id/decision` call `permSvc.assertCanDecideUnderwriting(role)`.
-`POST /applications/:id/convert-underwriting` additionally requires the `underwriting_workflow` feature flag to be
-enabled for the tenant (else 400). Errors from services propagate their `statusCode` via a shared error handler. The
-frontend reaches all of these through `frontend/src/services/insurance.service.js` (`insuranceService.*`), consumed by
-the runtime pages listed per row.
-
-### Calculation Engine & Rating Adapters
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/products` | List available insurance products from the calc engine catalog. | JWT | Quote Engine (`InsuranceQuotePage`) product picker load — `getProducts`. |
-| GET `/api/insurance/products/:productType/riders` | List riders available for a product type. | JWT | `InsuranceQuotePage` when a product is chosen — `getRiders`. |
-| POST `/api/insurance/calculate-quote` | Rate a quote via carrier-specific adapter (or internal), resolve contact, persist the quote scenario. | JWT | Quote workbench "Calculate/Get quote" — `calculateQuote`. |
-| POST `/api/insurance/compare-quotes` | Compare an array of quotes and persist comparison scenarios. Requires `quotes` array (400 otherwise). | JWT | Quote comparison view — `compareQuotes`. |
-| GET `/api/insurance/rating-adapters` | List registered rating adapters and their capabilities. | JWT | Service wrapper `getRatingAdapters` exists; no direct frontend caller found (admin/diagnostic use). |
-| GET `/api/insurance/carriers/:carrierCode/adapter-status` | Live adapter state merged with DB adapter config for a carrier. | JWT | Service wrapper `getCarrierAdapterStatus` exists; no direct frontend caller found. |
-| PUT `/api/insurance/carriers/:carrierCode/adapter-config` | Upsert a carrier's rating adapter config (admin); forces registry re-boot. Validates `api_key_env_var` for `api` type. | JWT (admin-intended) | Service wrapper `updateCarrierAdapterConfig` exists; no direct frontend caller found. |
-| GET `/api/insurance/feature/underwriting-workflow` | Report whether the `underwriting_workflow` flag is on for the tenant. | JWT | `ApplicationsPage` load, gates UW conversion UI — `isUwWorkflowEnabled`. |
-| POST `/api/insurance/illustration` | Generate a policy illustration for a quote. | JWT | Service wrapper `getIllustration` exists; no direct frontend caller found. |
-
-### Template Engine (documents & reports)
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/templates` | List document templates. | JWT | `getTemplates` wrapper; no direct frontend caller found. |
-| GET `/api/insurance/templates/:templateId` | Get one template definition. | JWT | `getTemplate` wrapper; no direct frontend caller found. |
-| POST `/api/insurance/templates/:templateId/render` | Render an arbitrary template with a payload. | JWT | `renderTemplate` wrapper; no direct frontend caller found. |
-| POST `/api/insurance/templates/render-quote` | Render a quote summary (calculation + client + agent). | JWT | Quote Engine "Quote summary/report" — `renderQuoteSummary`. |
-| POST `/api/insurance/templates/render-illustration` | Render an illustration document. | JWT | Quote Engine illustration preview — `renderIllustration`. |
-| POST `/api/insurance/templates/render-application` | Render a blank/prefilled application form. | JWT | `renderApplicationForm` wrapper; no direct frontend caller found. |
-| POST `/api/insurance/templates/render-application-report` | Render an application report from a stored application (`application_id` required). | JWT | `ApplicationsPage` "Application report" — `renderApplicationReport`. |
-| POST `/api/insurance/templates/render-comparison` | Render a multi-quote comparison report. | JWT | Quote comparison export — `renderComparisonReport`. |
-| POST `/api/insurance/templates/render-and-archive` | Render a `quote_report`/`application_report`, archive HTML (+PDF) as ApplicationDocuments; returns html + docs. | JWT | Quote & Applications pages "generate + save report" — `renderAndArchive`. |
-
-### Carriers
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/carriers` | List carriers (optional `is_active`). | JWT | `CommissionsPage` (carrier dropdowns for appointments/statements) — `listCarriers`. |
-| GET `/api/insurance/carriers/:id` | Get one carrier. | JWT | `getCarrier` wrapper; no direct frontend caller found. |
-| POST `/api/insurance/carriers` | Create a carrier. | JWT | `createCarrier` wrapper; no direct frontend caller found (carrier admin). |
-| PATCH `/api/insurance/carriers/:id` | Update a carrier. | JWT | `updateCarrier` wrapper; no direct frontend caller found. |
-
-### Carrier Products
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/carrier-products` | List carrier products (filter by carrier_id, product_type, is_active). | JWT | `listCarrierProducts` wrapper; no direct frontend caller found. |
-| POST `/api/insurance/carrier-products` | Create a carrier product. | JWT | `createCarrierProduct` wrapper; no direct frontend caller found. |
-
-### Policies
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/policies` | List/search policies (status, contact, agent, carrier, renewal_before, pagination). | JWT | `PoliciesPage` grid load — `listPolicies`. |
-| GET `/api/insurance/policies/:id` | Get one policy (with beneficiaries). | JWT | `getPolicy` wrapper (also used internally by beneficiaries route); no direct page caller found. |
-| POST `/api/insurance/policies` | Create a policy. Requires product_type, coverage_amount(+>0), premium_amount(+>0), effective_date. | JWT | `PoliciesPage` "New policy" — `createPolicy`. |
-| PATCH `/api/insurance/policies/:id` | Update a policy. | JWT | `updatePolicy` wrapper; no direct page caller found. |
-| DELETE `/api/insurance/policies/:id` | Delete a policy. | JWT | `deletePolicy` wrapper; no direct page caller found. |
-| GET `/api/insurance/policies/:id/beneficiaries` | List a policy's beneficiaries. | JWT | `getBeneficiaries` wrapper; no direct page caller found. |
-| PUT `/api/insurance/policies/:id/beneficiaries` | Replace/upsert beneficiaries. | JWT | `saveBeneficiaries` wrapper; no direct page caller found. |
-| POST `/api/insurance/policies/:id/status` | Change policy status with reason (delegates to updatePolicy). | JWT | `changePolicyStatus` wrapper; no direct page caller found. |
-
-### Applications
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/applications` | List/search applications (status, contact, agent, carrier, pagination). | JWT | `ApplicationsPage`, `InsuranceQuotePage`, `DeclarationPage`, `DocumentCollectionPage` load — `listApplications`. |
-| GET `/api/insurance/applications/:id` | Get one application. | JWT | `UnderwritingCaseReviewPage` — `getApplication`. |
-| POST `/api/insurance/applications` | Create an application (resolves contact_record_id). Requires product_type, coverage_amount(>0). | JWT | `ApplicationsPage` / quote→app conversion — `createApplication`. |
-| PATCH `/api/insurance/applications/:id` | Update an application. | JWT | `updateApplication` wrapper; no direct page caller found. |
-| POST `/api/insurance/applications/:id/convert-underwriting` | Convert application → underwriting case. Requires UW workflow flag ON (400 otherwise). | JWT | `ApplicationsPage` "Send to underwriting" — `convertToUnderwriting`. |
-| POST `/api/insurance/applications/:id/issue-policy` | Issue a policy from an approved application. | JWT | `ApplicationsPage` "Issue policy" — `issuePolicy`. |
-
-### Underwriting
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/underwriting` | List UW cases (status, risk_class, underwriter, pagination). | JWT | `UnderwritingPage` queue — `listUnderwriting`. |
-| GET `/api/insurance/underwriting/:id` | Get one UW case. | JWT | `UnderwritingCaseReviewPage` — `getUnderwritingCase`. |
-| PATCH `/api/insurance/underwriting/:id` | Update a UW case. Requires decide-underwriting permission. | JWT + role | `updateUnderwritingCase` wrapper; no direct page caller found. |
-| POST `/api/insurance/underwriting/:id/decision` | Record UW decision (approved/declined/referred). Requires decide-underwriting permission. | JWT + role | `UnderwritingPage` / `UnderwritingCaseReviewPage` decision action — `makeUWDecision`. |
-| POST `/api/insurance/underwriting/:id/requirements` | Add a UW requirement to a case. | JWT | Underwriting workbench "add requirement" — `addRequirement`. |
-| PATCH `/api/insurance/underwriting/requirements/:reqId` | Update a UW requirement (e.g. mark received). | JWT | `UnderwritingCaseReviewPage` — `updateRequirement`. |
-
-### Quotes & Scenarios
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/quote-scenarios` | List saved quote scenarios (contact, product, status, comparison_group). | JWT | `InsuranceQuotePage`, `UnderwritingCaseReviewPage` — `listScenarios`. |
-| GET `/api/insurance/quote-scenarios/:id` | Get one scenario. | JWT | Quote scenario detail — `getScenario`. |
-| POST `/api/insurance/quote-scenarios/:id/convert` | Attach/convert a scenario to an application. | JWT | `convertScenario` wrapper; no direct page caller found. |
-
-### Compliance & Submission Pack
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/compliance` | List compliance artifacts (contact, application, policy, status, type). | JWT | `ApplicationsPage` compliance panel — `listCompliance`. |
-| POST `/api/insurance/compliance` | Create a compliance artifact (requires artifact_type). | JWT | `ApplicationsPage` — `createCompliance`. |
-| PATCH `/api/insurance/compliance/:id` | Update a compliance artifact. | JWT | `ApplicationsPage`, `AgentWorkbenchPage` — `updateCompliance`. |
-| GET `/api/insurance/applications/:id/checklist` | Get submission checklist for an application. | JWT | `ApplicationsPage` submission pack — `getChecklist`. |
-| POST `/api/insurance/applications/:id/checklist` | Create/seed a submission checklist (items array). | JWT | `createChecklist` wrapper; no direct page caller found. |
-| PATCH `/api/insurance/checklist/:id` | Update a checklist item. | JWT | `ApplicationsPage` — `updateChecklistItem`. |
-| GET `/api/insurance/applications/:id/submission-readiness` | Compute submission readiness for an application. | JWT | `ApplicationsPage` readiness indicator — `getSubmissionReadiness`. |
-
-### Declarations (EAV-backed via RecordService)
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/declarations` | List declarations (filter status, declaration_type, search). | JWT | `DeclarationPage`, `UnderwritingCaseReviewPage` — `listDeclarations`. |
-| GET `/api/insurance/declarations/:id` | Get one declaration record. | JWT | `getDeclaration` wrapper; no direct page caller found. |
-| POST `/api/insurance/declarations` | Create one record per declaration_type (resolves applicant/app number). | JWT | `DeclarationPage` "send declarations" — `sendDeclarations`. |
-| PATCH `/api/insurance/declarations/:id` | Update declaration (status/accepted/viewed/signed/etc.). | JWT | `DeclarationPage` — `updateDeclaration`. |
-| POST `/api/insurance/declarations/:id/resend` | Re-send a declaration (status→sent, new sent_at). | JWT | `DeclarationPage` resend — `resendDeclaration`. |
-
-### Endorsements
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/endorsements` | List endorsements (policy_id, status, pagination). | JWT | `PoliciesPage` endorsements tab — `listEndorsements`. |
-| POST `/api/insurance/endorsements` | Create endorsement. Requires policy_id, endorsement_type, description, effective_date. | JWT | `PoliciesPage` "new endorsement" — `createEndorsement`. |
-| POST `/api/insurance/endorsements/:id/approve` | Approve an endorsement. | JWT | `PoliciesPage` — `approveEndorsement`. |
-| POST `/api/insurance/endorsements/:id/apply` | Apply an approved endorsement to the policy. | JWT | `PoliciesPage` — `applyEndorsement`. |
-
-### Renewals
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/renewal-tasks` | List renewal tasks (agent, status, renewal_before). | JWT | `listRenewalTasks` wrapper; no direct page caller found. |
-| POST `/api/insurance/renewal-tasks` | Create a renewal task (requires policy_id). | JWT | `PoliciesPage` — `createRenewalTask`. |
-| PATCH `/api/insurance/renewal-tasks/:id` | Update a renewal task. | JWT | `AgentWorkbenchPage` renewal action — `updateRenewalTask` (`updateRenewal`). |
-
-### Billing & Invoices
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/policies/:id/billing` | Get billing history/schedule for a policy. | JWT | `PoliciesPage` billing tab — `getBilling`. |
-| POST `/api/insurance/policies/:id/billing` | Create/define a billing schedule for a policy. | JWT | `PoliciesPage` — `createBilling`. |
-| POST `/api/insurance/policies/:id/invoices` | Generate an invoice from the policy's billing schedule (404 if none). | JWT | `PoliciesPage` "generate invoice" — `generateInvoice`. |
-
-### Payments
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| POST `/api/insurance/invoices/:id/payments` | Record a payment against an invoice. | JWT | `recordPayment` wrapper; no direct page caller found. |
-
-### Claims
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/claims` | List claims (status, type, policy, adjuster, search, pagination). | JWT | `ClaimsPage` grid — `listClaims`. |
-| GET `/api/insurance/claims/:id` | Get one claim. | JWT | `getClaim` wrapper; no direct page caller found. |
-| POST `/api/insurance/claims` | File a new claim (requires policy_id, amount>0). | JWT | `ClaimsPage` "New claim" — `createClaim`. |
-| PATCH `/api/insurance/claims/:id` | Update a claim. | JWT | `ClaimsPage` — `updateClaim`. |
-| POST `/api/insurance/claims/:id/events` | Add a claim event/timeline entry. | JWT | `addClaimEvent` wrapper; no direct page caller found. |
-| POST `/api/insurance/claims/:id/reserves` | Set a claim reserve (requires amount>0). | JWT | `ClaimsPage` reserve action — `setClaimReserve`. |
-| POST `/api/insurance/claims/:id/payments` | Record a claim payment (requires amount>0). | JWT | `recordClaimPayment` wrapper; no direct page caller found. |
-| POST `/api/insurance/claims/:id/fraud-flag` | Flag/unflag a claim as fraud. | JWT | `ClaimsPage` fraud toggle — `flagFraud`. |
-| GET `/api/insurance/claims/adjuster-queue` | Adjuster work queue (requires adjuster_id). | JWT | `ClaimsPage` adjuster view — `getAdjusterQueue`. |
-
-### Producer Appointments
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/producer-appointments` | List producer/carrier appointments (agent, carrier, state, status). | JWT | `CommissionsPage` appointments tab — `listAppointments`. |
-| POST `/api/insurance/producer-appointments` | Create an appointment (requires agent_id, carrier_id, state_code). | JWT | `CommissionsPage` — `createAppointment`. |
-| PATCH `/api/insurance/producer-appointments/:id` | Update an appointment. | JWT | `CommissionsPage` — `updateAppointment`. |
-
-### Commissions & Carrier Statements
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/commissions` | List commissions (agent, status, period, policy, type, search). | JWT | `CommissionsPage` — `listCommissions`. |
-| GET `/api/insurance/commissions/summary` | Commission summary/totals (agent, period). | JWT | `getCommissionSummary` wrapper; no direct page caller found. |
-| POST `/api/insurance/commissions` | Create a commission (requires agent_id, product_type, source_premium>0, commission_rate). | JWT | `createCommission` wrapper; no direct page caller found. |
-| PATCH `/api/insurance/commissions/:id/status` | Update commission status (with reason). | JWT | `CommissionsPage` — `updateCommissionStatus`. |
-| GET `/api/insurance/commission-statements` | List carrier commission statements (carrier, period, status). | JWT | `CommissionsPage` statements tab — `listStatements`. |
-| POST `/api/insurance/commission-statements` | Create a carrier statement (requires carrier_id, statement_period, received_date, total_actual). | JWT | `CommissionsPage` — `createStatement`. |
-| POST `/api/insurance/commission-statements/:id/reconcile` | Reconcile a carrier statement against expected commissions. | JWT | `CommissionsPage` reconcile — `reconcileStatement`. |
-| GET `/api/insurance/commissions/variance-report` | Commission variance report (period, carrier). | JWT | `getVarianceReport` wrapper; no direct page caller found. |
-
-### Agent Workbench
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/agent-workbench` | Aggregate workbench data for an agent (defaults to caller). | JWT | `AgentWorkbenchPage` dashboard load — `getAgentWorkbench`. |
-
-### Application Documents
-
-| Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
-|---|---|---|---|
-| GET `/api/insurance/application-documents` | List application documents (status, category, application_id resolves ID or record_id, search). | JWT | `DocumentCollectionPage`, `UnderwritingCaseReviewPage` — `listApplicationDocuments`. |
-| GET `/api/insurance/application-documents/:id` | Get one application document. | JWT | `getApplicationDocument` wrapper; no direct page caller found. |
-| POST `/api/insurance/application-documents` | Upload base64 files (MIME allowlist, 25 MB cap, SHA-256 dedup) linked to an application. | JWT | `DocumentCollectionPage` upload — `uploadApplicationDocuments`. |
-| PATCH `/api/insurance/application-documents/:id/review` | Review a document (approved/rejected/waived, rejection_reason). | JWT | `UnderwritingCaseReviewPage` document review — `reviewApplicationDocument`. |
-| GET `/api/insurance/application-documents/:id/download` | Stream a document file (by doc ID or `?by_record_id=true`). | JWT | `DocumentCollectionPage`, `UnderwritingCaseReviewPage` download — `downloadApplicationDocument`. |
-
-_Total: 96 endpoints._
 
 ## Platform (Super-Admin)  ·  `/api/platform`
 
@@ -1043,7 +838,7 @@ what continuously recomputes timers, flags at-risk/breached, and escalates.
 ## Reports · `/api/reports`
 
 Mounted from `backend/src/routes/reports/index.js`. The self-service report builder
-over CRM/AMS data — see [REPORTING.md](REPORTING.md) for the engine.
+over CRM data — see [REPORTING.md](REPORTING.md) for the engine.
 
 Any authenticated user can create, save, share and schedule reports; no admin is
 involved. Two independent controls apply:
@@ -1113,6 +908,12 @@ never SQL, and the result is scope-clamped exactly like a hand-built report. See
 
 ## Analytics · `/api/analytics`
 
+> **Object analytics (October 2026).** `POST /api/analytics/object` — body
+> `{ object, metric: count|sum|avg|min|max, field?, group_by?, filters?: [{ field, op, value }] }` —
+> aggregates the records of any Builder object, scoped by the viewer's record access. Used by widgets
+> whose data source is `{ type: 'object', … }`. See
+> [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md#8-object-analytics).
+
 Mounted from `backend/src/routes/analytics/index.js`, backed by
 `backend/src/services/analytics.service.js`. This is the **live data layer behind
 dashboard widgets**: instead of embedding a JSON blob in its configuration, a
@@ -1140,25 +941,16 @@ The Dashboard Builder filters its picker on this field.
 
 ### Dataset catalog
 
-43 datasets across six categories. `series` entries carry the chart type they were
+Datasets are grouped by category. `series` entries carry the chart type they were
 designed for; the builder pre-fills it when you pick the dataset.
 
 | Category | Datasets |
 |---|---|
-| Policies | `premium-revenue-monthly` (bar), `new-policies-monthly` (line), `policy-type-distribution` (donut), `policy-status-breakdown` (bar), `coverage-by-product-type` (treemap), `premium-by-frequency` (radial bar), `coverage-vs-premium` (scatter), `policy-terms-timeline` (timeline), `premium-ohlc-monthly` (candlestick) |
-| Applications | `applications-by-status` (pie), `application-funnel` (funnel), `application-outcome-waterfall` (waterfall), `applications-by-product` (bar), `applicant-risk-bubble` (bubble), `underwriting-risk-mix` (radar) |
-| Claims | `claims-by-status` (bar), `claims-by-type` (radial bar), `claims-trend-monthly` (area), `claims-financials-monthly` (stacked area), `loss-ratio-gauge` (gauge), `claims-by-priority` (donut) |
-| Production | `top-agents-by-premium` (bar), `agent-product-heatmap` (heatmap), `commission-by-period` (composed), `commission-status-mix` (donut), `renewals-due-buckets` (bar) |
 | Pipeline | `opportunity-pipeline-by-stage` (funnel), `leads-by-source` (donut), `leads-by-status` (bar), `opportunity-win-loss-monthly` (stacked bar) |
-| KPIs | `kpi-active-policies`, `kpi-premium-in-force`, `kpi-total-coverage`, `kpi-new-applications-mtd`, `kpi-pending-claims`, `kpi-claims-paid-ytd`, `kpi-pending-commissions`, `kpi-open-pipeline`, `kpi-open-leads`, `kpi-renewals-30d` |
-| Lists | `list-recent-claims`, `list-upcoming-renewals`, `list-agent-leaderboard` |
+| KPIs | `kpi-open-pipeline`, `kpi-open-leads` |
 
 ### Conventions worth knowing
 
-- **Premium is annualised.** Policies store `premium_amount` alongside a
-  `premium_frequency`; anything that sums premium multiplies through
-  `FREQ_PER_YEAR` (`monthly` ×12, `quarterly` ×4, `semi_annual` ×2, `annual` ×1) so
-  differently-billed policies are comparable.
 - **Status datasets keep their full domain.** `tallyByDomain()` emits every known
   enum value including zero-count ones, so a chart keeps its complete axis before
   the tenant has records in each state.
@@ -1166,11 +958,11 @@ designed for; the builder pre-fills it when you pick the dataset.
   entries ending with the current month, so a sparse table still produces a
   continuous time series.
 - **Multi-series datasets declare `yKey` as an array** (e.g.
-  `claims-financials-monthly` → `['claimed', 'paid']`). `ChartRenderer` treats the
+  `opportunity-win-loss-monthly` → `['won', 'lost']`). `ChartRenderer` treats the
   array as its series list; for `composed` charts the first key is drawn as bars
   and the second as the overlaid line.
-- **Metric trends can be inverted.** `kpi-pending-claims` reports a _rise_ as
-  `trend: 'down'`, because more unresolved claims is the worse outcome.
+- **Metric trends can be inverted.** A metric where more is worse (a backlog of
+  unresolved items) reports a _rise_ as `trend: 'down'`.
 - **Reads are capped** at `MAX_ROWS = 5000` per query (smaller for point-per-record
   charts such as scatter/bubble/timeline).
 
@@ -1491,3 +1283,35 @@ header widget (polls count + list, marks read).
 | `GET /api/notifications/count` | Unread-count badge value. | JWT | `notificationService.getUnreadCount()` — NotificationBell badge (polled). |
 | `PATCH /api/notifications/read` | Mark specific notification `ids` read. | JWT | `notificationService.markRead()` — NotificationBell mark-as-read. |
 | `PATCH /api/notifications/read-all` | Mark all of the user's notifications read. | JWT | `notificationService.markAllRead()` — NotificationBell "mark all read". |
+
+---
+
+## Access · `/api/access`
+
+Mounted from `backend/src/routes/access/index.js` (`SegmentationService`, `AuditChainService`). _Compliance_
+means an admin role or a role holding the `barrier_override` operational permission. All bodies are schema-validated.
+
+| Method & Path | Purpose / Relevance | Auth |
+|---|---|---|
+| GET `/api/access/business-units` | List units with members | JWT |
+| POST `/api/access/business-units` · PUT `/:id` | Create / update a unit (`code`, `name`, `legal_name`, `regulator`, `licence`, `base_currency`, `is_active`) | Admin |
+| PUT `/api/access/business-units/:id/members` | Replace the unit's members; body `{ employee_ids, primary_ids? }`. Chained. | Admin |
+| GET `/api/access/barrier-zones` | List zones with members | Compliance |
+| POST `/api/access/barrier-zones` · PUT `/:id` | Create / update a zone | Compliance |
+| POST `/api/access/barrier-zones/:id/members` · DELETE `/:id/members/:employeeId` | Add / remove a standing member. Chained. | Compliance |
+| GET `/api/access/barrier-zones/:id/insiders` | Current insiders (standing and crossed, unexpired) — the insider list | Compliance |
+| POST `/api/access/wall-crossings` | Request a crossing; body `{ zone_id, employee_id?, reason }` | JWT |
+| GET `/api/access/wall-crossings?status=` | List crossings | Compliance |
+| POST `/api/access/wall-crossings/:id/decide` | Approve or reject; body `{ approve, valid_days? (1–365, default 30) }`. The requester cannot decide. | Compliance |
+| GET `/api/access/audit-chain?entity_type=&entity_id=&limit=&offset=` | Chained events, newest first | Compliance |
+| GET `/api/access/audit-chain/verify` | Recompute the chain: `{ ok, events, broken_at, reason }` | Compliance |
+
+## Public forms · `/api/public`
+
+Mounted from `backend/src/routes/public/index.js`. **No authentication**: the 48-hex key identifies the form and its
+tenant. Rate limits: 20 submissions per IP and 600 per form per 10 minutes (429 with `Retry-After`). Body limit 64 KB.
+
+| Method & Path | Purpose / Relevance |
+|---|---|
+| GET `/api/public/forms/:key` | The renderable form: `{ title, description, columns, consent_field, captcha, captcha_site_key, fields }` |
+| POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language? }`. Creates the record through `RecordService` in the form's tenant. Returns `{ message, reference, results? }` |

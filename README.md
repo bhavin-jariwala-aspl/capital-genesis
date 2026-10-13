@@ -18,9 +18,10 @@
 > reflects what actually ships. See
 > [docs/project/CHANGELOG.md](docs/project/CHANGELOG.md).
 >
-> Genesis CRM includes a full **Life Insurance Agency Management System** —
-> actuarial quote engine, policy lifecycle, underwriting, claims, commissions,
-> and professional PDF document generation.
+> **October 2026:** the insurance domain (quotes, applications, underwriting,
+> policies, claims, commissions, declarations, document collection) and the CRM
+> Quotes object were removed. Genesis CRM is a general-purpose CRM; the
+> standalone Document Management module and the Product catalog remain.
 
 Genesis CRM is a comprehensive, metadata-driven Customer Relationship Management platform that
 combines powerful customization capabilities with enterprise-grade features. Built for organizations
@@ -53,10 +54,10 @@ market-leading platforms.
 4. **19 Chart Types** — Bar, Line, Area, Pie, Donut, Scatter, Radar, Treemap, Funnel, Heatmap,
    Candlestick, Gauge, RadialBar, Bubble, etc.
 5. **Workflow Automation** — Build multi-step process automations visually with conditions,
-   actions, delays, notifications, and approval gates. **18 workflows ship pre-configured**,
-   covering lead routing and SLAs, quote and payout approvals, underwriting escalation, policy
-   renewal and lapse prevention, and claims triage — each benchmarked against the equivalent
-   feature in Salesforce, HubSpot, Zoho CRM, Dynamics 365 and Pipedrive
+   actions, delays, notifications, and approval gates. A catalogue of workflows ships
+   pre-configured, covering lead routing, response SLAs, qualification hand-off and nurture —
+   each benchmarked against the equivalent feature in Salesforce, HubSpot, Zoho CRM,
+   Dynamics 365 and Pipedrive
 6. **Multi-step Wizards** — Define step-by-step information capture flows
 7. **Pipeline/Kanban Board** — Draggable stage-based pipelines per object with forecast weights
    per stage
@@ -92,37 +93,20 @@ Shipped and wired end-to-end:
 > Sales Teams**, **Customer Portal & Knowledge Base**, and **Partner/Channel
 > Management**. See [docs/project/ROADMAP.md](docs/project/ROADMAP.md).
 
-### **🏥 Insurance Agency Management (New - April 2026)**
-
-1. **Actuarial Quote Engine** — 2017 CSO mortality tables, 6 product
-   types, 9 riders, cash value projections, multi-frequency premiums
-2. **Full Policy Lifecycle** — Application pipeline, underwriting with
-   risk classification, policy issuance, beneficiary management
-3. **Claims Workflow** — Filing, investigation, approval, payment
-   tracking with timeline events
-4. **Commission Tracking** — Auto-commission on policy issuance,
-   agent splits, clawback with audit trail
-5. **Professional Documents** — Quote summaries, policy illustrations,
-   application forms, comparison reports via Chrome headless PDF
-6. **11 Insurance Database Tables** — Carriers, products, policies,
-   applications, underwriting, claims, commissions with full tenant
-   isolation
-
 ### **📈 Essential CRM Capabilities**
 
 1. **Product Catalog** — Comprehensive product/service management with pricing and inventory
-2. **Quote Management** — Professional quote generation with line items and approval workflows
-3. **Email Templates** — Dynamic templates with variable replacement and usage analytics
-4. **Document Management System (DMS)** — Standalone, configurable document platform:
+2. **Email Templates** — Dynamic templates with variable replacement and usage analytics
+3. **Document Management System (DMS)** — Standalone, configurable document platform:
    pluggable storage (local · Amazon S3 / S3-compatible · Azure Blob · Google Cloud
    Storage), SHA-256 dedup + versioning, hierarchical folders, in-document full-text
    search (PDF/DOCX/text), an admin builder (categories, upload policies, required-document
    checklists), merge templates → generated documents, tracked public share links with
    engagement analytics, and native e-signature with an audit-trail certificate
-5. **Lead Scoring** — Automated qualification with demographic and behavioral scoring
-6. **Communication Tracking** — Email tracking and activity/meeting logging via the
+4. **Lead Scoring** — Automated qualification with demographic and behavioral scoring
+5. **Communication Tracking** — Email tracking and activity/meeting logging via the
    unified Activity timeline
-7. **Tasks & Reminders** — Assignable tasks and time-based reminders on any record, with
+6. **Tasks & Reminders** — Assignable tasks and time-based reminders on any record, with
    snooze/complete, a due-time notification sweep, and a "My Reminders" agenda
    (Overdue / Today / Upcoming)
 
@@ -143,7 +127,7 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
 | Section | Audience | Key Guides |
 | ------- | -------- | ---------- |
 | [Getting Started](docs/getting-started/) | Everyone | Installation, demo accounts |
-| [User Guide](docs/user-guide/) | Sales Teams | Daily operations, products, quotes |
+| [User Guide](docs/user-guide/) | Sales Teams | Daily operations, products, reports |
 | [Admin Guide](docs/admin-guide/) | Admins | Configuration, permissions, workflows |
 | [Developer Guide](docs/developer-guide/) | Developers | Architecture, API, security, contributing |
 | [Project](docs/project/) | All | Changelog, roadmap |

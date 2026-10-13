@@ -19,6 +19,7 @@ structure at a glance, without asking around.
 Left sidebar → **Builder** → **Manage** → **Org Chart**. (Admins only.)
 
 ### How to use it — in 3 steps
+
 1. **Open it.** You'll see cards for people at the top of the company, with their teams hanging below.
 2. **Explore.** Click the little arrow under a card to open or close that person's team. Drag the empty space to move
    around, and use the **+ / −** buttons to zoom.
@@ -26,12 +27,14 @@ Left sidebar → **Builder** → **Manage** → **Org Chart**. (Admins only.)
    who they report to, their team, and their contact info.
 
 ### Try this
+
 - **"Who does Priya report to?"** → Search "Priya", click her card, read the **Reporting line** at the top of the
   panel.
 - **"Show me only the Sales team."** → Click a manager's card, then **Focus team**. Click **Show full org** to go back.
 - **"Colour the chart by office."** → Change **Colour by** to *Region* or *Branch*.
 
 ### Good to know
+
 - This screen is for **viewing only**. To actually change who someone reports to, use the **Employees** screen (there's
   an **Edit** shortcut in the details panel).
 - If someone shows up at the very top unexpectedly, they probably have no manager set — worth fixing on the Employees
@@ -46,10 +49,12 @@ An **SLA** is simply a promise about time — like "reply to a customer within 1
 This feature keeps a live countdown on every case, lead, and task, and warns you **before** you run out of time.
 
 ### Where to find it
+
 - A **summary appears automatically at the top of your home Dashboard** every time you log in.
 - For the full view: left sidebar → **Tools** → **SLA Board**.
 
 ### Reading the colours (this is the whole trick)
+
 - 🟢 **Green = On track** — plenty of time.
 - 🟡 **Amber = At risk** — time is running low, look at it soon.
 - 🔴 **Red = Breached** — the deadline passed, deal with it now.
@@ -57,6 +62,7 @@ This feature keeps a live countdown on every case, lead, and task, and warns you
 The big **percentage** is your on-time score: how often you hit your deadlines. Higher is better.
 
 ### How to use it — in 3 steps
+
 1. **Glance at your Dashboard.** The bar at the top shows your score and how many items are breached, at risk, or on
    track. The chips on the right are your most urgent countdowns.
 2. **Click a red or amber number** (or open the **SLA Board**) to see the full list.
@@ -64,10 +70,12 @@ The big **percentage** is your on-time score: how often you hit your deadlines. 
    time left. Handle the red ones, then the amber.
 
 ### Try this
+
 - **"What's about to breach for me?"** → Open the **SLA Board**, click the **At risk** filter.
 - **"How is my team doing?"** → Managers can switch the scope to **My team**; admins can see **Everyone**.
 
 ### Good to know
+
 - The countdowns respect **working hours** — a "4-hour" deadline set on Friday evening won't run out over the weekend
   (once your admin sets up a business-hours calendar).
 - When something goes at-risk or breaches, the system can automatically **notify you or your manager**, **bump the
@@ -106,7 +114,7 @@ Left sidebar → **Leads** (top of the CRM section, above Prospects).
 1. **Add a lead.** Click **+ New Lead**, fill in name/email/phone/company/source, and **Save**.
 2. **Work it.** Move the lead through **New → Contacted → Qualified** (list or Kanban board).
 3. **Convert.** On a qualified lead click **Convert to Prospect** (or drag it to the **Converted** lane) — a Prospect
-   is created from the lead's details, and the rest of the journey (Prospect → Client → Quote → …) continues as before.
+   is created from the lead's details, and the rest of the journey (Prospect → Client → …) continues as before.
 
 ---
 

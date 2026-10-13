@@ -35,9 +35,9 @@ describe('report registry', () => {
   });
 
   it('builds a Prisma select tree for only the relations a config touches', () => {
-    expect(relationSelect('claims', ['policy.product_type', 'adjuster.employee_name', 'amount']))
-      .toEqual({ policy: { select: { product_type: true } }, adjuster: { select: { employee_name: true } } });
-    expect(relationSelect('claims', ['amount'])).toBeNull();
+    expect(relationSelect('cases', ['account.industry', 'owner.employee_name', 'priority']))
+      .toEqual({ account: { select: { industry: true } }, owner: { select: { employee_name: true } } });
+    expect(relationSelect('cases', ['priority'])).toBeNull();
   });
 
   it('gives every source a description and every field a label and type', () => {
@@ -480,7 +480,7 @@ describe('report templates', () => {
   const templates = getTemplates();
 
   it('ships a starter report for every category the UI groups by', () => {
-    for (const cat of ['sales', 'insurance', 'finance', 'support', 'productivity']) {
+    for (const cat of ['sales', 'support', 'productivity']) {
       expect(templates.some((t) => t.category === cat)).toBe(true);
     }
   });

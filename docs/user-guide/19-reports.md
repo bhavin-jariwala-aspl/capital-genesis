@@ -7,8 +7,7 @@
 ## What it is
 
 The reporting module lets **anyone on your team** build reports on the CRM's data — leads,
-opportunities, cases, tasks, activities, quotes, policies, claims, commissions and service-level
-timers.
+opportunities, cases, tasks, activities and service-level timers.
 
 It is designed so that a non-technical staff member can go from "I need to know X" to a saved,
 shared, automatically-emailed report **on their own**. Every choice in the builder is a dropdown or
@@ -44,12 +43,12 @@ Click **New report** and you land on the **template gallery**: about two dozen r
 each labelled with the business question it answers.
 
 > *"How much value sits in each stage of our pipeline right now?"*
-> *"For every dollar of premium, how much are we paying out per product?"*
-> *"Which policies expire in the next 90 days?"*
+> *"What is our win rate by lead source?"*
+> *"Which open cases are past their service-level target?"*
 
 Pick the closest one, and it opens in the builder already working. Change whatever you like — it is
 a draft until you save it, and opening a template never alters the template. Search the gallery by
-words like *win rate*, *premium*, *overdue*.
+words like *win rate*, *pipeline*, *overdue*.
 
 If nothing fits, **Start from scratch**.
 
@@ -76,36 +75,12 @@ the same list — there is nothing to join and no relationship to set up:
 
 | Looks like | Means | Lets you ask |
 |---|---|---|
-| **Owner ▸ Name** | The owner's name, not their ID | Commission by agent name |
-| **Agent ▸ Branch**, **Agent ▸ Region** | The agent's territory | Premium by region |
-| **Policy ▸ Carrier** | The carrier on the claim's policy | Which carriers pay out most |
+| **Owner ▸ Name** | The owner's name, not their ID | Pipeline value by owner name |
+| **Owner ▸ Branch**, **Owner ▸ Region** | The owner's territory | Won revenue by region |
 | **Account ▸ Industry** | The customer's industry | Which industries buy what |
 
-These reach up to two records away — from a claim, through its policy, to that policy's carrier — so a
-question like *"which region writes the most premium?"* needs no help from anyone.
-
-### Totals from related records
-
-Some fields are a **total of related records** rather than a value on the record itself:
-
-| Field | On a report about | Gives you |
-|---|---|---|
-| **Claims ▸ Number of** | Policies | How many claims each policy has |
-| **Claims ▸ Total paid** | Policies | How much has been paid on each policy |
-| **Commissions ▸ Total commission** | Policies | Commission earned per policy |
-| **Quotes ▸ Total quoted** | Opportunities | How much has been quoted on each deal |
-| **Line items ▸ Total of lines** | Quotes | The quote's line-item total |
-
-Use them exactly like any other measure — *Sum of Claims ▸ Total paid* grouped by carrier gives claims
-paid per carrier, alongside the premium from the policy itself.
-
-Two things to know:
-
-- **A policy with three claims still counts once.** Its premium is not tripled. This is why these are
-  offered as totals rather than as a "join" — joining the two tables would count the policy once per
-  claim and inflate every premium figure on the report.
-- **You cannot filter on them.** They are worked out after the records are selected. Filter on
-  something on the record itself, and read the total in the result. If you try, the report tells you.
+These reach up to two records away — from a deal, through its owner, to that owner's region — so a
+question like *"which region closes the most revenue?"* needs no help from anyone.
 
 ### 2. How should it look?
 
@@ -132,7 +107,6 @@ back to the standard set, and the step says so.
 Choose the field that becomes your bars, slices or rows. A matrix takes two.
 
 - **Dates** get a period: by day, week, month, quarter or year.
-- **Totals from related records** cannot be a grouping — they are measures. Everything else can.
 - **Numbers and picklists** can be grouped into **named bands** — click *Group values into bands*.
   For example, turn `amount` into *Under 10k · 10k–50k · 50k–250k · 250k+*. Records with no value
   land in a band you name yourself (default *Other*) — they are never counted as zero.
@@ -152,8 +126,8 @@ Then, if you want, add a **calculation** that combines two measures you have alr
 | Calculation | Gives you |
 |---|---|
 | A divided by B | Average deal size (value ÷ deals) |
-| A as a % of B | Loss ratio (claims paid ÷ premium) |
-| A as a % of the total | Each agent's share of total premium |
+| A as a % of B | Win rate (won deals ÷ closed deals) |
+| A as a % of the total | Each owner's share of total pipeline |
 | A minus B / A plus B / A times B | Any simple arithmetic |
 | A vs B, % change | A percentage difference |
 
@@ -173,7 +147,7 @@ from the dropdown next to the column heading:
 | Moving average (3) | A smoothed line over the last three periods |
 
 The calculation follows the order the rows are shown in, and on a matrix it restarts for each column
-group — so a running total per agent stays per agent. Totals stay honest: a running total's total is
+group — so a running total per owner stays per owner. Totals stay honest: a running total's total is
 the plain total, a % of total adds to 100, and a rank has no total.
 
 ### 5. Which records should be included?
@@ -330,10 +304,10 @@ you a daily point.
 ## Ask Genesis
 
 If the AI layer is switched on you will see **Ask Genesis** in the left rail. Type what you want in
-plain English — *"Top 5 agents by in-force premium this fiscal year"*, *"Monthly won revenue for
+plain English — *"Top 5 owners by won revenue this fiscal year"*, *"Monthly won revenue for
 the last 12 months compared with last year"*, *"Open cases by priority and owner"* — and Genesis
-builds and runs the report, picks a chart, and tells you what it assumed (*"In-force premium" = total
-premium of active policies*).
+builds and runs the report, picks a chart, and tells you what it assumed (*"Won revenue" = total
+amount of closed-won opportunities*).
 
 - **It only ever builds reports.** Ask works from the same list of sources, fields and named
   business measures as the builder, and only shows data you are allowed to see. It cannot look
@@ -397,11 +371,6 @@ Worth covering in training, because these are the things people misread:
   Genesis leaves the total blank rather than printing a wrong number.
 - **"Only the first 20,000 records were included"** means the report needs a filter — usually a date
   range — before its numbers can be trusted.
-- **Premium is per payment, not annual.** Use *Payment frequency* alongside it, or annualise in a
-  calculation. This matters most when comparing premium against a **Claims ▸ Total paid** roll-up:
-  claims paid is cumulative while premium is per instalment, so the raw percentage is not an
-  actuarial loss ratio. Show the two figures side by side rather than dividing them, unless you have
-  annualised the premium yourself.
 - **The scope switch changes the numbers.** *Mine* and *Everyone* legitimately give different totals
   for the same report.
 
@@ -436,9 +405,7 @@ Everyone should leave having saved, shared and scheduled one report of their own
 | *"This report has not been shared with you"* | Ask the owner to change its visibility, or to share it with your role |
 | *"Only the person who created this report… can change it"* | Use **Save as a copy** and edit your own version |
 | A calculation shows *—* | It divided by zero, or references a measure that is no longer there |
-| *"…totals from related records cannot be used as a filter"* | Filter on a field of the record itself instead, and read the total in the result |
-| A **Total paid** column shows 0 | That record genuinely has no related records — 0 is the right answer, not missing data |
-| Territory is grouping by a number | An older report is using the retired *Branch (id)* field. Swap it for **Agent ▸ Branch**, which groups by name |
+| Territory is grouping by a number | An older report is using the retired *Branch (id)* field. Swap it for **Owner ▸ Branch**, which groups by name |
 | A chart has far too many bars | Group the field into bands, or set **Show top** |
 | A scheduled email did not arrive | Open **Email me this** — the schedule shows if the last attempt failed. Check your profile has an email address |
 | A schedule says *last check: not sent* | It has an **Only send when…** condition and the condition was not met. That is the alert working |

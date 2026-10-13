@@ -5,6 +5,8 @@ import clsx from 'clsx';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import Spinner from '../ui/Spinner';
+import TextArea from '../ui/TextArea';
+import ObjectPicker from '../ui/ObjectPicker';
 import { useBuilderStore } from '../../store/builderStore';
 import { CHART_TYPES } from '../../utils/constants';
 import { analyticsService } from '../../services/analytics.service';
@@ -172,10 +174,11 @@ export default function WidgetConfigPanel() {
               value={dsType === 'json' ? 'json' : dsType}
               onChange={(e) => {
                 const type = e.target.value;
-                update({ data_source: type === 'report' ? { type: 'report' } : { type: 'endpoint' } });
+                update({ data_source: { type } });
               }}
               options={[
                 { value: 'report',   label: 'A saved report' },
+                { value: 'object',   label: 'Records of an object' },
                 { value: 'endpoint', label: 'A built-in dataset' },
                 ...(dsType === 'json' ? [{ value: 'json', label: 'Fixed values (legacy)' }] : []),
               ]}
@@ -187,6 +190,10 @@ export default function WidgetConfigPanel() {
 
             {dsType === 'endpoint' && (
               <EndpointSource widget={widget} dataSource={effectiveDs} onApply={update} />
+            )}
+
+            {dsType === 'object' && (
+              <ObjectSource widget={widget} dataSource={effectiveDs} onApply={update} />
             )}
 
             {dsType === 'json' && <LegacyStaticSource dataSource={effectiveDs} />}
@@ -367,6 +374,46 @@ function EndpointSource({ widget, dataSource, onApply }) {
           <WidgetPreview dataSource={dataSource} />
         </>
       )}
+    </>
+  );
+}
+
+/**
+ * Count, sum or average any Builder object's records — grouped by pipeline
+ * stage, creation month or any field — for verticals configured entirely in
+ * the Builder. Scoped server-side to what each viewer can see.
+ */
+function ObjectSource({ widget, dataSource, onApply }) {
+  const ds = { metric: 'count', ...dataSource, type: 'object' };
+  const isMetric = shapeForWidgetType(widget.widget_type) === 'metric';
+  const apply = (patch) => {
+    const next = { ...ds, ...patch };
+    if (next.metric === 'count') delete next.field;
+    if (isMetric) delete next.group_by;
+    onApply({
+      data_source: next,
+      ...(isMetric ? {} : { config: { ...(widget.config || {}), xAxisKey: 'name', yAxisKey: 'value' } }),
+    });
+  };
+  return (
+    <>
+      <ObjectPicker label="Object" valueKey="name" value={ds.object || ''} onChange={(name) => apply({ object: name })} />
+      <Select label="Measure" value={ds.metric} onChange={(e) => apply({ metric: e.target.value })}
+        options={[{ value: 'count', label: 'Number of records' }, { value: 'sum', label: 'Sum of a field' }, { value: 'avg', label: 'Average of a field' }, { value: 'min', label: 'Minimum' }, { value: 'max', label: 'Maximum' }]} />
+      {ds.metric !== 'count' && (
+        <Input label="Field (API name)" placeholder="e.g. loan_amount" value={ds.field || ''} onChange={(e) => apply({ field: e.target.value })} />
+      )}
+      {!isMetric && (
+        <Input label="Group by" placeholder="stage · created_month · or a field API name" value={ds.group_by || ''} onChange={(e) => apply({ group_by: e.target.value || null })}
+          help="“stage” follows the pipeline order; a select field shows its option labels." />
+      )}
+      <TextArea label="Filters (optional JSON)" rows={3} className="font-mono text-xs"
+        value={ds.filters ? JSON.stringify(ds.filters) : ''}
+        placeholder='[{"field":"status","op":"eq","value":"approved"}]'
+        onChange={(e) => {
+          try { apply({ filters: e.target.value.trim() ? JSON.parse(e.target.value) : undefined }); } catch { /* keep typing */ }
+        }} />
+      {ds.object && <WidgetPreview dataSource={ds} />}
     </>
   );
 }

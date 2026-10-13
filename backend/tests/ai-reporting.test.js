@@ -66,18 +66,18 @@ describe('the ReportPlan schema is derived from the engine vocabulary', () => {
 
 describe('source routing', () => {
   it('routes by synonym and label, confidently when one source clearly wins', () => {
-    expect(routeSources('top 5 agents by premium')).toMatchObject({ sources: ['policies'], confident: true });
+    expect(routeSources('top 5 reps by deal value')).toMatchObject({ sources: ['opportunities'], confident: true });
     expect(routeSources('how many open tickets by priority').sources[0]).toBe('cases');
-    expect(routeSources('claims paid out by adjuster').sources[0]).toBe('claims');
+    expect(routeSources('customers by industry with their account value').sources[0]).toBe('accounts');
     expect(routeSources('overdue tasks per assignee').sources[0]).toBe('tasks');
   });
 
   it('keeps the source already in play for a follow-up', () => {
-    expect(routeSources('only the top 3', [{ config: { source: 'commissions' } }]).sources).toEqual(['commissions']);
+    expect(routeSources('only the top 3', [{ config: { source: 'activities' } }]).sources).toEqual(['activities']);
   });
 
   it('falls back to a default pair when nothing matches', () => {
-    expect(routeSources('zzzz qqqq')).toEqual({ sources: ['opportunities', 'policies'], confident: false });
+    expect(routeSources('zzzz qqqq')).toEqual({ sources: ['opportunities', 'leads'], confident: false });
   });
 
   it('never puts a sensitive field or a hidden field in the prompt', () => {
@@ -95,12 +95,12 @@ describe('validatePlan', () => {
   const plan = (config) => ({ intent: 'report', config });
 
   it('expands a named metric into its measure and filters, and records the assumption', () => {
-    const { errors, config, assumptions } = validatePlan(plan({ source: 'policies', viz: 'bar', metric_refs: ['in_force_premium'], group_by: [{ field: 'agent.employee_name' }], sort: [{ key: 'm0', dir: 'desc' }], limit: 5 }), vocab);
+    const { errors, config, assumptions } = validatePlan(plan({ source: 'opportunities', viz: 'bar', metric_refs: ['open_pipeline'], group_by: [{ field: 'owner.employee_name' }], sort: [{ key: 'm0', dir: 'desc' }], limit: 5 }), vocab);
     expect(errors).toEqual([]);
-    expect(config.metrics).toEqual([{ agg: 'sum', field: 'premium_amount', label: 'In-force premium' }]);
-    expect(config.filters.conditions).toEqual([{ field: 'status', op: 'equals', value: 'active' }]);
+    expect(config.metrics).toEqual([{ agg: 'sum', field: 'amount', label: 'Open pipeline' }]);
+    expect(config.filters.conditions).toEqual([{ field: 'is_closed', op: 'equals', value: false }]);
     expect(config).toMatchObject({ limit: 5, totals: true, sort: [{ key: 'm0', dir: 'desc' }] });
-    expect(assumptions[0]).toMatch(/In-force premium/);
+    expect(assumptions[0]).toMatch(/Open pipeline/);
   });
 
   it('refuses a metric sliced by a dimension its owner has not sanctioned', () => {
@@ -110,18 +110,18 @@ describe('validatePlan', () => {
 
   it('rejects invented fields, non-measures, roll-ups as groupings, bad enum values and sensitive fields, with specific messages', () => {
     const { errors, config } = validatePlan(plan({
-      source: 'opportunities',
+      source: 'accounts',
       metrics: [{ agg: 'sum', field: 'profit' }, { agg: 'avg', field: 'name' }],
-      group_by: [{ field: 'quotes.total_amount' }, { field: 'amount', period: 'month' }],
-      filters: { logic: 'AND', conditions: [{ field: 'stage', op: 'equals', value: 'won' }, { field: 'owner.email', op: 'contains', value: 'x' }, { field: 'close_date', op: 'date_range', value: 'previous_year' }] },
+      group_by: [{ field: 'opportunities.amount' }, { field: 'annual_revenue', period: 'month' }],
+      filters: { logic: 'AND', conditions: [{ field: 'account_type', op: 'equals', value: 'won' }, { field: 'owner.email', op: 'contains', value: 'x' }, { field: 'created_at', op: 'date_range', value: 'previous_year' }] },
     }), vocab);
     expect(config).toBeNull();
     expect(errors).toEqual(expect.arrayContaining([
       expect.stringMatching(/"profit" does not exist/),
       expect.stringMatching(/"name" is not a measure/),
-      expect.stringMatching(/"quotes.total_amount" is measure-only/),
+      expect.stringMatching(/"opportunities.amount" is measure-only/),
       expect.stringMatching(/Only a date field can have a period/),
-      expect.stringMatching(/"stage" has no value "won"/),
+      expect.stringMatching(/"account_type" has no value "won"/),
       expect.stringMatching(/"owner.email" is not available/),
       expect.stringMatching(/"previous_year" is not a date preset/),
     ]));
@@ -246,18 +246,18 @@ describe('llm provider', () => {
 // ── The service, end to end with a stub model ───────────────────────────────
 
 describe('AiReportingService.ask', () => {
-  const POLICIES = [
-    { id: 1, premium_amount: 1200, status: 'active', effective_date: new Date('2026-04-10'), agent_id: 'E1', agent: { employee_name: 'Ann' } },
-    { id: 2, premium_amount: 800, status: 'active', effective_date: new Date('2026-05-10'), agent_id: 'E2', agent: { employee_name: 'Bob' } },
+  const OPPORTUNITIES = [
+    { id: 1, amount: 1200, is_closed: false, close_date: new Date('2026-04-10'), owner_id: 'E1', owner: { employee_name: 'Ann' } },
+    { id: 2, amount: 800, is_closed: false, close_date: new Date('2026-05-10'), owner_id: 'E2', owner: { employee_name: 'Bob' } },
   ];
   function make({ enabled = true, rateLimiter = null } = {}) {
-    const prisma = { insurancePolicy: { findMany: jest.fn().mockResolvedValue(POLICIES) } };
+    const prisma = { crmOpportunity: { findMany: jest.fn().mockResolvedValue(OPPORTUNITIES) } };
     const provider = new StubProvider();
     const svc = new AiReportingService(prisma, { provider, reports: new ReportService(prisma), rateLimiter, env: { AI_REPORTING_ENABLED: String(enabled) } });
     return { svc, provider, prisma };
   }
   const ctx = { scope: 'team', employeeId: 'E1', fiscal_year_start_month: 4 };
-  const GOOD = { intent: 'report', title: 'Top agents', explanation: 'Premium of active policies per agent.', assumptions: ['Premium = active policies'], suggestions: ['By month'], config: { source: 'policies', viz: 'bar', metric_refs: ['in_force_premium'], group_by: [{ field: 'agent.employee_name' }], sort: [{ key: 'm0', dir: 'desc' }], limit: 5 } };
+  const GOOD = { intent: 'report', title: 'Top reps', explanation: 'Value of open deals per rep.', assumptions: ['Pipeline = open deals'], suggestions: ['By month'], config: { source: 'opportunities', viz: 'bar', metric_refs: ['open_pipeline'], group_by: [{ field: 'owner.employee_name' }], sort: [{ key: 'm0', dir: 'desc' }], limit: 5 } };
 
   it('is inert when the feature flag is off', async () => {
     const { svc, provider } = make({ enabled: false });
@@ -269,12 +269,12 @@ describe('AiReportingService.ask', () => {
   it('plans, validates, runs through the engine, recommends a chart and narrates from the insights', async () => {
     const { svc, provider } = make();
     provider.queue(GOOD);
-    const out = await svc.ask({ message: 'Top 5 agents by premium', want_summary: false }, ctx);
+    const out = await svc.ask({ message: 'Top 5 reps by pipeline', want_summary: false }, ctx);
     expect(out.status).toBe('success');
-    expect(out.query.config.filters.conditions).toEqual([{ field: 'status', op: 'equals', value: 'active' }]);
+    expect(out.query.config.filters.conditions).toEqual([{ field: 'is_closed', op: 'equals', value: false }]);
     expect(out.data.rows.map((r) => r.m0)).toEqual([1200, 800]);
     expect(out.visualization).toMatchObject({ type: 'bar', auto_selected: false });
-    expect(out.interpretation).toMatchObject({ title: 'Top agents', confidence: 'high', assumptions: expect.arrayContaining(['Premium = active policies']) });
+    expect(out.interpretation).toMatchObject({ title: 'Top reps', confidence: 'high', assumptions: expect.arrayContaining(['Pipeline = open deals']) });
     expect(out.suggestions).toEqual(['By month']);
     expect(typeof out.narrative).toBe('string');
     expect(out.narrative_grounded).toBe(true);
@@ -282,15 +282,15 @@ describe('AiReportingService.ask', () => {
     // The prompt carried the temporal facts and the catalogue, and the user's question.
     const call = provider.calls[0];
     expect(call.system).toContain('Fiscal year starts in month 4');
-    expect(call.system).toContain('SOURCE policies');
-    expect(call.messages[0].content).toBe('Top 5 agents by premium');
+    expect(call.system).toContain('SOURCE opportunities');
+    expect(call.messages[0].content).toBe('Top 5 reps by pipeline');
     expect(call.schema).toBe(buildPlanSchema());
   });
 
   it('repairs an invalid plan exactly once, feeding the validator errors back', async () => {
     const { svc, provider } = make();
-    provider.queue({ intent: 'report', config: { source: 'policies', metrics: [{ agg: 'sum', field: 'profit' }] } }).queue(GOOD);
-    const out = await svc.ask({ message: 'profit per agent', want_summary: false }, ctx);
+    provider.queue({ intent: 'report', config: { source: 'opportunities', metrics: [{ agg: 'sum', field: 'profit' }] } }).queue(GOOD);
+    const out = await svc.ask({ message: 'profit per rep', want_summary: false }, ctx);
     expect(out.status).toBe('success');
     expect(provider.calls).toHaveLength(2);
     expect(provider.calls[1].messages[2].content).toMatch(/"profit" does not exist/);
@@ -298,9 +298,9 @@ describe('AiReportingService.ask', () => {
 
   it('gives up after the repair and asks the user instead of guessing a third time', async () => {
     const { svc, provider } = make();
-    const bad = { intent: 'report', config: { source: 'policies', metrics: [{ agg: 'sum', field: 'profit' }] } };
+    const bad = { intent: 'report', config: { source: 'opportunities', metrics: [{ agg: 'sum', field: 'profit' }] } };
     provider.queue(bad).queue(bad);
-    const out = await svc.ask({ message: 'profit per agent', want_summary: false }, ctx);
+    const out = await svc.ask({ message: 'profit per rep', want_summary: false }, ctx);
     expect(out.status).toBe('plan_invalid');
     expect(out.plan_errors[0]).toMatch(/profit/);
     expect(out.clarification.question).toBeTruthy();
@@ -315,7 +315,7 @@ describe('AiReportingService.ask', () => {
     expect(await svc.ask({ message: 'salaries' }, ctx)).toMatchObject({ status: 'refused', refusal: 'No salary data.' });
     provider.queue({ intent: 'chitchat', reply: 'Hello!' });
     expect(await svc.ask({ message: 'hi' }, ctx)).toMatchObject({ status: 'chitchat', reply: 'Hello!' });
-    expect(prisma.insurancePolicy.findMany).not.toHaveBeenCalled();
+    expect(prisma.crmOpportunity.findMany).not.toHaveBeenCalled();
   });
 
   it('uses the model summary only when every numeral in it is in the result', async () => {
@@ -351,14 +351,14 @@ describe('AiReportingService.ask', () => {
     await expect(svc.ask({ message: '  ' }, ctx)).rejects.toThrow(/Ask a question/);
     await expect(svc.ask({ message: 'x'.repeat(1001) }, ctx)).rejects.toThrow(/1,000/);
     provider.queue(GOOD);
-    await svc.ask({ message: 'only the top 2', want_summary: false, history: [{ message: 'agents by premium', config: GOOD.config }] }, ctx);
+    await svc.ask({ message: 'only the top 2', want_summary: false, history: [{ message: 'reps by pipeline', config: GOOD.config }] }, ctx);
     expect(provider.calls[0].system).toContain('PREVIOUS TURNS');
-    expect(provider.calls[0].system).toContain('agents by premium');
+    expect(provider.calls[0].system).toContain('reps by pipeline');
   });
 
   it('explains an existing result, falling back to the computed findings on an outage', async () => {
     const { svc, provider } = make();
-    const result = { columns: [{ key: 'g', label: 'Agent', type: 'string', dimension: true }, { key: 'm0', label: 'Premium', type: 'currency' }], rows: [{ g: 'Ann', m0: 1200 }, { g: 'Bob', m0: 800 }], summary: { grand: { m0: 2000 } }, meta: { row_count: 2 } };
+    const result = { columns: [{ key: 'g', label: 'Rep', type: 'string', dimension: true }, { key: 'm0', label: 'Pipeline', type: 'currency' }], rows: [{ g: 'Ann', m0: 1200 }, { g: 'Bob', m0: 800 }], summary: { grand: { m0: 2000 } }, meta: { row_count: 2 } };
     provider.queueText('Ann has 1,200 of 2,000.');
     expect(await svc.explain({ title: 'T', result }, ctx)).toMatchObject({ status: 'success', narrative: 'Ann has 1,200 of 2,000.', grounded: true });
     provider.generateText = async () => { throw new LlmError('down', { code: 'llm_timeout' }); };

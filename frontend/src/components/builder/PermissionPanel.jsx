@@ -299,16 +299,30 @@ export function OperationalPermissionPanel({ entityType, className = '' }) {
   }
 
   const roles = Object.keys(local);
-  const roleLevelMap = Object.fromEntries((data.roles ?? []).map(r => [r.name, r.level ?? 1]));
+  const roleLevelMap = Object.fromEntries((data.roles ?? []).map(r => [r.name, r.level]));
+  // Information barriers bind every role, admins included, so the override is
+  // granted per role and never implied by rank.
+  const isOverride = entityType === 'barrier_override';
   // Roles at level <= 3 are admin-tier and always have full access — locked in the UI.
-  const isAdminLocked = (roleName) => (roleLevelMap[roleName] ?? 1) <= 3;
+  // An unknown level is not admin: never default a missing level to the top of the ladder.
+  const isAdminLocked = (roleName) => {
+    const level = roleLevelMap[roleName];
+    return !isOverride && Number.isFinite(level) && level <= 3;
+  };
+  const TITLES = { task: 'Task', activity: 'Activity', record: 'Record', barrier_override: 'Information barrier override' };
 
   return (
     <div className={`space-y-3 ${className}`}>
         <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-white/70 mb-1">
         <Shield className="w-4 h-4 text-primary-500" />
-        {entityType === 'task' ? 'Task' : 'Activity'} Scope Permissions
+        {TITLES[entityType] ?? entityType}{isOverride ? '' : ' Scope Permissions'}
       </div>
+      {isOverride && (
+        <p className="text-xs text-gray-500 dark:text-white/50">
+          Roles ticked here see records inside every barrier zone (Compliance, MLRO). Administrators are bound by
+          barriers unless ticked. Prefer zone membership or a time-bound wall-crossing (Tools → Access &amp; Barriers).
+        </p>
+      )}
 
       {error && (
         <div className="flex items-start gap-2 p-2 bg-red-50 rounded text-xs text-red-600">
@@ -341,6 +355,16 @@ export function OperationalPermissionPanel({ entityType, className = '' }) {
                   </button>
                 )}
               </div>
+              {isOverride ? (
+                <label className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-white/50">
+                  <input
+                    type="checkbox"
+                    checked={(p.view_scope ?? 'none') !== 'none'}
+                    onChange={e => updateScope(roleName, 'view_scope', e.target.checked ? 'all' : 'none')}
+                  />
+                  Can see inside every barrier
+                </label>
+              ) : (
               <div className="grid grid-cols-2 gap-2">
                 {['view', 'create', 'edit', 'delete'].map(action => (
                   <label key={action} className="flex items-center justify-between gap-2">
@@ -363,6 +387,7 @@ export function OperationalPermissionPanel({ entityType, className = '' }) {
                   />
                 </label>
               </div>
+              )}
             </div>
           );
         })}

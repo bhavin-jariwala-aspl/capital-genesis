@@ -103,10 +103,50 @@ field's type are listed first.
 | Number | Min/Max value · Whole number · Greater than zero · Zero or more |
 | Date | Not before · Not after — a date, or `today` |
 | Compare | Equals / Differs from / Greater than / At least / Less than / At most **another field** (pick it from the list) |
-| Data | Unique across records (checked on the server) · Custom JS — browser only, never enforced by the API |
+| Data | Unique across records (checked on the server) · **Formula condition** — a formula that must be true, checked by the server on save (e.g. `AGE(date_of_birth) + tenure_months / 12 <= 65`) |
 
 Each rule has an **Error message** the user sees. When the server rejects a save, the messages appear under
 the offending fields and the form scrolls to the first one.
+
+> The old **Custom JS** rule has been retired: it ran admin-written code in every user's browser. Existing
+> Custom JS rules no longer run; rewrite them as **Formula condition** rules.
+
+### Formula fields
+
+Choose the **Formula** field type to calculate a value instead of typing it. On the **Field** tab:
+
+1. Type the **Formula**, for example `ROUND(loan_amount * rate / 100, 2)`. The editor checks it as you type
+   and shows "Formula is valid" or the error. **Examples & functions** lists what you can use.
+2. Pick the **Result** type (Number, Money, Percentage, Text, Date, Yes / No) and, for numbers, **Decimals**.
+
+The server calculates formulas every time a record is saved; users see "Calculated on save" in the form.
+Formulas can read a linked record with a dot (`party.date_of_birth`), look values up in another object
+(`LOOKUP('plr_rate', 'code', 'PLR', 'rate', 'effective_from')` returns the newest rate already in effect) and
+total child records (`SUM_RELATED('loan_application', 'party', 'loan_amount')`). The full function list is in
+[Platform Builder Extensions](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#1-formula-language).
+
+### Lookup fields
+
+Choose **Lookup** to link a record to a record of another object, then pick the object it **Points at**. Users
+choose the linked record from a search-as-you-type picker, and lists show the linked record's name. Every
+record automatically gets a **Related** tab that lists the records linking to it, with no extra setup.
+
+## Publish a form on a website
+
+Any form can be published as a public web form that creates a record without a login, such as a website
+enquiry or a risk questionnaire. Open the form and expand **Public web form**:
+
+| Setting | What it does |
+| --- | --- |
+| Thank-you message | Shown after a successful submission |
+| Consent field | A checkbox field that must be ticked; the time and the consent text version are stored with the record |
+| Consent text version | A label for the wording the visitor agreed to, such as `2026-10-v1` |
+| Starting stage | The pipeline stage new submissions land in |
+
+Click **Publish**. The panel shows the link (`/f/…`) and an `<iframe>` snippet for the website. **New link**
+replaces the key, and the old link stops working. **Unpublish** takes the form offline. A submission runs
+through everything a normal save does: formulas, validation, assignment rules, SLA timers and workflows.
+Submissions are rate-limited and protected by a hidden honeypot field.
 
 ## Preview mode
 

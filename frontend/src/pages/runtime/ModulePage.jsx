@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { runtimeService } from '../../services/metadata.service';
 import { useMetadataStore } from '../../store/metadataStore';
@@ -16,13 +16,16 @@ import TaskPanel from '../../components/runtime/TaskPanel';
 import ReminderPanel from '../../components/runtime/ReminderPanel';
 import DocumentPanel from '../../components/runtime/DocumentPanel';
 import ClientDetails from '../../components/runtime/ClientDetails';
+import FieldValue from '../../components/runtime/FieldValue';
+import RelatedPanel from '../../components/runtime/RelatedPanel';
+import RecordActions from '../../components/runtime/RecordActions';
 import { recordTitle, initials, gradientFor } from '../../utils/record';
 import clsx from 'clsx';
 import { fmtCurrency } from '../../utils/formatters';
 import {
   Plus, LayoutList, Kanban, Wand2, Download, Upload, Trash2, X,
   History, Activity, CheckSquare, LayoutGrid, Edit, ImageOff, Mail, FileText,
-  UserPlus, Calculator, FolderOpen, ArrowLeft, Bell,
+  UserPlus, ArrowLeft, Bell, Link2,
 } from 'lucide-react';
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -229,23 +232,24 @@ function ViewToggle({ viewMode, setViewMode, views }) {
 
 /* ─── Page ───────────────────────────────────────────────────────────────── */
 
-// Module-level constant — does not depend on any component state or props
-const INSURANCE_ROUTES = {
-  application:          '/insurance/applications',
-  policy:               '/insurance/policies',
-  claim:                '/insurance/claims',
-  underwriting_case:    '/insurance/underwriting',
-  commission:           '/insurance/commissions',
-  declaration:          '/insurance/declarations',
-  application_document: '/insurance/documents',
-};
-
 export default function ModulePage() {
   const { moduleId, objectId } = useParams();
   const navigate = useNavigate();
   const [viewMode, setViewMode]         = useState('table');
   const [selectedIds, setSelectedIds]   = useState(() => new Set());
   const [activeRecord, setActiveRecord] = useState(null);
+  // Deep link: `?record=<id>` opens that record's panel (used by related lists
+  // and notifications), whatever page of the list it is on.
+  const [searchParams] = useSearchParams();
+  const deepLinkId = Number(searchParams.get('record')) || null;
+  useEffect(() => {
+    if (!deepLinkId) return undefined;
+    let cancelled = false;
+    runtimeService.getRecord(deepLinkId)
+      .then((res) => { if (!cancelled) setActiveRecord(res?.data ?? res); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [deepLinkId]);
   const [sideTab, setSideTab]           = useState('activity');
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showConvertToProspectModal, setShowConvertToProspectModal] = useState(false);
@@ -274,10 +278,7 @@ export default function ModulePage() {
   // object (admins → true; roles without an explicit edit permission → false).
   // View-only roles must not see create/import/delete actions, otherwise the
   // POST /records call is rejected with a 403 after the user fills the form.
-  // `lead_score` is an engine-populated, read-only results view (rows come from
-  // the LeadScore table) — never manually created or edited.
-  const isReadOnlyObject = activeObject?.name === 'lead_score';
-  const canEdit = activeObject?._can_edit !== false && !isReadOnlyObject;
+  const canEdit = activeObject?._can_edit !== false;
 
   // ── 2. Pipeline (MetadataStore → fallback to API) ─────────────────────────
   const cachedObjectData = useMetadataStore((s) => activeObject?.id ? s.getObject(Number(activeObject.id)) : null);
@@ -395,10 +396,6 @@ export default function ModulePage() {
         const modules = queryClient.getQueryData(['runtime-modules'])?.data;
         const clientModule = modules?.find(m => m.name === 'clients');
         if (clientModule) navigate(`/module/${clientModule.id}`);
-      } else if (action === 'sent_to_underwriting') {
-        // Application auto-sent to underwriting — navigate to underwriting
-        queryClient.invalidateQueries({ queryKey: ['runtime-records'] });
-        navigate('/insurance/underwriting');
       }
     },
     onError: (err, _vars, ctx) => {
@@ -425,29 +422,6 @@ export default function ModulePage() {
   // ── Object type detection ───────────────────────────────────────────────
   const isLeadObject        = activeObject?.name === 'lead' || activeObject?.name === 'prospect';
   const isLeadIntakeObject  = activeObject?.name === 'lead_intake';   // raw "Lead" object
-  const isClientObject      = activeObject?.name === 'client' || activeObject?.name === 'contact';
-  const isApplicationObject = activeObject?.name === 'application';
-  const isPolicyObject      = activeObject?.name === 'policy';
-  const isClaimObject       = activeObject?.name === 'claim';
-  const isDeclarationObject = activeObject?.name === 'declaration';
-
-  const handleGetQuote = useCallback(() => {
-    if (!activeRecord?.data) return;
-    const d = activeRecord.data;
-    const params = new URLSearchParams();
-    if (d.age)               params.set('age', d.age);
-    if (d.date_of_birth)     params.set('dateOfBirth', d.date_of_birth);
-    if (d.gender)            params.set('gender', d.gender);
-    if (d.smoker_status)     params.set('smokerStatus', d.smoker_status === 'current' ? 'current' : d.smoker_status === 'former' ? 'former' : 'never');
-    if (d.health_class)      params.set('healthClass', d.health_class);
-    if (d.coverage_interest) params.set('coverageAmount', d.coverage_interest);
-    if (d.first_name)        params.set('clientName', `${d.first_name} ${d.last_name || ''}`.trim());
-    if (d.email)             params.set('clientEmail', d.email);
-    if (d.phone)             params.set('clientPhone', d.phone);
-    // Pass record ID so the quote can link back to the contact
-    params.set('contactRecordId', activeRecord.id);
-    navigate(`/insurance/quotes?${params.toString()}`);
-  }, [activeRecord, navigate]);
 
   // ── Lead conversion ─────────────────────────────────────────────────────
   const convertLead = useMutation({
@@ -548,22 +522,9 @@ export default function ModulePage() {
         key:      f.name,
         label:    f.label,
         sortable: true,
-        render:   (_, row) => {
-          const val = row.data?.[f.name];
-          if (val === null || val === undefined || val === '') return <span className="text-gray-400">—</span>;
-          if (f.name === 'annual_revenue') return <span>${Number(val).toLocaleString()}</span>;
-          if (f.name === 'grade' && GRADE_COLORS[val]) {
-            return (
-              <span
-                className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold text-white"
-                style={{ background: GRADE_COLORS[val] }}
-              >
-                {val}
-              </span>
-            );
-          }
-          return String(val);
-        },
+        // Formatted from the field's metadata (type, options, lookup label) —
+        // the same renderer the record panel uses.
+        render:   (_, row) => <FieldValue field={f} value={row.data?.[f.name]} label={row.labels?.[f.name]} compact />,
       }));
 
     if (pipeline) {
@@ -630,8 +591,7 @@ export default function ModulePage() {
         id:       r.id,
         stage_id: r.pipeline_stage_id ?? pipelineStages[0]?.id ?? null,
         title:    recordTitle(d) || `Record #${r.id}`,
-        subtitle: d.application_number || d.quote_number || d.policy_number
-                || d.claim_number || d.case_number
+        subtitle: d.case_number
                 || d.product_type || d.company || d.email || '',
         // Lead grade badge (A–F) for quick triage on the board.
         badge: d.grade && GRADE_COLORS[d.grade]
@@ -841,9 +801,7 @@ export default function ModulePage() {
                 onRowClick={(row) => handleActivityClick(row)}
                 emptyText={canEdit
                   ? `No ${(activeObject.plural_label || activeObject.label || activeObject.name).toLowerCase()} yet. Click "New ${activeObject.label || activeObject.name}" to add one.`
-                  : isReadOnlyObject
-                    ? 'No lead scores yet. Scores appear automatically once leads are created or updated with active scoring rules.'
-                    : `No ${(activeObject.plural_label || activeObject.label || activeObject.name).toLowerCase()} yet.`}
+                  : `No ${(activeObject.plural_label || activeObject.label || activeObject.name).toLowerCase()} yet.`}
               />
             </div>
           )}
@@ -896,39 +854,7 @@ export default function ModulePage() {
                     Convert to Prospect
                   </Button>
                 )}
-                {isClientObject && (
-                  <Button size="xs" variant="primary" onClick={handleGetQuote}>
-                    <Calculator className="w-3 h-3 mr-1" />
-                    Get Quote
-                  </Button>
-                )}
-                {isApplicationObject && (
-                  <Button size="xs" variant="primary" onClick={() => navigate(INSURANCE_ROUTES.application)}>
-                    Process
-                  </Button>
-                )}
-                {isPolicyObject && (
-                  <Button size="xs" variant="primary" onClick={() => navigate(INSURANCE_ROUTES.policy)}>
-                    Manage
-                  </Button>
-                )}
-                {isClaimObject && (
-                  <Button size="xs" variant="primary" onClick={() => navigate(INSURANCE_ROUTES.claim)}>
-                    Process
-                  </Button>
-                )}
-                {isDeclarationObject && activeRecord.data?.status === 'accepted' && (
-                  <Button
-                    size="xs" variant="primary"
-                    onClick={() => {
-                      const appNum = activeRecord.data?.app_number ?? '';
-                      navigate(`${INSURANCE_ROUTES.application_document}${appNum ? `?app_number=${appNum}` : ''}`);
-                    }}
-                  >
-                    <FolderOpen className="w-3 h-3 mr-1" />
-                    Upload Docs
-                  </Button>
-                )}
+                {canEdit && <RecordActions objectId={activeObject?.id} recordId={activeRecord.id} />}
                 {canEdit && (
                   <Button
                     size="xs" variant="ghost"
@@ -963,6 +889,7 @@ export default function ModulePage() {
                   <div className="px-4 pt-4">
                     <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-gray-100/80 dark:bg-white/[0.04] p-1">
                       {[
+                        { key: 'related',   icon: Link2,       label: 'Related'   },
                         { key: 'activity',  icon: Activity,    label: 'Activity'  },
                         { key: 'tasks',     icon: CheckSquare, label: 'Tasks'     },
                         { key: 'reminders', icon: Bell,        label: 'Reminders' },
@@ -1003,6 +930,7 @@ export default function ModulePage() {
                     {sideTab === 'reminders' && <ReminderPanel recordId={activeRecord.id} />}
                     {sideTab === 'docs'     && <DocumentPanel recordId={activeRecord.id} relatedType={activeObject?.name} />}
                     {sideTab === 'audit'    && <AuditTab recordId={activeRecord.id} />}
+                    {sideTab === 'related'  && <RelatedPanel recordId={activeRecord.id} />}
                     {sideTab === 'preview'  && <EmailPreviewTab record={activeRecord} />}
                   </div>
                 </div>

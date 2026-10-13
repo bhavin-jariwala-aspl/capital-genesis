@@ -48,7 +48,7 @@ per-request under the caller's tenant scope.
 | Builder canvas | `frontend/src/components/builder/DashboardCanvas.jsx` | Same renderers, live previews on the editing grid |
 | Builder palette | `frontend/src/components/builder/WidgetPalette.jsx` | **Live** section — one click adds a wired widget |
 | Builder config panel | `frontend/src/components/builder/WidgetConfigPanel.jsx` | Dataset picker + endpoint display + response preview |
-| Seed | `backend/prisma/seed.js` | 4 demo dashboards; imports `DATASETS` so seeded configs cannot drift |
+| Seed | `backend/prisma/seed.js` | Demo dashboards; imports `DATASETS` so seeded configs cannot drift |
 | Tests | `backend/tests/analytics.test.js` | Runs every catalog entry against a Prisma double |
 
 ---
@@ -56,22 +56,22 @@ per-request under the caller's tenant scope.
 ## Data flow
 
 ```text
-InsurancePolicy / InsuranceClaim / CrmOpportunity / …   (Prisma models)
+CrmOpportunity / CrmLead / …   (Prisma models)
         │
         │  dataset.run(db) — groupBy / aggregate / findMany, never $queryRaw
         ▼
-AnalyticsService.getData('premium-revenue-monthly')
+AnalyticsService.getData('opportunity-win-loss-monthly')
         │  tenant-scope extension injects tenant_id into every read
         ▼
-GET /api/analytics/data/premium-revenue-monthly   → { success, data, meta }
+GET /api/analytics/data/opportunity-win-loss-monthly   → { success, data, meta }
         │
         │  useDataSource() — react-query, keyed on the serialised descriptor
         ▼
-widget.data_source = { type: 'endpoint', dataset: 'premium-revenue-monthly' }
+widget.data_source = { type: 'endpoint', dataset: 'opportunity-win-loss-monthly' }
         │
         │  resolveWidgetChart(widget) merges inline config over any linked chart
         ▼
-<ChartRenderer chart={…} />  → recharts <BarChart>
+<ChartRenderer chart={…} />  → recharts stacked <BarChart>
 ```
 
 ### Widget data source shapes
@@ -82,6 +82,7 @@ descriptors, all handled by `useDataSource`:
 | Descriptor | Transport | Notes |
 | --- | --- | --- |
 | `{ type: 'report', report_id, shape }` | axios client (JWT attached) | **The self-service default.** Resolves to `GET /api/reports/<id>/data?shape=…` — any saved report becomes a widget. See [REPORTING.md](REPORTING.md#report-backed-dashboard-widgets) |
+| `{ type: 'object', object, metric, field?, group_by?, filters? }` | axios client (JWT attached) | Aggregates the records of **any Builder object**: `POST /api/analytics/object`. `metric` count/sum/avg/min/max; `group_by` `stage`, `created_month` or a field; filters `{ field, op, value }` (`stage` filters on the stage API name). Scoped by the viewer's record access (owner, business unit, barrier). Builder: *Records of an object*. See [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md#8-object-analytics) |
 | `{ type: 'endpoint', dataset }` | axios client (JWT attached) | One of the pre-computed datasets below — `GET /api/analytics/data/<dataset>` |
 | `{ type: 'endpoint', url, dataPath? }` | axios client (JWT attached) | Any other internal API path |
 | `{ type: 'json', data }` | none | Static inline payload, resolved synchronously. Read-only back-compat; the builder no longer offers it |
@@ -131,27 +132,27 @@ load, and `analytics.test.js` covers it automatically.
 
 ```js
 {
-  key: 'lapsed-policies-monthly',
-  label: 'Lapsed Policies per Month',
-  description: 'Policies that lapsed each month over the last year.',
-  category: 'Policies',
+  key: 'leads-created-monthly',
+  label: 'New Leads per Month',
+  description: 'Leads created each month over the last year.',
+  category: 'Pipeline',
   shape: 'series',
   chart_type: 'line',   // suggestion — the builder pre-fills it
   xKey: 'month',
-  yKey: 'lapsed',
+  yKey: 'created',
   async run(db) {
     const buckets = monthBuckets(12);
-    const rows = await db.insurancePolicy.findMany({
-      where:  { lapsed_at: { gte: buckets[0].start } },
-      select: { lapsed_at: true },
+    const rows = await db.crmLead.findMany({
+      where:  { created_at: { gte: buckets[0].start } },
+      select: { created_at: true },
       take:   MAX_ROWS,
     });
     const counts = new Map(buckets.map((b) => [b.key, 0]));
     for (const r of rows) {
-      const k = monthKey(r.lapsed_at);
+      const k = monthKey(r.created_at);
       if (counts.has(k)) counts.set(k, counts.get(k) + 1);
     }
-    return buckets.map((b) => ({ month: b.label, period: b.key, lapsed: counts.get(b.key) }));
+    return buckets.map((b) => ({ month: b.label, period: b.key, created: counts.get(b.key) }));
   },
 }
 ```
@@ -176,7 +177,6 @@ load, and `analytics.test.js` covers it automatically.
 | --- | --- |
 | `monthBuckets(n)` | The last `n` months as UTC `{ key, label, start, end }`, oldest first |
 | `monthKey(date)` | UTC `YYYY-MM` key for bucketing |
-| `annualPremium(policy)` | `premium_amount × FREQ_PER_YEAR[premium_frequency]` |
 | `tallyByDomain(rows, field, domain, keys)` | Counts by field, emitting every domain value including zeroes |
 | `withDelta(model, dateField, days, where)` | Current vs preceding window counts, for KPI change values |
 | `delta(current, previous)` | Turns those counts into `{ change, trend }` |
@@ -187,10 +187,6 @@ load, and `analytics.test.js` covers it automatically.
 
 ## Conventions the existing datasets follow
 
-- **Premium is annualised.** Policies bill monthly, quarterly, semi-annually or
-  annually. Anything that sums premium multiplies through `FREQ_PER_YEAR`
-  (×12 / ×4 / ×2 / ×1) so differently-billed policies are comparable. A raw
-  `SUM(premium_amount)` would silently under-count the annual book.
 - **Status datasets keep their full domain.** `tallyByDomain()` emits every known
   enum value, so a bar chart keeps a complete axis before the tenant has records in
   each state — and a status appearing later does not change the chart's shape.
@@ -198,12 +194,12 @@ load, and `analytics.test.js` covers it automatically.
   entries ending with the current month, so a sparse table still yields a continuous
   time series with real zeroes rather than gaps.
 - **Multi-series datasets declare `yKey` as an array** — e.g.
-  `claims-financials-monthly` → `['claimed', 'paid']`. `ChartRenderer` treats the
+  `opportunity-win-loss-monthly` → `['won', 'lost']`. `ChartRenderer` treats the
   array as its series list. For `composed` charts the first key is drawn as bars and
   the second as the overlaid line.
-- **Some metric trends are inverted.** `kpi-pending-claims` reports a *rise* as
-  `trend: 'down'`, because more unresolved claims is the worse outcome. Decide this
-  per metric rather than assuming up-is-good.
+- **Some metric trends are inverted.** For a metric where more is worse (a backlog
+  of unresolved items, say), report a *rise* as `trend: 'down'`. Decide this per
+  metric rather than assuming up-is-good.
 - **Money metrics carry both forms.** `value` is the display string (`'$48.2M'`) and
   `raw` the number, so a consumer that needs to compute is not re-parsing a label.
 
@@ -235,18 +231,11 @@ Row shapes a few of the less obvious types expect:
 
 `seed.js` imports `DATASETS` from the service and derives each widget's chart type
 and axis keys from it, so a change to a dataset's suggested keys propagates to the
-seed automatically. It builds four dashboards covering all 43 datasets and all 18
-chart types:
+seed automatically. The seeded dashboards cover the CRM pipeline datasets — open
+pipeline, lead sources and status, opportunity stages and won-vs-lost by month.
 
-| Dashboard | Widgets | Focus |
-| --- | --- | --- |
-| Agency Dashboard (default) | 9 | Headline KPIs, premium production, application status, renewals |
-| Sales & Distribution | 14 | Pipeline value, lead sources, producer performance, commissions |
-| Claims & Underwriting | 15 | Claim throughput, loss ratio, risk mix, application outcomes |
-| Portfolio Analytics | 12 | Exposure, premium distribution, policy term structure |
-
-Six of those widgets render through saved `ui_charts` records (`chart_id`) rather
-than inline config, keeping the chart-library path exercised.
+Some widgets render through saved `ui_charts` records (`chart_id`) rather than
+inline config, keeping the chart-library path exercised.
 
 ---
 
@@ -261,9 +250,8 @@ double whose delegates return empty results by default, so no database is needed
 - **Every dataset executes** — a parameterised case per catalog entry asserts the
   runner completes and returns its declared shape against empty data. New datasets
   inherit this the moment they are registered.
-- **Aggregation behaviour** — premium annualisation, month bucketing, status-domain
-  completeness, funnel monotonicity, loss-ratio capping, inverted pending-claims
-  trend, and heatmap grid filling.
+- **Aggregation behaviour** — month bucketing, status-domain completeness and
+  multi-series row shapes.
 
 ---
 
@@ -298,12 +286,9 @@ themselves survives.
 
 ```js
 {
-  dataset: 'premium-revenue-monthly', size: 'full', chart: 'bar',
-  title: 'Premium Written vs Target',
-  appearance: {
-    format: 'currency_compact', goal: 20000, goalLabel: 'Monthly target',
-    xLabel: 'Month', yLabel: 'Annualised premium', legend: 'hidden',
-  },
+  dataset: 'opportunity-pipeline-by-stage', size: 'full', chart: 'funnel',
+  title: 'Pipeline Value by Stage',
+  appearance: { format: 'currency_compact', dataLabels: true, legend: 'hidden' },
 }
 ```
 
@@ -330,10 +315,3 @@ the renderer's contract, because nothing at runtime rejects a mismatch:
 - a `goal` line is only set on a chart type that draws one;
 - a money dataset is never formatted as a bare integer;
 - the catalogue between them uses **every** chart type the renderer supports.
-
-### Fixed alongside
-
-`policy-terms-timeline` filtered on `effective_date: { not: null }`. That column is required, and Prisma
-rejects `not: null` on a non-nullable field, so the dataset threw on every render and the Portfolio
-board's timeline widget was permanently broken. The filter was removed (rows with no end date are
-dropped afterwards, as before). All 43 datasets now run clean against a seeded database.

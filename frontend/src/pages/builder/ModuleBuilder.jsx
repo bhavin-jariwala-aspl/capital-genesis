@@ -14,7 +14,8 @@ import { EntityPermissionPanel } from '../../components/builder/PermissionPanel'
 import { Plus, ChevronRight, Pencil, Trash2, Shield, Box, Database, Columns3 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import BuilderGuide from '../../components/builder/BuilderGuide';
-import { FIELD_TYPES, MODULE_CATEGORY_OPTIONS } from '../../utils/constants';
+import { FIELD_TYPES, MODULE_CATEGORY_OPTIONS, categoryLabel } from '../../utils/constants';
+import { accessService } from '../../services/access.service';
 
 // ─── Field type options ──────────────────────────────────────────────────────
 const FIELD_TYPE_OPTIONS = FIELD_TYPES.map(ft => ({ value: ft.field_type, label: ft.label }));
@@ -57,7 +58,7 @@ function ModulesSection({ onSelectModule }) {
     { key: 'label', header: 'Name', sortable: true },
     { key: 'name', header: 'Key', render: v => <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{v}</code> },
     { key: 'icon', header: 'Icon' },
-    { key: 'category', header: 'Category', render: v => <Badge variant="secondary">{v || 'crm'}</Badge> },
+    { key: 'category', header: 'Category', render: v => <Badge variant="secondary">{categoryLabel(v)}</Badge> },
     { key: 'is_active', header: 'Status', render: v => <Badge variant={v ? 'success' : 'secondary'}>{v ? 'Active' : 'Inactive'}</Badge> },
     {
       key: 'id', header: '', render: (_, row) => (
@@ -93,7 +94,13 @@ function ModulesSection({ onSelectModule }) {
           <Input label="Label (Display Name) *" error={errors.label?.message} {...register('label', { required: 'Required' })} />
           <Input label="Name (Key) *" placeholder="snake_case" error={errors.name?.message} {...register('name', { required: 'Required' })} />
           <Input label="Icon" placeholder="e.g. Users" {...register('icon')} />
-          <Select label="Category" options={MODULE_CATEGORY_OPTIONS} {...register('category')} />
+          <Input label="Category (sidebar section)" placeholder="e.g. crm, lending, compliance" list="module-category-options"
+            help="Pick a section or type a new one — every category becomes its own sidebar group."
+            {...register('category')} />
+          <datalist id="module-category-options">
+            {[...new Set([...MODULE_CATEGORY_OPTIONS.map((o) => o.value), ...modules.map((m) => m.category).filter(Boolean)])]
+              .map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
+          </datalist>
           <Input label="Description" {...register('description')} />
           <Select label="Status" options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} {...register('is_active')} />
         </form>
@@ -133,9 +140,16 @@ function ObjectsSection({ module, onBack, onSelectObject }) {
 
   const { data, isLoading } = useQuery({ queryKey: ['objects', module.id], queryFn: () => metadataService.getObjects(module.id) });
   const objects = data?.data || [];
+  const { data: zoneData } = useQuery({ queryKey: ['barrier-zones'], queryFn: () => accessService.getZones(), staleTime: 60_000 });
+  const zones = zoneData?.data ?? [];
 
   const saveMutation = useMutation({
-    mutationFn: (d) => editing ? metadataService.updateObject(editing.id, d) : metadataService.createObject({ ...d, module_id: module.id }),
+    mutationFn: (d) => {
+      // Drop blank record settings so an untouched form never writes empty keys.
+      const config = Object.fromEntries(Object.entries({ ...(editing?.config ?? {}), ...(d.config ?? {}) }).filter(([, v]) => v !== '' && v != null));
+      const body = { ...d, config: Object.keys(config).length ? config : null };
+      return editing ? metadataService.updateObject(editing.id, body) : metadataService.createObject({ ...body, module_id: module.id });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['objects', module.id] }); setModalOpen(false); },
     onError: (e) => setFormError(e.response?.data?.message || e.message),
   });
@@ -182,7 +196,20 @@ function ObjectsSection({ module, onBack, onSelectObject }) {
         <form id="object-form" onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="space-y-3">
           <Input label="Label (Display Name) *" error={errors.label?.message} {...register('label', { required: 'Required' })} />
           <Input label="Name (Key) *" placeholder="snake_case" error={errors.name?.message} {...register('name', { required: 'Required' })} />
+          <Input label="Plural label" placeholder="e.g. Loan Applications" {...register('plural_label')} />
           <TextArea label="Description" {...register('description')} rows={2} />
+          <fieldset className="space-y-3 rounded-xl border border-gray-200 dark:border-white/10 p-3">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Record settings</legend>
+            <Input label="Title field" placeholder="e.g. display_name" help="API name of the field shown as each record's name in lookups, related lists and search."
+              {...register('config.title_field')} />
+            <Input label="Business unit field" placeholder="e.g. business_unit" help="API name of a field holding a business-unit code. Records are then visible only to that unit's members (admins excepted)."
+              {...register('config.business_unit_field')} />
+            <Select label="Information barrier" options={[{ value: '', label: 'None' }, ...zones.map((z) => ({ value: z.code, label: `${z.name} (${z.code})` }))]}
+              help="Every record of this object sits behind this barrier: only zone members and Compliance can see it — admins included."
+              {...register('config.barrier_zone')} />
+            <Input label="Barrier zone field" placeholder="e.g. visibility_zone" help="Or: API name of a field holding a zone code, so only some records are walled off. A value in this field wins; the barrier above is the fallback."
+              {...register('config.barrier_zone_field')} />
+          </fieldset>
         </form>
       </Modal>
 

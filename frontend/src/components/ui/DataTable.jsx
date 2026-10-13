@@ -6,7 +6,7 @@ import EmptyState from './EmptyState';
 /**
  * Resolve a column's raw value from a row. Metadata records nest their field
  * values under `row.data` (top-level keys are id/pipeline_stage/…), while
- * insurance and other flat rows keep them top-level. A column may also supply
+ * other flat rows keep them top-level. A column may also supply
  * an explicit `accessor(row)`. Trying `row.data[key]` first and falling back to
  * `row[key]` makes search + sort work for BOTH shapes — previously they read
  * only `row[key]`, so search and sort silently did nothing on every module grid.

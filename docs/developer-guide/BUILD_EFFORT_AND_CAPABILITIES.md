@@ -2,22 +2,20 @@
 
 **A decision-maker's reference for "what can I build on Genesis CRM, and how much effort will it take?"**
 
-This guide answers two recurring questions:
-
-1. How much effort is needed to build a **CRM process flow end-to-end** on the existing framework?
-2. Can a **sophisticated Insurance CRM** be built on the existing framework — and if so, at what effort?
+This guide answers a recurring question: how much effort is needed to build a **CRM process flow
+end-to-end** on the existing framework?
 
 It also notes where **AI-assisted development (Claude Code)** moves the needle and where it does not.
 
 > Effort figures are planning estimates, not commitments. They assume a developer/admin familiar with
-> the platform conventions and exclude third-party gating (carrier API contracts, compliance sign-off,
+> the platform conventions and exclude third-party gating (third-party API contracts, compliance sign-off,
 > credential provisioning) unless stated.
 
 ---
 
 ## The foundation: what you start from
 
-Three structural facts drive every estimate below.
+Two structural facts drive every estimate below.
 
 ### 1. The backend is truly metadata-driven
 
@@ -64,22 +62,9 @@ loop for the single most frequently-changing artefact in a CRM. See
 Source: [`frontend/src/pages/builder/`](../../frontend/src/pages/builder/),
 [WORKFLOW_ENGINE.md](WORKFLOW_ENGINE.md), [REPORTING.md](REPORTING.md).
 
-### 3. The Insurance vertical already exists end-to-end
-
-The platform ships a working Life-Insurance Agency Management System: **Lead → Quote → Application →
-Underwriting → Policy → Claims → Commissions**, with real tables, atomic transactions, ~12k lines of
-backend + frontend code, seed data, tests, and extensive docs.
-
-- Domain service (~1.8k lines): [`backend/src/services/insurance-domain.service.js`](../../backend/src/services/insurance-domain.service.js)
-- Routes (~1.3k lines): [`backend/src/routes/insurance/index.js`](../../backend/src/routes/insurance/index.js)
-- Journey docs: [../user-guide/GENESIS_INSURE_JOURNEY.md](../user-guide/GENESIS_INSURE_JOURNEY.md),
-  [../user-guide/UNDERWRITING_FLOW.md](../user-guide/UNDERWRITING_FLOW.md)
-
-**Maturity: ~85% of a sophisticated life-insurance AMS is already built and production-grade.**
-
 ---
 
-## Q1 — Effort to build one end-to-end CRM process flow
+## Effort to build one end-to-end CRM process flow
 
 Reference flow: *Lead capture → qualify → convert → opportunity pipeline → won*, with auto-assignment,
 an approval gate, notifications, and a dashboard. Nearly all of it is configuration:
@@ -110,48 +95,6 @@ JSON, seed scripts, and any bespoke page, realistically **1–3 days**.
 
 ---
 
-## Q2 — Effort for a sophisticated Insurance CRM
-
-You inherit ~85% of it, so effort splits into three buckets.
-
-### Bucket A — Configure & brand what exists
-
-Tenant setup, products/carriers/rate tables, declaration & document categories, role hierarchy, branding,
-seed data. Pure configuration.
-
-**A life-insurance agency can be live on existing capability in ~2–4 weeks.**
-
-### Bucket B — Close the known ~15% gaps (the real engineering)
-
-These are genuine code projects. AI assistance accelerates each but does not remove third-party gating.
-
-| Gap | Nature | Effort (AI-assisted) |
-| --- | ------ | -------------------- |
-| Real carrier API rating integrations | External APIs; adapter interface scaffolded | 1–3 weeks **per carrier** |
-| Underwriting auto-decision rules engine | Backend logic + UI | 1–2 weeks |
-| Renewal automation (quote → notify → track) | Workflow + scheduled jobs | ~1 week |
-| Regulatory reporting (NAIC / state filings) | Exports, domain-heavy | 1–3 weeks |
-| MIB / medical-records lookups | External integration + compliance | 2–4 weeks |
-| Advanced commission holdback / clawback windows | Backend logic | ~1 week |
-
-### Bucket C — Domain extension beyond life insurance
-
-The schema carries `carrier_type` for life/health/P&C, but full P&C (ISO forms, ratable exposures,
-line-of-business rating) or group/health is net-new modeling: **4–10+ weeks** depending on scope.
-
-### Summary
-
-| Goal | Effort | Code vs config |
-| ---- | ------ | -------------- |
-| One end-to-end CRM process flow | **1–5 days** | Mostly config |
-| Insurance CRM live on current capability | **2–4 weeks** | Mostly config |
-| "Sophisticated" insurance CRM (integrations + automation + compliance) | **2–4 months** (small team) | Config + targeted engineering |
-
-The hard estimates are dominated by **external integrations and regulatory work**, not by core
-CRM/insurance plumbing — which is already done.
-
----
-
 ## Where AI-assisted development (Claude Code) helps
 
 This codebase is unusually well-suited to agentic development: consistent patterns, clean service layers,
@@ -161,10 +104,10 @@ and thorough docs. Strong multiplier for:
   `DataTable` / `StatusTracker` conventions).
 - **Authoring metadata & seed scripts** (objects, fields, workflows, sample data) instead of hand-clicking
   builders.
-- **Writing Bucket-B backend services, tests, and docs** following established conventions.
-- **Wiring integrations** against the existing rating-adapter interface.
+- **Writing backend services, tests, and docs** following established conventions.
+- **Wiring integrations** against the existing integration-connector interface.
 
-**Not** a multiplier for what dominates the hard estimates: external carrier API contracts/credentials,
+**Not** a multiplier for what dominates the hard estimates: external API contracts/credentials,
 regulatory domain decisions, and compliance sign-off — these are gated by third parties and SMEs, not by
 coding speed.
 
@@ -174,12 +117,6 @@ coding speed.
 
 Tracked for prioritization; none block go-live on existing capability:
 
-- Real carrier API connectors (rating adapters simulated today)
-- Underwriting auto-approval rules engine
-- Renewal automation loop
-- Premium-guarantee tracking, lapse-management automation, policy-replacement workflows
-- MIB lookups, NAIC/state regulatory reporting
-- Advanced endorsement premium recalculation
 - Reporting: relation paths beyond 2 hops, two primary sources in one report (Salesforce's *joined
   reports*), filtering on a roll-up total (needs a `HAVING` pass), dashboard-wide cross-filtering,
   historical snapshots ("pipeline as it stood last month"), threshold alerts, and >20K-row reports

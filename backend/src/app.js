@@ -36,12 +36,12 @@ const documentRoutes      = require('./routes/documents/index');
 const platformRoutes      = require('./routes/platform/index');
 const socialMediaRoutes   = require('./routes/social-media/index');
 const leadScoringRoutes   = require('./routes/lead-scoring/index');
-const insuranceRoutes     = require('./routes/insurance/index');
 const settingsRoutes      = require('./routes/settings/index');
 const slaRoutes           = require('./routes/sla/index');
 const reportRoutes        = require('./routes/reports/index');
 const analyticsRoutes     = require('./routes/analytics/index');
 const aiReportRoutes      = require('./routes/ai-reports/index');
+const accessRoutes        = require('./routes/access/index');
 
 // ── Workflow engine & Social media ────────────────────────
 const WorkflowEngineService = require('./services/workflow.service');
@@ -55,6 +55,8 @@ const ReportScheduleService = require('./services/report-schedule.service');
 const EmailSendService      = require('./services/email-send.service');
 const EmailTemplateService  = require('./services/email-template.service');
 const CrmService            = require('./services/crm.service');
+const RecordService         = require('./services/record.service');
+const AssignmentService     = require('./services/assignment.service');
 const CurrencyService       = require('./services/currency.service');
 const { RateLimiter }       = require('./utils/rate-limit');
 const { SchedulerRegistry } = require('./utils/scheduler');
@@ -157,6 +159,9 @@ async function buildApp() {
   // Cross-wire: workflow webhook steps deliver through IntegrationService;
   // inbound webhooks bridge back into the workflow engine.
   workflowEngine.setIntegrationService(integrationService);
+  // create_record steps go through the same record path as the API, so the
+  // new record gets formulas, unit/barrier stamping, assignment and events.
+  workflowEngine.setRecordService(new RecordService(prisma, eventBus, null, new AssignmentService(prisma)));
 
   fastify.decorate('workflowEngine', workflowEngine);
   fastify.decorate('integrationService', integrationService);
@@ -304,12 +309,12 @@ async function buildApp() {
   fastify.register(platformRoutes,       { prefix: '/api/platform' });
   fastify.register(socialMediaRoutes,    { prefix: '/api/social-media' });
   fastify.register(leadScoringRoutes,   { prefix: '/api/lead-scoring' });
-  fastify.register(insuranceRoutes,     { prefix: '/api/insurance' });
   fastify.register(settingsRoutes,      { prefix: '/api/settings' });
   fastify.register(slaRoutes,           { prefix: '/api/sla' });
   fastify.register(reportRoutes,        { prefix: '/api/reports' });
   fastify.register(analyticsRoutes,     { prefix: '/api/analytics' });
   fastify.register(aiReportRoutes,      { prefix: '/api/ai-reports' });
+  fastify.register(accessRoutes,        { prefix: '/api/access' });
 
   // ── Global error handler ────────────────────────────────
   fastify.setErrorHandler((error, request, reply) => {

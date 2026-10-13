@@ -111,10 +111,10 @@ class CrmService {
       select: { id: true, name: true },
     });
     const cache = Object.fromEntries(rows.map(r => [r.name, r.id]));
-    // Alias insurance names → CRM names so convertLead finds the right object IDs
+    // Alias prospect/client object names → CRM names so convertLead finds the right object IDs
     if (!cache.lead    && cache.prospect) cache.lead    = cache.prospect;
     if (!cache.contact && cache.client)   cache.contact = cache.client;
-    // Don't alias account → client — in insurance mode there's no separate
+    // Don't alias account → client — when there's no separate
     // account module, so we skip creating a record anchor for the account.
     // The crm_accounts row is still created (for FK references) but without
     // a record in the client module that would show as a duplicate with "--".

@@ -1,5 +1,10 @@
 # Genesis CRM — Product Roadmap
 
+> **Note (2026-10-13):** the insurance domain (quotes, applications, policies,
+> underwriting, claims, commissions and their pages, APIs and tables) was removed
+> from the product. Genesis is positioned as a CRM; ratings and inventories
+> below are historical where they predate that change.
+
 ---
 
 ## Current Status (April 2026)
@@ -7,11 +12,10 @@
 ### Genesis CRM Rating: 8.8/10
 
 Compared against industry-leading CRM platforms (Salesforce, HubSpot,
-Microsoft Dynamics 365, Zoho CRM, Pipedrive) and insurance AMS
-platforms (AgencyBloc AMS+, Applied Epic, Guidewire InsuranceSuite):
+Microsoft Dynamics 365, Zoho CRM, Pipedrive):
 
 - `8.8/10` against best CRM providers — **44 of 47 core modules
-  covered (~94%)** with production-depth insurance AMS vertical
+  covered (~94%)**
 - `9.5/10` as a customizable internal CRM platform
 
 > **Note (July 2026):** the ratings above are the product/positioning
@@ -35,7 +39,7 @@ Dynamics 365, Zoho CRM, Pipedrive). Findings are grounded in the shipped code
 | Lens | Independent rating |
 | ---- | ------------------ |
 | **As a head-to-head commercial CRM competitor** | **~6.0 / 10** |
-| **As a customizable low-code internal CRM + insurance AMS platform** | **~8.0 / 10** |
+| **As a customizable low-code internal CRM platform** | **~8.0 / 10** |
 
 The engine architecture (metadata → dynamic records → event-driven workflows →
 RBAC scoping → reporting) genuinely mirrors the *core* of Salesforce/Zoho, and
@@ -52,15 +56,14 @@ Scored 0–10 where 10 = parity with the best of the top 5.
 | Low-code / metadata platform | 8 | Real object/field/form/pipeline/dashboard/wizard builders with working drag-drop + verified persistence. Rivals the *core* of Zoho Creator / SF Object Manager. |
 | Core data model & records | 7 | Sophisticated hybrid relational + typed-EAV storage, soft-delete/trash, concurrency-hardened. **Gap: metadata validations are not enforced server-side on write** — integrity leans on the client. |
 | Workflow automation | 7 | Genuine event-driven engine: 10 step types, delays, human approvals, multi-pod atomic scheduling. Gap: linear only (no visual branching graph / formula language); step config is raw JSON. |
-| Reporting & charts | 8.5 | **Self-service by design** — a non-technical user builds, shares, schedules and dashboards a report unaided (template gallery, stepped builder, AND/OR filters, value bands, no-code calculated measures, totals, period-over-period, drill-down, folders, emailed subscriptions, CSV/Excel/PDF). At parity with SF/HubSpot/Zoho/D365/Pipedrive on the self-service surface, plus insurance-native sources they lack. Remaining gaps: relation paths capped at 2 hops, one primary source per report, no historical snapshots or threshold alerts, and in-JS aggregation caps it at ~20K rows — SMB scale, not warehouse. See [REPORTING.md](../developer-guide/REPORTING.md). |
-| Sales core (pipeline, quotes, forecasting, lead scoring) | 6.5 | Kanban with persisted drag-to-move, full quote/line-item UI, weighted forecast + quotas. Forecasting is basic (no scenario / commit-vs-best-case). |
-| Insurance AMS vertical | 8 | **The real differentiator.** Legitimate actuarial math (equivalence-principle premiums, cash-value/COI/IRR), full lifecycle (underwriting → claims → commissions → billing). Honest that mortality tables are simplified & carrier APIs stubbed. |
+| Reporting & charts | 8.5 | **Self-service by design** — a non-technical user builds, shares, schedules and dashboards a report unaided (template gallery, stepped builder, AND/OR filters, value bands, no-code calculated measures, totals, period-over-period, drill-down, folders, emailed subscriptions, CSV/Excel/PDF). At parity with SF/HubSpot/Zoho/D365/Pipedrive on the self-service surface. Remaining gaps: relation paths capped at 2 hops, one primary source per report, no historical snapshots or threshold alerts, and in-JS aggregation caps it at ~20K rows — SMB scale, not warehouse. See [REPORTING.md](../developer-guide/REPORTING.md). |
+| Sales core (pipeline, forecasting, lead scoring) | 6.5 | Kanban with persisted drag-to-move, weighted forecast + quotas. Forecasting is basic (no scenario / commit-vs-best-case). |
 | Integrations / API | 5 | Framework is excellent (SSRF-guarded delivery, HMAC, idempotency/replay defense). But no marketplace, no OAuth connectors, **every external connector is a stub**, retries are in-process (no durable queue). |
 | Communication (email / notifications) | 4.5 | Real SMTP send (nodemailer) + record-aware merge fields. But SMTP-only (no SendGrid/SES API), no open/click tracking, no campaigns/drip, notifications are **in-app only**. |
 | Marketing & social | 3.5 | Social engine is real (Sept 2026): server-side scheduled publishing with failure notifications, per-account sync cadence, token refresh, replies posted to the channel, rule-based inbox routing, keyword-driven priority, mention → lead, campaign roll-ups, `social.*` events. **Connectors are still simulation only** (contract + OAuth wired). No email marketing-campaign engine. |
 | Search | 4 | Correct, permission-scoped global search — but SQL `LIKE %q%`, no ranking or fuzzy matching. (Exception: the DMS has a real MySQL **FULLTEXT** in-document search over `documents(original_filename, description, content_text)`; the gap is global CRM search, not documents.) |
 | Security & compliance | 4.5 | Sound crypto (bcrypt, hashed single-use reset tokens, JWT) and a solid tenant-isolation design. But **no app-level rate limiting, no login brute-force protection, no helmet, request validation largely absent, tenant filter fails *open*** when context is missing. No SOC 2. |
-| Scale / production-readiness | 4 | Single-process in-memory event bus, no job queue, in-memory illustration/quote caches, no CI pipeline. Fine for single-pod SMB; not multi-region SaaS. |
+| Scale / production-readiness | 4 | Single-process in-memory event bus, no job queue, no CI pipeline. Fine for single-pod SMB; not multi-region SaaS. |
 | AI / intelligence | 1 | Essentially none. All five benchmark CRMs ship AI copilots in 2026; Genesis has rule-based lead scoring but no AI layer. |
 | Native mobile apps | 0–1 | None. Responsive web only. |
 
@@ -88,7 +91,7 @@ scaffolding:
 - **Self-service reporting engine** — every control is server-enumerated, so the
   builder cannot produce a config the engine rejects: nested AND/OR filters with
   real-data value pick-lists, relative-date periods, cross-object fields up to two hops
-  (`Agent ▸ Branch`), fan-out-free child roll-ups (`Claims ▸ Total paid`), named value bands, dropdown-assembled calculated measures (no
+  (`Owner ▸ Branch`), fan-out-free child roll-ups, named value bands, dropdown-assembled calculated measures (no
   formula parser, nothing `eval`d), truthful totals, period-over-period comparison,
   and drill-down to the underlying records. **Any saved report is also a dashboard
   widget**, which is what removes the developer from the loop. 26-report starter
@@ -102,9 +105,6 @@ scaffolding:
 - **SLA engine** (`sla.service.js`) — business-hours-aware calendar math,
   pause/resume with paused-time credit, warning/breach thresholds, and real
   escalations. Richer than the base SLA tiers of Zoho/HubSpot.
-- **Insurance actuarial engine** (`calculation-engine.service.js`) — real
-  equivalence-principle premium math, per-year survival probabilities,
-  cash-value/surrender/COI projections, and a Newton-Raphson IRR estimator.
 - **No-code builders** — Form, Dashboard, Pipeline/Kanban, and Wizard builders
   are real drag-and-drop with verified persistence back to the API; the
   builder → runtime loop is genuinely closed.
@@ -124,14 +124,13 @@ Prioritised by rating impact. These complement the
 | 2 | **No AI layer** — biggest 2026 gap vs. the top 5, which are all AI-first. Lead scoring is rule-based only. | No ML/AI services | P0 |
 | 3 | **No live social connector ships** — every platform resolves to `SimulationConnector`. The engine around it is complete as of Sept 2026 (scheduled publishing, sync cadence, token refresh, OAuth callback, replies, routing, lead capture), so a live channel is now a per-platform HTTP implementation plus app review — see [SOCIAL_ENGINE.md](../developer-guide/SOCIAL_ENGINE.md#connector-contract-and-oauth). | `connectors/social/index.js`, `simulation.js` | P1 |
 | 4 | **Partly closed Sept 2026.** Login / forgot / reset are rate-limited per account and per IP (Redis-backed, in-memory fallback) and API security headers are set (`helmet`-equivalent). Still open: a general per-token API rate limit for authenticated routes. | `utils/rate-limit.js`, `app.js` | P2 |
-| 5 | **Request-body validation largely absent** outside `auth`/`settings` — most routes (incl. insurance) pass `req.body` straight into services. | `routes/insurance/index.js` | P1 |
+| 5 | **Request-body validation largely absent** outside `auth`/`settings` — most routes pass `req.body` straight into services. | `routes/` | P1 |
 | 6 | **Tenant context now reaches every authenticated handler** (Sept 2026 — `authenticate` installs it synchronously; before this every request ran unscoped). Still open: the extension is deny-by-omission for *unauthenticated* code paths (public share/sign routes scope manually), and raw-SQL paths bypass it. | `middleware/authenticate.js`, `tenant-scope.js` | P2 |
 | 7 | **No durable job queue** — workflow `delay`/`approval` and webhook retries are in-process; in-flight work is lost on a pod crash. | `app.js` schedulers, `integration.service.js` | P1 |
 | 8 | **Email is SMTP-only** — no transactional-provider API (SendGrid/SES), no open/click tracking, no campaigns/drip; notifications are **in-app only** (no email/push fan-out on escalation). | `email-send.service.js`, `notification.service.js` | P1 |
 | 9 | **Search is SQL `LIKE %q%`** — no full-text index, ranking, or fuzzy/typo tolerance. | `search.service.js` | P2 |
 | 10 | **No CI/CD pipeline** — 323 tests pass locally but no automated gate; test breadth is light on security/isolation adversarial cases. | repo (no CI config) | P2 |
-| 11 | **Carrier-API rating is a stub** — `CarrierApiAdapter` throws and falls back to the internal engine (honestly marked `internal_fallback`); mortality table is a simplified unisex approximation, not the full CSO table. | `rating-adapter.js`, `calculation-engine.service.js` | P2 |
-| 12 | ~~Chart-type wiring bug~~ — fixed Aug 2026; charts additionally gained per-widget appearance (palette, legend, number format, sort/top-N, goal line, axis titles) and tenant palettes in Sept 2026. | `ChartRenderer.jsx`, `utils/chart.js` | Done |
+| 11 | ~~Chart-type wiring bug~~ — fixed Aug 2026; charts additionally gained per-widget appearance (palette, legend, number format, sort/top-N, goal line, axis titles) and tenant palettes in Sept 2026. | `ChartRenderer.jsx`, `utils/chart.js` | Done |
 
 ### Fastest Ratings Movers
 
@@ -166,12 +165,10 @@ scoping roadmap effort and positioning.
 
 ### Platform Capability Summary
 
-Genesis is a multi-tenant, low-code CRM platform with a deep insurance vertical:
+Genesis is a multi-tenant, low-code CRM platform:
 
 - **Metadata-driven builders** — modules, objects, fields, forms, pipelines, dashboards, wizards
 - **CRM core** — leads → contacts → accounts → opportunities → cases
-- **Insurance suite** — policies, applications, underwriting, claims, commissions,
-  endorsements, billing, quotes, rating adapters, carrier products
 - **Automation** — workflow engine, assignment-rule engine, lead scoring
 - **Engagement** — social media management (multi-platform), email + templates, notifications, reminders
 - **Operations** — documents, forecasting, cross-object search, integrations (inbound/outbound)
@@ -179,7 +176,6 @@ Genesis is a multi-tenant, low-code CRM platform with a deep insurance vertical:
 
 ### Commercial Strengths (positioning)
 
-- Vertical depth in insurance (sticky, high-value AMS workflows) layered on a horizontal CRM core
 - Multi-tenant SaaS architecture with row-level tenant isolation
 - Low-code builder as an extensibility moat — customers self-serve new objects, forms, and workflows without code
 - Strong automated-test coverage and unusually thorough documentation
@@ -226,7 +222,7 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
 
 - Metadata-driven object, field, form, dashboard, workflow, pipeline, and wizard architecture
 - **Category-driven sidebar navigation** — modules grouped by `category`
-  (crm, insurance, settings) with section headers rendered dynamically;
+  (crm, settings) with section headers rendered dynamically;
   no hardcoded navigation
 - Runtime UI for record creation, editing, search, pipeline movement, activity tracking, and task management
 - Role-aware record visibility and task/activity permissions (two-tier: metadata + operational scope)
@@ -242,11 +238,6 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
 - **Cross-object global search** — all five CRM relational tables + custom objects searched in parallel
 - **Permission management** — `ui_permissions` + `operational_permissions` tables, fully enforced server-side
 - **Reusable UI component library** — `ObjectPicker`, `EmployeePicker`, `EmployeeMultiPicker`, hooks
-- **Quote line item management** — full CRUD UI for adding/editing/removing
-  line items from quotes, with product picker integration
-- **Full-depth quote form** — account/contact linking, discount % and fixed
-  discount, multi-currency selector, collapsible billing/shipping addresses;
-  detail view shows account, contact, currency, and discount when present
 - **Lead scoring product surface** — backend API routes (10 endpoints),
   builder rules page, runtime analytics/rankings page, sidebar navigation,
   **clickable score breakdown drill-down** showing matched rules with type,
@@ -257,16 +248,9 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
   SSRF protection, and an inbound-webhook → workflow bridge (`event_map`)
 - **Integration health dashboard** — cross-integration health overview,
   per-integration stats, execution history, retry failed runs
-- **End-to-end inter-module connectivity** — one-click action buttons
-  carry data through the full insurance journey: Lead → Prospect → Client →
-  Quote Engine → Application → Underwriting → Policy → Claims, with
-  auto-created commissions at policy issuance
 - **Kanban drag-and-drop automation** — pipeline stage changes via
-  Kanban drag-and-drop auto-trigger insurance domain actions (lead
-  conversion, UW case creation, status sync) with frontend navigation
-- **CRM Record + EAV auto-creation** — insurance domain objects
-  (UW cases, policies, commissions) auto-create CRM Record anchors
-  with typed EAV field values so they appear in module list views
+  Kanban drag-and-drop auto-trigger lead conversion (Lead → Prospect →
+  Client) with frontend navigation
 - Working frontend build, 0 lint errors, 0 lint warnings
 - Frontend Vitest test suite: 34 tests across 6 suites
 - Backend Jest test suite: 289 tests across 20 suites
@@ -282,7 +266,7 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
 | Phase 3 | Complete | RevOps and Data Quality | 5.5 → 6.0 |
 | Phase 4 | Complete | Integrations, Governance, Credibility | 6.0 → 6.5 |
 | Phase 5 | Complete | Essential CRM Features | 6.5 → 7.0 |
-| Phase 6 | Complete | Insurance Domain & Specialized CRM | 7.0 → 8.0 |
+| Phase 6 | Complete | Specialized CRM | 7.0 → 8.0 |
 | Phase 7 | Planned | Conversational & Revenue Completion | 7.5 → 8.5 |
 | Phase 8 | Planned | Intelligence & Service Excellence | 8.5 → 9.0 |
 | Phase 9 | Planned | Extended Platform | 9.0 → 9.5+ |
@@ -387,14 +371,14 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
 
 ### Phase 5 — Essential CRM Features
 
-Added 9 new database models:
+Added 7 new database models:
 
-- `Product`, `Quote`, `QuoteLineItem`, `EmailTemplate`, `EmailLog`, `Document`,
+- `Product`, `EmailTemplate`, `EmailLog`, `Document`,
   `LeadScoringRule`, `LeadScore`
 
-Added 7 comprehensive service classes:
+Added 6 comprehensive service classes:
 
-- ProductService, QuoteService, EmailTemplateService, EmailSendService,
+- ProductService, EmailTemplateService, EmailSendService,
   DocumentService, LeadScoringService
 
 Lead scoring fully aligned with Prisma schema (`field_value`,
@@ -405,7 +389,6 @@ include-based hydration, and analytics.
 
 Productized features (v2.4.0):
 
-- Quote line item management UI (add/edit/remove from detail view)
 - Lead scoring: backend routes (10 endpoints), builder rules page,
   runtime analytics page
 - Integration health dashboard with retry capability
@@ -431,12 +414,12 @@ Genesis CRM has been elevated to enterprise-grade status with 8 major enterprise
 
 ---
 
-## Phase 6 — Insurance Domain & Specialized CRM (Complete)
+## Phase 6 — Specialized CRM (Complete)
 
 ### Objective
 
 Transform Genesis from "platform that can do CRM" to "purpose-built
-insurance CRM/AMS" while preserving metadata flexibility.
+CRM" while preserving metadata flexibility.
 
 ### Key Deliverables
 
@@ -473,39 +456,10 @@ insurance CRM/AMS" while preserving metadata flexibility.
 5. **Specialized CRM UI Components** (Partially Implemented)
    - Lead management interface with scoring visualization — **done**: score
      breakdown drill-down with rule-by-rule detail, per-lead recalculate
-   - Quote form with full CRM depth — **done**: account/contact linking,
-     discount %, fixed discount, currency, billing/shipping addresses
    - Product catalog with search and filtering
    - Pipeline view with forecasting dashboard
 
-6. **Insurance Domain / Agency Management System** (Implemented)
-   - **Calculation Engine** — mock actuarial engine with 2017 CSO
-     mortality tables, 6 product types, 9 riders, frequency multipliers,
-     cash value and surrender value projections
-   - **Insurance Domain Service** — full policy lifecycle
-     (pending/active/lapsed/matured/surrendered), application pipeline,
-     underwriting with requirements tracking, claims workflow with
-     timeline events, agent commission tracking with clawbacks
-   - **Template Engine** — 5 professional document templates (Quote
-     Summary, Policy Illustration, Application Form, Comparison Report,
-     Claims Summary) with HTML escaping and Chrome headless PDF
-     generation
-   - **8 Insurance Pages** — InsuranceQuotePage (interactive calculator,
-     PDF viewer), ApplicationsPage (pipeline bar), DeclarationPage
-     (declaration acceptance with e-signature tracking),
-     DocumentCollectionPage (document upload with review workflow),
-     PoliciesPage (dashboard stats), UnderwritingPage (decision modal),
-     ClaimsPage (timeline), CommissionsPage (clawback modal)
-   - **11 Insurance Database Tables** — carriers, products, policies,
-     beneficiaries, status history, applications, underwriting cases,
-     requirements, claims, events, commissions
-   - **Input validation** on all create endpoints, shared error handler,
-     tenant context enforcement
-   - **Industry email templates** for 11 verticals (tech, healthcare,
-     finance, insurance, real estate, etc.)
-   - Comprehensive seed data with EAV field values for all record types
-
-7. **Web-to-Lead Forms** (Planned)
+6. **Web-to-Lead Forms** (Planned)
    - External form builder with field mapping
    - Lead routing using existing assignment engine
    - Source tracking and attribution
@@ -514,7 +468,7 @@ insurance CRM/AMS" while preserving metadata flexibility.
 
 ## Industry Module Coverage (vs. Salesforce, HubSpot, Zoho, Dynamics 365, Freshsales)
 
-### Covered Modules (34/47 — ~85%)
+### Covered Modules (33/47 — ~70%)
 
 | # | Module | Evidence |
 | --- | --- | --- |
@@ -526,40 +480,39 @@ insurance CRM/AMS" while preserving metadata flexibility.
 | 6 | Task & Activity Tracking | `Task`, `Activity`, `ActivityTimeline` |
 | 7 | Email Integration | `EmailTemplate`, `EmailLog`, `EmailComposeModal`, `email-send.service` |
 | 8 | Email Campaigns / Marketing | `EmailCampaign`, `CampaignRecipient`, `CampaignEmailSend`, `EmailList`, `EmailClickEvent`, `EmailUnsubscribe` |
-| 9 | Quotes & CPQ | `Quote`, `QuoteLineItem`, `Product`, `QuotesPage` |
-| 10 | Product Catalog | `Product`, `ProductsPage` |
-| 11 | Sales Forecasting | `Quota`, `ForecastPage`, `forecast.service` |
-| 12 | Dashboards & Analytics | `UiDashboard`, `UiChart`, `UiDashboardWidget`, `CustomReport` (report-backed widgets), `analytics.service` dataset catalogue. The `KpiDefinition` / `KpiValue` / `AnalyticDashboard` stack was pruned before use — KPI figures are reports with the `kpi` visualization. See [DASHBOARD_ANALYTICS.md](../developer-guide/DASHBOARD_ANALYTICS.md) |
-| 13 | Workflow Automation | `UiWorkflow`, `UiWorkflowStep`, `WorkflowPendingStep` (conditions, delays, approvals, webhooks) |
-| 14 | Reports (self-service) | `CustomReport`, `ReportExecution`, `ReportFolder`, `ReportSubscription`, `ReportFavorite`; `report-registry`, `report.service`, `report-templates` (26 starters), `report-library.service`, `report-schedule.service`; `ReportsPage`, `ReportBuilderPage`, `components/reports/*`. Template gallery, stepped builder, AND/OR filter trees, value bands, no-code calculated measures, totals/subtotals, period-over-period, conditional formatting, drill-down, folders/favourites, visibility (private/team/roles/everyone) with role-clamped data scope, emailed subscriptions, CSV/Excel/PDF. **Any saved report is a dashboard widget.** See [REPORTING.md](../developer-guide/REPORTING.md) |
-| 15 | Document Management System (DMS) | Standalone module — `Document`, `DocumentFolder`, `DocumentShareLink`, `DocumentViewEvent`, `DocumentTemplate`, `DocumentSignatureRequest`, `DocumentSignatory`, `UiDocumentCategory`, `UiDocumentChecklist`; `DocumentsPage`, `DocumentBuilderPage`, `SharedDocumentPage`, `SignDocumentPage`, `DocumentPanel`. Pluggable storage (local/S3/Azure/GCS), dedup+versioning, folders, in-document full-text search, builder (categories/checklists), merge templates, tracked public sharing + analytics, **native e-signature** with certificate. See [DOCUMENT_MANAGEMENT.md](../developer-guide/DOCUMENT_MANAGEMENT.md) |
-| 16 | Role-Based Access Control | `Role`, `UiPermission`, `OperationalPermission`, `PermissionsBuilderPage` |
-| 17 | Case / Ticket Management | `CrmCase`, `CustomerCase`, `CaseMessage`, `CaseEscalation` |
-| 18 | Knowledge Base | `KnowledgeArticle`, `KnowledgeCategory`, `ArticleFeedback` |
-| 19 | Customer Self-Service Portal | `CustomerPortalUser`, `PortalSession`, `ServiceRequest` |
-| 20 | Territory Management | `Territory`, `TerritoryAssignment`, `TerritoryMember`, `TerritoryRule`, `TerritoryPerformance` |
-| 21 | Sales Team Management | `SalesTeam`, `SalesTeamMember`, `TeamMeeting`, `TeamPerformance` |
-| 22 | Calendar & Meeting Management | `CalendarEvent`, `CalendarAttendee`, `MeetingNote`, `MeetingRoom`, `RoomBooking` |
-| 23 | Contract Management | `Contract`, `ContractTemplate`, `ContractApproval`, `ContractSignature`, `ContractMilestone`, `ContractAmendment`, `ContractRenewal` |
-| 24 | Partner / Channel Management | `Partner`, `PartnerContact`, `PartnerOpportunity`, `PartnerCertification`, `PartnerPortalUser`, `ChannelConflict` |
-| 25 | Social Media Integration | `SocialMediaAccount`, `SocialMediaPost`, `SocialMediaMention`, `SocialMediaCampaign`, `SocialMediaLead`, `SocialListeningKeyword`, `CompetitorSocialActivity` — **Full-stack: service, API, control panel** |
-| 26 | Data Import | `ImportJob`, `ImportPage` |
-| 27 | Lead Assignment / Round Robin | `AssignmentRule`, `RoundRobinState`, `AssignmentLog` |
-| 28 | Notifications | `Notification`, `notification.service` |
-| 29 | Audit Logs | `AuditLog`, `PlatformAuditLog`, `AuditLogPage` — **durable & general**: every pipeline-data action (record CRUD/stage/delete/restore/purge, single + bulk) and pipeline-config action is logged to the acting user; `record_id` FK is `SET NULL` so the trail survives hard-deletes. Read per-record and per-pipeline (`/pipelines/:id/audit`) |
-| 30 | Multi-Tenancy / SaaS Platform | `Tenant`, `TenantConfig`, `SubscriptionPlan`, `FeatureFlag` |
-| 31 | Form Builder (Low-Code) | `UiForm`, `FormBuilder`, `FormRenderer`, `WizardBuilder` |
-| 32 | Integration Framework | `Integration`, `IntegrationLog`, `IntegrationBuilderPage` |
-| 33 | Search | `search.service`, full-text index support |
-| 34 | Customer Feedback | `CustomerFeedback`, `ArticleFeedback` |
-| 35 | Record Trash & Recovery | Soft-delete for records (`records.deleted_at`), admin-only Trash with restore / permanent-delete (`RecordsTrashPage`, `/builder/trash/records`), per-pipeline soft/hard **Deletion behaviour** toggle (`ui_pipelines.config.delete_mode`) |
+| 9 | Product Catalog | `Product`, `ProductsPage` |
+| 10 | Sales Forecasting | `Quota`, `ForecastPage`, `forecast.service` |
+| 11 | Dashboards & Analytics | `UiDashboard`, `UiChart`, `UiDashboardWidget`, `CustomReport` (report-backed widgets), `analytics.service` dataset catalogue. The `KpiDefinition` / `KpiValue` / `AnalyticDashboard` stack was pruned before use — KPI figures are reports with the `kpi` visualization. See [DASHBOARD_ANALYTICS.md](../developer-guide/DASHBOARD_ANALYTICS.md) |
+| 12 | Workflow Automation | `UiWorkflow`, `UiWorkflowStep`, `WorkflowPendingStep` (conditions, delays, approvals, webhooks) |
+| 13 | Reports (self-service) | `CustomReport`, `ReportExecution`, `ReportFolder`, `ReportSubscription`, `ReportFavorite`; `report-registry`, `report.service`, `report-templates` (26 starters), `report-library.service`, `report-schedule.service`; `ReportsPage`, `ReportBuilderPage`, `components/reports/*`. Template gallery, stepped builder, AND/OR filter trees, value bands, no-code calculated measures, totals/subtotals, period-over-period, conditional formatting, drill-down, folders/favourites, visibility (private/team/roles/everyone) with role-clamped data scope, emailed subscriptions, CSV/Excel/PDF. **Any saved report is a dashboard widget.** See [REPORTING.md](../developer-guide/REPORTING.md) |
+| 14 | Document Management System (DMS) | Standalone module — `Document`, `DocumentFolder`, `DocumentShareLink`, `DocumentViewEvent`, `DocumentTemplate`, `DocumentSignatureRequest`, `DocumentSignatory`, `UiDocumentCategory`, `UiDocumentChecklist`; `DocumentsPage`, `DocumentBuilderPage`, `SharedDocumentPage`, `SignDocumentPage`, `DocumentPanel`. Pluggable storage (local/S3/Azure/GCS), dedup+versioning, folders, in-document full-text search, builder (categories/checklists), merge templates, tracked public sharing + analytics, **native e-signature** with certificate. See [DOCUMENT_MANAGEMENT.md](../developer-guide/DOCUMENT_MANAGEMENT.md) |
+| 15 | Role-Based Access Control | `Role`, `UiPermission`, `OperationalPermission`, `PermissionsBuilderPage` |
+| 16 | Case / Ticket Management | `CrmCase`, `CustomerCase`, `CaseMessage`, `CaseEscalation` |
+| 17 | Knowledge Base | `KnowledgeArticle`, `KnowledgeCategory`, `ArticleFeedback` |
+| 18 | Customer Self-Service Portal | `CustomerPortalUser`, `PortalSession`, `ServiceRequest` |
+| 19 | Territory Management | `Territory`, `TerritoryAssignment`, `TerritoryMember`, `TerritoryRule`, `TerritoryPerformance` |
+| 20 | Sales Team Management | `SalesTeam`, `SalesTeamMember`, `TeamMeeting`, `TeamPerformance` |
+| 21 | Calendar & Meeting Management | `CalendarEvent`, `CalendarAttendee`, `MeetingNote`, `MeetingRoom`, `RoomBooking` |
+| 22 | Contract Management | `Contract`, `ContractTemplate`, `ContractApproval`, `ContractSignature`, `ContractMilestone`, `ContractAmendment`, `ContractRenewal` |
+| 23 | Partner / Channel Management | `Partner`, `PartnerContact`, `PartnerOpportunity`, `PartnerCertification`, `PartnerPortalUser`, `ChannelConflict` |
+| 24 | Social Media Integration | `SocialMediaAccount`, `SocialMediaPost`, `SocialMediaMention`, `SocialMediaCampaign`, `SocialMediaLead`, `SocialListeningKeyword`, `CompetitorSocialActivity` — **Full-stack: service, API, control panel** |
+| 25 | Data Import | `ImportJob`, `ImportPage` |
+| 26 | Lead Assignment / Round Robin | `AssignmentRule`, `RoundRobinState`, `AssignmentLog` |
+| 27 | Notifications | `Notification`, `notification.service` |
+| 28 | Audit Logs | `AuditLog`, `PlatformAuditLog`, `AuditLogPage` — **durable & general**: every pipeline-data action (record CRUD/stage/delete/restore/purge, single + bulk) and pipeline-config action is logged to the acting user; `record_id` FK is `SET NULL` so the trail survives hard-deletes. Read per-record and per-pipeline (`/pipelines/:id/audit`) |
+| 29 | Multi-Tenancy / SaaS Platform | `Tenant`, `TenantConfig`, `SubscriptionPlan`, `FeatureFlag` |
+| 30 | Form Builder (Low-Code) | `UiForm`, `FormBuilder`, `FormRenderer`, `WizardBuilder` |
+| 31 | Integration Framework | `Integration`, `IntegrationLog`, `IntegrationBuilderPage` |
+| 32 | Search | `search.service`, full-text index support |
+| 33 | Customer Feedback | `CustomerFeedback`, `ArticleFeedback` |
+| 34 | Record Trash & Recovery | Soft-delete for records (`records.deleted_at`), admin-only Trash with restore / permanent-delete (`RecordsTrashPage`, `/builder/trash/records`), per-pipeline soft/hard **Deletion behaviour** toggle (`ui_pipelines.config.delete_mode`) |
 
 ### Missing Modules (13 gaps — needed for 9.0+)
 
 | # | Module | Offered By | Gap Details | Priority |
 | --- | --- | --- | --- | --- |
 | 1 | **Live Chat / Chatbot** | Salesforce, HubSpot, Zoho, Freshsales | No models or services for real-time chat, chatbots, or conversational AI. Table stakes for modern CRMs. | P0 |
-| 2 | **Invoicing & Billing** | Zoho, Freshsales, Dynamics | Quotes exist but no `Invoice`, `Payment`, or billing lifecycle models. Breaks the quote-to-cash cycle. | P0 |
+| 2 | **Invoicing & Billing** | Zoho, Freshsales, Dynamics | No quote, `Invoice`, `Payment`, or billing lifecycle models. No quote-to-cash cycle. | P0 |
 | 3 | **Full Marketing Automation** | HubSpot, Salesforce Pardot, Zoho | Email campaigns exist but missing: landing pages, A/B testing, multi-channel journeys (SMS, WhatsApp), marketing attribution, web forms with tracking. | P0 |
 | 4 | **Web Forms / Form-to-Lead** | HubSpot, Salesforce, Zoho | No public-facing web form capture that creates leads from external websites. | P1 |
 | 5 | **Telephony / CTI Integration** | Salesforce, Freshsales, Dynamics | No click-to-call, VoIP, IVR, or CTI adapter framework (call tracking is via the Activity Timeline, type: call). | P1 |
@@ -579,7 +532,7 @@ insurance CRM/AMS" while preserving metadata flexibility.
 | Gap | Impact |
 | --- | ------ |
 | Live Chat / Chatbot Missing | Every major CRM competitor ships real-time chat; absence is immediately visible to evaluators |
-| Invoicing & Billing Missing | Breaks the quote-to-cash cycle at the quote stage; users must leave Genesis to complete deals |
+| Invoicing & Billing Missing | No quote-to-cash cycle; users must leave Genesis to complete deals |
 | Full Marketing Automation Missing | Email campaigns are a start, but multi-channel journeys, landing pages, and attribution are expected |
 | Mobile Gap | Responsive web only, no native mobile apps |
 | Lead Capture Gap | No web-to-lead forms or external lead routing |
@@ -600,7 +553,7 @@ Close the three highest-impact gaps that separate Genesis from full-featured CRM
    - Models: `ChatSession`, `ChatMessage`, `ChatBot`, `ChatBotFlow`, `ChatBotNode`
 
 2. **Invoicing & Billing**
-   - Invoice generation from Quotes (one-click conversion)
+   - Invoice generation from opportunities (one-click conversion)
    - Payment tracking (partial payments, payment plans)
    - Recurring invoice schedules
    - Integration hooks for payment gateways (Stripe, Razorpay)
@@ -738,11 +691,11 @@ a new layer over existing code rather than net-new subsystems.
 
 **Model strategy.** Build on the Anthropic Claude API via the official SDK,
 behind a provider abstraction so the model tier is a per-task choice (mirroring
-the existing social/rating connector pattern):
+the existing social connector pattern):
 
 | Tier | Model | Use for |
 | ---- | ----- | ------- |
-| Frontier reasoning | `claude-opus-4-8` | Underwriting assist, deal strategy, NL→report, agentic copilot |
+| Frontier reasoning | `claude-opus-4-8` | Deal strategy, NL→report, agentic copilot |
 | Balanced / high-volume | `claude-sonnet-5` | Email drafting, summaries, case triage, most production traffic |
 | Fast / cheap | `claude-haiku-4-5` | Classification, routing, sentiment, dedup scoring, tagging |
 | Hardest long-horizon | `claude-fable-5` | Multi-step research/analysis agents (reserve for high-value runs) |
@@ -790,16 +743,7 @@ control cost.
 | **Field auto-fill & normalization** — infer/clean fields on create (address, industry, title) | `record.service` (typed EAV) | Haiku/Sonnet |
 | **AI enrichment adapter** — an enrichment connector that uses an LLM to structure scraped/public data | Data Enrichment (above), `integration.service` | Sonnet |
 
-### E. Insurance-Vertical AI (the differentiator)
-
-| Capability | Backed by | Model tier |
-| ---------- | --------- | ---------- |
-| **Underwriting assistant** — summarize application + requirements, flag risks, suggest a decision (human-in-the-loop) | `insurance-domain.service`, `calculation-engine.service` | Opus |
-| **Claims triage & fraud signals** — categorize/prioritize claims, surface anomalies on the timeline | `insurance-domain.service`, `CrmCase` | Sonnet |
-| **Quote explanation** — plain-language "why this premium" over the actuarial output; delivered as a WhatsApp/email note or PDF | `quote.service`, `calculation-engine.service`, `document.service` | Sonnet |
-| **Policy/document Q&A (RAG)** — ask questions against policy PDFs and carrier docs | `document.service`, `template-engine.service` | Opus + retrieval |
-
-### F. Service, Analytics & Ops
+### E. Service, Analytics & Ops
 
 | Capability | Backed by | Model tier |
 | ---------- | --------- | ---------- |
@@ -836,8 +780,6 @@ A shared `ai.service.js` (peer of the other backend services) should own:
    (replaces finding #2's rule-only scoring).
 3. **Conversational** — the tool-use copilot (web + WhatsApp) over the service
    layer, under RBAC/tenant scope.
-4. **Vertical depth** — underwriting assist, claims triage, policy Q&A — the
-   features competitors can't easily match.
 
 ### Key Risks
 
@@ -847,7 +789,7 @@ A shared `ai.service.js` (peer of the other backend services) should own:
   policy given the shared RDS instance; scrub/redact and respect consent flags.
 - **Cost & latency** — meter usage per tenant, cache aggressively, and route
   cheap tasks to Haiku; reserve Opus/Fable for high-value reasoning.
-- **Trust & correctness** — human-in-the-loop on underwriting/claims and any
+- **Trust & correctness** — human-in-the-loop on any
   write action; measure with an eval harness before enabling autonomy.
 
 ---
@@ -856,22 +798,21 @@ A shared `ai.service.js` (peer of the other backend services) should own:
 
 > **Status: proposed / not built.** This section is architect-level guidance on
 > *how, when, and why* Genesis should capture a client's **life events** (marriage,
-> new baby, home purchase, job change, retirement, bereavement, …). For an
-> **insurance** CRM these events *are* the buying and re-underwriting triggers, so
+> new baby, home purchase, job change, retirement, bereavement, …). For a
+> relationship-led CRM these events *are* the buying triggers, so
 > capturing them is one of the highest-ROI additions available. Like the AI catalog
 > above, it is deliberately mapped to the services and data Genesis **already** has,
 > so most of it is a thin layer over existing code rather than a net-new subsystem.
 
 ### Why — the business case
 
-Life events are the moments a client's **risk profile and coverage needs change** —
-the single highest-converting trigger set in insurance.
+Life events are the moments a client's **needs change** —
+among the highest-converting trigger sets in relationship-led selling.
 
 | Reason | What it buys |
 | ------ | ------------ |
-| **Cross-sell / up-sell timing** | New baby → life + health rider; new home → property + umbrella; retirement → annuity. Catch the need before a competitor does. |
-| **Retention & loyalty** | A timely, relevant "let's make sure that's covered" reads as service, not selling; generic mistimed mail reads as spam. |
-| **Risk re-underwriting** | Marriage, teen driver, new business all change the risk the carrier holds; capturing them keeps policies accurate and compliant. |
+| **Cross-sell / up-sell timing** | New home, new business, retirement — each opens a need for a different product. Catch the need before a competitor does. |
+| **Retention & loyalty** | A timely, relevant check-in reads as service, not selling; generic mistimed mail reads as spam. |
 | **Segmentation & LTV** | Life-stage cohorts (young family, empty-nester, pre-retiree) drive tailored journeys and lifetime-value modelling. |
 | **Suitability / audit** | Documenting *why* a recommendation was made (the triggering event) supports suitability and an audit trail. |
 
@@ -885,16 +826,16 @@ Two "whens": *which* events, and *at what moment* to act.
 
 **Which events** (starter taxonomy, grouped so users and rules think in categories):
 
-- **Family** — marriage, divorce, birth/adoption, child turning 16 (driver) / 18 / 26 (off parent's health plan), bereavement.
+- **Family** — marriage, divorce, birth/adoption, child coming of age, bereavement.
 - **Property & assets** — home purchase, renovation, second home, new vehicle, boat/RV.
 - **Career & financial** — new job, promotion, business start-up, layoff, inheritance, bankruptcy.
-- **Health & age** — serious diagnosis, disability, turning 50 / 65 (Medicare), retirement.
-- **Relationship with you** — policy anniversary, renewal window, claim filed, coverage gap detected.
+- **Health & age** — serious diagnosis, disability, milestone birthdays, retirement.
+- **Relationship with you** — customer anniversary, renewal window, case opened, product gap detected.
 
 **At what moment to act:**
 
 - **At capture time** — fire a workflow the instant the event is recorded (task, alert, journey enrolment).
-- **Anticipatory / date-derived** — the highest-value class: events *predictable* from data Genesis already holds (a dependent's DOB → "turns 16 in 90 days"; policyholder DOB → "Medicare-eligible next quarter"). Act *before* the client thinks of it.
+- **Anticipatory / date-derived** — the highest-value class: events *predictable* from data Genesis already holds (a client's DOB → "turns 65 next quarter"; client-since date → "10-year anniversary in 30 days"). Act *before* the client thinks of it.
 - **Anniversary / recurring** — renewals and annual reviews on the same trigger machinery.
 
 > **Timing discipline:** capture always; *act* only when relevant and welcome. Sensitive
@@ -910,7 +851,7 @@ sources feeding one canonical event record.
 | --------- | -------------------- | ----- |
 | **Agent-logged (manual)** — one-click "log life event" from the record's Activity Timeline | `activity.service`, `record.service` | Baseline; must be one click, not a buried form |
 | **Client self-service** — clients update milestones in the portal; periodic "annual check-in" review forms | `CustomerPortalUser`, `ServiceRequest`, `email-send.service` | Turns the client into a capture source |
-| **Derived / computed (highest ROI)** — a scheduler runs rules over data already held (DOBs, policy dates, dependent ages) | same 60s scheduler pattern as `WorkflowPendingStep`; `record.service` typed-EAV/date values; `Reminder` model | "Any dependent turning 16 in 90 days" is a *query*, not new data collection |
+| **Derived / computed (highest ROI)** — a scheduler runs rules over data already held (DOBs, contract dates, anniversaries) | same 60s scheduler pattern as `WorkflowPendingStep`; `record.service` typed-EAV/date values; `Reminder` model | "Any client turning 65 in 90 days" is a *query*, not new data collection |
 | **External signals / enrichment** — job change, business formation, property records | Data Enrichment adapter (Missing Modules #13; e.g. the connected Lusha MCP), `integration.service` | Lower-confidence → a lead to verify, not a fact to act on |
 | **AI extraction (future)** — NLP over call notes / emails auto-suggests "possible life event detected" | AI catalog §C/§D above, `ai.service` | Lands as *unverified*, routed for confirmation |
 
@@ -918,22 +859,22 @@ sources feeding one canonical event record.
 
 Since Genesis owns its platform, the design principles the top-5 CRMs converge on:
 
-1. **First-class `LifeEvent` record** (not a note). Because Genesis is metadata-driven it can start as a **custom object** with typed EAV fields — no schema migration required. Minimum fields: `type` (taxonomy), `event_date`, `captured_date`, `source` (manual/self-service/derived/enriched/ai), `confidence`, `sensitivity_level`, `status` (detected → verified → actioned → closed), `related_contact`, `linked_opportunity/policy`.
+1. **First-class `LifeEvent` record** (not a note). Because Genesis is metadata-driven it can start as a **custom object** with typed EAV fields — no schema migration required. Minimum fields: `type` (taxonomy), `event_date`, `captured_date`, `source` (manual/self-service/derived/enriched/ai), `confidence`, `sensitivity_level`, `status` (detected → verified → actioned → closed), `related_contact`, `linked_opportunity`.
 2. **Separate *detection* from *action*.** Detection writes the event; the **workflow engine** decides whether/when to act via the `field_changed` trigger and the `record.created/updated` domain events on the existing event bus. Tuning outreach never touches capture.
 3. **Confidence + verification queue.** Enriched/derived/AI events land `unverified` and route (via `assignment.service`) to an adviser to confirm before any client-facing action — protects against acting on bad data.
 4. **Consent & privacy by design.** Life events are sensitive personal data (health, family, finance). Honour the existing `do_not_contact` flag, add purpose/retention rules, and log every AI/enrichment touch through `AuditLog`. ⚠️ The DB is a shared AWS RDS — scrub/redact before any model egress (same rule as the AI catalog).
 5. **Tenant scoping.** `LifeEvent` reads/writes and any derived-rule scheduler must run inside the tenant `AsyncLocalStorage` context — the same isolation guarantee as every other record.
-6. **Event → next-best-action mapping as *configuration*.** Each event type maps to a playbook (recommended product, task owner, message template, wait time) stored as tunable config — no deploy to change. For the insurance vertical, actions route through `insurance-domain.service` / the quote engine (e.g. "new baby → draft a term-life top-up quote").
+6. **Event → next-best-action mapping as *configuration*.** Each event type maps to a playbook (recommended product, task owner, message template, wait time) stored as tunable config — no deploy to change.
 7. **Feedback loop.** Track conversion per event type (`forecast.service` / `report.service`) to learn which triggers actually produce business and refine the taxonomy.
 
 ### Suggested rollout (crawl → walk → run)
 
-1. **Crawl** — a `LifeEvent` custom object + one-click manual capture on the Activity Timeline + a handful of derived-date rules (renewals, dependent ages, Medicare age) on the existing scheduler.
+1. **Crawl** — a `LifeEvent` custom object + one-click manual capture on the Activity Timeline + a handful of derived-date rules (renewals, anniversaries, milestone ages) on the existing scheduler.
 2. **Walk** — workflow mapping event → task/journey/NBA, sensitivity levels, and portal self-service review forms.
 3. **Run** — AI extraction over calls/emails with a verification queue, third-party enrichment, and per-event conversion analytics feeding next-best-action.
 
 > **One-line summary:** capture life events because they are the exact moments a client's
-> insurance needs change; capture them continuously (manual, self-service, **derived rules
+> needs change; capture them continuously (manual, self-service, **derived rules
 > over data already held**, and — carefully — enrichment/AI); act on them **selectively and
 > sensitively** via the workflow engine, on a first-class, consent-aware, tenant-scoped
 > `LifeEvent` record that separates *detecting* the event from *deciding to act*.

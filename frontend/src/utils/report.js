@@ -129,7 +129,7 @@ const TREND_CLASS = {
 };
 
 /**
- * For most measures "up" is good, but for a few (claims paid, SLA breaches,
+ * For most measures "up" is good, but for a few (churned accounts, SLA breaches,
  * overdue tasks) up is bad — so the caller can invert the colour without
  * inverting the arrow.
  */

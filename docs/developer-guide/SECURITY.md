@@ -86,10 +86,7 @@ const BUILTIN_ROLE_LEVEL = Object.freeze({
   super_admin:        2,
   admin:              3,
   manager:            4,
-  uw_manager:         4,
   user:               5,
-  senior_underwriter: 5,
-  underwriter:        6,
 });
 ```
 
@@ -174,19 +171,8 @@ const commonProps = {
 };
 ```
 
-### Insurance Route Input Validation (v3.1.1+)
+### Tenant Scoping
 
-**Implementation**: `backend/src/routes/insurance/index.js`
-
-- **`requireFields(body, fields)`** — returns 400 if any required field
-  is null or empty. Applied on `POST /policies`, `POST /applications`,
-  `POST /claims`, `POST /commissions`.
-- **`requirePositiveNumber(body, field)`** — returns 400 if the value is
-  not a positive number. Applied on coverage amounts and premiums.
-- **UW decision validation** — `POST /underwriting/:id/decision` rejects
-  status values outside `['approved', 'declined', 'referred']`.
-- **Tenant context enforcement** — `tenantId()` helper throws 403 if the
-  auth token lacks `tenant_id`, preventing cross-tenant data leaks.
 - **Prisma tenant-scoping extension** (v4.0.4) —
   `backend/src/middleware/tenant-scope.js` uses `prisma.$extends()` to inject
   `tenant_id` into reads, writes-with-where, upserts and creates. All `.create()`
@@ -216,25 +202,9 @@ const commonProps = {
   > regression pass (watch the `role.findFirst({ tenant_id: null })` global-role
   > fallbacks and the `platform/index.js` bypass).
 
-### XSS Prevention in Document Templates (v3.1.1+)
-
-**Implementation**: `backend/src/services/template-engine.service.js`
-
-- All user-provided values in `kvSection()` and `disclaimerBlock()` pass
-  through `escapeHtml()` before rendering into PDF/HTML documents.
-- `escapeHtml()` replaces `&`, `<`, `>`, `"` with HTML entities.
-- The `safe()` helper defaults to `'N/A'` for null/empty values and
-  escapes all other output.
-
-### Compare-Quotes Input Validation (v3.1.2+)
-
-- `POST /compare-quotes` validates that `req.body.quotes` is an array
-  before passing to the calculation engine, returning 400 otherwise.
-
 ### Silent Failure Observability (v3.1.2+)
 
-- `RecordService.#audit()`, `InsuranceDomainService` activity
-  creation, and auto-commission creation now log warnings via
+- `RecordService.#audit()` now logs warnings via
   `logger.warn` instead of silently swallowing errors. This preserves
   non-blocking behavior while ensuring audit failures are observable.
 
@@ -434,7 +404,7 @@ Two scoping refinements shipped with it:
   `Role` now match `tenant_id = mine OR tenant_id IS NULL`, so `admin`/`manager`/`user` remain visible; an
   explicit `tenant_id: null` filter (system-only) is honoured; creates still stamp the tenant.
 - **Models without `tenant_id`** must be listed in `GLOBAL_MODELS`, otherwise the injected filter is rejected
-  by Prisma. `CarrierAdapterConfig` was missing. `tests/tenant-scope-coverage.test.js` checks the whole list
+  by Prisma. One platform-level model was missing. `tests/tenant-scope-coverage.test.js` checks the whole list
   against the Prisma DMMF so a new model cannot slip through.
 
 The `scopedHandler` wrapper remains on reporting and social as a belt-and-braces guard.
@@ -640,11 +610,37 @@ role from `/builder` that the server would admit. It now compares `role_level`.
 per plugin. The prefix gate matches the **declared route pattern** (`request.routeOptions.url`),
 never user-supplied path text, longest prefix first. A refusal is a 403 carrying
 `code: FEATURE_NOT_ENTITLED` and `details: [{ feature, label, min_plan }]`. Platform admins pass
-every gate. Applied to 23 insurance route families and to the write paths of the Workflow and
-Assignment builders. Shipped modules the plan excludes are dropped from `/runtime/modules` and
-bootstrap server-side (`MODULE_FEATURE`), so the client never lists them. The client's own gating
+every gate. Applied to gated route families and to the write paths of the Workflow and
+Assignment builders. (The `MODULE_FEATURE` map that hid plan-excluded shipped modules from
+bootstrap was removed with the insurance modules, its only entries; every remaining module is
+Builder metadata and is filtered by role.) The client's own gating
 (`FeatureGate`, `useEntitlements`) fails **open** until bootstrap delivers; the server never does.
 `tests/require-feature.test.js`.
+
+## Access segmentation, public forms and formula safety (October 2026)
+
+Full design: [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md).
+
+- **Business units and information barriers** add two filters on top of owner/hierarchy scope,
+  applied in `RecordService` (list, get, bulk, related, lookup), global search, object analytics and
+  record-attached documents. Barriers **bind administrators**; only `barrier_override` passes them.
+  A record outside scope answers 404, not 403. Scope resolution **fails closed** on a database error.
+  Wall-crossings need a decider who is not the requester. Tests: `tests/access-scope.test.js`.
+- **Tamper-evident audit chain** (`audit_chain_events`): permission, membership, crossing and
+  publishing changes are SHA-256 hash-chained per tenant; `GET /api/access/audit-chain/verify`.
+- **Public web forms** are the only unauthenticated write path into tenant data. Guard rails: random
+  48-hex key set only by the publish endpoint; laid-out fields only; consent enforced; honeypot;
+  per-IP (20 per 10 minutes) and per-form (600 per 10 minutes) limits; optional reCAPTCHA; JSON
+  schema; 64 KB body limit. The record is created inside `tenantContext.run` for the form's tenant.
+- **Formulas never execute code.** A tokenizer/parser builds an AST that is evaluated against a
+  function whitelist. The retired `custom` validation type ran admin-typed JavaScript through
+  `new Function` in every user's browser (stored XSS); legacy `custom` rows are now inert.
+- **Tenant pinning on writes.** The tenant extension overwrites `data.tenant_id` (and an upsert's
+  `update.tenant_id`) on scoped writes, and module/object/form writes take column whitelists, so a
+  body carrying `tenant_id` can no longer move a metadata row to another tenant
+  (`tests/tenant-scope-writes.test.js`, `tests/metadata-writable.test.js`).
+- **Documents inherit record access.** Every `/api/documents/:id` route and the record document list
+  check that the caller can see the record the document is attached to.
 
 ## Areas for Security Enhancement
 

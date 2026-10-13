@@ -108,17 +108,7 @@ category in the Builder to move it between sections instantly.
 │  MODULES              (category: crm)                           │
 │     Leads             (raw inbound; score + grade inline)       │
 │     Prospects         (prospect management)                     │
-│     Clients           (policyholder relationships)              │
-│                                                                 │
-│  INSURANCE            (category: insurance)                     │
-│     Quotes            (premium calculations)                    │
-│     Applications      (life insurance applications)             │
-│     Policies          (active policy management)                │
-│     Claims            (claims processing)                       │
-│     Underwriting      (risk assessment)                         │
-│     Commissions       (agent compensation)                      │
-│     Declarations      (regulatory disclosures)                  │
-│     Document Collection (application documents)                 │
+│     Clients           (customer relationships)                  │
 │                                                                 │
 │  Builder  (admin only, collapsible)                             │
 │     Configure: Modules & Objects · Form Builder ·               │
@@ -155,18 +145,17 @@ in the Dashboard Builder.
 
 | Card | Default value |
 | ---- | ------------- |
-| Active Policies | Count of all active insurance policies |
-| New Applications This Month | Applications created in current month |
-| Pending Claims | Claims currently under investigation |
-| Total Coverage | Sum of all active policy coverage amounts |
+| Open Pipeline | Value of all open opportunities |
+| Open Leads | Count of leads not yet converted |
 
 **Chart panels (below KPI cards):**
 
 | Chart | Type | Description |
 | ----- | ---- | ----------- |
-| Monthly Premium Revenue | Bar | Premium revenue trend over 6 months |
-| Applications by Status | Pie | Breakdown of application statuses |
-| Policy Type Distribution | Donut | Distribution across term, whole, universal life |
+| Pipeline Value by Stage | Funnel | Open opportunity value at each pipeline stage |
+| Where Leads Come From | Donut | Leads by source |
+| Leads by Status | Bar | Leads at each status |
+| Won vs Lost by Month | Stacked bar | Opportunities won and lost per month |
 
 ### Switching dashboards
 
@@ -209,34 +198,7 @@ The Product Catalog manages your company's products and services for sales teams
 5. Set inventory parameters if managing stock levels
 6. Save the product
 
-For complete product management details, see [PRODUCTS_AND_QUOTES.md](PRODUCTS_AND_QUOTES.md).
-
-### Quote Management
-
-The Quote Management system handles professional quote generation and approval workflows.
-
-**Accessing Quote Management:**
-
-1. Navigate to **Sales > Quote** from the main navigation
-2. Click **+ New Quote** to create a new quote
-
-**Quote Creation Process:**
-
-1. **Basic Information**: Enter quote name and select the related opportunity/account/contact
-2. **Line Items**: Add products or custom line items with quantities and pricing
-3. **Pricing Review**: System automatically calculates subtotals, taxes, and totals
-4. **Validity Period**: Set quote expiration date
-5. **Status Management**: Move through draft → submitted → approved → sent → accepted/rejected workflow
-
-**Quote Features:**
-
-- Auto-numbering: Quotes get unique numbers (QUO-001, QUO-002, etc.)
-- Product integration: Add products from the catalog with automatic pricing
-- Custom line items: Add one-off items not in the catalog
-- Approval workflow: Built-in status tracking for quote lifecycle
-- Revenue forecasting: Quotes contribute to pipeline forecasting
-
-For complete quote lifecycle details, see [PRODUCTS_AND_QUOTES.md](PRODUCTS_AND_QUOTES.md).
+For complete product management details, see [PRODUCTS.md](PRODUCTS.md).
 
 ### Email Templates
 
@@ -250,8 +212,8 @@ capabilities, and usage analytics.
 Email templates are managed in the **Builder** section and
 are scoped to specific **Module > Object** combinations.
 For example, a "Lead Follow-up" template belongs to
-Sales > Lead, and a "Quote Sent Notification" belongs to
-Sales > Quote.
+Sales > Lead, and a "Support Case Update" belongs to
+Service > Case.
 
 1. Navigate to **Builder > Email Templates** from the left sidebar (admin/super_admin only)
 2. Templates are grouped by **Module > Object** sections (e.g. Sales > Lead, Service > Case)
@@ -298,7 +260,6 @@ values when the email is sent.
 | Category | Typical Variables |
 | -------- | ----------------- |
 | Sales | `{{first_name}}`, `{{company}}`, `{{product_name}}`, `{{sender_name}}` |
-| Quotes | `{{contact_name}}`, `{{quote_number}}`, `{{total_amount}}`, `{{valid_until}}` |
 | Onboarding | `{{first_name}}`, `{{company_name}}`, `{{help_center_url}}` |
 | Support | `{{contact_name}}`, `{{case_number}}`, `{{case_subject}}`, `{{case_priority}}` |
 
@@ -411,13 +372,11 @@ Email sending requires SMTP configuration. Set these environment variables in th
 
 #### Pre-built Templates
 
-Genesis CRM ships with five default templates, created
+Genesis CRM ships with default templates, created
 automatically when the database is seeded (`npm run db:seed`):
 
 - **Lead Follow-up** (Sales > Lead) — Subject:
   "Thank you for your interest, `{{first_name}}`"
-- **Quote Sent Notification** (Sales > Quote) — Subject:
-  "Your Quote #`{{quote_number}}`"
 - **Welcome New Customer** (Contacts > Contact) — Subject:
   "Welcome to `{{company_name}}`, `{{first_name}}`!"
 - **Support Case Update** (Service > Case) — Subject:
@@ -865,7 +824,7 @@ For detailed import instructions, see
 
 1. Export records for reporting
 2. Review team performance metrics
-3. Update quotes and follow up on pending approvals
+3. Follow up on pending approvals
 4. Clean up completed tasks
 5. Plan upcoming activities and tasks
 
@@ -874,6 +833,6 @@ For detailed import instructions, see
 ## Related Guides
 
 - **Installation**: [../getting-started/INSTALLATION.md](../getting-started/INSTALLATION.md)
-- **Products & Quotes**: [PRODUCTS_AND_QUOTES.md](PRODUCTS_AND_QUOTES.md)
+- **Products**: [PRODUCTS.md](PRODUCTS.md)
 - **Admin Configuration**: [../admin-guide/SYSTEM_CONFIGURATION.md](../admin-guide/SYSTEM_CONFIGURATION.md)
 - **Workflow Automation**: [../admin-guide/WORKFLOW_AUTOMATION.md](../admin-guide/WORKFLOW_AUTOMATION.md)

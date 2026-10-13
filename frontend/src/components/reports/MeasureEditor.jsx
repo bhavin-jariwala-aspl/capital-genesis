@@ -7,10 +7,10 @@ const input = 'rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm 
  * MeasureEditor — "what do you want to measure?"
  *
  * Two kinds of measure:
- *   • an aggregation of a field ("Sum of Premium")
- *   • a calculated measure combining two earlier measures ("Claims paid as a % of
- *     Premium") — assembled from two dropdowns and an operation, never typed as a
- *     formula string. That keeps loss ratios, win rates and averages reachable
+ *   • an aggregation of a field ("Sum of Amount")
+ *   • a calculated measure combining two earlier measures ("Won amount as a % of
+ *     Pipeline amount") — assembled from two dropdowns and an operation, never typed as a
+ *     formula string. That keeps conversion ratios, win rates and averages reachable
  *     without a formula language, and means there is nothing to parse or escape.
  *
  * Either kind can then be *shown as* a table calculation — running total, % of

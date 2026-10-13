@@ -28,10 +28,8 @@ const SAMPLES = [
     config: { source: 'sla', viz: 'bar', group_by: [{ field: 'entity_type' }], metrics: [{ agg: 'count', label: 'Timers' }], filters: [{ field: 'status', op: 'equals', value: 'breached' }] } },
   { name: 'Open Tasks by Assignee', category: 'productivity', description: 'Workload of open tasks per person',
     config: { source: 'tasks', viz: 'bar', group_by: [{ field: 'assigned_to' }], metrics: [{ agg: 'count', label: 'Open tasks' }], filters: [{ field: 'status', op: 'in', value: 'open,in_progress' }] } },
-  { name: 'Premium by Product', category: 'insurance', description: 'In-force premium by product type',
-    config: { source: 'policies', viz: 'bar', group_by: [{ field: 'product_type' }], metrics: [{ agg: 'sum', field: 'premium_amount', label: 'Premium' }, { agg: 'sum', field: 'coverage_amount', label: 'Coverage' }] } },
-  { name: 'Commission Summary', category: 'finance', description: 'Headline commission numbers',
-    config: { source: 'commissions', viz: 'kpi', metrics: [{ agg: 'sum', field: 'commission_amount', label: 'Total commission' }, { agg: 'avg', field: 'commission_rate', label: 'Avg rate' }, { agg: 'count', label: 'Entries' }] } },
+  { name: 'Deal Value by Industry', category: 'sales', description: 'Accounts by industry with rolled-up deal value and case count',
+    config: { source: 'accounts', viz: 'bar', group_by: [{ field: 'industry' }], metrics: [{ agg: 'sum', field: 'opportunities.amount', label: 'Deal value' }, { agg: 'sum', field: 'cases.$count', label: 'Cases' }] } },
   { name: 'All Leads', category: 'sales', description: 'Full lead list',
     config: { source: 'leads', viz: 'table', columns: ['first_name', 'last_name', 'company', 'lead_status', 'rating', 'lead_source', 'owner_id'], sort: [{ key: 'last_name', dir: 'asc' }], limit: 200 } },
 ];

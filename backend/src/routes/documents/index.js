@@ -9,6 +9,7 @@ const DocumentTemplateService = require('../../services/document-template.servic
 const DocumentSignatureService = require('../../services/document-signature.service');
 const preview          = require('../../services/document-preview');
 const { getTenantId }  = require('../../middleware/tenant-scope');
+const RecordService    = require('../../services/record.service');
 
 const ALLOWED_MIME = new Set([
   'application/pdf',
@@ -22,8 +23,8 @@ const ALLOWED_MIME = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
 ]);
 
-// Content-Disposition builder + preview streaming/gating helpers are shared
-// with the insurance application-documents route via document-preview.js.
+// Content-Disposition builder + preview streaming/gating helpers live in
+// document-preview.js.
 const { contentDisposition, previewEnabled, sendPreview } = preview;
 
 /** Parse an id-like value to a positive integer, or null if it isn't one. */
@@ -59,6 +60,42 @@ module.exports = async function documentRoutes(fastify) {
   const folderSvc = new DocumentFolderService(fastify.prisma);
   const shareSvc = new DocumentShareService(fastify.prisma);
   const sigSvc = new DocumentSignatureService(fastify.prisma, new DocumentService(fastify.prisma));
+  const recSvc = new RecordService(fastify.prisma);
+
+  // ── Record-inherited access ────────────────────────────────────────────────
+  // A document attached to a record is exactly as visible as that record —
+  // owner/hierarchy scope, business unit and information barrier included —
+  // so a deal document behind a barrier cannot be read by guessing its id.
+  // Standalone DMS documents (no owning record) keep tenant-wide visibility.
+  async function assertRecordAccess(req, recordId) {
+    if (recordId == null) return;
+    const exists = await fastify.prisma.record.findUnique({ where: { id: Number(recordId) }, select: { id: true } });
+    if (!exists) return; // owner is not a runtime record (legacy entity id)
+    await recSvc.getRecord(recordId, req.user); // 404s when the viewer may not see it
+  }
+  const docGuard = async (req) => {
+    const doc = await svc(req).get(req.params.id);
+    if (doc?.entity_id) await assertRecordAccess(req, doc.entity_id);
+  };
+  /** A record's merge context: its values, lookup titles and a few basics. */
+  function recordMergeContext(rec) {
+    const labels = Object.fromEntries(Object.entries(rec.labels ?? {}).map(([k, v]) => [`${k}_label`, v]));
+    return { ...rec.data, ...labels, record_id: rec.id, stage: rec.pipeline_stage?.label ?? null, today: new Date().toISOString().slice(0, 10) };
+  }
+
+  /** Drop documents whose owning record the viewer cannot see. */
+  async function visibleDocs(req, documents) {
+    const ids = [...new Set(documents.map((d) => d.entity_id).filter((v) => v != null).map(Number))];
+    if (!ids.length) return documents;
+    const access = await recSvc.accessWhere(req.user);
+    const [records, visible] = await Promise.all([
+      fastify.prisma.record.findMany({ where: { id: { in: ids } }, select: { id: true } }),
+      fastify.prisma.record.findMany({ where: { id: { in: ids }, ...access }, select: { id: true } }),
+    ]);
+    const isRecord = new Set(records.map((r) => r.id));
+    const ok_ = new Set(visible.map((r) => r.id));
+    return documents.filter((d) => d.entity_id == null || !isRecord.has(Number(d.entity_id)) || ok_.has(Number(d.entity_id)));
+  }
 
   // ── Upload ─────────────────────────────────────────────────────────────────
   // POST /api/documents/upload
@@ -91,6 +128,7 @@ module.exports = async function documentRoutes(fastify) {
       return reply.code(400).send({ error: 'related_record_id and folder_id must be integers' });
     }
 
+    await assertRecordAccess(req, entityId);
     const doc = await svc(req).upload({
       tenantId:    getTenantId(),
       buffer,
@@ -136,6 +174,7 @@ module.exports = async function documentRoutes(fastify) {
       return reply.code(400).send({ error: 'related_record_id, folder_id, limit and offset must be integers' });
     }
 
+    await assertRecordAccess(req, recordId);
     const { documents, total } = await svc(req).list({
       entityType: related_type,
       entityId:   recordId,
@@ -145,7 +184,8 @@ module.exports = async function documentRoutes(fastify) {
       limit:  lim,
       offset: off,
     });
-    return ok({ documents: documents.map(toApiDoc), total });
+    const visible = await visibleDocs(req, documents);
+    return ok({ documents: visible.map(toApiDoc), total: total - (documents.length - visible.length) });
   });
 
   // ── Folders ──────────────────────────────────────────────────────────────────
@@ -169,14 +209,14 @@ module.exports = async function documentRoutes(fastify) {
   });
 
   // ── Get single ─────────────────────────────────────────────────────────────
-  fastify.get('/:id', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.get('/:id', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     const doc = await svc(req).get(req.params.id);
     if (!doc) return reply.code(404).send({ error: 'Document not found' });
     return ok(toApiDoc(doc));
   });
 
   // ── Download ───────────────────────────────────────────────────────────────
-  fastify.get('/:id/download', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.get('/:id/download', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     const service = svc(req);
     const doc = await service.get(req.params.id);
     if (!doc) return reply.code(404).send({ error: 'Document not found' });
@@ -194,7 +234,7 @@ module.exports = async function documentRoutes(fastify) {
 
   // ── Preview ────────────────────────────────────────────────────────────────
   // GET /api/documents/:id/preview — render the file inline (no attachment).
-  fastify.get('/:id/preview', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.get('/:id/preview', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     if (!(await previewEnabled(fastify.prisma, getTenantId(req)))) {
       return reply.code(403).send({ error: 'Document preview is disabled' });
     }
@@ -205,12 +245,12 @@ module.exports = async function documentRoutes(fastify) {
   });
 
   // ── Update metadata ────────────────────────────────────────────────────────
-  fastify.put('/:id', { preHandler: [authenticate] }, async (req) => {
+  fastify.put('/:id', { preHandler: [authenticate, docGuard] }, async (req) => {
     return ok(toApiDoc(await svc(req).updateMetadata(req.params.id, req.body ?? {})));
   });
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  fastify.delete('/:id', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.delete('/:id', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     const doc = await svc(req).remove(req.params.id);
     if (!doc) return reply.code(404).send({ error: 'Document not found' });
 
@@ -236,12 +276,13 @@ module.exports = async function documentRoutes(fastify) {
     if (recordId == null || Number.isNaN(recordId)) {
       return reply.code(400).send({ error: 'recordId must be an integer' });
     }
+    await assertRecordAccess(req, recordId);
     const { documents } = await svc(req).list({ entityId: recordId, limit: 200 });
     return ok(documents.map(toApiDoc));
   });
 
   // ── E-signature: request management (authenticated) ─────────────────────────
-  fastify.post('/:id/signature-requests', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.post('/:id/signature-requests', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     const createdBy = req.user?.employee_id ?? req.user?.employeeId;
     const { title, message, ordered, expires_in_days, signers } = req.body ?? {};
     const request = await sigSvc.createRequest(req.params.id, {
@@ -250,7 +291,7 @@ module.exports = async function documentRoutes(fastify) {
     return reply.code(201).send(created(request));
   });
 
-  fastify.get('/:id/signature-requests', { preHandler: [authenticate] }, async (req) => {
+  fastify.get('/:id/signature-requests', { preHandler: [authenticate, docGuard] }, async (req) => {
     return ok(await sigSvc.listRequests(req.params.id));
   });
 
@@ -315,8 +356,16 @@ module.exports = async function documentRoutes(fastify) {
     const uploadedBy = req.user?.employee_id ?? req.user?.employeeId;
     const tplSvc = new DocumentTemplateService(fastify.prisma, svc(req));
     const { data, filename, entity_type, entity_id, folder_id } = req.body ?? {};
+    // Rendering for a record merges that record's own values (and its lookup
+    // titles under `<field>_label`) under anything the caller passes.
+    let context = data ?? {};
+    if (entity_id != null) {
+      await assertRecordAccess(req, entity_id);
+      const rec = await recSvc.getRecord(entity_id, req.user).catch(() => null);
+      if (rec) context = { ...recordMergeContext(rec), ...context };
+    }
     const doc = await tplSvc.render(req.params.id, {
-      data: data ?? {},
+      data: context,
       filename,
       entityType: entity_type ?? null,
       entityId: entity_id != null ? Number(entity_id) : null,
@@ -329,7 +378,7 @@ module.exports = async function documentRoutes(fastify) {
   // ── Share links + engagement analytics ─────────────────────────────────────
 
   // POST /api/documents/:id/share — mint a public share link
-  fastify.post('/:id/share', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.post('/:id/share', { preHandler: [authenticate, docGuard] }, async (req, reply) => {
     const { expires_in_days, allow_download } = req.body ?? {};
     const createdBy = req.user?.employee_id ?? req.user?.employeeId;
     const link = await shareSvc.createLink(req.params.id, {
@@ -341,7 +390,7 @@ module.exports = async function documentRoutes(fastify) {
   });
 
   // GET /api/documents/:id/shares — list a document's share links
-  fastify.get('/:id/shares', { preHandler: [authenticate] }, async (req) => {
+  fastify.get('/:id/shares', { preHandler: [authenticate, docGuard] }, async (req) => {
     return ok(await shareSvc.listLinks(req.params.id));
   });
 
@@ -351,7 +400,7 @@ module.exports = async function documentRoutes(fastify) {
   });
 
   // GET /api/documents/:id/analytics — aggregated engagement
-  fastify.get('/:id/analytics', { preHandler: [authenticate] }, async (req) => {
+  fastify.get('/:id/analytics', { preHandler: [authenticate, docGuard] }, async (req) => {
     return ok(await shareSvc.getAnalytics(req.params.id));
   });
 

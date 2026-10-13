@@ -593,7 +593,7 @@ function ViewerSidebar({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 /**
- * PDFViewer -- comprehensive document viewer for the Life Insurance CRM.
+ * PDFViewer -- comprehensive document viewer.
  * Renders HTML content from the template engine with full viewer controls,
  * drag-and-drop file attachment, email integration, and a collapsible sidebar.
  *

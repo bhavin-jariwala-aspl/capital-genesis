@@ -6,8 +6,8 @@
 ## What it is
 
 Modules and Objects are the foundation of Genesis CRM. A **Module** is a top-level area that appears in the left
-sidebar (for example "Sales" or "Policies"). An **Object** lives inside a module and represents a type of record
-you want to store (for example "Lead", "Contact", or "Claim"). **Fields** are the individual pieces of data each
+sidebar (for example "Sales" or "Support"). An **Object** lives inside a module and represents a type of record
+you want to store (for example "Lead", "Contact", or "Case"). **Fields** are the individual pieces of data each
 object record captures. Use this screen first, before building forms, pipelines, or wizards — everything else in the
 Builder references the objects and fields you create here.
 
@@ -51,7 +51,15 @@ icon. To remove it, click the **trash** icon and confirm.
    - **Label (Display Name)** — required.
    - **Name (Key)** — required, `snake_case`.
    - **Description** — optional.
-4. Click **Save**. The object is created inside the current module.
+4. (Optional) Fill in **Record settings**:
+   - **Title field**: the field shown as each record's name in lookups, related lists and search.
+   - **Business unit field**: a field holding a business-unit code. Records are then visible only to that
+     unit's members.
+   - **Information barrier**: every record of the object sits behind this zone.
+   - **Barrier zone field**: a field holding a zone code, so only some records are walled off.
+
+   See [22. Business Units & Information Barriers](22-access-and-barriers.md).
+5. Click **Save**. The object is created inside the current module.
 
 Edit, Permissions, and Delete work the same way as for modules (pencil, shield, and trash icons). Deleting an object
 also deletes all of its fields, forms, and pipelines, so do this with care.
@@ -112,9 +120,11 @@ The **Category** on a module decides which sidebar section it falls under.
 | Category | Sidebar section |
 | --- | --- |
 | crm | Modules |
-| insurance | Insurance |
 | tools | Tools |
 | settings | Settings |
+
+You can also type a category of your own, such as `lending` or `client_360`. It gets its own sidebar section,
+titled from the key (`client_360` becomes **Client 360**). No code change is needed.
 
 ## How modules appear in the sidebar
 

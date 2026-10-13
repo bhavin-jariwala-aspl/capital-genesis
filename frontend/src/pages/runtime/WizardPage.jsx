@@ -1,6 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
 import { runtimeService } from '../../services/metadata.service';
 import { useMetadataStore } from '../../store/metadataStore';
 import WizardRenderer from '../../components/runtime/WizardRenderer';
@@ -13,11 +12,6 @@ export default function WizardPage() {
   const existingRecordId = searchParams.get('record_id');
   const navigate     = useNavigate();
   const queryClient  = useQueryClient();
-
-  // Post-completion navigation is deferred ~2s; clear the pending timer on
-  // unmount so a user who navigates away first isn't yanked to another route.
-  const navTimerRef = useRef(null);
-  useEffect(() => () => { if (navTimerRef.current) clearTimeout(navTimerRef.current); }, []);
 
   // Load wizard — MetadataStore first, fallback to API
   const cachedWizard = useMetadataStore((s) => wizardId ? s.getWizard(Number(wizardId)) : null);
@@ -41,46 +35,15 @@ export default function WizardPage() {
     // Merge all step form data into a single flat object
     const merged = Object.values(allStepData).reduce((acc, d) => ({ ...acc, ...d }), {});
 
-    let recordId = existingRecordId;
     if (existingRecordId) {
-      // Update the existing record (created by "Apply Now")
+      // Update the existing record passed via ?record_id=
       await runtimeService.updateRecord(existingRecordId, merged);
     } else {
       // Create a new record
-      const result = await runtimeService.createRecord({ object_id: wizard.object_id, data: merged });
-      recordId = result?.data?.id ?? result?.id ?? null;
+      await runtimeService.createRecord({ object_id: wizard.object_id, data: merged });
     }
     queryClient.invalidateQueries({ queryKey: ['runtime-records', wizard.object_id] });
     // WizardRenderer internally shows the success screen after this resolves
-
-    // For insurance applications, navigate to Document Collection as the next step
-    // in the business process flow. For other insurance objects, go to the processing page.
-    try {
-      // Use MetadataStore first (instant), fallback to API
-      let objName;
-      const cachedObj = useMetadataStore.getState().getObject(wizard.object_id);
-      if (cachedObj) {
-        objName = cachedObj.name;
-      } else {
-        const obj = await runtimeService.getObject(wizard.object_id);
-        objName = obj?.data?.name ?? obj?.name;
-      }
-
-      if (objName === 'application') {
-        // Navigate to Send Declarations (Step 5) with the record_id so the
-        // modal can auto-select the application and open immediately.
-        navTimerRef.current = setTimeout(() => navigate(`/insurance/declarations${recordId ? `?record_id=${recordId}` : ''}`), 2000);
-      } else {
-        const INSURANCE_ROUTES = {
-          policy: '/insurance/policies',
-          claim:  '/insurance/claims',
-        };
-        const route = INSURANCE_ROUTES[objName];
-        if (route) {
-          navTimerRef.current = setTimeout(() => navigate(route), 2000);
-        }
-      }
-    } catch (_) { /* non-critical */ }
   };
 
   return (

@@ -15,28 +15,28 @@ symbol name if they drift.
 
 Part 1 — How the engine works
 
-1. [Mental model](#mental-model)
-2. [The tick](#the-tick)
-3. [Where the data lives](#where-the-data-lives)
-4. [Read → match → write](#read--match--write)
-5. [Instance lifecycle](#instance-lifecycle)
-6. [Business-hours math](#business-hours-math)
+- [Mental model](#mental-model)
+- [The tick](#the-tick)
+- [Where the data lives](#where-the-data-lives)
+- [Read → match → write](#read--match--write)
+- [Instance lifecycle](#instance-lifecycle)
+- [Business-hours math](#business-hours-math)
 
 Part 2 — Escalation
 
-7. [When escalations fire](#when-escalations-fire)
-8. [How rules are selected](#how-rules-are-selected)
-9. [Action reference](#action-reference)
-10. [How the manager is resolved](#how-the-manager-is-resolved)
-11. [How it reaches the manager's screen](#how-it-reaches-the-managers-screen)
+- [When escalations fire](#when-escalations-fire)
+- [How rules are selected](#how-rules-are-selected)
+- [Action reference](#action-reference)
+- [How the manager is resolved](#how-the-manager-is-resolved)
+- [How it reaches the manager's screen](#how-it-reaches-the-managers-screen)
 
 Part 3 — Working on it
 
-12. [API surface](#api-surface)
-13. [Extension recipes](#extension-recipes)
-14. [Testing the engine](#testing-the-engine)
-15. [Known gaps and traps](#known-gaps-and-traps)
-16. [Invariants — read before you change anything](#invariants--read-before-you-change-anything)
+- [API surface](#api-surface)
+- [Extension recipes](#extension-recipes)
+- [Testing the engine](#testing-the-engine)
+- [Known gaps and traps](#known-gaps-and-traps)
+- [Invariants — read before you change anything](#invariants--read-before-you-change-anything)
 
 ---
 
@@ -148,6 +148,18 @@ Everything entity-specific is table-driven in the `ENTITY` map at
 | `dueField` | — | — | `due_date` (overrides computed deadline) |
 | `priorityLadder` | low→medium→high→critical | cold→warm→hot | low→normal→high→urgent |
 | `metricStatus` keys | `first_response`, `resolution` | `first_response` | `resolution` |
+
+**`record` — any Builder object (October 2026).** A policy with `entity_type = 'record'` carries
+`object_id` and `config` (`first_response_stages`, `closed_stages`, `canceled_stages`,
+`dimension_field`). `recordEntityConfig(policy)` (exported from `sla.service.js`) turns that config into
+the same shape as the entries above, and `#reconcileRecords` builds rows from `records` plus typed
+field values. A record's "status" is its stage API name, so `pause_statuses` lists stage names.
+First response is met once the record leaves every `first_response_stages` stage; resolution is met on
+a `closed_stages` stage and canceled on a `canceled_stages` stage. Targets are keyed by the
+`dimension_field` value (e.g. `priority`), else `*`. Priority raising is skipped for records, and
+`create_task` escalations attach the task to the record. `POST/PUT /api/sla/policies` rejects stage
+names the object's pipeline lacks and a record policy with no closed stage. Builder: **Applies to ▸
+Records of an object**.
 
 `metricStatus` is the **completion oracle**: a function per metric returning
 `running | met | canceled` from the record alone. For example a case's first response is considered
@@ -499,7 +511,8 @@ and enriches the 60 most urgent open timers with record labels and owner names
 
 ### Add an entity type
 
-Add a key to the `ENTITY` map ([`:24`](../../backend/src/services/sla.service.js#L24)) with
+For a Builder object you no longer need code: use a `record` policy (above). For a new relational
+table, add a key to the `ENTITY` map ([`:24`](../../backend/src/services/sla.service.js#L24)) with
 `model`, `statusField`, `dimField`, `ownerField`, `openWhere`, `priorityLadder`, `label` and
 `metricStatus`. The engine body is fully driven by that map — `reconcile()` iterates
 `Object.keys(ENTITY)`. Then:

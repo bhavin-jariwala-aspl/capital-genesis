@@ -6,7 +6,7 @@
  * The engine's other tests use a Prisma double, which happily accepts any field
  * name — so a registry entry naming a column that does not exist passes every
  * unit test and then throws at runtime the moment a user picks that field.
- * (`claims.closed_at` shipped exactly that way; `InsuranceClaim` has `paid_at`.)
+ * (A field named after a column the model does not have shipped exactly that way once.)
  *
  * This reads Prisma's own DMMF, so it needs no database.
  */

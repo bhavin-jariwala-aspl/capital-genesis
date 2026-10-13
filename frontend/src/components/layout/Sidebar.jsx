@@ -18,7 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppearanceStore } from '../../store/appearanceStore';
 import { runtimeService } from '../../services/metadata.service';
 import BrandLogo from '../ui/BrandLogo';
-import { MODULE_CATEGORIES } from '../../utils/constants';
+import { sidebarSections } from '../../utils/constants';
 import { makeIsActive, matchesPath } from '../../utils/navActive';
 import { useEntitlements } from '../../hooks/useEntitlements';
 import { featureForPath } from '../../utils/featureMap';
@@ -156,10 +156,10 @@ export default function Sidebar({ open, onClose }) {
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(mod);
     }
-    // Return sections in the order defined by MODULE_CATEGORIES, skip empty
-    return MODULE_CATEGORIES
-      .filter(c => grouped[c.key]?.length > 0)
-      .map(c => ({ ...c, modules: grouped[c.key] }));
+    // Categories are data: known ones keep their label and position, any other
+    // key a module names becomes its own section (in module order) titled from
+    // the key, so a new vertical needs no frontend change to get a sidebar group.
+    return sidebarSections(grouped);
   }, [modules]);
 
   // Filter builder groups by search
@@ -252,6 +252,13 @@ export default function Sidebar({ open, onClose }) {
             active={isActive('/reports')}
             onClick={handleLinkClick}
           />}
+          <NavItem
+            to="/access"
+            icon={Lock}
+            label="Access & Barriers"
+            active={isActive('/access')}
+            onClick={handleLinkClick}
+          />
           {allowed('/sla') && <NavItem
             to="/sla"
             icon={ShieldCheck}
@@ -267,8 +274,7 @@ export default function Sidebar({ open, onClose }) {
             onClick={handleLinkClick}
           />}
 
-          {/* Documents — standalone module, its own top-level section
-              (decoupled from the Insurance domain) */}
+          {/* Documents — standalone module, its own top-level section */}
           <SectionLabel>Documents</SectionLabel>
           {allowed('/documents') && <NavItem
             to="/documents"

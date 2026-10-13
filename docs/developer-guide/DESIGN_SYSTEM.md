@@ -82,14 +82,13 @@ live in `tailwind.config.js`. Prefer `primary` (indigo), `accent` (fuchsia), `sk
 - Dashboard home: `pages/runtime/RuntimeHome.jsx` (`PageHeader` + greeting).
 - KPI-heavy page: `pages/platform/PlatformDashboard.jsx` (`StatTile` grid; `StatCard` delegates
   to `StatTile` via `toneForColor`).
-- List page with header actions: any insurance page, e.g. `pages/runtime/PoliciesPage.jsx`
-  (`PageHeader` + `StatTile` grid + `frame={false}` `DataTable` inside a `Card`).
+- List page with header actions: `pages/runtime/DocumentsPage.jsx`
+  (`PageHeader` + stats + list inside a `Card`).
 
 ## Coverage
 
 The widget language leads every primary surface: the metadata-driven runtime hubs (dashboard
-home, module views, wizard runtime), the full insurance suite (Quotes, Policies, Claims,
-Applications, Underwriting, Commissions, Declarations, Document Collection, Agent Workbench), the
+home, module views, wizard runtime), the
 Builder list/config pages (Modules & Objects, Pipelines, Workflows, Wizards, Assignment, Lead
 Scoring, Integrations, Integration Health, Push Notifications, Email Templates, Permissions,
 Roles, Employees, Social Media, Builder home), and the Platform-admin suite (Dashboard, Tenants,

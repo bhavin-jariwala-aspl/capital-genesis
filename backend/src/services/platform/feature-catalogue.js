@@ -12,8 +12,7 @@
  *     nothing validated it, and the plan editor had no field for it, so its
  *     only possible value was whatever `prisma/seed.js` wrote once.
  *   - `feature_flags.name` held a different, non-overlapping set:
- *     `underwriting_workflow`, `ai_underwriting`, `advanced_workflows`,
- *     `policy_analytics`, `api_v2`, `dark_mode`. `FeatureFlagService.isEnabled`
+ *     `advanced_workflows`, `api_v2`, `dark_mode` and others. `FeatureFlagService.isEnabled`
  *     resolved override -> rollout -> global default and **never consulted the
  *     plan**, so a flag in the `premium` category was not gated behind a paid
  *     plan at all, despite the admin guide saying it was.
@@ -27,7 +26,7 @@
  * `EntitlementService` resolves the two into one answer per tenant.
  *
  * ── Why a code catalogue rather than a table ─────────────────────────────────
- * A feature key is referenced by application code (`requireFeature('quotes')`),
+ * A feature key is referenced by application code (`requireFeature('auto_sla')`),
  * so it is code, not data: a key that exists in a table but in no branch does
  * nothing, and a key a branch expects but no row defines fails silently. Keys
  * live here, next to the code that reads them; what each *customer* gets is
@@ -61,7 +60,6 @@ const PLAN_RANK = Object.freeze(Object.fromEntries(PLAN_TIERS.map((t) => [t.name
  */
 const FEATURE_GROUPS = Object.freeze([
   { key: 'core',        label: 'Core CRM',        description: 'Records, pipelines and day-to-day selling' },
-  { key: 'insurance',   label: 'Insurance',       description: 'Quoting, underwriting, policy administration and claims' },
   { key: 'automation',  label: 'Automation',      description: 'Workflows, assignment, scoring and service levels' },
   { key: 'analytics',   label: 'Analytics',       description: 'Reporting, dashboards and forecasting' },
   { key: 'engagement',  label: 'Engagement',      description: 'Email, social and notifications' },
@@ -85,7 +83,7 @@ const FEATURE_GROUPS = Object.freeze([
  * - `legacy`      — a `feature_flags.name` that already exists in deployed
  *                   databases and in code call sites, from before the catalogue.
  *                   Resolution accepts it as an alias so live rows and existing
- *                   `isEnabled('underwriting_workflow')` calls keep working
+ *                   `isEnabled('advanced_workflows')` calls keep working
  *                   without a data migration against production. New code
  *                   should use the catalogue key.
  */
@@ -101,22 +99,6 @@ const FEATURES = Object.freeze([
     description: 'Define new objects and fields in the Builder beyond the shipped catalogue.' }),
   f('crm_territories',    'Territories & quotas',     'core', 'professional', {
     description: 'Region and branch hierarchies with per-agent quota tracking.' }),
-
-  // ── Insurance ───────────────────────────────────────────────────────────
-  f('ins_quoting',        'Quoting & illustrations',  'insurance', 'starter', {
-    description: 'Premium calculation, quote scenarios and comparison illustrations.' }),
-  f('ins_policy_admin',   'Policy administration',    'insurance', 'starter', {
-    description: 'Policy issuance, endorsements, renewals, billing schedules and invoices.' }),
-  f('ins_underwriting',   'Underwriting workflow',    'insurance', 'professional', { flag: true, legacy: 'underwriting_workflow',
-    description: 'Dedicated underwriting review queue with requirements and decisions. When off, agent submission is final and policies issue directly.' }),
-  f('ins_claims',         'Claims management',        'insurance', 'professional', {
-    description: 'Claim intake, reserves, adjustments and payment events.' }),
-  f('ins_commissions',    'Commissions',              'insurance', 'professional', {
-    description: 'Commission entries, splits and producer statements.' }),
-  f('ins_carrier_feeds',  'Carrier rate feeds',       'insurance', 'enterprise', { flag: true,
-    description: 'Live carrier rating adapters instead of local rate tables.' }),
-  f('ins_ai_underwriting','AI risk assessment',       'insurance', 'enterprise', { flag: true, legacy: 'ai_underwriting',
-    description: 'Model-assisted risk scoring and underwriting recommendations.' }),
 
   // ── Automation ──────────────────────────────────────────────────────────
   f('auto_workflows',     'Workflows',                'automation', 'starter', {
@@ -141,8 +123,6 @@ const FEATURES = Object.freeze([
     description: 'Pipeline-weighted revenue forecasting against quota.' }),
   f('analytics_ai_ask',   'Ask Genesis (AI reports)', 'analytics', 'enterprise', { flag: true,
     description: 'Natural-language report building on a local model.' }),
-  f('analytics_policy',   'Policy portfolio analytics','analytics', 'professional', { flag: true, legacy: 'policy_analytics',
-    description: 'In-force book analytics: persistency, lapse risk and exposure concentration.' }),
 
   // ── Engagement ──────────────────────────────────────────────────────────
   f('eng_email',          'Email & templates',        'engagement', 'free', {
@@ -199,7 +179,7 @@ const BY_KEY = Object.freeze(Object.fromEntries(FEATURES.map((x) => [x.key, x]))
 
 /**
  * Pre-catalogue `feature_flags.name` values, mapped to their catalogue key.
- * Lets deployed rows and existing `isEnabled('underwriting_workflow')` call
+ * Lets deployed rows and existing `isEnabled('advanced_workflows')` call
  * sites resolve without a migration against a live database.
  */
 const LEGACY_ALIASES = Object.freeze(Object.fromEntries(
@@ -280,11 +260,10 @@ function unknownFeatureKeys(keys) {
  * (`'basic_crm'`, `'workflow_automation'`, …) that matches no key and no legacy
  * alias. A list of those normalises to the core features alone — so treating
  * any non-empty array as authoritative made every deployed plan, Enterprise
- * included, sell exactly one feature. Every module, every insurance route and
- * most of the Builder vanished for tenants whose rows had never been re-saved.
+ * included, sell exactly one feature. Every module and most of the Builder vanished for tenants whose rows had never been re-saved.
  *
  * One recognisable key is enough to call it curated: no legacy name collides
- * with a catalogue key (every key carries a `crm_`/`ins_`/`auto_`/… prefix), so
+ * with a catalogue key (every key carries a `crm_`/`auto_`/`docs_`/… prefix), so
  * a partial match means somebody edited the plan with the current editor and
  * their intent must be honoured. Zero recognisable keys means nobody has
  * touched it since the catalogue existed, and the tier default is the honest

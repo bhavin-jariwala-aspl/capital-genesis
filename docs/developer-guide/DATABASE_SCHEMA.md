@@ -12,9 +12,9 @@
 
 > **Source of truth:** Prisma SQL migration files in [`backend/prisma/migrations/`](../../backend/prisma/migrations/)
 > **Database engine:** MySQL
-> **Generated from:** `init`, `insurance_ams_p0_p4`, `carrier_adapter_config`, `add_missing_application_columns`, `add_module_category`, `add_status_events`, `add_pipeline_config`, `add_social_assignment_rules`
+> **Generated from:** `init`, `add_module_category`, `add_status_events`, `add_pipeline_config`, `add_social_assignment_rules`
 
-This document describes every table in the database — what business information it stores, its columns/types, and how it relates to other tables. The platform is a **multi-tenant CRM + Insurance Agency Management System (AMS)**; almost every table carries a `tenant_id` for tenant isolation.
+This document describes every table in the database — what business information it stores, its columns/types, and how it relates to other tables. The platform is a **multi-tenant CRM**; almost every table carries a `tenant_id` for tenant isolation.
 
 ## Conventions
 
@@ -30,7 +30,7 @@ This document describes every table in the database — what business informatio
 3. [Generic Records & Activity Engine](#generic-records--activity-engine)
 4. [Assignment, Quotas & Integrations](#assignment-quotas--integrations)
 5. [CRM Core](#crm-core)
-6. [Products & Quoting](#products--quoting)
+6. [Products](#products)
 7. [Email, Campaigns & Lead Scoring](#email-campaigns--lead-scoring)
 8. [Calendar, Meetings & Calls](#calendar-meetings--calls)
 9. [Reporting & Analytics](#reporting--analytics)
@@ -40,9 +40,8 @@ This document describes every table in the database — what business informatio
 13. [Social Media](#social-media)
 14. [Partners & Channel](#partners--channel)
 15. [Multi-Tenant Platform & Administration](#multi-tenant-platform--administration)
-16. [Insurance Core (Carriers, Policies, Underwriting, Claims)](#insurance-core-carriers-policies-underwriting-claims)
-17. [Insurance AMS (Compliance, Billing, Payments, Commissions)](#insurance-ams-compliance-billing-payments-commissions)
-18. [Status & Workflow Tracking](#status--workflow-tracking)
+16. [Status & Workflow Tracking](#status--workflow-tracking)
+17. [Access Segmentation & Audit Chain](#access-segmentation--audit-chain)
 
 ---
 
@@ -112,7 +111,7 @@ User accounts and employee records with authentication and organizational assign
 | updated_at | DATETIME(3) | NOT NULL |
 | tenant_id | INTEGER | NOT NULL, indexed |
 
-**Relationships:** FK to `branches` and `regions`; referenced widely as owner/creator/assignee across the schema (activities, tasks, notifications, audit_logs, assignment_rules, quotas, integrations, and most CRM/insurance tables).
+**Relationships:** FK to `branches` and `regions`; referenced widely as owner/creator/assignee across the schema (activities, tasks, notifications, audit_logs, assignment_rules, quotas, integrations, and most CRM tables).
 
 ### `employee_hierarchy`
 Closure-table representation of the employee reporting tree (ancestor/descendant) for reporting relationships and delegation paths.
@@ -133,7 +132,7 @@ Closure-table representation of the employee reporting tree (ancestor/descendant
 > These tables drive a configurable, metadata-defined UI: modules → objects → fields → forms/pages/dashboards, plus workflows, wizards, pipelines, and permissions.
 
 ### `ui_modules`
-Top-level modules organizing UI objects into business domains (e.g., CRM, Insurance, Settings).
+Top-level modules organizing UI objects into business domains (e.g., CRM, Settings).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -147,7 +146,7 @@ Top-level modules organizing UI objects into business domains (e.g., CRM, Insura
 | is_active | BOOLEAN | NOT NULL, default true |
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |
-| category | VARCHAR(50) | NOT NULL, default 'crm' (added in `add_module_category`; values: crm, insurance, settings) |
+| category | VARCHAR(50) | NOT NULL, default 'crm' (added in `add_module_category`; values: crm, settings) |
 | tenant_id | INTEGER | NOT NULL, indexed |
 
 **Relationships:** Referenced by `ui_objects(module_id)`.
@@ -166,6 +165,7 @@ Business entities within modules (e.g., Accounts, Contacts, Opportunities) — t
 | icon | VARCHAR(50) | nullable |
 | order_index | INTEGER | NOT NULL, default 0 |
 | is_active | BOOLEAN | NOT NULL, default true |
+| config | JSON | nullable — `title_field`, `business_unit_field`, `barrier_zone`, `barrier_zone_field` |
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |
 | tenant_id | INTEGER | NOT NULL, indexed |
@@ -214,6 +214,8 @@ Form definitions that organize fields for data entry and display.
 | form_type | VARCHAR(50) | NOT NULL (create, edit, view, detail) |
 | columns | INTEGER | NOT NULL, default 2 |
 | is_active | BOOLEAN | NOT NULL, default true |
+| config | JSON | nullable — `{ public: { success_message, consent_field, capture_fields, result_fields, stage, captcha, … } }` |
+| public_key | VARCHAR(64) | nullable, UNIQUE — set only by the publish endpoint; the form is live at `/f/<key>` |
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |
 | tenant_id | INTEGER | NOT NULL, indexed |
@@ -441,7 +443,7 @@ Individual wizard steps, each optionally bound to a form.
 **Relationships:** FKs to `ui_wizards` and `ui_forms` (nullable).
 
 ### `ui_pipelines`
-Configurable pipelines (sales/business/insurance) for tracking objects through stages.
+Configurable pipelines (sales/business) for tracking objects through stages.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -532,9 +534,11 @@ Base container for all business objects managed through the platform, linked to 
 | updated_at | DATETIME(3) | last modification |
 | deleted_at | DATETIME(3) | nullable, indexed (added in `add_record_soft_delete`) — NULL = live; NOT NULL = in Trash (soft-deleted, hidden from users, admin-recoverable) |
 | deleted_by | VARCHAR(100) | nullable (added in `add_record_soft_delete`) — actor who deleted it |
+| business_unit_id | INTEGER | nullable, indexed, FK→business_units (SetNull) — stamped from the object's `business_unit_field` |
+| barrier_zone_id | INTEGER | nullable, indexed, FK→barrier_zones (SetNull) — stamped from the object's `barrier_zone` / `barrier_zone_field` |
 | tenant_id | INTEGER | multi-tenancy |
 
-**Relationships:** Links to `ui_objects`, `employees` (assigned_to), `ui_pipeline_stages`. Parent for activities, tasks, audit_logs, record_field_values, and the typed CRM/insurance entities (one-to-one via their `record_id`).
+**Relationships:** Links to `ui_objects`, `employees` (assigned_to), `ui_pipeline_stages`. Parent for activities, tasks, audit_logs, record_field_values, and the typed CRM entities (one-to-one via their `record_id`).
 
 **Soft delete / Trash:** when the record's pipeline has `config.delete_mode` = `soft` (the default, set via the Pipeline Builder toggle), deleting a record sets `deleted_at`/`deleted_by` instead of removing the row. Soft-deleted records are excluded from every user-facing query and surface only in the admin Trash (`GET /api/builder/trash/records`), where they can be restored or permanently purged. `hard` mode deletes the row outright. The mode is resolved per record from its object's pipeline in `RecordService`.
 
@@ -792,14 +796,14 @@ Company/organizational accounts — businesses the company sells to.
 
 Key columns: `name`, `website`, `phone`, `email`, `industry`, `account_type`, `annual_revenue` (DECIMAL 18,2), `employee_count`, full **billing address** (street/city/state/country/zip), `description`, `owner_id` (FK→employees), `external_id` (external system ID), `record_id` (UNIQUE FK→records), `created_by`, timestamps, `tenant_id`.
 
-**Relationships:** One-to-one with `records`; FKs to `employees`. Parent for `crm_contacts`, `crm_opportunities`, `crm_cases`, `quotes`, and insurance policies/applications.
+**Relationships:** One-to-one with `records`; FKs to `employees`. Parent for `crm_contacts`, `crm_opportunities`, and `crm_cases`.
 
 ### `crm_contacts`
 Individual people, optionally linked to an account.
 
 Key columns: `account_id` (nullable FK→crm_accounts), `first_name`, `last_name`, `email`, `phone`, `mobile`, `title`, `department`, `lead_source`, full **mailing address**, `birthdate`, `description`, `do_not_contact` (BOOLEAN, compliance DNC), `owner_id`, `external_id`, `record_id` (UNIQUE FK→records), timestamps, `tenant_id`.
 
-**Relationships:** One-to-one with `records`; FKs to `crm_accounts`, `employees`. Parent for opportunities, cases, quotes, policies, beneficiaries.
+**Relationships:** One-to-one with `records`; FKs to `crm_accounts`, `employees`. Parent for opportunities and cases.
 
 ### `crm_lead_intake`
 Raw, unqualified inbound **Leads** (the UI "Leads" module, internal object name `lead_intake`). This is the *front* of the CRM lifecycle — capture happens here before qualification. Qualifying/converting a lead creates a `crm_leads` (Prospect) row; see `CrmService.convertLeadToProspect`. Kept as a separate table so raw inbound never pollutes the working prospect pipeline (the Salesforce/Zoho separation — see [DATA_DICTIONARY](DATA_DICTIONARY.md) for the Lead-vs-Prospect rationale).
@@ -820,7 +824,7 @@ Qualified deals with revenue value and sales stages.
 
 Key columns: `account_id`, `contact_id`, `name`, `amount` (DECIMAL 18,2), `currency`, `stage` (default 'prospecting' → … closed_won/closed_lost), `probability` (0–100), `close_date`, `lead_source`, `type`, `next_step`, `description`, `is_closed`, `is_won`, `forecast_category`, `pipeline_stage_id` (FK→ui_pipeline_stages), `owner_id`, `external_id`, `record_id` (UNIQUE FK→records), timestamps, `tenant_id`.
 
-**Relationships:** One-to-one with `records`; FKs to `crm_accounts`, `crm_contacts`, `employees`, `ui_pipeline_stages`. Parent for `quotes`, `crm_lead_conversions`, `deal_stage_history`, `deal_competitors`, `contracts`, `partner_opportunities`.
+**Relationships:** One-to-one with `records`; FKs to `crm_accounts`, `crm_contacts`, `employees`, `ui_pipeline_stages`. Parent for `crm_lead_conversions`, `deal_stage_history`, `deal_competitors`, `contracts`, `partner_opportunities`.
 
 ### `crm_cases`
 Support/service tickets for customer issues.
@@ -864,47 +868,14 @@ Flexible N-to-N associations between any two CRM entities.
 
 ---
 
-## Products & Quoting
+## Products
 
 ### `products`
 Catalog of sellable products/services with pricing, tax, vendor, and physical attributes.
 
 Key columns: `record_id` (UNIQUE FK→records, nullable), `name`, `sku` (UNIQUE), `category`, `description`, `unit_price` (DECIMAL 18,2, NOT NULL), `cost_price`, `currency` ('USD'), `tax_rate` (DECIMAL 5,4), `is_active`, `is_service`, `min_quantity` (default 1), `max_quantity`, `vendor_name`, `vendor_sku`, `dimensions`, `weight`, `warranty_months`, `image_url`, `created_by`, timestamps, `tenant_id`.
 
-**Relationships:** references `records`; referenced by `quote_line_items(product_id)`.
-
-### `quotes`
-Sales quotes with pricing, totals, billing/shipping addresses, and status.
-
-Key columns: `record_id` (UNIQUE), `opportunity_id` (FK→crm_opportunities), `account_id`, `contact_id`, `quote_number` (UNIQUE), `name`, `status` ('draft'), `valid_until`, monetary fields `subtotal`/`discount_amount`/`discount_percent`/`tax_amount`/`total_amount` (default 0), `currency`, `terms`, `notes`, full **billing + shipping addresses**, `accepted_at`, `sent_at`, `owner_id` (FK→employees), `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** FKs to `records`, `crm_opportunities`, `crm_accounts`, `crm_contacts`, `employees`; has many `quote_line_items`.
-
-### `quote_line_items`
-Line items within a quote.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | INTEGER | PK |
-| quote_id | INTEGER | FK→quotes |
-| product_id | INTEGER | nullable, FK→products |
-| name | VARCHAR(255) | |
-| description | TEXT | nullable |
-| quantity | DECIMAL(10,2) | |
-| unit_price | DECIMAL(18,2) | |
-| discount | DECIMAL(5,2) | default 0 |
-| line_total | DECIMAL(18,2) | |
-| order_index | INTEGER | default 0 |
-| tenant_id | INTEGER | |
-
-**Relationships:** FKs to `quotes`, `products`.
-
-### `quote_scenarios`
-Alternative insurance quote scenarios for comparison (coverage, term, rate source, premiums). *(from `insurance_ams_p0_p4`)*
-
-Key columns: `scenario_ref` (UNIQUE with tenant), `contact_id` (FK→crm_contacts), `application_id` (FK→insurance_applications), `product_type`, `coverage_amount`, `term_years`, `payment_frequency` ('monthly'), `applicant_data` (JSON), `riders` (JSON), `rate_source` ('internal'), `rate_source_meta` (JSON), `quote_result` (JSON), `monthly_premium`, `annual_premium`, `status` ('active'), `valid_until`, `comparison_group`, `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** FKs to `crm_contacts`, `insurance_applications`.
+**Relationships:** references `records`.
 
 ---
 
@@ -925,25 +896,25 @@ Key columns: `template_id` (FK→email_templates), `related_record_id` + `relate
 **Relationships:** FK to `email_templates`.
 
 ### `documents`
-Unified store for the **standalone Document Management System (DMS)** — generic CRM attachments, insurance application
-documents, generated documents, and compliance artifacts. Bytes live in a pluggable `StorageProvider` (local / S3 /
+Unified store for the **standalone Document Management System (DMS)** — generic CRM attachments,
+generated documents, and e-signed documents. Bytes live in a pluggable `StorageProvider` (local / S3 /
 Azure / GCS) under a tenant-first **relative** key; the row holds only metadata. See
 [DOCUMENT_MANAGEMENT.md](DOCUMENT_MANAGEMENT.md).
 
-Key columns: `record_id` (UNIQUE, runtime-records bridge), `document_ref` (human ref e.g. `DOC-APP2026001-001`),
-polymorphic owner `entity_type` + `entity_id` (and typed `application_id`), `original_filename`, `stored_key`
+Key columns: `record_id` (UNIQUE, runtime-records bridge), `document_ref` (human ref e.g. `DOC-GEN-001`),
+polymorphic owner `entity_type` + `entity_id`, `original_filename`, `stored_key`
 (relative storage key, never an absolute path), `file_size`, `mime_type`, `file_hash` (SHA-256 — integrity & dedup),
 `category`, `folder_id` (FK→document_folders), `description`, `notes`, `content_text` (MediumText — extracted plain
 text for full-text search; **never returned over the API**), `version`, `status` (`uploaded` | `under_review` |
 `approved` | `rejected` | `waived` | `deleted` …), `is_public`, review columns (`reviewed_by`, `reviewed_at`,
 `rejection_reason`), `uploaded_by`/`uploaded_at`, `deleted_at` (soft-delete marker), timestamps, `tenant_id`.
 
-Indexes: `(entity_type, entity_id)`, `application_id`, `category`, `status`, `file_hash`, `original_filename`,
+Indexes: `(entity_type, entity_id)`, `category`, `status`, `file_hash`, `original_filename`,
 `folder_id`, `deleted_at`, `tenant_id`, plus a **FULLTEXT** index `documents_fulltext` on
 `(original_filename, description, content_text)`.
 
-**Relationships:** FK to `records`, `insurance_applications` (AppDocuments), `document_folders`; referenced by
-`compliance_artifacts`, `submission_checklists`, `document_share_links`, `document_signature_requests`.
+**Relationships:** FK to `records`, `document_folders`; referenced by `document_share_links`,
+`document_signature_requests`.
 
 ### `document_folders`
 Self-referential per-tenant folder tree with a materialised `path` (e.g. `/Contracts/2026`) for cheap breadcrumbs and
@@ -1592,152 +1563,6 @@ Key columns: `title`, `body`, `link`, `target_type` (all/tenant/user/role), `tar
 
 ---
 
-## Insurance Core (Carriers, Policies, Underwriting, Claims)
-
-### `insurance_carriers`
-Master registry of insurance carriers with licensing and ratings.
-
-Key columns: `name`, `code` (UNIQUE with tenant), `naic_code`, `am_best_rating`, `carrier_type` ('life'), `phone`, `email`, `website`, `is_active`, `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** has many carrier_products, insurance_policies, insurance_applications, commission_entries, producer_appointments, commission_statements, carrier_adapter_configs.
-
-### `carrier_products`
-Products offered by carriers with coverage and age limits.
-
-Key columns: `carrier_id` (FK), `product_type`, `name`, `plan_code`, `description`, `min_coverage`/`max_coverage` (DECIMAL 18,2), `min_age`/`max_age`, `is_active`, timestamps, `tenant_id`.
-
-### `insurance_policies`
-Issued policies (active and historical).
-
-Key columns: `record_id` (UNIQUE FK→records), `policy_number` (UNIQUE with tenant), `carrier_id`, `carrier_product_id`, `contact_id`, `account_id`, `agent_id` (FK→employees), `application_id` (UNIQUE FK→insurance_applications), `product_type`, `product_name`, `coverage_amount`, `premium_amount`, `premium_frequency` ('monthly'), `status` ('active': lapsed/surrendered/…), `effective_date`, `expiry_date`, `renewal_due_date` (indexed), `is_lapsed` + `lapsed_at` + `reinstated_at`, `surrender_value`, `death_benefit`, `last_payment_date`, `notes`, `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** FKs to carriers, products, CRM contact/account, employees, applications. Parent for beneficiaries, status history, claims, endorsements, renewal tasks, billing schedules, invoices, commission entries, compliance artifacts.
-
-### `insurance_policy_beneficiaries`
-Beneficiary designations with allocation percentages.
-
-Key columns: `policy_id` (FK, cascade), `name`, `relationship`, `beneficiary_type` ('primary'/'contingent'), `allocation_pct` (default 100), `contact_id` (FK→crm_contacts), `date_of_birth`, `is_active`, timestamps, `tenant_id`.
-
-### `insurance_policy_status_history`
-Audit trail of policy status changes.
-
-Key columns: `policy_id` (FK, cascade), `from_status`, `to_status`, `reason`, `changed_by`, `created_at`, `tenant_id`.
-
-### `insurance_applications`
-Applications submitted for underwriting/processing.
-
-Key columns: `record_id` (UNIQUE), `app_number` (UNIQUE with tenant), `contact_id`, `account_id`, `agent_id`, `carrier_id`, `carrier_product_id`, `product_type`, `product_name`, `coverage_amount`, `premium_amount`, `status` ('submitted': pending_uw/approved/declined/…), `submitted_at`, `age`, `gender`, `is_smoker`, `height_in`, `weight_lbs`, plus **added by `add_missing_application_columns`**: `date_of_birth`, `health_class`, `payment_frequency`, `term_years`; `notes`, `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** FKs to carriers, products, CRM contact/account, employees, records. Parent for underwriting cases, policies, application documents, compliance artifacts, submission checklists, quote scenarios, commission entries.
-
-### `application_documents`
-Document uploads for applications. *(from `add_missing_application_columns`)*
-
-Key columns: `application_id` (FK, cascade), `record_id` (UNIQUE), `document_ref`, `original_filename`, `stored_filename`, `category` (tax_return/medical_report/identity/…), `mime_type`, `file_size`, `file_path`, `file_hash`, `version` (default 1), `status` ('uploaded': reviewed/approved/rejected), `uploaded_by`/`uploaded_at`, `reviewed_by`/`reviewed_at`, `rejection_reason`, `notes`, timestamps, `tenant_id`.
-
-### `underwriting_cases`
-Underwriting decisions and medical underwriting per application.
-
-Key columns: `case_number` (UNIQUE with tenant), `application_id` (UNIQUE FK, cascade), `assigned_underwriter` (FK→employees), `status` ('pending': approved/declined/suspended/…), `risk_class`, `bmi` (DOUBLE), `blood_pressure`, `cholesterol`, `medical_conditions`, `medications`, `family_history`, `decision_notes`, `decided_at`, timestamps, `tenant_id`.
-
-**Relationships:** has many `underwriting_requirements`.
-
-### `underwriting_requirements`
-Documentation/info requests for underwriting cases.
-
-Key columns: `case_id` (FK, cascade), `description`, `requirement_type` (medical_exam/financial_doc/…), `status` ('pending': received/waived), `due_date`, `received_at`, `notes`, timestamps, `tenant_id`.
-
-### `insurance_claims`
-Claims filed against policies, with FNOL and loss details.
-
-Key columns: `record_id` (UNIQUE), `claim_number` (UNIQUE with tenant), `policy_id` (FK, cascade), `contact_id`, `claim_type` (death_claim/disability/surrender/…), `amount`, `status` ('filed': approved/denied/paid), `priority` ('medium'), `adjuster_id` (FK→employees), `filed_at`, `description`, `paid_at`, `paid_amount`, `denial_reason`. **Added by `insurance_ams_p0_p4`**: `fnol_received_at`, `loss_date`, `loss_description`, `loss_location`, `reporter_name`, `reporter_phone`, `reporter_relationship`, `is_fraud_flagged`, `is_litigation` + `litigation_details`, `reserve_amount`. Plus `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** FKs to policies, CRM contact, employees, records. Parent for claim_events, claim_reserves, claim_payment_events.
-
-### `claim_events`
-Event log for claim state transitions.
-
-Key columns: `claim_id` (FK, cascade), `event_type` (filed/approved/denied/paid), `description`, `created_by`, `created_at`, `tenant_id`.
-
-### `commission_entries`
-Agent commissions on policies/applications with reconciliation and splits.
-
-Key columns: `agent_id` (FK→employees, restrict), `policy_id`, `application_id`, `carrier_id`, `product_type`, `source_premium`, `commission_rate` (DECIMAL 5,2), `commission_amount`, `commission_period` (YYYY-MM). **Added by `insurance_ams_p0_p4`**: `commission_type` ('first_year'), `expected_amount`, `statement_id` (FK→commission_statements), `variance`. Plus `status` ('pending': paid/reversed/clawed_back), `paid_at`, `clawback_reason`, `split_agent_id` (FK→employees), `split_percent`, `notes`, `created_by`, timestamps, `tenant_id`.
-
-### `carrier_adapter_configs`
-Per-carrier API integration configuration. *(from `carrier_adapter_config`)*
-
-Key columns: `carrier_id` (UNIQUE FK, cascade), `adapter_type` ('simulated'/api/web_service), `api_base_url`, `api_key_env_var` (env var name, not the key), `timeout_ms` (10000), `is_enabled`, `environment` ('sandbox'/production), `supported_products` (JSON), `notes`, `last_health_check_at`, `health_status`, `health_detail`, timestamps.
-
----
-
-## Insurance AMS (Compliance, Billing, Payments, Commissions)
-
-> Tables from `insurance_ams_p0_p4` extending the insurance core with compliance, billing, payments, claims reserving, producer licensing, and commission reconciliation.
-
-### `compliance_artifacts`
-Compliance documents/evidence for regulatory requirements (KYC, disclosures, signatures) with retention.
-
-Key columns: `artifact_type` (kyc_doc/disclosure/signature/…), `contact_id`, `application_id`, `policy_id`, `document_id` (FK→documents), `status` ('pending': completed/expired), `completed_at`, `expires_at`, `signed_by`, `signature_ip`, `retention_until`, `metadata` (JSON), `notes`, `created_by`, timestamps, `tenant_id`.
-
-### `submission_checklists`
-Per-application checklist of required documents/requirements.
-
-Key columns: `application_id` (FK, cascade), `item_name`, `item_type`, `is_required` (default true), `status` ('pending': received/waived), `document_id` (FK→documents), `received_at`, `waived_by` + `waived_reason`, `notes`, timestamps, `tenant_id`.
-
-### `policy_endorsements`
-Post-issuance policy modifications (coverage/rider/beneficiary changes).
-
-Key columns: `endorsement_ref` (UNIQUE with tenant), `policy_id` (FK, cascade), `endorsement_type`, `description`, `effective_date`, `status` ('pending': approved/applied), `old_values`/`new_values` (JSON), `premium_impact`, `approved_by`, `applied_at`, `notes`, `created_by`, timestamps, `tenant_id`.
-
-### `renewal_tasks`
-Renewal tracking/follow-up for approaching policy renewals.
-
-Key columns: `policy_id` (FK, cascade), `agent_id`, `renewal_date`, `status` ('upcoming': in_progress/completed/lapsed), `outreach_count`, `last_contacted`, `renewal_premium`, `notes`, timestamps, `tenant_id`.
-
-### `billing_schedules`
-Billing frequency and terms per policy.
-
-Key columns: `policy_id` (UNIQUE FK, cascade), `frequency` (monthly/quarterly/semi-annual/annual), `amount_due`, `next_due_date`, `auto_pay`, `grace_period_days` (31), `status` ('active': suspended/cancelled), timestamps, `tenant_id`.
-
-**Relationships:** has many `policy_invoices`.
-
-### `policy_invoices`
-Invoices generated from billing schedules.
-
-Key columns: `invoice_number` (UNIQUE with tenant), `billing_schedule_id` (FK, cascade), `policy_id` (FK, cascade), `amount`, `due_date`, `status` ('pending': paid/overdue/written_off), `paid_at`, timestamps, `tenant_id`.
-
-**Relationships:** has many `policy_payments`.
-
-### `policy_payments`
-Payments received against invoices.
-
-Key columns: `invoice_id` (FK, cascade), `payment_ref`, `amount`, `payment_method` (check/ACH/credit_card/wire), `payment_date`, `notes`, `created_by`, `created_at`, `tenant_id`.
-
-### `claim_reserves`
-Reserve amounts set aside for claim payments, tracked cumulatively.
-
-Key columns: `claim_id` (FK, cascade), `reserve_type` (initial/increased/decreased/final), `amount`, `running_total`, `reason`, `created_by`, `created_at`, `tenant_id`.
-
-### `claim_payment_events`
-Individual claim payment events (partial/final).
-
-Key columns: `claim_id` (FK, cascade), `payment_type` (advance/partial/final/supplemental), `amount`, `payee_name`, `payment_ref`, `payment_date`, `notes`, `created_by`, `created_at`, `tenant_id`.
-
-### `producer_appointments`
-Agent/producer appointments with carriers by state.
-
-Key columns: `agent_id` (FK→employees, restrict), `carrier_id` (FK, cascade), `state_code`, `license_number`, `license_type` (life/health/property_casualty), `appointment_status` ('active': inactive/terminated), `appointed_at`, `expires_at`, `terminated_at`, `notes`, timestamps, `tenant_id`. UNIQUE (agent_id, carrier_id, state_code, tenant_id).
-
-### `commission_statements`
-Carrier-provided commission statements for reconciliation.
-
-Key columns: `statement_ref` (UNIQUE with tenant), `carrier_id` (FK, cascade), `statement_period` (YYYY-MM), `received_date`, `total_expected`, `total_actual`, `variance`, `status` ('pending': reconciled/disputed), `reconciled_at`, `reconciled_by`, `notes`, `created_by`, timestamps, `tenant_id`.
-
-**Relationships:** has many `commission_entries` (via `statement_id`).
-
----
-
 ## Status & Workflow Tracking
 
 ### `status_events`
@@ -1761,11 +1586,101 @@ Generic event log tracking status changes and milestones for any record. *(from 
 
 ---
 
+## Access Segmentation & Audit Chain
+
+> Added by migration `20261013180000_platform_builder_extensions`. See [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md#5-business-units-and-information-barriers).
+
+### `business_units`
+
+Legal entities / divisions a tenant's records and staff belong to.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK, auto-increment |
+| code | VARCHAR(20) | NOT NULL; UNIQUE (tenant_id, code) |
+| name | VARCHAR(150) | NOT NULL |
+| legal_name, regulator | VARCHAR(200), VARCHAR(150) | nullable |
+| licence | VARCHAR(200) | nullable |
+| base_currency | CHAR(3) | nullable |
+| is_active | BOOLEAN | default true |
+| config | JSON | nullable |
+| created_at, updated_at | DATETIME(3) | |
+| tenant_id | INTEGER | NOT NULL, FK→tenants |
+
+### `employee_business_units`
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK |
+| employee_id | VARCHAR(20) | FK→employees (Cascade); UNIQUE (employee_id, business_unit_id) |
+| business_unit_id | INTEGER | FK→business_units (Cascade) |
+| is_primary | BOOLEAN | default false |
+| created_at | DATETIME(3) | |
+| tenant_id | INTEGER | FK→tenants |
+
+### `barrier_zones`
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK |
+| code | VARCHAR(40) | NOT NULL; UNIQUE (tenant_id, code) |
+| name | VARCHAR(150) | NOT NULL |
+| description | TEXT | nullable |
+| is_active | BOOLEAN | default true |
+| created_at, updated_at | DATETIME(3) | |
+| tenant_id | INTEGER | FK→tenants |
+
+### `barrier_members`
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK |
+| zone_id | INTEGER | FK→barrier_zones (Cascade); UNIQUE (zone_id, employee_id) |
+| employee_id | VARCHAR(20) | FK→employees (Cascade), indexed |
+| source | VARCHAR(20) | `member` (standing) or `wall_crossing` |
+| valid_to | DATETIME(3) | nullable — NULL = standing; a crossing expires here |
+| granted_by | VARCHAR(20) | nullable |
+| created_at | DATETIME(3) | |
+| tenant_id | INTEGER | FK→tenants |
+
+### `wall_crossings`
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK |
+| zone_id | INTEGER | FK→barrier_zones (Cascade); index (zone_id, status) |
+| employee_id | VARCHAR(20) | FK→employees (Cascade) — who is brought over the wall |
+| reason | TEXT | NOT NULL |
+| status | VARCHAR(20) | `pending` / `approved` / `rejected` |
+| requested_by, decided_by | VARCHAR(20) | nullable; the decider can never be the requester |
+| decided_at, valid_to | DATETIME(3) | nullable |
+| created_at, updated_at | DATETIME(3) | |
+| tenant_id | INTEGER | FK→tenants |
+
+### `audit_chain_events`
+
+Append-only, hash-chained per tenant.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK |
+| seq | INTEGER | NOT NULL; UNIQUE (tenant_id, seq) — 1, 2, 3 … per tenant |
+| entity_type | VARCHAR(50) | NOT NULL; index (entity_type, entity_id) |
+| entity_id | VARCHAR(64) | nullable |
+| action | VARCHAR(60) | NOT NULL |
+| actor | VARCHAR(20) | nullable |
+| sensitivity | VARCHAR(20) | default `normal` |
+| payload | JSON | nullable |
+| prev_hash | CHAR(64) | previous event's hash (64 zeros for the first) |
+| hash | CHAR(64) | SHA-256 over the canonical event and `prev_hash` |
+| created_at | DATETIME(3) | |
+| tenant_id | INTEGER | FK→tenants |
+
 ## Appendix: Cross-Cutting Conventions
 
-- **Multi-tenancy:** Nearly every table carries `tenant_id`; many uniqueness constraints are scoped per tenant (e.g., `policy_number`, `app_number`, `claim_number`, carrier `code`).
+- **Multi-tenancy:** Nearly every table carries `tenant_id`; many uniqueness constraints are scoped per tenant (e.g., role `name`, `tenant_configs.config_key`).
 - **Polymorphic links:** Several tables use a `<thing>_type` + `<thing>_id` pair (e.g., `email_logs.related_type/related_record_id`, `crm_associations`, `territory_assignments`, `customer_feedback`) instead of hard FKs.
-- **Typed records pattern:** CRM and insurance entities each own a row in the generic `records` table via a UNIQUE `record_id`, unifying assignment, activities, tasks, audit logs, and status events across all object types.
+- **Typed records pattern:** CRM entities each own a row in the generic `records` table via a UNIQUE `record_id`, unifying assignment, activities, tasks, audit logs, and status events across all object types.
 - **Money:** Monetary amounts use `DECIMAL(18,2)`; rates use `DECIMAL(5,2)` or `DECIMAL(5,4)`.
 - **Timestamps:** `DATETIME(3)` (millisecond precision); `created_at` defaults to `CURRENT_TIMESTAMP(3)`.
 - **JSON columns** store flexible config, metrics, and structured metadata throughout.

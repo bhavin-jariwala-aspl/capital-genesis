@@ -8,19 +8,11 @@ const HierarchyService = require('../../services/hierarchy.service');
 const EmailTemplateService = require('../../services/email-template.service');
 const EmailSendService     = require('../../services/email-send.service');
 const { ok }           = require('../../utils/response');
-const { ValidationError, AppError, ConflictError, NotFoundError } = require('../../utils/errors');
+const { ValidationError, ConflictError, NotFoundError, RateLimitedError } = require('../../utils/errors');
 const { RateLimiter, AUTH_LIMITS, clientIp } = require('../../utils/rate-limit');
 const { tenantContext } = require('../../middleware/tenant-scope');
 const { invalidateRoleLevels } = require('../../services/role-level');
 const EntitlementService = require('../../services/platform/entitlement.service');
-
-/** 429 with a Retry-After hint; the global error handler emits the header. */
-class RateLimitedError extends AppError {
-  constructor(message, retryAfterSec) {
-    super(message, 429, 'RATE_LIMITED');
-    this.retryAfterSec = retryAfterSec;
-  }
-}
 
 // Build the absolute base URL the reset link should point at. Prefers an
 // explicit APP_URL, otherwise reconstructs it from the incoming request.

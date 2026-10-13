@@ -87,6 +87,12 @@ export const runtimeService = {
   // Audit trail
   getRecordAudit: (id) => wrap(api.get(`/runtime/records/${id}/audit`)),
 
+  // Lookups, related lists and record actions
+  getRelated:       (id)               => wrap(api.get(`/runtime/records/${id}/related`)),
+  searchLookup:     (objectName, q, id) => wrap(api.get(`/runtime/lookup/${encodeURIComponent(objectName)}`, { params: id ? { id } : { q } })),
+  getObjectActions: (objectId)         => wrap(api.get(`/runtime/objects/${objectId}/actions`)),
+  runRecordAction:  (id, workflowId)   => wrap(api.post(`/runtime/records/${id}/actions/${workflowId}`)),
+
   // Lead conversion (accepts record ID, not CRM lead ID)
   convertLead: (recordId, options = {}) => wrap(api.post(`/runtime/records/${recordId}/convert-lead`, options)),
 
@@ -99,19 +105,4 @@ export const runtimeService = {
   createProduct:  (data)     => wrap(api.post('/runtime/products', data)),
   updateProduct:  (id, data) => wrap(api.put(`/runtime/products/${id}`, data)),
   deleteProduct:  (id)       => del(api.delete(`/runtime/products/${id}`)),
-
-  // Quotes
-  getQuotes:      ()         => wrap(api.get('/runtime/quotes')),
-  getQuote:       (id)       => wrap(api.get(`/runtime/quotes/${id}`)),
-  createQuote:    (data)     => wrap(api.post('/runtime/quotes', data)),
-  updateQuote:    (id, data) => wrap(api.put(`/runtime/quotes/${id}`, data)),
-  deleteQuote:    (id)       => del(api.delete(`/runtime/quotes/${id}`)),
-  submitQuote:    (id)       => wrap(api.patch(`/runtime/quotes/${id}/submit`)),
-  approveQuote:   (id)       => wrap(api.patch(`/runtime/quotes/${id}/approve`)),
-  rejectQuote:    (id, reason) => wrap(api.patch(`/runtime/quotes/${id}/reject`, { rejection_reason: reason })),
-
-  // Quote Line Items
-  addLineItem:    (quoteId, data)         => wrap(api.post(`/runtime/quotes/${quoteId}/line-items`, data)),
-  updateLineItem: (quoteId, itemId, data) => wrap(api.put(`/runtime/quotes/${quoteId}/line-items/${itemId}`, data)),
-  deleteLineItem: (quoteId, itemId)       => del(api.delete(`/runtime/quotes/${quoteId}/line-items/${itemId}`)),
 };

@@ -11,6 +11,115 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — Platform Builder extensions and the SWAN Capital vertical (2026-10-13)
+
+Generic platform capabilities, so an industry CRM can be configured in the Builder rather than coded,
+and the first vertical built on them: SWAN Capital Solutions (Phase 0 + Phase 1 MVP of
+`docs/SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md`). Details:
+[PLATFORM_BUILDER_EXTENSIONS.md](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md),
+[SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md).
+
+- **Formula language** (`services/formula.js`): a safe parser/evaluator, with no `eval`. It powers formula
+  fields, `expression` validation rules, workflow `expression` conditions and stage entry rules. Includes
+  `LOOKUP` (effective-dated), `LATEST`, `COUNT_RELATED`, `SUM_RELATED`, `PMT`, date and age functions.
+  Parent roll-ups recompute when children change.
+- **Lookup fields**: record picker, titles in lists and panels, and an automatic **Related** tab on every record.
+- **Record actions**: manual workflows appear as buttons on the record panel.
+- **Stage gates**: `required_fields` and `entry_rule` per pipeline stage, enforced for drag, API, bulk and
+  workflow moves.
+- **Business units and information barriers**: records stamped from object config and filtered in lists,
+  search, related lists, lookups, analytics and documents. Barriers bind admins. Time-bound
+  wall-crossings need four-eyes approval. UI: **Tools ▸ Access & Barriers**.
+- **Tamper-evident audit chain** for permission, membership, wall-crossing and publishing changes, with a
+  verify endpoint.
+- **Public web forms**: publish any Builder form at `/f/<key>`. Consent, honeypot, rate limits, optional
+  reCAPTCHA and computed `result_fields` are supported.
+- **Object analytics** dashboard source (`POST /api/analytics/object`) and **record SLAs** on any
+  object's pipeline.
+- **Workflow steps** `send_email` (language variants) and `generate_document`. `create_record` with
+  `link_field`/`store_as`/`stage`; stage moves by name; maker-checker approvals
+  (`exclude_actor`/`exclude_field`).
+- **Vertical packs**: `scripts/install-vertical.js` installs a pack of Builder metadata idempotently.
+  `prisma/verticals/swan-capital` provides 8 modules, 26 objects, 15 workflows, 12 assignment rules,
+  6 SLA policies, 14 EN/FR email templates, 5 merge templates, 5 wizards, 3 dashboards and 3 public forms.
+- **Database** (additive migration `20261013180000_platform_builder_extensions`): `business_units`,
+  `employee_business_units`, `barrier_zones`, `barrier_members`, `wall_crossings`, `audit_chain_events`;
+  `records.business_unit_id`/`barrier_zone_id`; `ui_objects.config`; `ui_forms.config`/`public_key`;
+  `sla_policies.object_id`/`config`.
+
+### Fixed (2026-10-13)
+
+- **Record fetch after the Quotes removal:** the record hydration path and the email merge path
+  still included the deleted `quote` relation. Prisma rejects that at query time, so single-record
+  reads failed. Mocked tests could not see it; `tests/record-include-schema.test.js` now checks
+  those includes against the real schema.
+- **Barrier override shown as granted:** the Permissions screen showed every role as holding the
+  barrier override because missing rows defaulted to the level-based scopes. Missing rows now
+  default to no access, and an unknown role level no longer defaults to the admin tier.
+- **Legacy `lead_score` object view:** the read-only view and the record service path behind it were
+  removed. No tenant has the object.
+- **Cross-tenant moves:** a request body carrying `tenant_id` could move a module, object, field or
+  form into another tenant. Scoped writes now pin the tenant, and metadata writes take column whitelists.
+- **Document access:** documents attached to a record were listable and downloadable by users who
+  could not see the record. They now inherit the record's access.
+- **Rule-based assignment:** conditions on custom objects never matched, because only `crm_*` columns
+  were read.
+- **Auto-numbering:** numbers ignored the format width, so the sequence reissued numbers after 999.
+  Two objects with a same-named field also shared one sequence.
+- **Custom validation rules:** `custom` rules ran admin-typed JavaScript in users' browsers (stored
+  XSS). The rule type is retired in favour of server-side `expression` rules.
+- **Public form keys** could be set through the ordinary form update.
+- **Hardcoded conversion maps:** the lead and prospect conversion maps had insurance-specific
+  hardcoded field maps. Conversion now copies same-named fields.
+- **List cells** were formatted by hardcoded field names. A metadata-driven `FieldValue` renderer
+  replaces them.
+- **Test flake:** the forged-JWT test failed intermittently.
+
+### Changed (2026-10-13)
+
+- The demo tenant is now **Genesis CRM Demo** (industry *professional services*). The remaining
+  insurance wording was removed from its fields, option sets, lead-scoring rules and seed text.
+- The Sidebar groups modules by their `category`, so a new category gets its own section without a
+  code change.
+
+### Removed — The INSURANCE domain and the Quotes object (2026-10-13)
+
+Genesis CRM is now a general-purpose CRM. The life-insurance Agency Management System and the CRM
+Quotes object were deleted end to end. Entries below this one describe them as they were and are
+kept as history.
+
+- **UI:** the INSURANCE left-sidebar section and its pages — Quote Engine, Quotes, Applications,
+  Policies, Claims, Underwriting (and the case review page), Commissions, Agent Workbench,
+  Declarations and Document Collection — with their routes under `/insurance/*` and `/quotes`.
+- **Modules and metadata:** the `quotes`, `applications`, `policies`, `claims`, `underwriting`,
+  `commissions`, `declarations` and `document_collection` modules, and the life-insurance
+  application wizard.
+- **API and services:** every `/api/insurance/*` route and `/api/runtime/quotes*`;
+  `insurance-domain.service.js`, `calculation-engine.service.js` (premium calculation engine),
+  `rating-adapter.js` (carrier rating adapters), `template-engine.service.js` (insurance PDFs and
+  illustrations) and `quote.service.js`. The insurance stage automation (application →
+  underwriting, claim status sync) and the record → `insurance_applications` bridge are gone.
+- **Database:** the 24 insurance tables (`insurance_carriers`, `carrier_adapter_configs`,
+  `carrier_products`, `insurance_policies`, `insurance_policy_beneficiaries`,
+  `insurance_policy_status_history`, `insurance_applications`, `underwriting_cases`,
+  `underwriting_requirements`, `insurance_claims`, `claim_events`, `commission_entries`,
+  `quote_scenarios`, `compliance_artifacts`, `submission_checklists`, `policy_endorsements`,
+  `renewal_tasks`, `billing_schedules`, `policy_invoices`, `policy_payments`, `claim_reserves`,
+  `claim_payment_events`, `producer_appointments`, `commission_statements`), the CRM `quotes` and
+  `quote_line_items` tables, and the `documents.application_id` column.
+- **Entitlements:** the `insurance` feature group and the keys `ins_quoting`, `ins_policy_admin`,
+  `ins_underwriting`, `ins_claims`, `ins_commissions`, `ins_carrier_feeds`, `ins_ai_underwriting`
+  and `analytics_policy`, along with the legacy flag aliases `underwriting_workflow`,
+  `ai_underwriting` and `policy_analytics`.
+- **Docs:** deleted `user-guide/GENESIS_INSURE_JOURNEY.md`, `user-guide/UNDERWRITING_FLOW.md` and
+  `user-guide/SAMPLE_FLOW.md`. `user-guide/PRODUCTS_AND_QUOTES.md` is now `user-guide/PRODUCTS.md`
+  and covers products only. Insurance endpoints, tables, feature keys, dashboards, workflows and
+  examples were removed from the rest of the knowledge base.
+
+**Kept:** the standalone Document Management module (`/documents`), Products, the CRM objects
+(leads, prospects, clients, contacts, accounts, opportunities, cases), SLA, reporting, workflows,
+social and the currency service.
+
 ### Documented — What a live WhatsApp and paid-ads rollout actually requires (September 2026)
 
 A client engagement asked for four things: bulk and targeted WhatsApp messaging, Facebook campaign

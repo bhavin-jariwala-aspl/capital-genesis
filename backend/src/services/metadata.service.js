@@ -4,6 +4,44 @@ const { NotFoundError, ValidationError } = require('../utils/errors');
 const PermissionService = require('./permission.service');
 const { ADMIN_THRESHOLD } = require('../middleware/authenticate');
 const { roleLevelFor } = require('./role-level');
+const { check: checkFormula } = require('./formula');
+
+// Columns an admin may write on modules / objects. Anything else in the body —
+// tenant_id above all, but also id and timestamps — is dropped, so a crafted
+// request cannot move a module or object into another tenant.
+const MODULE_WRITABLE = ['name', 'label', 'description', 'icon', 'color', 'category', 'order_index', 'is_active'];
+const OBJECT_WRITABLE = ['module_id', 'name', 'label', 'plural_label', 'description', 'icon', 'order_index', 'is_active', 'config'];
+// `config` / `public_key` are deliberately absent: publishing a form (and the
+// key it is published under) goes through PublicFormService only, so the key
+// is always random and the action is on the audit chain.
+const FORM_WRITABLE = ['object_id', 'name', 'label', 'description', 'form_type', 'columns', 'is_active'];
+
+function _pick(data, keys) {
+  const out = {};
+  for (const k of keys) if (data?.[k] !== undefined) out[k] = data[k];
+  if (out.is_active !== undefined) out.is_active = out.is_active === 'true' || out.is_active === true;
+  if (out.order_index !== undefined) out.order_index = Number(out.order_index) || 0;
+  if (out.module_id !== undefined) out.module_id = Number(out.module_id);
+  if (out.object_id !== undefined) out.object_id = Number(out.object_id);
+  if (out.columns !== undefined) out.columns = Number(out.columns) || 2;
+  return out;
+}
+
+/**
+ * Builder-time checks for the field types whose config the engine depends on:
+ * a formula that does not parse would silently compute nothing, and a lookup
+ * without a target object would store ids that resolve to nothing.
+ */
+function _assertFieldConfig(fieldType, config) {
+  if (fieldType === 'formula') {
+    if (!config?.expression) throw new ValidationError('A formula field needs an expression (config.expression)');
+    const err = checkFormula(config.expression);
+    if (err) throw new ValidationError(`Formula error: ${err}`);
+  }
+  if (fieldType === 'lookup' && !config?.target_object) {
+    throw new ValidationError('A lookup field must name the object it points at (config.target_object)');
+  }
+}
 
 /**
  * A field's `name` is a SQL identifier: it is interpolated into generated-column
@@ -77,18 +115,15 @@ class MetadataService {
   }
 
   async createModule(data) {
+    const fields = _pick(data, MODULE_WRITABLE);
     // Ensure required `label` is present; fall back to `name` if UI only sends one
-    if (data.is_active !== undefined) data = { ...data, is_active: data.is_active === 'true' || data.is_active === true };
-    const mod = await this.db.uiModule.create({ data: { label: data.name, ...data } });
+    const mod = await this.db.uiModule.create({ data: { label: fields.name, ...fields } });
     await this.cache.del(this.cache.key('modules', 'all'));
     return mod;
   }
 
   async updateModule(id, data) {
-    // Strip read-only / relational fields that Prisma's update() cannot accept
-    const { id: _id, created_at, updated_at, objects, ...scalar } = data;
-    if (scalar.is_active !== undefined) scalar.is_active = scalar.is_active === 'true' || scalar.is_active === true;
-    const mod = await this.db.uiModule.update({ where: { id }, data: scalar });
+    const mod = await this.db.uiModule.update({ where: { id }, data: _pick(data, MODULE_WRITABLE) });
     await this.cache.invalidateModule(id);
     return mod;
   }
@@ -138,18 +173,16 @@ class MetadataService {
 
   async createObject(data) {
     // Ensure required `label` is present; fall back to `name` if UI only sends one
-    if (data.is_active !== undefined) data = { ...data, is_active: data.is_active === 'true' || data.is_active === true };
-    const obj = await this.db.uiObject.create({ data: { label: data.name, ...data } });
-    await this.cache.del(this.cache.key('objects', 'module', data.module_id));
+    const fields = _pick(data, OBJECT_WRITABLE);
+    const obj = await this.db.uiObject.create({ data: { label: fields.name, ...fields } });
+    await this.cache.del(this.cache.key('objects', 'module', fields.module_id));
     return obj;
   }
 
   async updateObject(id, data) {
     const existing = await this.db.uiObject.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Object');
-    const { id: _id, created_at, updated_at, fields, forms, module, ...scalar } = data;
-    if (scalar.is_active !== undefined) scalar.is_active = scalar.is_active === 'true' || scalar.is_active === true;
-    const obj = await this.db.uiObject.update({ where: { id }, data: scalar });
+    const obj = await this.db.uiObject.update({ where: { id }, data: _pick(data, OBJECT_WRITABLE) });
     await this.cache.invalidateObject(id, existing.module_id);
     return obj;
   }
@@ -253,6 +286,7 @@ class MetadataService {
   async createField(data) {
     const { validations, col_span, position, is_readonly, show_in_list, ...rawData } = data;
     _assertSafeFieldName(rawData.name);
+    _assertFieldConfig(rawData.field_type, rawData.config);
     // Coerce boolean fields that might arrive as strings from HTML selects
     for (const key of ['is_required', 'is_active', 'is_unique', 'is_searchable', 'is_filterable', 'is_sortable', 'is_indexed']) {
       if (rawData[key] !== undefined) rawData[key] = rawData[key] === 'true' || rawData[key] === true;
@@ -306,6 +340,9 @@ class MetadataService {
   async updateField(id, data) {
     const existing = await this.db.uiField.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Field');
+    if (data.field_type !== undefined || data.config !== undefined) {
+      _assertFieldConfig(data.field_type ?? existing.field_type, data.config ?? existing.config);
+    }
     // Coerce boolean fields that might arrive as strings from HTML selects
     for (const key of ['is_required', 'is_active', 'is_unique', 'is_searchable', 'is_filterable', 'is_sortable', 'is_indexed']) {
       if (data[key] !== undefined) data = { ...data, [key]: data[key] === 'true' || data[key] === true };
@@ -470,8 +507,8 @@ class MetadataService {
   }
 
   async createForm(data) {
-    const { field_layouts, ...formData } = data;
-    const form = await this.db.uiForm.create({ data: formData });
+    const { field_layouts } = data;
+    const form = await this.db.uiForm.create({ data: _pick(data, FORM_WRITABLE) });
     if (field_layouts?.length) {
       await this.db.uiFormFieldLayout.createMany({
         data: field_layouts.map((fl) => ({ ...fl, form_id: form.id })),
@@ -482,8 +519,7 @@ class MetadataService {
   }
 
   async updateForm(id, data) {
-    const { field_layouts, ...formData } = data;
-    const form = await this.db.uiForm.update({ where: { id }, data: formData });
+    const form = await this.db.uiForm.update({ where: { id }, data: _pick(data, FORM_WRITABLE) });
     await this.cache.invalidateForm(id);
     return form;
   }

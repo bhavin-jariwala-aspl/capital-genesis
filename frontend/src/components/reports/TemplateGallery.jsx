@@ -55,7 +55,7 @@ export default function TemplateGallery({ onPick, onBlank }) {
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
           <input
             className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm text-gray-900 focus:border-primary-500 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
-            placeholder="Search — try “win rate”, “premium”, “overdue”…"
+            placeholder="Search — try “win rate”, “revenue”, “overdue”…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

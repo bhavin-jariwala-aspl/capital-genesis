@@ -31,13 +31,8 @@ const datasetByKey = new Map(DATASETS.map((d) => [d.key, d]));
  * inline — a linked chart that another dashboard edits would change both.
  */
 const LIBRARY_CHARTS = [
-  ['monthly_premium_revenue',  'premium-revenue-monthly',       'bar',          { format: 'currency_compact', goal: 20000, goalLabel: 'Monthly target', xLabel: 'Month', yLabel: 'Annualised premium' }],
-  ['application_funnel',       'application-funnel',            'funnel',       { format: 'integer', dataLabels: true }],
-  ['policy_type_distribution', 'policy-type-distribution',      'donut',        { format: 'integer', dataLabels: true, legend: 'bottom' }],
-  ['claims_claimed_vs_paid',   'claims-financials-monthly',     'area_stacked', { format: 'currency_compact', legend: 'bottom', smooth: true }],
-  ['top_producers_by_premium', 'top-agents-by-premium',         'bar',          { format: 'currency_compact', sort: 'desc', topN: 8, dataLabels: true }],
   ['opportunity_pipeline',     'opportunity-pipeline-by-stage', 'funnel',       { format: 'currency_compact', dataLabels: true }],
-  ['exposure_by_product',      'coverage-by-product-type',      'treemap',      { format: 'currency_compact' }],
+  ['leads_by_source',          'leads-by-source',               'donut',        { format: 'integer', dataLabels: true, legend: 'bottom' }],
 ];
 
 /**

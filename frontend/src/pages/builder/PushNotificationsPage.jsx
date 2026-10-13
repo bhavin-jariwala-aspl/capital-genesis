@@ -196,7 +196,7 @@ export default function PushNotificationsPage() {
           </div>
           <Input
             label="Link (optional)"
-            placeholder="/quotes or https://..."
+            placeholder="/reports or https://..."
             value={form.link}
             onChange={e => set('link', e.target.value)}
           />

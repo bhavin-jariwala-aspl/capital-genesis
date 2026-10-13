@@ -118,10 +118,7 @@ const BUILTIN_ROLE_LEVEL = Object.freeze({
   super_admin:       2,
   admin:             3,
   manager:           4,
-  uw_manager:        4,   // same authority level as manager (team-scoped)
   user:              5,
-  senior_underwriter:5,   // same authority level as user (own records)
-  underwriter:       6,   // lowest — standard UW within binding limits
 });
 
 /** Best-effort name→level hints. Built-ins are authoritative and immutable. */

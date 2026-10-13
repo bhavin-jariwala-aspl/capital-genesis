@@ -1,6 +1,7 @@
 # Configuration Details — Metadata-Driven Architecture
 
-> Last updated: 2026-08-27
+> Last updated: 2026-10-13 (insurance domain screens removed; counts below
+> were reduced by the removed screens' recorded line counts, not re-measured)
 >
 > Counts, inventories and route tables in this document are generated from
 > source. If you add or remove a screen, regenerate them rather than editing the
@@ -20,34 +21,33 @@ recommendations for future development.
 
 ## Metadata Coverage Summary
 
-### Overall Application (58 screens, 24,834 lines)
+### Overall Application (47 screens, 17,010 lines)
 
 | Classification | Screens | % Screens | Lines | % Lines |
 |---|---|---|---|---|
-| Metadata renderers | 4 | 6.9% | 1,856 | 7.5% |
-| Hybrid (metadata + domain logic) | 10 | 17.2% | 7,455 | 30.0% |
-| Domain / registry-driven | 9 | 15.5% | 4,681 | 18.8% |
-| Builder (metadata editors) | 21 | 36.2% | 8,474 | 34.1% |
-| Platform Admin | 8 | 13.8% | 1,386 | 5.6% |
-| Utility (auth, settings, public links) | 6 | 10.3% | 982 | 4.0% |
+| Metadata renderers | 4 | 8.5% | 1,856 | 10.9% |
+| Hybrid (metadata + domain logic) | 1 | 2.1% | 568 | 3.3% |
+| Domain / registry-driven | 7 | 14.9% | 3,744 | 22.0% |
+| Builder (metadata editors) | 21 | 44.7% | 8,474 | 49.8% |
+| Platform Admin | 8 | 17.0% | 1,386 | 8.1% |
+| Utility (auth, settings, public links) | 6 | 12.8% | 982 | 5.8% |
 
-### Runtime / User-Facing Screens Only (23 screens, 13,992 lines)
+### Runtime / User-Facing Screens Only (12 screens, 6,168 lines)
 
 | Classification | Screens | % | Lines | % |
 |---|---|---|---|---|
-| Metadata renderers | 4 | 17.4% | 1,856 | 13.3% |
-| Hybrid | 10 | 43.5% | 7,455 | 53.3% |
-| Domain / registry-driven | 9 | 39.1% | 4,681 | 33.5% |
+| Metadata renderers | 4 | 33.3% | 1,856 | 30.1% |
+| Hybrid | 1 | 8.3% | 568 | 9.2% |
+| Domain / registry-driven | 7 | 58.3% | 3,744 | 60.7% |
 
 ### Key Metric: Metadata Influence
 
-**61% of runtime screens (14 of 23)** consume module/object metadata, accounting
-for **67% of runtime code (9,311 of 13,992 lines)**.
+**42% of runtime screens (5 of 12)** consume module/object metadata, accounting
+for **39% of runtime code (2,424 of 6,168 lines)**.
 
-The nine remaining screens split into two groups, and the distinction matters:
+The seven remaining screens split into two groups, and the distinction matters:
 
-- **Genuinely domain-specific** (Insurance Quote pricing, CRM Quotes line items,
-  Forecast, Social Media, Agent Workbench). Expressing these as metadata would
+- **Genuinely domain-specific** (Forecast, Social Media). Expressing these as metadata would
   mean building a general-purpose calculation and integration engine larger than
   the pages themselves.
 - **Driven by their own registry** (Reports, Report Builder, SLA Dashboard,
@@ -63,10 +63,10 @@ The nine remaining screens split into two groups, and the distinction matters:
 | `ModulePage` (renders any module) | 1 screen serving 7+ modules |
 | `FormRenderer` (dynamic forms) | RecordFormPage, WizardPage |
 | `DashboardRenderer` | RuntimeHome |
-| `useResolvedObject()` | 8 screens (Applications, Claims, Commissions, Policies, Underwriting x2, Declarations, Documents) |
-| `useMetadataStore()` | 13 screens total |
-| `StatusStepper` (from metadata) | ApplicationsPage (integrated), ClaimsPage, PoliciesPage (imported) |
-| `TabbedWorkspace` | CommissionsPage (integrated), AgentWorkbenchPage (imported) |
+| `useResolvedObject()` | No screen currently — the hook is kept for Tier 2 hybrid screens |
+| `useMetadataStore()` | 3 screens (ModulePage, RecordFormPage, WizardPage) |
+| `StatusStepper` (from metadata) | `StatusTracker` (the `status_tracker` fieldtype) |
+| `TabbedWorkspace` | No screen currently — available for multi-section pages |
 
 ---
 
@@ -96,7 +96,7 @@ which renders from the object's field definitions. Create and edit route to
 - `prospect.full_name` → `calc_full_name`: first + last name
 - `prospect.age` → `calc_age`: derived from date of birth
 
-### Tier 2 — Hybrid Metadata-Driven (10 screens, 7,455 lines)
+### Tier 2 — Hybrid Metadata-Driven (1 screen, 568 lines)
 
 These read field options, labels and status choices from metadata via
 `useResolvedObject()` (or `useMetadataStore` / the metadata API), but keep
@@ -104,22 +104,13 @@ custom logic for domain workflows and calculations.
 
 | Screen | File | Lines | Metadata used | Custom logic retained |
 |---|---|---|---|---|
-| Insurance Quote | `InsuranceQuotePage.jsx` | 1,656 | `useMetadataStore` for resolved application names | Premium engine, comparison, PDF reports, carrier API |
-| UW Case Review | `UnderwritingCaseReviewPage.jsx` | 1,112 | 3 objects via `useResolvedObject` (case, document, application) | Multi-tab review, document workflow, decision tree |
-| Applications | `ApplicationsPage.jsx` | 741 | Status options, product types, labels | PDF generation, UW conversion, compliance checklist |
-| Document Collection | `DocumentCollectionPage.jsx` | 693 | Fields, status, categories (`application_document`) | Upload/download, approval, MIME detection |
-| Policies | `PoliciesPage.jsx` | 687 | Status options (`policy`) | Endorsement workflow, billing, renewal maths |
-| Commissions | `CommissionsPage.jsx` | 633 | Status options, product types (`commission`) | Clawback workflow, reconciliation, TabbedWorkspace |
-| Claims | `ClaimsPage.jsx` | 562 | Status options, claim types (`claim`) | Reserve management, fraud flagging, adjuster queue |
 | Import | `ImportPage.jsx` | 568 | Object + field metadata for column mapping | Upload, parse, map, preview, execute |
-| Declarations | `DeclarationPage.jsx` | 529 | Fields, status, delivery methods (`declaration`) | Send/resend workflow, acceptance tracking |
-| Underwriting List | `UnderwritingPage.jsx` | 274 | UW case fields (`underwriting_case`) | Task list, risk-assessment routing |
 
 **Pattern:** call `useResolvedObject('objectName')` to pull field definitions
 from the MetadataStore. Status options, select choices and labels come from
 metadata, so admins can change them in the Builder without a code change.
 
-### Tier 3 — Domain-Specific & Registry-Driven (9 screens, 4,681 lines)
+### Tier 3 — Domain-Specific & Registry-Driven (7 screens, 3,744 lines)
 
 Two different things live here, and conflating them is what made the previous
 revision of this document misleading.
@@ -142,9 +133,7 @@ building a general-purpose calculation/integration engine larger than the pages.
 | Screen | File | Lines | Why it stays |
 |---|---|---|---|
 | Social Media | `SocialMediaPage.jsx` | 698 | 7 platform surfaces, scheduling, sentiment |
-| CRM Quotes | `QuotesPage.jsx` | 659 | Line items with qty × price, quote lifecycle |
 | Forecast | `ForecastPage.jsx` | 441 | Weighted pipeline aggregation, quotas by period |
-| Agent Workbench | `AgentWorkbenchPage.jsx` | 278 | Date-window calculations, user-context filtering |
 
 ### Builder Pages — Metadata Editors (21 screens, 8,474 lines)
 
@@ -226,8 +215,7 @@ Reusable status pipeline/workflow visualization. Consumes the
 **Props:** `stages`, `currentValue`, `onChange`, `showCounts`,
 `variant`, `size`, `className`
 
-**Integrated in:** ApplicationsPage (replaced custom PipelineBar).
-Imported by ClaimsPage, PoliciesPage, CommissionsPage.
+**Used by:** `StatusTracker` (milestone stepper layer).
 
 ### StatusTracker (`StatusTracker.jsx`)
 
@@ -245,8 +233,7 @@ and can be added manually via `POST /api/runtime/records/:id/status-events`.
 
 **Wired via metadata:** dropped onto a form like any other field. `FormRenderer`
 threads `recordId` to `FieldRenderer`, which renders `StatusTracker` for the
-`status_tracker` type. Demo data: `backend/prisma/seed-status-tracker.js`
-(Claim and Application objects).
+`status_tracker` type. Demo data: `backend/prisma/seed-status-tracker.js`.
 
 ### TabbedWorkspace (`TabbedWorkspace.jsx`)
 
@@ -262,29 +249,18 @@ Metadata-driven tabbed container for multi-section pages.
 `activeTab`, `onTabChange`, `children`, `variant`, `size`,
 `tabBarExtra`, `className`
 
-**Integrated in:** CommissionsPage (replaced custom tab rendering).
-Imported by AgentWorkbenchPage, PoliciesPage.
+**Integrated in:** no screen currently; available for multi-section pages.
 
 ---
 
 ## Seed Data Structure
 
-### Existing Modules (11 — original seed)
+### Existing Modules (3 — original seed)
 
 ```text
 CRM Category:
   Prospects  → prospect object (19 fields, form, pipeline, wizard)
   Clients    → client object (14 fields, form, pipeline)
-
-Insurance Category:
-  Quotes        → quote object (hardcoded page, metadata for options)
-  Applications  → application object (fields, form, pipeline, wizard)
-  Policies      → policy object (fields, form, pipeline)
-  Claims        → claim object (fields, form, pipeline)
-  Underwriting  → underwriting_case object (fields, form, pipeline)
-  Commissions   → commission object (fields, form, pipeline)
-  Declarations  → declaration object (fields, form, pipeline)
-  Documents     → application_document object (fields, form, pipeline)
 
 Settings Category:
   Settings → settings object (6 fields, form, wizard)
@@ -373,7 +349,7 @@ To add a new computed field:
 
 ### Active Dedicated Routes
 
-Generated from `frontend/src/App.jsx`. 66 routes.
+Generated from `frontend/src/App.jsx`. 55 routes.
 
 ```text
 Public (no auth):
@@ -395,7 +371,6 @@ Runtime:
   /settings                                         → OrganizationSettings
   /forecast                                         → ForecastPage
   /import                                           → ImportPage
-  /quotes                                           → QuotesPage
   /social-media                                     → SocialMediaPage
   /sla                                              → SlaDashboardPage
   /documents                                        → DocumentsPage
@@ -403,18 +378,6 @@ Runtime:
   /reports                                          → ReportsPage
   /reports/new                                      → ReportBuilderPage
   /reports/:id/edit                                 → ReportBuilderPage
-
-Insurance:
-  /insurance/quotes                                 → InsuranceQuotePage
-  /insurance/policies                               → PoliciesPage
-  /insurance/applications                           → ApplicationsPage
-  /insurance/declarations                           → DeclarationPage
-  /insurance/documents                              → DocumentCollectionPage
-  /insurance/claims                                 → ClaimsPage
-  /insurance/underwriting                           → UnderwritingPage
-  /insurance/underwriting/:id                       → UnderwritingCaseReviewPage
-  /insurance/commissions                            → CommissionsPage
-  /insurance/workbench                              → AgentWorkbenchPage
 
 Builder (admin only):
   /builder                                          → BuilderHome
@@ -474,11 +437,11 @@ pipelines rendered by shared components is the same pattern all five majors
 converged on, and Genesis reaches it with four renderers totalling 1,856 lines.
 Adding a module costs no new screens.
 
-**Where the classification is honestly weaker than the headline.** 39% of
-runtime screens do not consume module metadata. Five of those nine are
+**Where the classification is honestly weaker than the headline.** 58% of
+runtime screens do not consume module metadata. Five of those seven are
 configurable through their own registry (Reports, SLA, Documents, Reminders) —
 a split the majors also make, since Salesforce reports and Dynamics dashboards
-are not built on layout metadata either. The other four are domain code that
+are not built on layout metadata either. The other two are domain code that
 should stay that way.
 
 **The real gap is not architectural.** Social publishing is simulated and there
@@ -511,13 +474,9 @@ badges, it should be metadata-driven.
 - Logistics-style tracking timelines → `StatusTracker` (the `status_tracker` fieldtype)
 - Multi-tab pages → `TabbedWorkspace` component
 
-There is no shared repeating-row editor. `QuotesPage` implements quote line
-items inline; if a second screen needs the same pattern, extract it then rather
-than building it speculatively.
-
 ### DO: Use the hybrid approach for complex domain screens
 
-New insurance or domain-specific screens should follow the Tier 2
+New domain-specific screens should follow the Tier 2
 pattern:
 
 1. Define the object and fields in metadata (via seed or Builder).
@@ -525,7 +484,7 @@ pattern:
 3. Render select options, labels, and colors from metadata.
 4. Keep business logic (calculations, workflows, API calls) in code.
 
-This gives admins the ability to modify field options (add a new claim
+This gives admins the ability to modify field options (add a new case
 type, rename a status) without code changes, while keeping complex
 logic maintainable in React.
 
@@ -533,8 +492,8 @@ logic maintainable in React.
 
 If a screen involves:
 
-- External API integrations (carrier APIs, social platforms)
-- Complex calculations (premiums, forecasts, weighted pipelines)
+- External API integrations (third-party APIs, social platforms)
+- Complex calculations (forecasts, weighted pipelines)
 - Multi-entity orchestration (case review across 3+ objects)
 - Platform-specific rendering (post types per social platform)
 

@@ -31,7 +31,7 @@ const { ValidationError, NotFoundError } = require('../../utils/errors');
  *
  *   3. **A per-tenant override is the deliberate exception**, and it is the
  *      only input allowed to contradict the other two — in both directions. An
- *      operator granting `ins_underwriting` to a Starter tenant for a pilot,
+ *      operator granting `auto_approvals` to a Starter tenant for a pilot,
  *      or revoking a feature from a tenant that is abusing it, must not have to
  *      rewrite the price book to do it. That is why an override wins: anything
  *      weaker would make the escape hatch useless, and anything applied earlier
@@ -218,8 +218,8 @@ class EntitlementService {
    * participate; a row named anything else gates nothing sellable.
    *
    * The keying matters: a deployed row is stored under its legacy name
-   * (`underwriting_workflow`), while `#decide` looks it up by catalogue key
-   * (`ins_underwriting`). Indexing by the raw name would quietly drop every
+   * (`advanced_workflows`), while `#decide` looks it up by catalogue key
+   * (`auto_approvals`). Indexing by the raw name would quietly drop every
    * pre-catalogue flag's rollout and kill-switch state.
    */
   async #flagMap() {
@@ -244,7 +244,7 @@ class EntitlementService {
    */
   async isEnabled(featureKey, tenantId) {
     // The resolved map is keyed by catalogue key, but callers legitimately pass
-    // a legacy flag name (`underwriting_workflow`). Canonicalise or the lookup
+    // a legacy flag name (`advanced_workflows`). Canonicalise or the lookup
     // silently misses and the feature reads as off.
     const key = canonicalKey(featureKey);
     if (!key) return false;

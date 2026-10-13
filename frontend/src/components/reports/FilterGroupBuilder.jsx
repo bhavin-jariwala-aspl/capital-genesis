@@ -29,7 +29,7 @@ export default function FilterGroupBuilder({ source, fields: allPickable, vocabu
   const operators = vocabulary?.operators ?? [];
   const datePresets = vocabulary?.date_presets ?? [];
 
-  // Roll-up totals ("Claims ▸ Total paid") are computed after the rows are read, so
+  // Roll-up totals ("Opportunities ▸ Total amount") are computed after the rows are read, so
   // the engine cannot filter on them — it would need a HAVING pass. Offering them
   // here would produce a condition that is reported and then dropped.
   const fields = allPickable.filter((f) => f.filterable !== false);

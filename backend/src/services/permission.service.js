@@ -302,32 +302,6 @@ class PermissionService {
   }
 
   /**
-   * Assert that the role has underwriting decision authority.
-   *
-   * - admin / super_admin / platform_admin always pass (ADMIN_THRESHOLD bypass).
-   * - All other roles must have an explicit OperationalPermission row with
-   *   entity_type = 'underwriting' and edit_scope != 'none'.
-   *
-   * @param {string} roleName
-   * @param {number} tenantId
-   * @throws {AuthorizationError} when the role lacks decision authority
-   */
-  async assertCanDecideUnderwriting(roleName, tenantId) {
-    if (await this.#isAdmin(roleName, tenantId)) return true;
-
-    const perm = await this.db.operationalPermission.findFirst({
-      where: { entity_type: 'underwriting', role_name: roleName, tenant_id: tenantId },
-    });
-
-    if (!perm || perm.edit_scope === 'none') {
-      throw new AuthorizationError(
-        'Your role does not have underwriting decision authority. Contact your administrator.',
-      );
-    }
-    return true;
-  }
-
-  /**
    * Build a Prisma WHERE clause that restricts a task/activity query to records
    * the viewer may see, based on their view_scope.
    * Returns `null` when view_scope='none' (caller should return empty list).

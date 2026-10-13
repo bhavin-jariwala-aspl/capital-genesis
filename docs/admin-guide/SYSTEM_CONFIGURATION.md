@@ -58,7 +58,7 @@ Navigate to the admin dashboard for system overview:
 Label (Display Name): "Projects"
 Name (Key):           "projects"        (snake_case, unique)
 Icon:                 "Briefcase"       (Lucide icon name)
-Category:             "crm"             (sidebar section: crm, insurance, tools, settings)
+Category:             "crm"             (sidebar section: crm, tools, settings)
 Description:          "Track project management"
 Status:               Active / Inactive
 ```
@@ -70,7 +70,6 @@ The **Category** field controls which sidebar section a module appears under:
 | Category | Sidebar Header | Typical Modules |
 |----------|---------------|----------------|
 | `crm` | Modules | Leads, Prospects, Clients, Products |
-| `insurance` | Insurance | Quotes, Applications, Policies, Claims, Underwriting, Commissions |
 | `tools` | Tools | Forecast |
 | `settings` | Settings | Application settings |
 
@@ -483,7 +482,7 @@ Username: alerts@company.com
 
 The **Document Management System** is a standalone, top-level module (**Documents** in the sidebar) plus an admin
 **builder** at **Builder → Document Management** (`/builder/documents`). It is domain-neutral — the same platform backs
-generic CRM attachments, insurance application documents, generated documents, and e-signed documents. Full technical
+generic CRM attachments, generated documents, and e-signed documents. Full technical
 reference: [developer-guide/DOCUMENT_MANAGEMENT.md](../developer-guide/DOCUMENT_MANAGEMENT.md).
 
 ### Storage backend (deployment-time)
@@ -505,7 +504,7 @@ doc for the full env-var list.
 - **Categories** — machine `code` + label, per-category **allowed MIME types**, **max size**, **retention days**,
   **requires review** (uploads land in `under_review` instead of `uploaded`), **required document**, and colour.
   Upload policy is enforced at write time.
-- **Checklists** — required-document sets per entity type (e.g. every `application` must have these categories).
+- **Checklists** — required-document sets per entity type (e.g. every `opportunity` must have these categories).
 - **Merge templates** — reusable HTML/text templates with `{{placeholder}}` / `{{dot.path}}` tokens; live placeholder
   detection. **Preview** renders without storing; **render** files the output as a first-class document.
 

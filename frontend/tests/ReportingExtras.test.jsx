@@ -140,7 +140,7 @@ describe('AskPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     svc.aiStatus.mockResolvedValue({ data: { enabled: true, ok: true, provider: 'ollama', model: 'llama3.1:8b' } });
-    svc.aiSuggestions.mockResolvedValue({ data: ['Top 5 agents by premium', 'Open cases by priority'] });
+    svc.aiSuggestions.mockResolvedValue({ data: ['Top 5 agents by revenue', 'Open cases by priority'] });
   });
 
   it('shows starter questions and sends one, then renders the answer as a report with a narrative', async () => {
@@ -149,9 +149,9 @@ describe('AskPanel', () => {
     // unwrapped one level too far and rendered nothing.
     svc.ask.mockResolvedValue({
       status: 'success',
-      interpretation: { title: 'Top 5 agents', description: 'Premium of active policies per agent.', assumptions: ['Premium = active policies.'], confidence: 'high' },
-      query: { kind: 'report_config', config: { source: 'policies', viz: 'bar' } },
-      data: { columns: [{ key: 'g', label: 'Agent', type: 'string', dimension: true }, { key: 'm0', label: 'Premium', type: 'currency' }], rows: [{ g: 'Ann', m0: 1200 }], summary: { grand: { m0: 1200 } }, comparison: null, insights: [] },
+      interpretation: { title: 'Top 5 agents', description: 'Revenue of won deals per agent.', assumptions: ['Revenue = won deals.'], confidence: 'high' },
+      query: { kind: 'report_config', config: { source: 'opportunities', viz: 'bar' } },
+      data: { columns: [{ key: 'g', label: 'Agent', type: 'string', dimension: true }, { key: 'm0', label: 'Revenue', type: 'currency' }], rows: [{ g: 'Ann', m0: 1200 }], summary: { grand: { m0: 1200 } }, comparison: null, insights: [] },
       visualization: { type: 'bar', auto_selected: true, reason: 'x', alternatives: ['table', 'line'] },
       narrative: 'Ann leads with 1,200.',
       suggestions: ['Compare with last year'],
@@ -160,9 +160,9 @@ describe('AskPanel', () => {
       model: { name: 'llama3.1:8b' },
     });
     const { container } = wrap(<AskPanel scope="all" />);
-    const chip = await screen.findByRole('button', { name: 'Top 5 agents by premium' });
+    const chip = await screen.findByRole('button', { name: 'Top 5 agents by revenue' });
     fireEvent.click(chip);
-    await waitFor(() => expect(svc.ask).toHaveBeenCalledWith('Top 5 agents by premium', expect.objectContaining({ scope: 'all', history: [] })));
+    await waitFor(() => expect(svc.ask).toHaveBeenCalledWith('Top 5 agents by revenue', expect.objectContaining({ scope: 'all', history: [] })));
     expect(await screen.findByText('Ann leads with 1,200.')).toBeInTheDocument();
     expect(screen.getByText('Top 5 agents')).toBeInTheDocument();
     expect(screen.getByText(/Assumed:/)).toBeInTheDocument();
@@ -178,7 +178,7 @@ describe('AskPanel', () => {
     svc.ask.mockResolvedValueOnce({ status: 'clarify', clarification: { question: 'Which sales?', options: ['Won revenue', 'Pipeline'] }, suggestions: [] })
       .mockResolvedValueOnce({ status: 'refused', refusal: 'Not available.', suggestions: [] });
     wrap(<AskPanel scope="team" />);
-    await screen.findByRole('button', { name: 'Top 5 agents by premium' });
+    await screen.findByRole('button', { name: 'Top 5 agents by revenue' });
     fireEvent.change(screen.getByLabelText('Ask a question'), { target: { value: 'show me sales' } });
     fireEvent.click(screen.getByRole('button', { name: /Ask$/ }));
     expect(await screen.findByText('Which sales?')).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe('AskPanel', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
 
     // With a conversation, back returns to the starter screen instead.
-    fireEvent.click(await screen.findByRole('button', { name: 'Top 5 agents by premium' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Top 5 agents by revenue' }));
     expect(await screen.findByText('Not available.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to Ask Genesis' }));
     expect(onBack).toHaveBeenCalledTimes(1);

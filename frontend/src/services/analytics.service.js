@@ -12,6 +12,9 @@ export const analyticsService = {
   getDatasets: ()    => wrap(api.get('/analytics/datasets')),
   getData:     (key) => api.get(`/analytics/data/${encodeURIComponent(key)}`)
     .then((r) => ({ data: r.data?.data ?? r.data, meta: r.data?.meta ?? null })),
+  // A series / metric over any Builder object (see ObjectAnalyticsService).
+  getObjectData: (spec) => api.post('/analytics/object', spec)
+    .then((r) => ({ data: r.data?.data ?? r.data, meta: r.data?.meta ?? null })),
 };
 
 export default analyticsService;

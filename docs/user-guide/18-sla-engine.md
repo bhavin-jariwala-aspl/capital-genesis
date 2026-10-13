@@ -57,7 +57,11 @@ met-on-time ÷ all completed.
 ### Policies tab
 
 1. Click **New policy**.
-2. **Name** it and choose what it **applies to** (Cases / Leads / Tasks).
+2. **Name** it and choose what it **applies to** (Cases / Leads / Tasks / **Records of an object**).
+   For **Records of an object**, pick the **Object** (it needs a pipeline), then map its stages:
+   **First response is due while in**, **Resolved when it reaches** (at least one stage) and **Cancel the timers
+   in**. A **Priority field (optional)** lets targets differ per value, such as per priority. Pause statuses are
+   stage names.
 3. Pick a **Business hours** calendar (or leave 24/7), a **priority order** (lower runs first when several policies
    could match), and toggle **Active**.
 4. **Targets** — add a row per metric + priority. Set the minutes and the warning %.

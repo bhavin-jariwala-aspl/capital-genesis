@@ -5,8 +5,8 @@ import clsx from 'clsx';
 /**
  * ObjectPicker — grouped <select> over all active modules + their objects.
  *
- * value:    object id (string or number)
- * onChange: (id: string) => void
+ * value:    object id (string or number) — or the object name with valueKey="name"
+ * onChange: (value: string) => void
  */
 export default function ObjectPicker({
   value,
@@ -19,6 +19,7 @@ export default function ObjectPicker({
   wrapperClass,
   className,
   disabled,
+  valueKey = 'id',
 }) {
   const { data, isLoading } = useQuery({
     queryKey: ['meta-modules'],
@@ -48,7 +49,7 @@ export default function ObjectPicker({
           {modules.map(mod => (
             <optgroup key={mod.id} label={mod.label || mod.name}>
               {(mod.objects || []).map(obj => (
-                <option key={obj.id} value={obj.id}>
+                <option key={obj.id} value={obj[valueKey]}>
                   {obj.label || obj.name}
                 </option>
               ))}

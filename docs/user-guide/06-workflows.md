@@ -74,6 +74,16 @@ values of changed fields inside condition steps.
 | Webhook | Sends an HTTP request to an external URL. | `url`, optional `method` (default POST), `headers`, `body`. Blocks private/loopback URLs; 10-second timeout. |
 | Create Record | Creates a new record in any object. | `object_id`, `fields` (or `data`), optional `assigned_to`, `stage_id`. Values support `{{field}}` placeholders. |
 | Update Related | Bulk-updates linked records in another object. | `object_id`, `link_field`, `field`, `value`. Matches records where `link_field` equals this record's id. |
+| Send Email | Emails a template to the record. | `template`, optional `to_field` (default `email`) or `to`, and `language_field`: with `preferred_language = fr` the `<template>_fr` version is used when it exists. |
+| Generate Document | Creates a document from a merge template and files it on the record. | `template` (the document template's name), optional `filename`. |
+
+**Create Record** can also take `link_field` (a lookup field on the new record that points back to this one),
+`store_as` (a field on this record that receives the new record's id) and `stage` (the starting stage by API
+name). An **Action** on the field `stage` moves the record to the named stage, and the stage's entry rules
+apply. An **Approval** with `exclude_actor: true` never asks the person who triggered it (maker-checker).
+
+A workflow with the **Manual** trigger appears as a button on its object's record panel, so users can run it
+on a record.
 
 ## Reference: condition operators
 
@@ -92,26 +102,21 @@ Condition steps and the comparison they perform:
 | `before_today`, `after_today`, `today` | Date comparisons against today's date. |
 | `date_within_days` | Date falls within the next N days. |
 | `date_overdue` | Date is in the past. |
+| `expression` | A formula over the whole record is true, e.g. `amount_mur > 5000000 AND risk_rating = 'high'`. Leave **Field** empty. |
 
 ## What ships out of the box
 
-Genesis installs **18 workflows** covering the full CRM lifecycle. Each one implements an automation
+Genesis installs **5 workflows** covering the lead-to-client lifecycle. Each one implements an automation
 pattern that Salesforce, HubSpot, Zoho CRM, Dynamics 365, and Pipedrive all provide out of the box,
-adapted to the life-insurance object model.
+adapted to the Genesis CRM object model.
 
 Treat them as working templates. The thresholds, roles, and wait times are sensible defaults, not
-rules — open any workflow in the Builder and adjust it to how your agency actually operates.
+rules — open any workflow in the Builder and adjust it to how your team actually operates.
 
 | Module | Workflows |
 | --- | --- |
 | Lead | Instant Routing · First-Response SLA · Qualification Handoff |
 | Prospect | Cold Nurture Sweep |
-| Quote | Presented Follow-up · High-Value Approval · Expiry Warning · Auto-Expire |
-| Application | Submission Handoff · Jumbo Limit Referral |
-| Underwriting | 48-Hour SLA Escalation |
-| Policy | In-Force Onboarding · 30-Day Renewal Outreach · Lapse Prevention |
-| Claim | Intake Triage · Documentation SLA Escalation |
-| Commission | Large Payout Approval |
 | Client | Data Hygiene Sweep |
 
 ## The workflows in detail
@@ -203,269 +208,12 @@ the pipeline slowly fills with records nobody has touched in months.
 **What you may want to change.** The frequency, and the definition of "going cold" in steps 2 and 3.
 A weekly cadence is deliberately gentle; daily would be noisy for something this open-ended.
 
-### Quote — Presented Follow-up Cadence
-
-**Fires:** when a quote is saved — then completes three days later.
-
-**The problem it solves.** A presented quote with no follow-up is the most common way a nearly-closed
-deal goes quiet.
-
-**What it does.**
-
-1. Checks the quote's status is **Presented**. If not, stops.
-2. **Waits 3 days.**
-3. Re-reads the quote. If the client has accepted or declined in the meantime, stops — no reminder.
-4. Otherwise reminds the quote's owner, quoting the client, product, and cover amount.
-
-**What you may want to change.** The three-day wait, and whether the manager is copied on the
-reminder.
-
-### Quote — High-Value Approval
-
-**Fires:** when a quote is saved.
-
-**The problem it solves.** Large quotes carry pricing and risk exposure that should not go to a
-client on one person's judgement — but a review step that relies on people remembering to ask is not
-a control.
-
-**What it does.**
-
-1. Checks the quote is **Presented** and carries **1,000,000 or more** of cover. Below that
-   threshold, nothing happens.
-2. Checks the quote has not already been through approval, so re-saving does not restart the process.
-3. Marks it **Pending Approval** and **pulls the quote back to Draft**, so it cannot reach the client
-   while under review.
-4. Sends the sales manager an approval request quoting the client, cover, product, and premium.
-5. **If approved** — records the approval, returns the quote to Presented, and tells the owner it has
-   been released.
-6. **If rejected** — records the rejection and tells the owner to revise and resubmit. The quote stays
-   at Draft.
-
-**What you may want to change.** The 1,000,000 threshold and the approving role. If you change the
-threshold, change it in this workflow only — the Application and Commission approvals have their own.
-
-> This workflow contains a **Guard** step between the approved and rejected paths. It is what stops
-> an approved quote also running the rejection steps. If you edit this workflow, leave the guard in
-> place — see [About the approval workflows](#about-the-approval-workflows).
-
-### Quote — Expiry Warning
-
-**Fires:** daily, checking every quote.
-
-**The problem it solves.** A quote that lapses without anyone noticing is a lost sale that never
-appears in any report.
-
-**What it does.**
-
-1. Runs across every live quote each day.
-2. Continues only for quotes still **Draft** or **Presented** — settled quotes are ignored.
-3. Continues only if the validity date is **within the next 7 days**.
-4. Warns the quote's owner, naming the client and the exact expiry date.
-
-**What you may want to change.** The seven-day warning window.
-
-### Quote — Auto-Expire Past Validity
-
-**Fires:** daily, checking every quote.
-
-**The problem it solves.** Open quotes that are past their validity date inflate the pipeline and
-make forecasts meaningless.
-
-**What it does.**
-
-1. Runs across every live quote each day.
-2. Continues only for quotes still **Draft** or **Presented**.
-3. Continues only if the validity date has **already passed**.
-4. Sets the status to **Expired**.
-5. Tells the owner, so they can re-quote if the client is still interested.
-
-**What you may want to change.** Whether it auto-expires at all. If you would rather review these by
-hand, deactivate this workflow and rely on the Expiry Warning above.
-
-> This is the one shipped workflow that changes existing records without anyone asking. On its first
-> run it will expire every already-overdue quote in your system.
-
-### Application — Submission Handoff to Underwriting
-
-**Fires:** when an application record is created.
-
-**The problem it solves.** Submission is a handoff between two teams working in different parts of
-the system, and it needs to happen the same way every time.
-
-**What it does.**
-
-1. Sets the application status to **Submitted**.
-2. Creates the matching **Underwriting Case**, numbered from the application (`UWC-` plus the
-   application number) and carrying the applicant, product, and cover amount across.
-3. Notifies the underwriting team that work is queued.
-4. Confirms to the submitting agent that the application is in flight.
-
-**What you may want to change.** The case-numbering pattern, and which fields carry across to the
-underwriting case.
-
-### Application — Jumbo Limit Referral & Approval
-
-**Fires:** when an application is saved.
-
-**The problem it solves.** Cover above the automatic limit needs a named senior decision, and that
-decision needs to be recorded rather than agreed in a corridor.
-
-**What it does.**
-
-1. Checks the application is **Under Review** with **2,000,000 or more** of cover.
-2. Checks it has not already been referred, so re-saving does not refer it twice.
-3. Marks the referral in progress.
-4. Sends the chief underwriter a referral request quoting the applicant, cover, product, and premium.
-5. **If approved** — records it, advances the application to **Approved**, and tells the agent.
-6. **If declined** — records it, sets the application to **Declined**, and tells the agent to discuss
-   alternatives with the client.
-
-**What you may want to change.** The 2,000,000 jumbo limit and the approving role. This workflow also
-contains a Guard step — leave it in place.
-
-### Underwriting — 48-Hour SLA Escalation
-
-**Fires:** when an underwriting case is created, including cases opened automatically by the
-application handoff above.
-
-**The problem it solves.** Underwriting turnaround is what agents and clients actually feel, and a
-case sitting untouched is invisible until someone complains.
-
-**What it does.**
-
-1. Sets the case status to **Pending**.
-2. Notifies the underwriting team, stating the 48-hour SLA.
-3. **Waits 48 hours.**
-4. Re-reads the case. If it has moved off Pending, someone picked it up and the workflow stops.
-5. If it is still Pending, escalates to the chief underwriter.
-6. Flags the case as **Referred**, so it is visible as a problem rather than just old.
-
-**What you may want to change.** The 48-hour SLA, and whether a breach should re-flag the status
-(step 6) or only notify.
-
-### Policy — In-Force Onboarding Handoff
-
-**Fires:** when a policy record is created.
-
-**The problem it solves.** The moment a policy goes in force, three separate things need to happen —
-the client needs a welcome call, the agent needs paying, and the manager needs the number. Doing them
-by hand means one gets forgotten.
-
-**What it does.**
-
-1. Checks the policy is **Active**. Policies created as Pending are ignored until they go in force.
-2. Raises the welcome-call task for the servicing agent, quoting the policyholder, cover, product,
-   and effective date.
-3. Creates the **Commission** record, carrying the policy number, agent, annual premium, and product
-   across, set to Pending.
-4. Notifies the sales manager of the new in-force policy and its premium.
-
-**What you may want to change.** Which fields populate the commission record, and whether the manager
-notification is wanted at all on a high-volume book.
-
-### Policy — 30-Day Renewal Outreach
-
-**Fires:** daily, checking every policy.
-
-**The problem it solves.** Renewal is the cheapest premium you will ever write, and it is lost by
-silence more often than by competition.
-
-**What it does.**
-
-1. Runs across every live policy each day.
-2. Continues only for **Active** policies.
-3. Continues only if the expiry date is **within the next 30 days**.
-4. Prompts the servicing agent to open the renewal conversation, quoting the policyholder, product,
-   cover, and expiry date.
-5. Alerts the sales manager, quoting the annual premium at risk, so renewals are visible as a
-   pipeline rather than a series of individual tasks.
-
-**What you may want to change.** The 30-day window. For products with a longer sales cycle, 60 or 90
-days is more realistic.
-
-### Policy — Lapse Prevention
-
-**Fires:** daily, checking every policy.
-
-**The problem it solves.** A missed payment is recoverable for a while and then it is not. The
-window between those two states is where retention is won.
-
-**What it does.**
-
-1. Runs across every live policy each day.
-2. Continues only for **Active** policies.
-3. Continues only if the next payment date has **already passed**.
-4. Alerts the servicing agent, naming the policyholder, the missed due date, and the payment method.
-5. Alerts the sales manager, so at-risk policies are visible above the individual agent.
-
-**What you may want to change.** Nothing structural. Consider whether the manager alert should fire
-immediately or only after a grace period — for the latter, clone the workflow and gate the second
-notification behind a longer delay.
-
-### Claim — Intake Triage & Large-Loss Routing
-
-**Fires:** when a claim record is created, from any intake channel.
-
-**The problem it solves.** Claims are the moment a policy is judged. Triage needs to be immediate,
-and large losses need different eyes.
-
-**What it does.**
-
-1. Sets the claim status to **Filed**.
-2. Notifies the claims manager, quoting the claim number, type, claimant, policy, and amount.
-3. Checks the amount. **Claims below 250,000 stop here** — filed, and the manager knows.
-4. For **large-loss claims**, notifies a senior underwriter for review.
-5. Moves the claim to **Under Investigation**.
-
-**What you may want to change.** The 250,000 large-loss threshold, and the reviewing role. Note that
-step 5 only runs for large-loss claims — if you want every claim moved to investigation
-automatically, move that step above the condition in step 3.
-
-### Claim — Documentation SLA Escalation
-
-**Fires:** when a claim is created — then completes three days later.
-
-**The problem it solves.** Most claims stall waiting for paperwork, and the delay is invisible
-because nothing is technically wrong.
-
-**What it does.**
-
-1. Starts a documentation clock when the claim is filed.
-2. **Waits 3 days.**
-3. Checks whether documents have been received. If they have, stops — no chase, no escalation.
-4. Prompts the adjuster to chase the claimant.
-5. Escalates to the manager, so a stalled claim is visible without anyone having to report it.
-
-**What you may want to change.** The three-day window, and whether the manager escalation should
-happen at the same time as the chase or later.
-
-### Commission — Large Payout Approval
-
-**Fires:** when a commission record is saved.
-
-**The problem it solves.** Commission is money leaving the business, and large payouts should have a
-recorded approval rather than an assumed one.
-
-**What it does.**
-
-1. Checks the payout is still **Pending** and is **25,000 or more**.
-2. Checks it has not already been reviewed.
-3. Marks the approval in progress.
-4. Sends the sales manager an approval request quoting the agent, amount, policy, product, and
-   period.
-5. **If approved** — records it, sets the commission to **Paid**, and tells the agent.
-6. **If rejected** — records it and asks the manager to review the calculation. The commission stays
-   Pending.
-
-**What you may want to change.** The 25,000 threshold and the approving role. This workflow contains
-a Guard step — leave it in place.
-
 ### Client — Data Hygiene Sweep
 
 **Fires:** weekly, checking every client.
 
 **The problem it solves.** Automation fails quietly on incomplete records. A client with no email
-address is silently skipped by every renewal and servicing message you send, and nobody finds out.
+address is silently skipped by every follow-up and servicing message you send, and nobody finds out.
 
 **What it does.**
 
@@ -474,26 +222,25 @@ address is silently skipped by every renewal and servicing message you send, and
 3. Raises a data-hygiene task for the servicing agent, explaining why it matters.
 
 **What you may want to change.** This is the easiest workflow to extend — clone it and change the
-field in step 2 to check for a missing phone number, date of birth, or beneficiary.
+field in step 2 to check for a missing phone number or date of birth.
 
-## About the approval workflows
+## Building an approval workflow
 
-Three workflows use an approval gate: **Quote — High-Value Approval**, **Application — Jumbo Limit
-Referral**, and **Commission — Large Payout Approval**. They share two things worth understanding
-before you edit them.
+None of the shipped workflows uses an approval gate, but if you add an **Approval** step to your own
+workflow there are two things worth understanding.
 
-**The Approval Status field.** Each writes its outcome to an **Approval Status** field (Pending /
-Approved / Rejected) on its object. The field is created for you. It does two jobs: it shows the
-reviewer's decision on the record, and it stops the same record being sent for approval again every
-time somebody saves it. Clearing it on a record is the supported way to re-request approval.
+**Record the outcome in a field.** Have each branch write its outcome to a status field (for example
+an **Approval Status** select with Pending / Approved / Rejected) on the object. It does two jobs: it
+shows the reviewer's decision on the record, and — when an early Condition step checks that the field
+is empty — it stops the same record being sent for approval again every time somebody saves it.
+Clearing it on a record is then the supported way to re-request approval.
 
-**The Guard step.** Workflow steps run top to bottom, so an approval's "approved" path would
-otherwise continue straight into its "rejected" steps. Each approval workflow therefore ends its
-approved path with a **Guard** condition that re-reads the Approval Status and stops there.
+**Add a Guard step.** Workflow steps run top to bottom, so an approval's "approved" path would
+otherwise continue straight into its "rejected" steps. End the approved path with a **Guard**
+condition that re-reads the approval status field and stops there.
 
-If you clone or edit one of these workflows: keep the Guard step, keep it pointing at the same field,
-and keep the rejection steps ordered after the approved ones. Removing the Guard makes every
-approval also run its own rejection.
+Keep the Guard step pointing at the same field, and keep the rejection steps ordered after the
+approved ones. Removing the Guard makes every approval also run its own rejection.
 
 ## Tips
 

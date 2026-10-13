@@ -36,8 +36,8 @@ existing one from the toolbar.
      [Reports](19-reports.md) and you get a widget already wired to it, with the right shape and chart type
      chosen for you. Nothing else to configure. (There is a **Reports** shortcut in the Builder menu itself if
      you need to go and build one first — reports are available to every user, not just admins.)
-   - **built-in** lists the ready-made metrics that ship with Genesis (for example **Monthly Premium Revenue**
-     or **Pending Claims**) — click one for a fully-wired widget.
+   - **built-in** lists the ready-made metrics that ship with Genesis (for example **Opportunity Pipeline Value**
+     or **Open Leads**) — click one for a fully-wired widget.
    - In **blank**, click an empty widget or a chart shape, then choose what it should show on the **Data** tab.
 5. Arrange the widgets on the grid. Drag a widget by its header (the grip handle) to move it, and drag its edges
    or corners to resize. The grid is 12 columns wide.
@@ -112,7 +112,9 @@ for the chosen chart type are shown.
 
 | Field | What it does | Notes |
 | --- | --- | --- |
-| Where the numbers come from | Chooses **A saved report** or **A built-in dataset** | Drives the rest of the fields |
+| Where the numbers come from | Chooses **A saved report**, **A built-in dataset** or **Records of an object** | Drives the rest of the fields |
+| Object / Measure / Group by | For **Records of an object**: which object, what to compute (number of records, or the sum, average, minimum or maximum of a field), and how to split it (`stage`, `created_month` or a field) | Any Builder object works. Each viewer sees only the records they may see |
+| Filters (optional JSON) | For **Records of an object**: e.g. `[{"field":"stage","op":"nin","value":"declined,withdrawn"}]` | Ops: `eq neq in nin gt gte lt lte contains empty notempty` |
 | Report | The saved report the widget shows | Grouped by category. A report whose shape does not fit the widget type is flagged but still selectable |
 | Dataset | The built-in dataset the widget reads | Grouped by category and filtered to datasets that fit the widget type |
 | Live result | Preview of what came back right now, plus which column is the category and which are the measures | Use it to confirm the widget is pointing at the right thing |
@@ -126,25 +128,21 @@ itself. Change the grouping or measures in the report and every dashboard using 
 
 ### The dashboards that ship
 
-Four boards are installed with the demo data. Between them they use every chart
-type the renderer supports, so they double as a working reference for what a
-dashboard can look like.
+One board is installed with the demo data. It doubles as a working reference
+for what a dashboard can look like.
 
 | Dashboard | What it answers | Notable charts |
 | --------- | --------------- | -------------- |
-| **Agency Dashboard** (default) | Are we on track this month? | Premium written against a dashed **monthly target** line, application **funnel**, book mix **donut** |
-| **Sales & Distribution** | Where does business come from, and who writes it? | Pipeline **funnel** by value, producer league table ranked with the tail folded into **Other**, commission **composed** chart (bars + line), agent/product **heatmap** |
-| **Claims & Underwriting** | What are claims costing, and what are we accepting? | Claimed vs paid **stacked area**, loss-ratio **gauge**, risk-mix **radar**, application-outcome **waterfall** |
-| **Portfolio Analytics** | What shape is the book? | Exposure **treemap**, monthly premium **candlestick**, coverage-vs-premium **scatter**, applicant **bubble** chart, policy-term **timeline** |
+| **Sales Dashboard** | Where does business come from, and how is the pipeline converting? | Pipeline value **funnel** by stage, lead-source **donut**, leads-by-status **bar**, won vs lost **stacked bar** by month |
 
-Each board uses its own palette, money is shown compactly (`$2.8M` rather than
+The board uses its own palette, money is shown compactly (`$2.8M` rather than
 `2750000`), counts are whole numbers, and axes are labelled. You can change any
 of it: open the dashboard in the Builder, click a widget, and edit the
 **Chart appearance** block described above.
 
-> These four boards are managed as code (`backend/prisma/crm-dashboards.js`) and
+> This board is managed as code (`backend/prisma/crm-dashboards.js`) and
 > reinstalled by `npm run db:seed` or `node scripts/seed-dashboards.js`. Edits you
-> make to them in the Builder are replaced the next time either runs — copy a
+> make to it in the Builder are replaced the next time either runs — copy a
 > board first if you want to keep your own version.
 
 ### Live datasets
@@ -155,9 +153,9 @@ which widgets can use it:
 
 | Shape | Used by | Categories available |
 | --- | --- | --- |
-| Series | Chart widgets | Policies, Applications, Claims, Production, Pipeline |
-| Metric | Metric Cards | KPIs (active policies, premium in force, pending claims, open pipeline, and more) |
-| Rows | List / Data Table widgets | Lists (recent claims, upcoming renewals, producer leaderboard) |
+| Series | Chart widgets | Pipeline (opportunity value by stage, leads by source and status, won vs lost) |
+| Metric | Metric Cards | KPIs (open pipeline, open leads) |
+| Rows | List / Data Table widgets | Lists (when a row dataset is available) |
 
 Every dataset is scoped to your workspace and respects the signed-in user's session — a dashboard shared with
 another tenant shows that tenant's numbers, not yours.
@@ -190,7 +188,7 @@ another tenant shows that tenant's numbers, not yours.
   Open the **Data Source** tab, compare the keys against the **Live response** preview, and update them on the
   **Config** tab.
 - **A live widget says "No data available"** — the endpoint worked but your workspace has no matching records
-  yet (for example no claims filed this year). Add the underlying records and the widget fills in on its own.
+  yet (for example no opportunities closed this year). Add the underlying records and the widget fills in on its own.
 - **The Dataset list is empty** — the widget type has no datasets of its shape. Metric Cards only accept KPI
   datasets and List views only accept row datasets; switch the widget type or pick a different dataset.
 - **The Report list is empty** — you have no saved reports yet. Build one in [Reports](19-reports.md), then

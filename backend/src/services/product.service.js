@@ -4,9 +4,9 @@ const { Decimal } = require('@prisma/client/runtime/library');
 const { getTenantId } = require('../middleware/tenant-scope');
 
 /**
- * ProductService — Product catalog management for quotes and pricing.
+ * ProductService — Product catalog management and pricing.
  * 
- * Handles product/service CRUD, pricing, inventory, and quote integration.
+ * Handles product/service CRUD, pricing and inventory.
  * Maintains consistent pricing data across the CRM system.
  */
 class ProductService {
@@ -87,16 +87,7 @@ class ProductService {
     
     return this.db.product.findUnique({
       where: { id: productId },
-      include: {
-        record: true,
-        quote_items: {
-          include: {
-            quote: {
-              select: { id: true, quote_number: true, name: true, status: true },
-            },
-          },
-        },
-      },
+      include: { record: true },
     });
   }
 
@@ -114,8 +105,8 @@ class ProductService {
 
   async listProducts({
     category,
-    // Defaults to active-only: the sole no-arg caller is the quote product
-    // picker (GET /runtime/products), which must not offer inactive products.
+    // Defaults to active-only: the no-arg caller (GET /runtime/products) is a
+    // product picker, which must not offer inactive products.
     // Pass isActive: false explicitly to inspect inactive rows.
     isActive = true,
     isService,
@@ -202,15 +193,6 @@ class ProductService {
 
   async deleteProduct(id) {
     return this.db.$transaction(async (tx) => {
-      // Check if product is used in any quotes
-      const quoteItems = await tx.quoteLineItem.findFirst({
-        where: { product_id: Number(id) },
-      });
-
-      if (quoteItems) {
-        throw new Error('Cannot delete product: it is referenced in existing quotes');
-      }
-
       // Get the product to find its record
       const product = await tx.product.findUnique({
         where: { id: Number(id) },
@@ -222,91 +204,6 @@ class ProductService {
 
       return { id: Number(id), deleted: true };
     });
-  }
-
-  // ── PRICING UTILITIES ──────────────────────────────────────────────────────
-
-  calculateLineTotal(unitPrice, quantity, discount = 0) {
-    const price = new Decimal(unitPrice);
-    const qty = new Decimal(quantity);
-    const discountPct = new Decimal(discount).div(100);
-    
-    const subtotal = price.mul(qty);
-    const discountAmount = subtotal.mul(discountPct);
-    
-    return subtotal.sub(discountAmount);
-  }
-
-  calculateTax(amount, taxRate) {
-    if (!taxRate) return new Decimal(0);
-    
-    const amt = new Decimal(amount);
-    const rate = new Decimal(taxRate);
-    
-    return amt.mul(rate);
-  }
-
-  // ── REPORTING ───────────────────────────────────────────────────────────────
-
-  async getTopSellingProducts(limit = 10) {
-    return this.db.product.findMany({
-      include: {
-        quote_items: {
-          include: {
-            quote: {
-              where: { status: { in: ['accepted'] } },
-              select: { total_amount: true },
-            },
-          },
-        },
-        _count: {
-          select: { quote_items: true },
-        },
-      },
-      orderBy: {
-        quote_items: { _count: 'desc' },
-      },
-      take: limit,
-    });
-  }
-
-  async getProductSalesMetrics(productId) {
-    const product = await this.db.product.findUnique({
-      where: { id: Number(productId) },
-      include: {
-        quote_items: {
-          include: {
-            quote: {
-              select: { 
-                status: true, 
-                total_amount: true, 
-                created_at: true,
-                accepted_at: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!product) return null;
-
-    const metrics = {
-      total_quotes: product.quote_items.length,
-      accepted_quotes: product.quote_items.filter(
-        item => item.quote.status === 'accepted'
-      ).length,
-      total_revenue: product.quote_items
-        .filter(item => item.quote.status === 'accepted')
-        .reduce((sum, item) => sum + Number(item.line_total), 0),
-      conversion_rate: 0,
-    };
-
-    if (metrics.total_quotes > 0) {
-      metrics.conversion_rate = (metrics.accepted_quotes / metrics.total_quotes) * 100;
-    }
-
-    return metrics;
   }
 }
 

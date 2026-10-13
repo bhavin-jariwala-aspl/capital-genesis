@@ -131,7 +131,7 @@ curl -s http://localhost:11434/api/chat -d '{
   "options": { "temperature": 0 },
   "format": {
     "type": "object",
-    "properties": { "source": { "enum": ["leads","opportunities","policies"] } },
+    "properties": { "source": { "enum": ["leads","opportunities","cases"] } },
     "required": ["source"]
   },
   "messages": [
@@ -339,7 +339,7 @@ out of road.
 
 ### Layer 1 — Schema catalogue *(generated, not authored)*
 
-The registry already holds 10 sources and 299 business-labelled fields. `SchemaContextService`
+The registry already holds 6 sources and their business-labelled fields. `SchemaContextService`
 selects the relevant slice and formats it. **Adding a report source to the product automatically
 teaches the AI about it** — there is no second place to update, which is the property that stops the
 two drifting apart.
@@ -363,14 +363,14 @@ METRICS = {
                          'owner.branch.branch_name', 'owner.region.region_name'],
   },
 
-  in_force_premium: {
-    label: 'In-force premium',
-    description: 'Annualised premium on policies that are currently active.',
-    synonyms: ['premium', 'APE', 'in force', 'book value'],
-    source: 'policies',
-    metric:  { agg: 'sum', field: 'annual_premium', label: 'In-force premium' },
-    filters: [{ field: 'policy_status', op: 'equals', value: 'in_force' }],
-    allowed_dimensions: ['issue_date', 'product.name', 'carrier.name', 'agent.employee_name'],
+  open_cases: {
+    label: 'Open cases',
+    description: 'Support cases that have not yet been resolved or closed.',
+    synonyms: ['open tickets', 'backlog', 'unresolved cases'],
+    source: 'cases',
+    metric:  { agg: 'count', label: 'Open cases' },
+    filters: [{ field: 'status', op: 'not_in', value: ['resolved', 'closed'] }],
+    allowed_dimensions: ['created_at', 'priority', 'type', 'owner.employee_name'],
   },
 }
 ```
@@ -385,7 +385,7 @@ rather than a silently wrong number on a board report.
 ### Layer 3 — Synonyms and grain descriptions
 
 Users do not say "opportunities"; they say deals, pipeline, sales. Users do not say
-`annual_premium`; they say premium or APE. Every synonym added is a whole class of misroutes removed,
+"cases"; they say tickets or support requests. Every synonym added is a whole class of misroutes removed,
 and it costs one line.
 
 ### Layer 4 — System rules
@@ -916,7 +916,7 @@ alternative, only a cost reference point.
 
 - [ ] Schema catalogue generating from `report-registry.js`
 - [ ] **8–12 business metric definitions agreed with the business** and written into `report-semantics.js`
-- [ ] Synonyms for all 10 sources
+- [ ] Synonyms for all 6 sources
 - [ ] Financial-year convention confirmed and wired to `fiscal_year_start_month`
 - [ ] 10–15 few-shot exemplars, including clarify / refuse / injection cases
 - [ ] Golden set of ~60 questions with expected plans

@@ -124,21 +124,21 @@ const NEW = 2;
 function templateSeed() {
   return {
     tenant: [
-      { id: TEMPLATE, name: 'Template Co', slug: 'genesis-life-demo', industry: 'life_insurance', status: 'active' },
-      { id: NEW, name: 'Acme Insurance', slug: 'acme-insurance', industry: 'life_insurance', status: 'active' },
+      { id: TEMPLATE, name: 'Template Co', slug: 'genesis-life-demo', industry: 'technology', status: 'active' },
+      { id: NEW, name: 'Acme Corp', slug: 'acme-corp', industry: 'technology', status: 'active' },
     ],
     uiModule: [
       { id: 10, name: 'crm', label: 'CRM', category: 'crm', order_index: 1, is_active: true, tenant_id: TEMPLATE },
-      { id: 11, name: 'insurance', label: 'Insurance', category: 'insurance', order_index: 2, is_active: true, tenant_id: TEMPLATE },
+      { id: 11, name: 'service', label: 'Service', category: 'crm', order_index: 2, is_active: true, tenant_id: TEMPLATE },
     ],
     uiObject: [
       { id: 20, module_id: 10, name: 'lead', label: 'Lead', order_index: 1, is_active: true, tenant_id: TEMPLATE },
-      { id: 21, module_id: 11, name: 'policy', label: 'Policy', order_index: 1, is_active: true, tenant_id: TEMPLATE },
+      { id: 21, module_id: 11, name: 'case', label: 'Case', order_index: 1, is_active: true, tenant_id: TEMPLATE },
     ],
     uiField: [
       { id: 30, object_id: 20, name: 'full_name', label: 'Full name', field_type: 'text', data_type: 'string', tenant_id: TEMPLATE },
       { id: 31, object_id: 20, name: 'email', label: 'Email', field_type: 'email', data_type: 'string', tenant_id: TEMPLATE },
-      { id: 32, object_id: 21, name: 'policy_no', label: 'Policy no', field_type: 'text', data_type: 'string', tenant_id: TEMPLATE },
+      { id: 32, object_id: 21, name: 'case_no', label: 'Case no', field_type: 'text', data_type: 'string', tenant_id: TEMPLATE },
     ],
     uiForm: [
       { id: 40, object_id: 20, name: 'lead_create', label: 'New lead', form_type: 'create', columns: 2, tenant_id: TEMPLATE },
@@ -173,7 +173,7 @@ function templateSeed() {
       { id: 120, code: 'id_proof', label: 'ID proof', review_required: true, is_required: true, color: 'blue', order_index: 1, is_active: true, tenant_id: TEMPLATE },
     ],
     uiDocumentChecklist: [
-      { id: 130, entity_type: 'application', label: 'New business', items: [], is_active: true, order_index: 1, tenant_id: TEMPLATE },
+      { id: 130, entity_type: 'account', label: 'New account', items: [], is_active: true, order_index: 1, tenant_id: TEMPLATE },
     ],
     operationalPermission: [
       { id: 140, entity_type: 'task', role_name: 'manager', tenant_id: TEMPLATE },
@@ -187,12 +187,6 @@ function templateSeed() {
     ],
     leadScoringRule: [
       { id: 160, name: 'Has email', field_name: 'email', operator: 'not_empty', points: 5, rule_type: 'demographic', is_active: true, order_index: 1, created_by: 'TPL_ADMIN', tenant_id: TEMPLATE },
-    ],
-    insuranceCarrier: [
-      { id: 170, name: 'Northwind Life', code: 'NWL', carrier_type: 'life', is_active: true, created_by: 'TPL_ADMIN', tenant_id: TEMPLATE },
-    ],
-    carrierProduct: [
-      { id: 180, carrier_id: 170, product_type: 'term', name: 'Term 20', is_active: true, tenant_id: TEMPLATE },
     ],
     role: [], region: [], branch: [], employee: [], employeeHierarchy: [],
     uiWorkflow: [], uiDashboard: [], slaPolicy: [], emailTemplate: [],
@@ -235,7 +229,7 @@ describe('the clone plan', () => {
 
   it('never copies business data', () => {
     const models = CLONE_PLAN.map((s) => s.model);
-    for (const forbidden of ['record', 'crmLead', 'insurancePolicy', 'insuranceClaim', 'quote', 'document', 'employee', 'customReport']) {
+    for (const forbidden of ['record', 'crmLead', 'crmContact', 'crmOpportunity', 'document', 'employee', 'customReport']) {
       expect(models).not.toContain(forbidden);
     }
   });
@@ -352,9 +346,6 @@ describe('metadata clone', () => {
       expect(fieldIds.has(d.target_field_id)).toBe(true);
     }
     for (const s of rows('uiWizardStep')) expect(formIds.has(s.form_id)).toBe(true);
-    for (const p of rows('carrierProduct')) {
-      expect(new Set(rows('insuranceCarrier').map((c) => c.id)).has(p.carrier_id)).toBe(true);
-    }
   });
 
   it('keeps the shape of the graph, not just the row counts', () => {
@@ -381,7 +372,6 @@ describe('metadata clone', () => {
 
   it('clears the columns that name a template-tenant employee', () => {
     expect(rows('leadScoringRule')[0].created_by).toBeNull();
-    expect(rows('insuranceCarrier')[0].created_by).toBeNull();
   });
 
   it('leaves the template tenant untouched', () => {
@@ -532,7 +522,7 @@ describe('availability probes', () => {
 
   it('suggests a free variant when the slug is taken', async () => {
     const { svc } = svcFor();
-    const result = await svc.checkSlug('acme-insurance');
+    const result = await svc.checkSlug('acme-corp');
     expect(result.available).toBe(false);
     expect(SLUG_RE.test(result.suggestion)).toBe(true);
     expect(await svc.checkSlug(result.suggestion)).toMatchObject({ available: true });
@@ -540,7 +530,7 @@ describe('availability probes', () => {
 
   it('reports a free admin id and email', async () => {
     const { svc } = svcFor();
-    const result = await svc.checkAdminIdentity({ employee_id: 'ACME_ADM', email: 'ada@acme.test', slug: 'acme-insurance' });
+    const result = await svc.checkAdminIdentity({ employee_id: 'ACME_ADM', email: 'ada@acme.test', slug: 'acme-corp' });
     expect(result.employee_id).toMatchObject({ available: true });
     expect(result.email).toMatchObject({ available: true });
   });
@@ -549,7 +539,7 @@ describe('availability probes', () => {
     const seed = templateSeed();
     seed.employee = [{ employee_id: 'ADMIN001', employee_name: 'Taken', role: 'user', tenant_id: TEMPLATE }];
     const { svc } = svcFor(seed);
-    const result = await svc.checkAdminIdentity({ employee_id: 'ADMIN001', slug: 'acme-insurance' });
+    const result = await svc.checkAdminIdentity({ employee_id: 'ADMIN001', slug: 'acme-corp' });
     expect(result.employee_id.available).toBe(false);
     expect(EMPLOYEE_ID_RE.test(result.employee_id.suggestion)).toBe(true);
     expect(result.employee_id.suggestion).not.toBe('ADMIN001');

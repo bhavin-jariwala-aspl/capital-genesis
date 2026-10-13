@@ -484,10 +484,11 @@ class ReportService {
    * This is the "join between two tables" a user asks for, done the way it has to
    * be done to keep the numbers right: **one `groupBy` on the child table**, keyed
    * by the foreign key, and the result attached to the parent row. There is no
-   * join, so there is no fan-out — a policy with three claims still contributes its
-   * premium exactly once, which a `policies ⋈ claims` join could not guarantee.
+   * join, so there is no fan-out — an account with three deals still contributes its
+   * annual revenue exactly once, which an `accounts ⋈ opportunities` join could not
+   * guarantee.
    *
-   * The values are attached under the collection name (`row.claims.paid_amount`), so
+   * The values are attached under the collection name (`row.opportunities.amount`), so
    * to everything downstream a roll-up is indistinguishable from a to-one relation
    * and `readPath` reads it unchanged.
    */

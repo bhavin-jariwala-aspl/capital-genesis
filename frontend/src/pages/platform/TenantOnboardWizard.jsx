@@ -145,7 +145,7 @@ export function ProvisioningReport({ steps }) {
 
 const BLANK = {
   name: '', slug: '', slugEdited: false, billing_email: '', domain: '',
-  plan: 'free', industry: 'life_insurance', timezone: 'UTC', locale: 'en',
+  plan: 'free', industry: 'other', timezone: 'UTC', locale: 'en',
   admin_employee_id: '', adminIdEdited: false, admin_employee_name: '', admin_email: '', admin_password: '',
   skip: [],
 };
@@ -354,7 +354,7 @@ export default function TenantOnboardWizard({ open, onClose, onDone }) {
         <div className="space-y-4">
           <Input
             ref={nameRef} label="Organisation name" required autoFocus
-            placeholder="Acme Life Insurance"
+            placeholder="Acme Corporation"
             value={form.name}
             onChange={(e) => set({ name: e.target.value })}
             help="The name your customer sees throughout the product."

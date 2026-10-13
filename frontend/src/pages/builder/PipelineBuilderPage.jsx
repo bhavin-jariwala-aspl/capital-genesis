@@ -31,38 +31,76 @@ const DEFAULT_VIEWS = ['table', 'cards', 'pipeline'];
 
 // ── Stage row used inside the pipeline editor ──────────────────────────────
 function StageRow({ stage, index, onChange, onRemove }) {
+  const cfg = stage.config || {};
+  const gated = (cfg.required_fields?.length || cfg.entry_rule?.expression);
+  const setCfg = (patch) => {
+    const next = { ...cfg, ...patch };
+    if (!next.required_fields?.length) delete next.required_fields;
+    if (!next.entry_rule?.expression) delete next.entry_rule;
+    onChange(index, 'config', next);
+  };
   return (
-    <div className="flex items-center gap-3 p-3 bg-white dark:bg-night-2 border border-gray-200 dark:border-white/[0.07] rounded-lg">
-      <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0" />
+    <div className="p-3 bg-white dark:bg-night-2 border border-gray-200 dark:border-white/[0.07] rounded-lg">
+      <div className="flex items-center gap-3">
+        <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0" />
 
-      {/* colour swatch */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <div className="w-6 h-6 rounded-full border-2 border-white shadow" style={{ background: stage.color }} />
-        <select
-          className="text-xs border border-gray-200 dark:border-white/10 rounded px-1 py-0.5 bg-white dark:bg-white/5 dark:text-white/70"
-          value={stage.color}
-          onChange={e => onChange(index, 'color', e.target.value)}
+        {/* colour swatch */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="w-6 h-6 rounded-full border-2 border-white shadow" style={{ background: stage.color }} />
+          <select
+            className="text-xs border border-gray-200 dark:border-white/10 rounded px-1 py-0.5 bg-white dark:bg-white/5 dark:text-white/70"
+            value={stage.color}
+            onChange={e => onChange(index, 'color', e.target.value)}
+          >
+            {COLORS.STAGE.map(c => (
+              <option key={c} value={c} style={{ background: c, color: '#fff' }}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <input
+          className="flex-1 text-sm border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 bg-white dark:bg-white/5 dark:text-white/80 focus:border-primary-400 focus:outline-none"
+          placeholder="Stage label (e.g. Qualified)"
+          value={stage.label || ''}
+          onChange={e => onChange(index, 'label', e.target.value)}
+        />
+
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors"
         >
-          {COLORS.STAGE.map(c => (
-            <option key={c} value={c} style={{ background: c, color: '#fff' }}>{c}</option>
-          ))}
-        </select>
+          <X className="w-4 h-4" />
+        </button>
       </div>
-
-      <input
-        className="flex-1 text-sm border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 bg-white dark:bg-white/5 dark:text-white/80 focus:border-primary-400 focus:outline-none"
-        placeholder="Stage label (e.g. Qualified)"
-        value={stage.label || ''}
-        onChange={e => onChange(index, 'label', e.target.value)}
-      />
-
-      <button
-        type="button"
-        onClick={() => onRemove(index)}
-        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-colors"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      {/* Stage gate: what must be true before a record may enter this stage.
+          Enforced by the server for drags, API, bulk and workflow moves. */}
+      <details className="mt-2 ml-7" open={Boolean(gated)}>
+        <summary className="cursor-pointer text-xs text-gray-500 dark:text-white/40">
+          Entry rules{gated ? ' · on' : ''}
+        </summary>
+        <div className="mt-2 grid gap-2">
+          <input
+            className="text-xs border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 bg-white dark:bg-white/5 dark:text-white/80"
+            placeholder="Required fields (API names, comma-separated), e.g. disqualify_reason"
+            value={(cfg.required_fields || []).join(', ')}
+            onChange={e => setCfg({ required_fields: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
+          />
+          <input
+            className="text-xs font-mono border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 bg-white dark:bg-white/5 dark:text-white/80"
+            placeholder="Formula that must be true, e.g. kyc_status = 'approved' AND security_complete"
+            value={cfg.entry_rule?.expression || ''}
+            onChange={e => setCfg({ entry_rule: { ...(cfg.entry_rule || {}), expression: e.target.value } })}
+          />
+          <input
+            className="text-xs border border-gray-200 dark:border-white/10 rounded px-2 py-1.5 bg-white dark:bg-white/5 dark:text-white/80"
+            placeholder="Message shown when the rule blocks a move"
+            value={cfg.entry_rule?.message || ''}
+            onChange={e => setCfg({ entry_rule: { ...(cfg.entry_rule || {}), message: e.target.value } })}
+            disabled={!cfg.entry_rule?.expression}
+          />
+        </div>
+      </details>
     </div>
   );
 }
@@ -167,6 +205,7 @@ function PipelineModal({ isOpen, onClose, editing, onSaved }) {
           name:        s.name || s.label.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
           color:       s.color,
           order_index: i + 1,
+          ...(s.config !== undefined ? { config: s.config && Object.keys(s.config).length ? s.config : null } : {}),
         }));
 
       if (enabledViews.length === 0) throw new Error('Enable at least one view (Table, Card, or Pipeline).');
@@ -179,7 +218,8 @@ function PipelineModal({ isOpen, onClose, editing, onSaved }) {
         name:        editing?.name || formData.label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
         description: formData.description,
         object_id:   Number(selectedObjectId),
-        config:      { enabled_views: orderedViews, delete_mode: softDelete ? 'soft' : 'hard' },
+        // Merge so keys this form does not edit survive a save.
+        config:      { ...(fullPipelineData?.data?.config || editing?.config || {}), enabled_views: orderedViews, delete_mode: softDelete ? 'soft' : 'hard' },
         stages:      numberedStages,
       };
 

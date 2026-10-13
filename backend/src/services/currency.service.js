@@ -35,9 +35,9 @@ const cache = new Map();
 /**
  * Request-scoped active profile.
  *
- * Money is rendered deep inside synchronous builders (the insurance PDF
- * templates compose ~50 nested helpers), so threading a profile through every
- * signature is not practical. AsyncLocalStorage gives those sync helpers a
+ * Money is rendered deep inside synchronous builders (report formatting,
+ * template merges), so threading a profile through every signature is not
+ * practical. AsyncLocalStorage gives those sync helpers a
  * request-scoped value without a shared mutable — the same mechanism
  * `middleware/tenant-scope.js` already uses for tenant_id.
  */

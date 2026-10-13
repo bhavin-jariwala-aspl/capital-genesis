@@ -29,11 +29,16 @@ The page opens with three top-level tabs across the top: **Operational (Tasks / 
 ### Operational permissions (tasks, activities, records)
 
 1. Open the **Operational** tab (selected by default).
-2. Choose a sub-tab: **Task Permissions**, **Activity Permissions**, or **Record Permissions**.
+2. Choose a sub-tab: **Task Permissions**, **Activity Permissions**, **Record Permissions** or **Barrier Override**.
 3. You see one card per role. Admin-tier roles (level 3 or lower) are shown as "always full" and are locked.
 4. For each configurable role, set a scope for **View**, **Create**, **Edit**, and **Delete** using the
    dropdowns, plus an **Assign to** dropdown.
 5. Click **Save** on that role's card. Each role card saves independently. A check mark confirms the save.
+
+**Barrier Override** has one tick box per role: **Can see inside every barrier**. Information barriers bind every
+role, administrators included, so nothing is ticked by default and admin roles are not locked here. Tick it only
+for roles such as Compliance or the MLRO. Each change is written to the tamper-evident audit chain. See
+[22. Business Units & Information Barriers](22-access-and-barriers.md).
 
 ### Dashboard permissions
 

@@ -4,8 +4,8 @@
  * WorkflowEngineService — field storage routing and per-record scheduling.
  *
  * The engine used to read and write fields only on the five first-class CRM
- * tables, so on an EAV-backed object (every insurance domain object, `client`,
- * and all custom objects) a condition saw no value and an action wrote nothing.
+ * tables, so on an EAV-backed object (`client` and all custom objects) a
+ * condition saw no value and an action wrote nothing.
  * These tests pin the routing that makes the shipped workflow catalogue run.
  */
 
@@ -14,7 +14,7 @@ const WorkflowEngineService = require('../src/services/workflow.service');
 function makeDb({ record = null, eavRows = [], records = [] } = {}) {
   return {
     uiWorkflow:  { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
-    uiObject:    { findUnique: jest.fn().mockResolvedValue({ name: 'policy' }) },
+    uiObject:    { findUnique: jest.fn().mockResolvedValue({ name: 'contract' }) },
     uiField:     { findFirst: jest.fn().mockResolvedValue({ data_type: 'string' }) },
     notification:{ createMany: jest.fn().mockResolvedValue({ count: 1 }) },
     employee:    { findMany: jest.fn().mockResolvedValue([]) },
@@ -38,7 +38,7 @@ function makeDb({ record = null, eavRows = [], records = [] } = {}) {
 /** An EAV-backed record (a Policy), as loaded with its field_values relation. */
 function eavRecord(fieldValues = []) {
   return {
-    id: 100, object_id: 45, object: { name: 'policy' },
+    id: 100, object_id: 45, object: { name: 'contract' },
     assigned_to: 'USR001', created_by: 'USR001', pipeline_stage_id: null,
     field_values: fieldValues,
     crm_lead: null, crm_lead_intake: null, crm_contact: null,
@@ -63,14 +63,14 @@ describe('WorkflowEngineService — EAV-backed objects', () => {
     const db = makeDb({
       record: eavRecord([
         { field_name: 'status',      str_value: 'active', num_value: null, bool_value: null, date_value: null, json_value: null },
-        { field_name: 'policyholder', str_value: 'Jane Roe', num_value: null, bool_value: null, date_value: null, json_value: null },
+        { field_name: 'account_holder', str_value: 'Jane Roe', num_value: null, bool_value: null, date_value: null, json_value: null },
       ]),
     });
     const steps = [
       { id: 1, name: 'Gate', step_type: 'condition', order_index: 1,
         config: { field: 'status', operator: 'eq', value: 'active' }, on_true_id: null, on_false_id: null },
       { id: 2, name: 'Notify', step_type: 'notification', order_index: 2,
-        config: { field: 'assigned_to', title: 'Renewal on {{policyholder}}' }, on_true_id: null, on_false_id: null },
+        config: { field: 'assigned_to', title: 'Renewal on {{account_holder}}' }, on_true_id: null, on_false_id: null },
     ];
     db.uiWorkflow.findUnique.mockResolvedValue(wf(steps));
 
@@ -81,7 +81,7 @@ describe('WorkflowEngineService — EAV-backed objects', () => {
     expect(db.notification.createMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: [expect.objectContaining({ employee_id: 'USR001' })] }),
     );
-    // …and {{policyholder}} interpolated from the EAV value.
+    // …and {{account_holder}} interpolated from the EAV value.
     expect(db.notification.createMany.mock.calls[0][0].data[0].title).toBe('Renewal on Jane Roe');
   });
 
@@ -135,17 +135,17 @@ describe('WorkflowEngineService — EAV-backed objects', () => {
   it('interpolates {{field}} placeholders in an action value', async () => {
     const db = makeDb({
       record: eavRecord([
-        { field_name: 'policy_number', str_value: 'POL-9', num_value: null, bool_value: null, date_value: null, json_value: null },
+        { field_name: 'contract_number', str_value: 'CON-9', num_value: null, bool_value: null, date_value: null, json_value: null },
       ]),
     });
     const steps = [
       { id: 1, name: 'Stamp note', step_type: 'action', order_index: 1,
-        config: { field: 'notes', value: 'Auto-expired {{policy_number}}' }, on_true_id: null, on_false_id: null },
+        config: { field: 'notes', value: 'Auto-expired {{contract_number}}' }, on_true_id: null, on_false_id: null },
     ];
     db.uiWorkflow.findUnique.mockResolvedValue(wf(steps));
 
     await new WorkflowEngineService(db).manualRun(1, { id: 100 });
-    expect(db.recordFieldValue.upsert.mock.calls[0][0].create.str_value).toBe('Auto-expired POL-9');
+    expect(db.recordFieldValue.upsert.mock.calls[0][0].create.str_value).toBe('Auto-expired CON-9');
   });
 });
 
@@ -170,7 +170,7 @@ describe('WorkflowEngineService — create_record routing', () => {
     const db = makeDb({ record: eavRecord([
       { field_name: 'application_number', str_value: 'APP-7', num_value: null, bool_value: null, date_value: null, json_value: null },
     ]) });
-    db.uiObject.findUnique.mockResolvedValue({ name: 'underwriting_case' });
+    db.uiObject.findUnique.mockResolvedValue({ name: 'credit_review' });
     const steps = [
       { id: 1, name: 'Open UW case', step_type: 'create_record', order_index: 1,
         config: { object_id: 47, fields: { case_number: 'UWC-{{application_number}}', status: 'pending' } },

@@ -12,8 +12,6 @@ const VISIBILITIES = [
 
 const CATEGORIES = [
   { key: 'sales',        label: 'Sales' },
-  { key: 'insurance',    label: 'Insurance' },
-  { key: 'finance',      label: 'Finance' },
   { key: 'support',      label: 'Support' },
   { key: 'productivity', label: 'Productivity' },
   { key: 'custom',       label: 'Other' },

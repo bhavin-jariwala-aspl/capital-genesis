@@ -119,7 +119,7 @@ function ChecklistModal({ open, onClose, initial, categories, onSave, saving }) 
         <div className="grid grid-cols-2 gap-4">
           <Input label="Label" required placeholder="New Application Documents" value={form.label} onChange={e => set('label', e.target.value)} />
           <Input label="Entity type" required placeholder="application" value={form.entity_type} onChange={e => set('entity_type', e.target.value)}
-            disabled={!!initial?.id} hint="lead | contact | application | policy…" />
+            disabled={!!initial?.id} hint="lead | contact | account | case…" />
         </div>
 
         <div>

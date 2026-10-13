@@ -247,7 +247,7 @@ class EmailSendService {
     }
 
     // Load all CRM entity data attached to the record, including relations
-    // that carry names we need (contact on quote, account on case, etc.)
+    // that carry names we need (contact and account on an opportunity or case)
     const record = await this.db.record.findUnique({
       where:   { id: Number(recordId) },
       include: {
@@ -263,10 +263,6 @@ class EmailSendService {
           contact: { select: { first_name: true, last_name: true, email: true } },
         }},
         product:         true,
-        quote:           { include: {
-          contact: { select: { first_name: true, last_name: true, email: true } },
-          account: { select: { name: true } },
-        }},
       },
     });
 
@@ -275,12 +271,12 @@ class EmailSendService {
     // Merge all CRM entity fields into one flat object
     const entity = record.crm_lead ?? record.crm_contact ?? record.crm_account
                 ?? record.crm_opportunity ?? record.crm_case
-                ?? record.product ?? record.quote;
+                ?? record.product;
 
     const data = entity ? { ...entity } : {};
 
     // Flatten related entity names into data for alias resolution
-    // e.g. Quote.contact.first_name → data.contact_first_name, data.contact_name
+    // e.g. Opportunity.contact.first_name → data._contact_first, data.contact_name
     const related = entity?.contact ?? entity?.account ?? null;
     if (entity?.contact) {
       const c = entity.contact;
@@ -327,8 +323,7 @@ class EmailSendService {
       // ── Product ──
       product_name:   ['product_name', 'name'],
       product_url:    ['product_url', 'website', 'image_url'],
-      // ── Quote ──
-      quote_number:   ['quote_number'],
+      // ── Amounts & validity ──
       total_amount:   ['total_amount', 'grand_total', 'amount', 'unit_price'],
       valid_until:    ['valid_until', 'expiry_date'],
       // ── Case ──

@@ -28,7 +28,6 @@ describe('canSeeDashboard', () => {
 
   it('excludes everyone more junior than the named role', () => {
     expect(DashboardService.canSeeDashboard(USER, MANAGER)).toBe(false);
-    expect(DashboardService.canSeeDashboard(BUILTIN_ROLE_LEVEL.underwriter, MANAGER)).toBe(false);
     expect(DashboardService.canSeeDashboard(NO_ACCESS_LEVEL, MANAGER)).toBe(false);
   });
 

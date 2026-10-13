@@ -159,8 +159,8 @@ describe('the feature catalogue', () => {
   it('resolves legacy flag names to their catalogue key', () => {
     // Deployed `feature_flags` rows and existing call sites predate the
     // catalogue; they must keep working without a migration.
-    expect(C.canonicalKey('underwriting_workflow')).toBe('ins_underwriting');
-    expect(C.canonicalKey('ins_underwriting')).toBe('ins_underwriting');
+    expect(C.canonicalKey('advanced_workflows')).toBe('auto_approvals');
+    expect(C.canonicalKey('auto_approvals')).toBe('auto_approvals');
     expect(C.canonicalKey('dark_mode')).toBeNull();
     for (const [legacy, key] of Object.entries(C.LEGACY_ALIASES)) {
       expect(C.FEATURE_KEYS).toContain(key);
@@ -169,12 +169,12 @@ describe('the feature catalogue', () => {
   });
 
   it('normalises a list by dropping unknowns, canonicalising and adding core', () => {
-    expect(C.normaliseFeatureList(['underwriting_workflow', 'nonsense']))
-      .toEqual(['crm_records', 'ins_underwriting']);
+    expect(C.normaliseFeatureList(['advanced_workflows', 'nonsense']))
+      .toEqual(['crm_records', 'auto_approvals']);
   });
 
   it('reports unknown keys for validation', () => {
-    expect(C.unknownFeatureKeys(['ins_quoting', 'basic_crm'])).toEqual(['basic_crm']);
+    expect(C.unknownFeatureKeys(['analytics_reports', 'basic_crm'])).toEqual(['basic_crm']);
   });
 });
 
@@ -184,21 +184,21 @@ describe('the plan decides what was sold', () => {
   it('enables a feature the plan includes', async () => {
     const { svc, id } = setup({ plan: 'professional' });
     const map = await svc.resolve(id);
-    expect(map.ins_claims).toMatchObject({ enabled: true, source: SOURCE.PLAN, in_plan: true });
+    expect(map.auto_assignment).toMatchObject({ enabled: true, source: SOURCE.PLAN, in_plan: true });
   });
 
   it('disables a feature above the plan, and says which tier it needs', async () => {
     const { svc, id } = setup({ plan: 'starter' });
     const map = await svc.resolve(id);
-    expect(map.ins_claims).toMatchObject({ enabled: false, source: SOURCE.PLAN_EXCLUDED, in_plan: false });
-    expect(map.ins_claims.reason).toMatch(/professional/);
+    expect(map.auto_assignment).toMatchObject({ enabled: false, source: SOURCE.PLAN_EXCLUDED, in_plan: false });
+    expect(map.auto_assignment.reason).toMatch(/professional/);
   });
 
   it('gates the free tier down to the basics', async () => {
     const { svc, id } = setup({ plan: 'free' });
     const map = await svc.resolve(id);
     expect(map.crm_records.enabled).toBe(true);
-    expect(map.ins_quoting.enabled).toBe(false);
+    expect(map.analytics_reports.enabled).toBe(false);
     expect(map.gov_sso.enabled).toBe(false);
   });
 
@@ -219,7 +219,7 @@ describe('the plan decides what was sold', () => {
       plans: [{ id: 1, name: 'professional', features: null }],
     });
     const map = await new EntitlementService(db).resolve(4);
-    expect(map.ins_claims.enabled).toBe(true);
+    expect(map.auto_assignment.enabled).toBe(true);
     expect(map.gov_sso.enabled).toBe(false);
   });
 
@@ -227,24 +227,24 @@ describe('the plan decides what was sold', () => {
     const { svc } = setup();
     const map = await svc.resolve(9999);
     expect(map.crm_records.enabled).toBe(true);
-    expect(map.ins_quoting.enabled).toBe(false);
-    expect(map.ins_quoting.reason).toMatch(/not found/i);
+    expect(map.analytics_reports.enabled).toBe(false);
+    expect(map.analytics_reports.reason).toMatch(/not found/i);
   });
 
   it('is safe with no tenant in context', async () => {
     const { svc } = setup();
     for (const bad of [null, undefined, 0, 'x']) {
       const map = await svc.resolve(bad);
-      expect(map.ins_quoting.enabled).toBe(false);
+      expect(map.analytics_reports.enabled).toBe(false);
     }
   });
 });
 
 describe('a flag can withhold a sold feature, never grant an unsold one', () => {
   it('withholds a plan feature whose flag is globally off', async () => {
-    const { svc, id } = setup({ plan: 'enterprise', flags: { ins_underwriting: { is_enabled: false, rollout_percent: 0 } } });
+    const { svc, id } = setup({ plan: 'enterprise', flags: { auto_approvals: { is_enabled: false, rollout_percent: 0 } } });
     const map = await svc.resolve(id);
-    expect(map.ins_underwriting).toMatchObject({ enabled: false, source: SOURCE.FLAG_DISABLED, in_plan: true });
+    expect(map.auto_approvals).toMatchObject({ enabled: false, source: SOURCE.FLAG_DISABLED, in_plan: true });
   });
 
   it('cannot grant a feature the plan excludes, however the flag is set', async () => {
@@ -252,20 +252,20 @@ describe('a flag can withhold a sold feature, never grant an unsold one', () => 
     // paid functionality to a free tenant.
     const { svc, id } = setup({
       plan: 'free',
-      flags: { ins_underwriting: { is_enabled: true, rollout_percent: 100 } },
+      flags: { auto_approvals: { is_enabled: true, rollout_percent: 100 } },
     });
     const map = await svc.resolve(id);
-    expect(map.ins_underwriting).toMatchObject({ enabled: false, source: SOURCE.PLAN_EXCLUDED });
+    expect(map.auto_approvals).toMatchObject({ enabled: false, source: SOURCE.PLAN_EXCLUDED });
   });
 
   it('splits a partial rollout by tenant id and says which side we are on', async () => {
-    const flags = { ins_underwriting: { is_enabled: true, rollout_percent: 50 } };
+    const flags = { auto_approvals: { is_enabled: true, rollout_percent: 50 } };
     const inCohort = setup({ id: 10, plan: 'enterprise', flags });   // 10 % 100 = 10 < 50
     const outside  = setup({ id: 70, plan: 'enterprise', flags });   // 70 % 100 = 70 >= 50
 
-    const a = (await inCohort.svc.resolve(10)).ins_underwriting;
+    const a = (await inCohort.svc.resolve(10)).auto_approvals;
     invalidate();
-    const b = (await outside.svc.resolve(70)).ins_underwriting;
+    const b = (await outside.svc.resolve(70)).auto_approvals;
 
     expect(a).toMatchObject({ enabled: true, source: SOURCE.FLAG_ROLLOUT });
     expect(a.reason).toMatch(/in the cohort/);
@@ -278,51 +278,51 @@ describe('a flag can withhold a sold feature, never grant an unsold one', () => 
     const { svc, id } = setup({ plan: 'enterprise', flags: { dark_mode: { is_enabled: false, rollout_percent: 0 } } });
     const map = await svc.resolve(id);
     expect(map.dark_mode).toBeUndefined();
-    expect(map.ins_underwriting.enabled).toBe(true);
+    expect(map.auto_approvals.enabled).toBe(true);
   });
 
   it('leaves unflagged plan features alone', async () => {
     const { svc, id } = setup({ plan: 'professional' });
     const map = await svc.resolve(id);
-    // ins_claims has no flag, so the plan is the whole answer.
-    expect(map.ins_claims).toMatchObject({ enabled: true, source: SOURCE.PLAN });
+    // auto_assignment has no flag, so the plan is the whole answer.
+    expect(map.auto_assignment).toMatchObject({ enabled: true, source: SOURCE.PLAN });
   });
 });
 
 describe('a tenant override is the deliberate exception', () => {
   it('grants a feature the plan excludes — the pilot case', async () => {
-    const { svc, id } = setup({ plan: 'starter', overrides: { ins_underwriting: true } });
+    const { svc, id } = setup({ plan: 'starter', overrides: { auto_approvals: true } });
     const map = await svc.resolve(id);
-    expect(map.ins_underwriting).toMatchObject({
+    expect(map.auto_approvals).toMatchObject({
       enabled: true, source: SOURCE.TENANT_OVERRIDE, in_plan: false, override: true,
     });
-    expect(map.ins_underwriting.reason).toMatch(/not in plan/i);
+    expect(map.auto_approvals.reason).toMatch(/not in plan/i);
   });
 
   it('revokes a feature the plan includes', async () => {
-    const { svc, id } = setup({ plan: 'enterprise', overrides: { ins_claims: false } });
+    const { svc, id } = setup({ plan: 'enterprise', overrides: { auto_assignment: false } });
     const map = await svc.resolve(id);
-    expect(map.ins_claims).toMatchObject({ enabled: false, source: SOURCE.TENANT_OVERRIDE, in_plan: true });
+    expect(map.auto_assignment).toMatchObject({ enabled: false, source: SOURCE.TENANT_OVERRIDE, in_plan: true });
   });
 
   it('beats a flag that is switched off platform-wide', async () => {
     const { svc, id } = setup({
       plan: 'enterprise',
-      flags: { ins_underwriting: { is_enabled: false, rollout_percent: 0 } },
-      overrides: { ins_underwriting: true },
+      flags: { auto_approvals: { is_enabled: false, rollout_percent: 0 } },
+      overrides: { auto_approvals: true },
     });
     const map = await svc.resolve(id);
-    expect(map.ins_underwriting).toMatchObject({ enabled: true, source: SOURCE.TENANT_OVERRIDE });
+    expect(map.auto_approvals).toMatchObject({ enabled: true, source: SOURCE.TENANT_OVERRIDE });
   });
 
   it('beats being outside a rollout cohort', async () => {
     const { svc } = setup({
       id: 70, plan: 'enterprise',
-      flags: { ins_underwriting: { is_enabled: true, rollout_percent: 50 } },
-      overrides: { ins_underwriting: true },
+      flags: { auto_approvals: { is_enabled: true, rollout_percent: 50 } },
+      overrides: { auto_approvals: true },
     });
     const map = await svc.resolve(70);
-    expect(map.ins_underwriting).toMatchObject({ enabled: true, source: SOURCE.TENANT_OVERRIDE });
+    expect(map.auto_approvals).toMatchObject({ enabled: true, source: SOURCE.TENANT_OVERRIDE });
   });
 });
 
@@ -348,12 +348,12 @@ describe('core features', () => {
 describe('setOverride', () => {
   it('grants, then clears back to the plan answer', async () => {
     const { svc, id } = setup({ plan: 'starter' });
-    expect((await svc.resolve(id)).ins_claims.enabled).toBe(false);
+    expect((await svc.resolve(id)).auto_assignment.enabled).toBe(false);
 
-    const granted = await svc.setOverride(id, 'ins_claims', true, 'PLATFORM01');
+    const granted = await svc.setOverride(id, 'auto_assignment', true, 'PLATFORM01');
     expect(granted).toMatchObject({ enabled: true, source: SOURCE.TENANT_OVERRIDE });
 
-    const cleared = await svc.setOverride(id, 'ins_claims', null, 'PLATFORM01');
+    const cleared = await svc.setOverride(id, 'auto_assignment', null, 'PLATFORM01');
     expect(cleared).toMatchObject({ enabled: false, source: SOURCE.PLAN_EXCLUDED, override: null });
   });
 
@@ -362,32 +362,32 @@ describe('setOverride', () => {
     // have no flag row. One created on demand must not change the answer for
     // any other tenant.
     const { svc, id, writes } = setup({ plan: 'professional' });
-    await svc.setOverride(id, 'ins_claims', false, 'PLATFORM01');
+    await svc.setOverride(id, 'auto_assignment', false, 'PLATFORM01');
     expect(writes.flags).toHaveLength(1);
-    expect(writes.flags[0]).toMatchObject({ name: 'ins_claims', is_enabled: true, rollout_percent: 100 });
+    expect(writes.flags[0]).toMatchObject({ name: 'auto_assignment', is_enabled: true, rollout_percent: 100 });
   });
 
   it('rejects an unknown feature and a non-boolean state', async () => {
     const { svc, id } = setup();
     await expect(svc.setOverride(id, 'nope', true)).rejects.toThrow(/Unknown feature/);
-    await expect(svc.setOverride(id, 'ins_claims', 'yes')).rejects.toThrow(/true, false, or null/);
+    await expect(svc.setOverride(id, 'auto_assignment', 'yes')).rejects.toThrow(/true, false, or null/);
   });
 
   it('rejects a tenant that does not exist', async () => {
     const { svc } = setup();
-    await expect(svc.setOverride(9999, 'ins_claims', true)).rejects.toThrow(/not found/i);
+    await expect(svc.setOverride(9999, 'auto_assignment', true)).rejects.toThrow(/not found/i);
   });
 
   it('applies a group of changes in one call', async () => {
     const { svc, id } = setup({ plan: 'free' });
-    const result = await svc.setOverrides(id, { ins_quoting: true, ins_claims: true }, 'PLATFORM01');
-    expect(result.ins_quoting.enabled).toBe(true);
-    expect(result.ins_claims.enabled).toBe(true);
+    const result = await svc.setOverrides(id, { analytics_reports: true, auto_assignment: true }, 'PLATFORM01');
+    expect(result.analytics_reports.enabled).toBe(true);
+    expect(result.auto_assignment.enabled).toBe(true);
   });
 
   it('rejects a bulk call naming an unknown feature, before writing anything', async () => {
     const { svc, id, writes } = setup();
-    await expect(svc.setOverrides(id, { ins_quoting: true, bogus: true })).rejects.toThrow(/Unknown feature/);
+    await expect(svc.setOverrides(id, { analytics_reports: true, bogus: true })).rejects.toThrow(/Unknown feature/);
     expect(writes.overrides).toHaveLength(0);
     await expect(svc.setOverrides(id, {})).rejects.toThrow(/No feature changes/);
   });
@@ -399,15 +399,15 @@ describe('memoisation', () => {
     let reads = 0;
     const original = db.featureFlag.findMany;
     db.featureFlag.findMany = async (...args) => { reads++; return original(...args); };
-    for (let i = 0; i < 5; i++) await svc.isEnabled('ins_claims', id);
+    for (let i = 0; i < 5; i++) await svc.isEnabled('auto_assignment', id);
     expect(reads).toBe(1);
   });
 
   it('re-resolves once invalidated, so a console change bites immediately', async () => {
     const { svc, id } = setup({ plan: 'starter' });
-    expect(await svc.isEnabled('ins_claims', id)).toBe(false);
-    await svc.setOverride(id, 'ins_claims', true);       // invalidates internally
-    expect(await svc.isEnabled('ins_claims', id)).toBe(true);
+    expect(await svc.isEnabled('auto_assignment', id)).toBe(false);
+    await svc.setOverride(id, 'auto_assignment', true);       // invalidates internally
+    expect(await svc.isEnabled('auto_assignment', id)).toBe(true);
   });
 
   it('keeps tenants in separate slots', async () => {
@@ -425,7 +425,7 @@ describe('memoisation', () => {
 describe('isEnabled / enabledKeys', () => {
   it('answers a single feature', async () => {
     const { svc, id } = setup({ plan: 'professional' });
-    expect(await svc.isEnabled('ins_claims', id)).toBe(true);
+    expect(await svc.isEnabled('auto_assignment', id)).toBe(true);
     expect(await svc.isEnabled('gov_sso', id)).toBe(false);
   });
 
@@ -438,21 +438,21 @@ describe('isEnabled / enabledKeys', () => {
     const { svc, id } = setup({ plan: 'starter' });
     const keys = await svc.enabledKeys(id);
     expect(keys).toEqual(C.FEATURE_KEYS.filter((k) => keys.includes(k)));
-    expect(keys).toContain('ins_quoting');
+    expect(keys).toContain('analytics_reports');
     expect(keys).not.toContain('gov_sso');
   });
 });
 
 describe('FeatureFlagService.isEnabled — the existing call sites', () => {
-  it('resolves the legacy underwriting flag name through the plan', async () => {
-    // `routes/insurance` and `routes/runtime` call isEnabled('underwriting_workflow').
+  it('resolves a legacy flag name through the plan', async () => {
+    // Pre-catalogue call sites use the legacy name, e.g. isEnabled('advanced_workflows').
     // They were plan-blind; they now inherit the plan gate unchanged.
     const pro = setup({ id: 4, plan: 'professional' });
-    expect(await new FeatureFlagService(pro.db).isEnabled('underwriting_workflow', 4)).toBe(true);
+    expect(await new FeatureFlagService(pro.db).isEnabled('advanced_workflows', 4)).toBe(true);
 
     invalidate();
     const free = setup({ id: 4, plan: 'free' });
-    expect(await new FeatureFlagService(free.db).isEnabled('underwriting_workflow', 4)).toBe(false);
+    expect(await new FeatureFlagService(free.db).isEnabled('advanced_workflows', 4)).toBe(false);
   });
 
   it('falls back to the flag row for a bespoke non-catalogue kill-switch', async () => {
@@ -472,7 +472,7 @@ describe('FeatureFlagService.isEnabled — the existing call sites', () => {
 
 describe('tenantMatrix — the console view', () => {
   it('groups every catalogue feature with its resolved state and a summary', async () => {
-    const { svc, id } = setup({ plan: 'starter', overrides: { ins_claims: true, crm_pipelines: false } });
+    const { svc, id } = setup({ plan: 'starter', overrides: { auto_assignment: true, crm_pipelines: false } });
     const matrix = await svc.tenantMatrix(id);
 
     expect(matrix.tenant).toMatchObject({ id, slug: 'acme' });
@@ -519,8 +519,8 @@ describe('SubscriptionService — plans own their feature list', () => {
 
   it('accepts catalogue keys, canonicalises legacy names and re-adds core', async () => {
     const { db } = fakeDb({ plans: planRows() });
-    const plan = await new SubscriptionService(db).update(1, { features: ['underwriting_workflow'] });
-    expect(plan.features).toEqual(['crm_records', 'ins_underwriting']);
+    const plan = await new SubscriptionService(db).update(1, { features: ['advanced_workflows'] });
+    expect(plan.features).toEqual(['crm_records', 'auto_approvals']);
   });
 
   it('defaults a new plan to its tier feature set rather than nothing', async () => {
@@ -599,7 +599,7 @@ describe('a plan row written before the catalogue existed', () => {
 
   it('falls back to the tier default rather than selling the core alone', async () => {
     // The regression: honouring the list made an Enterprise tenant entitled to
-    // exactly one feature out of thirty-seven, which removed every insurance
+    // exactly one feature out of thirty-seven, which removed every gated
     // module, the whole of the automation Builder, reports, SLA and documents.
     const resolved = {};
     const expected = {};
@@ -617,14 +617,14 @@ describe('a plan row written before the catalogue existed', () => {
     expect(resolved.enterprise).toHaveLength(C.FEATURE_KEYS.length);
   });
 
-  it('gives an Enterprise tenant every insurance feature again', async () => {
+  it('gives an Enterprise tenant every paid feature again', async () => {
     const { db } = fakeDb({
       tenants: [{ id: 4, plan: 'enterprise', status: 'active' }],
       plans: [{ id: 1, name: 'enterprise', features: LEGACY.enterprise }],
     });
     const map = await new EntitlementService(db).resolve(4);
-    const keys = ['ins_quoting', 'ins_policy_admin', 'ins_underwriting', 'ins_claims',
-      'ins_commissions', 'auto_workflows', 'auto_sla', 'analytics_reports', 'docs_management', 'gov_sso'];
+    const keys = ['auto_approvals', 'auto_assignment', 'auto_lead_scoring', 'auto_workflows',
+      'auto_sla', 'analytics_reports', 'docs_management', 'eng_social', 'gov_sso'];
     const disabled = keys.filter((k) => !map[k].enabled);
     expect(disabled).toEqual([]);
   });
@@ -632,27 +632,27 @@ describe('a plan row written before the catalogue existed', () => {
   it('still honours a genuinely curated list, including a deliberately narrow one', async () => {
     // One recognisable key means somebody edited the plan with the current
     // editor, and their intent wins — even when it sells less than the tier.
-    const narrow = setup({ plan: 'enterprise', planFeatures: ['crm_records', 'ins_quoting'] });
+    const narrow = setup({ plan: 'enterprise', planFeatures: ['crm_records', 'analytics_reports'] });
     const map = await narrow.svc.resolve(narrow.id);
-    expect(map.ins_quoting.enabled).toBe(true);
-    expect(map.ins_claims.enabled).toBe(false);
+    expect(map.analytics_reports.enabled).toBe(true);
+    expect(map.auto_assignment.enabled).toBe(false);
   });
 
   it('honours a half-migrated list, since no legacy name collides with a key', async () => {
     invalidate();
     const { db } = fakeDb({
       tenants: [{ id: 4, plan: 'starter', status: 'active' }],
-      plans: [{ id: 1, name: 'starter', features: ['basic_crm', 'ins_underwriting'] }],
+      plans: [{ id: 1, name: 'starter', features: ['basic_crm', 'auto_approvals'] }],
     });
     const keys = await new EntitlementService(db).enabledKeys(4);
-    expect(keys).toEqual(['crm_records', 'ins_underwriting']);
+    expect(keys).toEqual(['crm_records', 'auto_approvals']);
   });
 
   it('is reported as not explicit, so the console shows the tier-default badge', async () => {
     const { db } = fakeDb({
       plans: [
         { id: 1, name: 'enterprise', label: 'Enterprise', features: LEGACY.enterprise },
-        { id: 2, name: 'starter', label: 'Starter', features: ['ins_quoting'] },
+        { id: 2, name: 'starter', label: 'Starter', features: ['analytics_reports'] },
       ],
     });
     const [legacyPlan, curatedPlan] = await new SubscriptionService(db).list();

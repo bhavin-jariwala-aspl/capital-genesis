@@ -10,7 +10,7 @@ import Modal from '../ui/Modal';
 import Alert from '../ui/Alert';
 import {
   Plus, Trash2, ArrowDown, Play, GitBranch, Bell,
-  Clock, CheckSquare, Settings, Globe, FilePlus, RefreshCw, Plug, AlertTriangle,
+  Clock, CheckSquare, Settings, Globe, FilePlus, RefreshCw, Plug, AlertTriangle, Mail, FileText,
 } from 'lucide-react';
 import {
   STEP_SCHEMAS, parseStepConfig, validateStepConfig,
@@ -27,6 +27,8 @@ const STEP_TYPES = [
   { value: 'integration',    label: 'Integration',    icon: Plug,        color: 'bg-cyan-100 border-cyan-400 text-cyan-800 dark:bg-cyan-500/20 dark:border-cyan-500/40 dark:text-cyan-400' },
   { value: 'create_record',  label: 'Create Record',  icon: FilePlus,    color: 'bg-primary-100 border-primary-400 text-primary-800 dark:bg-primary-500/20 dark:border-primary-500/40 dark:text-primary-400' },
   { value: 'update_related', label: 'Update Related', icon: RefreshCw,   color: 'bg-pink-100 border-pink-400 text-pink-800 dark:bg-pink-500/20 dark:border-pink-500/40 dark:text-pink-400' },
+  { value: 'send_email',     label: 'Send Email',     icon: Mail,        color: 'bg-sky-100 border-sky-400 text-sky-800 dark:bg-sky-500/20 dark:border-sky-500/40 dark:text-sky-400' },
+  { value: 'generate_document', label: 'Generate Document', icon: FileText, color: 'bg-lime-100 border-lime-400 text-lime-800 dark:bg-lime-500/20 dark:border-lime-500/40 dark:text-lime-400' },
 ];
 
 const stepTypeMap = Object.fromEntries(STEP_TYPES.map(t => [t.value, t]));

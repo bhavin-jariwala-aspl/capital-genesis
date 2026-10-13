@@ -109,7 +109,7 @@ describe('report list', () => {
     const prisma = makePrisma({
       reports: [
         report({ id: 1, visibility: 'everyone', name: 'Pipeline by stage', description: null, category: 'sales' }),
-        report({ id: 2, visibility: 'everyone', name: 'Claims paid', description: null, category: 'insurance' }),
+        report({ id: 2, visibility: 'everyone', name: 'Open cases by priority', description: null, category: 'support' }),
       ],
     });
     const list = await new ReportLibraryService(prisma).visibleReports(PEER, { search: 'pipeline' });

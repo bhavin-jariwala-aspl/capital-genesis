@@ -835,7 +835,6 @@ row-level or operational permissions.
 | Tasks & Reminders — due today, create/complete, snooze; proactive push | `task.service`, `reminder.service` | "What's due today?" |
 | Activities — log calls/notes, incl. voice-note → transcribe | `activity.service` | Voice-note call logging in the field |
 | Global search | `search.service` | "Find contact Rajesh Kumar" |
-| Quotes & Insurance — generate quote, send PDF | `quote.service`, `calculation-engine.service`, `document.service` | WhatsApp renders the quote PDF natively |
 | Reports & Dashboards — summary or chart image | `report.service`, `dashboard.service` | "Send me this week's numbers" |
 | Approvals — pending workflow steps as approve/reject buttons | `workflow.service` (`WorkflowPendingStep`) | Approve a discount from your phone |
 | Notifications & SLA breaches | `notification.service`, `sla.service` | Breach alerts pushed to WhatsApp |
@@ -845,8 +844,7 @@ row-level or operational permissions.
 | Capability | Backed by |
 | ---------- | --------- |
 | Lead capture from an unknown number (auto-create + assign + score) | `crm.service`, `assignment.service`, `lead-scoring.service` |
-| Guided quote requests (age, sum assured, product → PDF) | `quote.service`, `document.service` |
-| Policy / case status (scoped to the customer's own records) | `CrmCase` lookups |
+| Case status (scoped to the customer's own records) | `CrmCase` lookups |
 | KYC / document collection via WhatsApp media | `document.service` |
 | Appointment booking (creates a Task/Reminder for the agent) | `task.service`, `reminder.service` |
 
@@ -874,7 +872,7 @@ WhatsApp <-> /api/whatsapp/webhook <-> Conversation Orchestrator
    Fast, high-value, low-risk (no NL, no inbound).
 2. **Menu-driven inbound** — interactive buttons/lists for the top rep actions.
 3. **NL chatbot** — layer Claude tool use over the same service tools.
-4. **Customer self-service** — lead capture, quote requests, status checks.
+4. **Customer self-service** — lead capture, status checks.
 
 ### Key Risks
 

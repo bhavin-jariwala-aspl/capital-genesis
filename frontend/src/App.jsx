@@ -17,6 +17,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 const SharedDocumentPage = lazy(() => import('./pages/SharedDocumentPage'));
 const SignDocumentPage = lazy(() => import('./pages/SignDocumentPage'));
+const PublicFormPage = lazy(() => import('./pages/PublicFormPage'));
+const AccessPage = lazy(() => import('./pages/runtime/AccessPage'));
 
 // ── Lightweight route-load spinner (avoids importing Spinner component eagerly) ─
 function PageLoader() {
@@ -38,23 +40,10 @@ const ImportPage         = lazy(() => import('./pages/runtime/ImportPage'));
 const DocumentsPage      = lazy(() => import('./pages/runtime/DocumentsPage'));
 // Tier 1 pages converted to metadata-driven: Products, CallLogs, LeadScoring
 // They now render via ModulePage at /module/:moduleId — no dedicated routes needed.
-const QuotesPage         = lazy(() => import('./pages/runtime/QuotesPage'));
 const SocialMediaPage    = lazy(() => import('./pages/runtime/SocialMediaPage'));
 const SlaDashboardPage   = lazy(() => import('./pages/runtime/SlaDashboardPage'));
 const ReportsPage        = lazy(() => import('./pages/runtime/ReportsPage'));
 const RemindersPage      = lazy(() => import('./pages/runtime/RemindersPage'));
-
-// ── Insurance pages (heavy — always lazy) ────────────────────────────────────
-const InsuranceQuotePage = lazy(() => import('./pages/runtime/InsuranceQuotePage'));
-const PoliciesPage       = lazy(() => import('./pages/runtime/PoliciesPage'));
-const ApplicationsPage   = lazy(() => import('./pages/runtime/ApplicationsPage'));
-const ClaimsPage         = lazy(() => import('./pages/runtime/ClaimsPage'));
-const UnderwritingPage   = lazy(() => import('./pages/runtime/UnderwritingPage'));
-const CommissionsPage    = lazy(() => import('./pages/runtime/CommissionsPage'));
-const AgentWorkbenchPage = lazy(() => import('./pages/runtime/AgentWorkbenchPage'));
-const DeclarationPage    = lazy(() => import('./pages/runtime/DeclarationPage'));
-const DocumentCollectionPage = lazy(() => import('./pages/runtime/DocumentCollectionPage'));
-const UnderwritingCaseReviewPage = lazy(() => import('./pages/runtime/UnderwritingCaseReviewPage'));
 
 // ── Builder pages (admin-only — always lazy) ─────────────────────────────────
 const BuilderHome              = lazy(() => import('./pages/builder/BuilderHome'));
@@ -133,6 +122,8 @@ function App() {
             <Route path="/share/:token" element={<SharedDocumentPage />} />
             {/* Public e-signature signing page */}
             <Route path="/sign/:token" element={<SignDocumentPage />} />
+            {/* Published Builder form — web-to-record intake */}
+            <Route path="/f/:key" element={<PublicFormPage />} />
           
           {/* Protected Routes */}
           <Route element={token ? <AppLayout /> : <Navigate to="/login" replace />}>
@@ -153,11 +144,11 @@ function App() {
               <Route path="/forecast" element={<ForecastPage />} />
               <Route path="/import" element={<ImportPage />} />
               {/* Products, CallLogs, LeadScoring are now metadata-driven via /module/:moduleId */}
-              <Route path="/quotes" element={<QuotesPage />} />
               <Route path="/social-media" element={<SocialMediaPage />} />
               <Route path="/sla" element={<SlaDashboardPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reminders" element={<RemindersPage />} />
+              <Route path="/access" element={<AccessPage />} />
               {/* Standalone Document Management module (domain-neutral) */}
               <Route path="/documents" element={<DocumentsPage />} />
               {/* Report authoring is deliberately OUTSIDE the admin-only /builder guard
@@ -165,18 +156,6 @@ function App() {
                   own reports. See docs/developer-guide/REPORTING.md. */}
               <Route path="/reports/new" element={<ReportBuilderPage />} />
               <Route path="/reports/:id/edit" element={<ReportBuilderPage />} />
-
-              {/* Life Insurance Routes */}
-              <Route path="/insurance/quotes" element={<InsuranceQuotePage />} />
-              <Route path="/insurance/policies" element={<PoliciesPage />} />
-              <Route path="/insurance/applications" element={<ApplicationsPage />} />
-              <Route path="/insurance/declarations" element={<DeclarationPage />} />
-              <Route path="/insurance/documents" element={<DocumentCollectionPage />} />
-              <Route path="/insurance/claims" element={<ClaimsPage />} />
-              <Route path="/insurance/underwriting" element={<UnderwritingPage />} />
-              <Route path="/insurance/underwriting/:id" element={<UnderwritingCaseReviewPage />} />
-              <Route path="/insurance/commissions" element={<CommissionsPage />} />
-              <Route path="/insurance/workbench" element={<AgentWorkbenchPage />} />
             </Route>
 
             {/* Admin-only application settings */}

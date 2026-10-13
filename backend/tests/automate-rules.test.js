@@ -133,8 +133,8 @@ describe('the shipped lead-scoring defaults', () => {
 
     // A referred, contacted, well-off, reachable prospect.
     const strong = score((r) => [
-      'Income supports permanent cover', 'Income supports term cover', 'Employment on file',
-      'Referred or introduced', 'Needs analysis started', 'Reachable by phone', 'Reachable by email',
+      'High-value prospect', 'Mid-value prospect', 'Employment on file',
+      'Referred or introduced', 'Conversation started', 'Reachable by phone', 'Reachable by email',
     ].includes(r.name));
 
     // A cold-called lead with contact details and nothing else.
@@ -195,7 +195,21 @@ describe('SLA policy validation', () => {
       case: ['first_response', 'resolution'],
       lead: ['first_response'],
       task: ['resolution'],
+      record: ['first_response', 'resolution'],
     });
+  });
+
+  it('maps a metadata object\'s pipeline onto the clock for record SLAs', () => {
+    const cfg = SlaService.recordEntityConfig({
+      first_response_stages: ['new'], closed_stages: ['converted', 'disqualified'], canceled_stages: ['withdrawn'],
+    });
+    expect(cfg.metricStatus.first_response({ stage: 'new' })).toBe('running');
+    expect(cfg.metricStatus.first_response({ stage: 'contacted' })).toBe('met');
+    expect(cfg.metricStatus.resolution({ stage: 'contacted' })).toBe('running');
+    expect(cfg.metricStatus.resolution({ stage: 'converted' })).toBe('met');
+    expect(cfg.metricStatus.resolution({ stage: 'withdrawn' })).toBe('canceled');
+    // No first-response stages configured → due until the record gets any stage.
+    expect(SlaService.recordEntityConfig({ closed_stages: ['x'] }).metricStatus.first_response({ stage: null })).toBe('running');
   });
 
   it('rejects a target on a metric the entity is not measured on', () => {

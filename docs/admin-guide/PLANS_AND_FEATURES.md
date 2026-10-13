@@ -97,9 +97,9 @@ The shipped tiers, cheapest first:
 | Plan | Price | Users | For |
 |------|-------|-------|-----|
 | **Free** | $0 | 3 | Evaluation — records, pipelines, dashboards, email |
-| **Starter** | $29/mo | 10 | A small agency — quoting, policy admin, workflows, reports, documents |
-| **Professional** | $79/mo | 50 | A growing agency — underwriting, claims, commissions, automation, forecasting |
-| **Enterprise** | $199/mo | 999 | The full platform — SSO, carrier feeds, AI assistance, data export |
+| **Starter** | $29/mo | 10 | A small team — import/export, workflows, reports, documents, audit |
+| **Professional** | $79/mo | 50 | A growing team — assignment, scoring, SLAs, forecasting, social, e-signature |
+| **Enterprise** | $199/mo | 999 | The full platform — SSO, AI reports, API v2, data export |
 
 Each tier is a **strict superset** of the one below. That holds by construction, not by discipline:
 a feature declares the cheapest tier that includes it (`min_plan`) and inclusion is a rank
@@ -183,22 +183,21 @@ feature are eligible at all.
 const EntitlementService = require('../services/platform/entitlement.service');
 const entitlements = new EntitlementService(fastify.prisma);
 
-if (!await entitlements.isEnabled('ins_claims', req.user.tenant_id)) {
-  throw new ValidationError('Claims management is not included in this plan.');
+if (!await entitlements.isEnabled('auto_sla', req.user.tenant_id)) {
+  throw new ValidationError('The SLA engine is not included in this plan.');
 }
 ```
 
 `FeatureFlagService.isEnabled(name, tenantId)` delegates here, so existing call sites keep working
-and became plan-aware without being touched — including the underwriting guards in
-`routes/insurance` and `routes/runtime`, which call `isEnabled('underwriting_workflow', …)`.
+and became plan-aware without being touched.
 
 ### Adding a feature
 
 1. Add an entry to `FEATURES` in `backend/src/services/platform/feature-catalogue.js`:
 
    ```js
-   f('ins_reinsurance', 'Reinsurance treaties', 'insurance', 'enterprise', {
-     description: 'Treaty definitions, cessions and bordereaux.' }),
+   f('auto_sequences', 'Email sequences', 'automation', 'enterprise', {
+     description: 'Multi-step timed outreach with exit conditions.' }),
    ```
 
 2. Reference the key from the code that gates on it.
@@ -225,7 +224,7 @@ What each *customer* gets is data, and lives in `subscription_plans.features` an
 | `backend/src/services/platform/feature-flag.service.js` | Flag CRUD; `isEnabled` delegates to the resolver |
 | `frontend/src/pages/platform/TenantFeaturesPanel.jsx` | The per-tenant matrix and the three-state control |
 | `frontend/src/pages/platform/PlansPage.jsx` | The plan editor's feature picker and the comparison view |
-| `backend/tests/entitlements.test.js` | 54 tests, most of them about the resolution order |
+| `backend/tests/entitlements.test.js` | Tests, most of them about the resolution order |
 
 ### Caching
 
@@ -237,15 +236,12 @@ will appear not to take effect for up to the TTL.
 
 ### Legacy flag names
 
-Five `feature_flags` rows predate the catalogue and are still referenced by deployed databases and
+Two `feature_flags` rows predate the catalogue and are still referenced by deployed databases and
 by code. They resolve through an alias rather than a migration against production:
 
 | Deployed flag name | Catalogue key |
 |--------------------|---------------|
-| `underwriting_workflow` | `ins_underwriting` |
-| `ai_underwriting` | `ins_ai_underwriting` |
 | `advanced_workflows` | `auto_approvals` |
-| `policy_analytics` | `analytics_policy` |
 | `api_v2` | `plat_api_v2` |
 
 `dark_mode` is deliberately **not** aliased: it was never a sellable feature, it is a per-user
@@ -275,14 +271,12 @@ Every override change is written to the platform audit log (`tenant.feature_over
 
 Three layers, from the inside out:
 
-1. **The API refuses.** `middleware/require-feature.js` gates the insurance route families
-   (quoting, policy administration, underwriting, claims, commissions, carrier feeds, application
-   documents) and the write paths of the Workflow and Assignment builders. A refusal is a 403 with
-   `code: FEATURE_NOT_ENTITLED` naming the feature and the tier it is sold from. Reference data
-   every insurance tenant has from Starter — products, carriers, templates — is never gated.
+1. **The API refuses.** `middleware/require-feature.js` gates the write paths of the Workflow and
+   Assignment builders. A refusal is a 403 with `code: FEATURE_NOT_ENTITLED` naming the feature and
+   the tier it is sold from.
 2. **The server hides shipped modules.** `/runtime/modules` and `/runtime/bootstrap` drop the
-   shipped modules (`quotes`, `claims`, `underwriting`, …) the plan excludes, so they never reach the
-   sidebar. Modules a tenant made itself are never gated.
+   shipped modules the plan excludes (listed in `MODULE_FEATURE` in `routes/runtime`, currently
+   empty), so they never reach the sidebar. Modules a tenant made itself are never gated.
 3. **The client explains.** `FeatureGate` wraps the tenant-facing routes and, for a locked feature,
    shows a page naming it, quoting the server's reason, and telling an admin where the plan is
    changed — rather than a redirect that reads as a bug. The sidebar hides locked tools and Builder
@@ -297,7 +291,7 @@ locked one the source and reason. The same block ships inside the bootstrap payl
 
 ### Adding a gate
 
-- A single route: `{ preHandler: [authenticate, requireFeature('ins_claims')] }`.
+- A single route: `{ preHandler: [authenticate, requireFeature('auto_sla')] }`.
 - A route family: add a `[prefix, key]` pair to that plugin's `featureGateByPrefix` table. Matching
   is on the declared route pattern, longest prefix first.
 - A shipped module: add its `name` to `MODULE_FEATURE` in `routes/runtime`.

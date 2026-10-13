@@ -20,11 +20,8 @@ and workflow is defined in the database and rendered at runtime. No code changes
 **"...learn how to navigate and use the CRM daily"**
 → [user-guide/DAILY_OPERATIONS.md](user-guide/DAILY_OPERATIONS.md)
 
-**"...manage products and create quotes"**
-→ [user-guide/PRODUCTS_AND_QUOTES.md](user-guide/PRODUCTS_AND_QUOTES.md)
-
-**"...understand the insurance lead-to-policy journey"**
-→ [user-guide/GENESIS_INSURE_JOURNEY.md](user-guide/GENESIS_INSURE_JOURNEY.md)
+**"...manage the product catalog"**
+→ [user-guide/PRODUCTS.md](user-guide/PRODUCTS.md)
 
 **"...configure modules, users, and system settings"**
 → [admin-guide/SYSTEM_CONFIGURATION.md](admin-guide/SYSTEM_CONFIGURATION.md)
@@ -48,7 +45,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...understand the codebase and start developing"**
 → [developer-guide/ARCHITECTURE_AND_SETUP.md](developer-guide/ARCHITECTURE_AND_SETUP.md)
 
-**"...estimate the effort to build a new CRM process flow or a sophisticated Insurance CRM"**
+**"...estimate the effort to build a new CRM process flow"**
 → [developer-guide/BUILD_EFFORT_AND_CAPABILITIES.md](developer-guide/BUILD_EFFORT_AND_CAPABILITIES.md)
 
 **"...understand how modules, forms, fields, and record data are loaded at runtime"**
@@ -80,6 +77,12 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 
 **"...understand how money is formatted and how a tenant switches currency"**
 → [developer-guide/CURRENCY.md](developer-guide/CURRENCY.md)
+
+**"...add formula fields, lookups, record actions, stage gates, business units, information barriers, public web forms or a vertical pack"**
+→ [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md)
+
+**"...see how the SWAN Capital financial-services CRM was built and install it"**
+→ [SWAN-CAPITAL/IMPLEMENTATION.md](SWAN-CAPITAL/IMPLEMENTATION.md) (requirements: [SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md](SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md))
 
 **"...understand the security implementation"**
 → [developer-guide/SECURITY.md](developer-guide/SECURITY.md)
@@ -118,8 +121,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 | ----- | -------------- |
 | [user-guide/NEW_FEATURES_HOW_TO.md](user-guide/NEW_FEATURES_HOW_TO.md) | Plain-language how-to for the new Org Chart & SLA Board |
 | [user-guide/DAILY_OPERATIONS.md](user-guide/DAILY_OPERATIONS.md) | Navigation, records, search, pipeline, tasks, import/export |
-| [user-guide/PRODUCTS_AND_QUOTES.md](user-guide/PRODUCTS_AND_QUOTES.md) | Product catalog and full quote lifecycle |
-| [user-guide/GENESIS_INSURE_JOURNEY.md](user-guide/GENESIS_INSURE_JOURNEY.md) | Full insurance journey: lead to policyholder |
+| [user-guide/PRODUCTS.md](user-guide/PRODUCTS.md) | Product catalog: pricing, inventory, categories, vendors |
 
 ### Administrators
 
@@ -142,7 +144,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 | [getting-started/INSTALLATION.md](getting-started/INSTALLATION.md) | Installation and environment setup |
 | [developer-guide/ARCHITECTURE_AND_SETUP.md](developer-guide/ARCHITECTURE_AND_SETUP.md) | Stack, structure, backend, frontend, database patterns |
 | [developer-guide/DATABASE_SCHEMA.md](developer-guide/DATABASE_SCHEMA.md) | Every table's columns, types, and relationships |
-| [developer-guide/DATA_DICTIONARY.md](developer-guide/DATA_DICTIONARY.md) | Per-table purpose, data lifecycle, and column meaning (all 114 models) |
+| [developer-guide/DATA_DICTIONARY.md](developer-guide/DATA_DICTIONARY.md) | Per-table purpose, data lifecycle, and column meaning (all 97 models) |
 | [developer-guide/API_REFERENCE.md](developer-guide/API_REFERENCE.md) | Every REST endpoint, its purpose, and how it is invoked |
 | [developer-guide/WORKFLOW_ENGINE.md](developer-guide/WORKFLOW_ENGINE.md) | Step types, operators, functions, workflow API |
 | [developer-guide/SLA_ENGINE.md](developer-guide/SLA_ENGINE.md) | SLA reconcile loop, policy/target matching, instance lifecycle, business hours, escalation & manager resolution, extension recipes |
@@ -157,6 +159,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 | [user-guide/20-document-management.md](user-guide/20-document-management.md) | Using the Documents module: upload, folders, search, sharing, templates & e-signature |
 | [user-guide/21-appearance.md](user-guide/21-appearance.md) | Appearance & Branding: brand colours, corner radius, density, typeface, dark-mode default, sidebar and chart palette |
 | [developer-guide/APPLICATION_SETTINGS.md](developer-guide/APPLICATION_SETTINGS.md) | Tenant-wide settings model, API, and CRM benchmark |
+| [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md) | Formula language, lookups and related lists, record actions, stage gates, business units, information barriers, audit chain, public web forms, object analytics, record SLAs, vertical packs |
 | [developer-guide/SECURITY.md](developer-guide/SECURITY.md) | Auth, RBAC, input validation, webhook security |
 | [developer-guide/DESIGN_SYSTEM.md](developer-guide/DESIGN_SYSTEM.md) | The widget design language — tokens, shared components, patterns, new-page checklist |
 | [developer-guide/CONTRIBUTING.md](developer-guide/CONTRIBUTING.md) | Code style, testing, PR process |
@@ -169,7 +172,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 [getting-started/INSTALLATION.md](getting-started/INSTALLATION.md) → [user-guide/DAILY_OPERATIONS.md](user-guide/DAILY_OPERATIONS.md)
 
 **Intermediate (daily user):**
-[user-guide/PRODUCTS_AND_QUOTES.md](user-guide/PRODUCTS_AND_QUOTES.md) → [admin-guide/WORKFLOW_AUTOMATION.md](admin-guide/WORKFLOW_AUTOMATION.md)
+[user-guide/PRODUCTS.md](user-guide/PRODUCTS.md) → [admin-guide/WORKFLOW_AUTOMATION.md](admin-guide/WORKFLOW_AUTOMATION.md)
 
 **Advanced (system admin):**
 [SYSTEM_CONFIGURATION.md](admin-guide/SYSTEM_CONFIGURATION.md) →
@@ -196,9 +199,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 ### User Guide
 
 - [user-guide/DAILY_OPERATIONS.md](user-guide/DAILY_OPERATIONS.md) — Navigation, records, search, tasks, activities, export
-- [user-guide/PRODUCTS_AND_QUOTES.md](user-guide/PRODUCTS_AND_QUOTES.md) — Product catalog and quote management (full lifecycle)
-- [user-guide/GENESIS_INSURE_JOURNEY.md](user-guide/GENESIS_INSURE_JOURNEY.md) —
-  End-to-end insurance journey (7 stages, data flow, all models)
+- [user-guide/PRODUCTS.md](user-guide/PRODUCTS.md) — Product catalog: pricing, inventory, categories, vendors
 
 ### Admin Guide
 
@@ -227,11 +228,11 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 - [developer-guide/DATABASE_SCHEMA.md](developer-guide/DATABASE_SCHEMA.md) —
   Column-level reference: every table's columns, types, defaults, and relationships
 - [developer-guide/DATA_DICTIONARY.md](developer-guide/DATA_DICTIONARY.md) —
-  Why each of the 114 tables exists, when/how its rows are written, and what each column represents
+  Why each of the 97 tables exists, when/how its rows are written, and what each column represents
 - [developer-guide/API_REFERENCE.md](developer-guide/API_REFERENCE.md) —
   Every REST endpoint across all route groups: purpose/relevance and when/how each is invoked
 - [developer-guide/BUILD_EFFORT_AND_CAPABILITIES.md](developer-guide/BUILD_EFFORT_AND_CAPABILITIES.md) —
-  No-code vs code envelope, build-effort estimates for CRM process flows and a sophisticated Insurance CRM
+  No-code vs code envelope and build-effort estimates for CRM process flows
 - [developer-guide/WORKFLOW_ENGINE.md](developer-guide/WORKFLOW_ENGINE.md) —
   Step types, operators, functions, programmatic API
 - [developer-guide/SLA_ENGINE.md](developer-guide/SLA_ENGINE.md) —
@@ -242,8 +243,20 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
   The social engine and the scheduler registry every background automation loop runs on
 - [developer-guide/CURRENCY.md](developer-guide/CURRENCY.md) —
   How the tenant's display currency is resolved and applied everywhere, and what a true multi-currency build would still need
+- [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md) —
+  The generic Builder capabilities that let an industry vertical be configured rather than coded:
+  formulas, lookups, stage gates, business units, information barriers, audit chain, public forms,
+  object analytics, record SLAs, workflow steps, vertical packs
 - [developer-guide/SECURITY.md](developer-guide/SECURITY.md) —
   Auth, permissions, input validation, infrastructure security
+
+### Verticals
+
+- [SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md](SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md) —
+  Product requirements for the SWAN Capital Solutions financial-services CRM
+- [SWAN-CAPITAL/IMPLEMENTATION.md](SWAN-CAPITAL/IMPLEMENTATION.md) —
+  What Phase 0 + Phase 1 delivered, PRD traceability, install steps, roles and logins, and what is
+  not yet delivered
 - [developer-guide/CONTRIBUTING.md](developer-guide/CONTRIBUTING.md) —
   Code standards, testing, PR process, architecture principles
 
@@ -281,9 +294,6 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 | `http://localhost:5173/sla` | SLA Board — live service-level radiator (all users) |
 | `http://localhost:5173/reports` | Reports — configurable reporting (all users) |
 | `http://localhost:5173/builder/roles` | Roles & Hierarchy Levels (admin only) |
-| `http://localhost:5173/insurance/quotes` | Insurance Quote Engine |
-| `http://localhost:5173/insurance/policies` | Insurance Policies |
-| `http://localhost:5173/insurance/applications` | Insurance Applications |
 | `http://localhost:5173/platform` | Platform Admin (platform_admin only) |
 | `http://localhost:3001` | Backend API |
 
@@ -316,8 +326,9 @@ workflow is defined in the database. Administrators can reconfigure the entire d
 touching code.
 
 **Current status**: v3.2.0 — 8.2/10 against industry CRM leaders,
-9.5/10 as configurable internal CRM. Includes full Life Insurance
-Agency Management System with end-to-end inter-module connectivity.
+9.5/10 as configurable internal CRM, with end-to-end inter-module connectivity.
+The insurance domain (quotes, applications, underwriting, policies, claims,
+commissions) was removed on 2026-10-13.
 
 ### Core Capabilities
 
@@ -332,8 +343,7 @@ Agency Management System with end-to-end inter-module connectivity.
 | CSV import with duplicate handling | Complete |
 | Pipeline forecasting and quotas | Complete |
 | Webhook integration framework | Complete |
-| Product catalog and quotes | Complete |
-| Insurance domain (AMS) | Complete |
+| Product catalog | Complete |
 | Document Management System (multi-cloud storage, folders, in-document search, builder, templates, sharing + analytics, native e-signature) | Complete |
 | Inter-module connectivity (end-to-end) | Complete |
 | Cross-object global search | Complete |

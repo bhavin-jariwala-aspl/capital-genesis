@@ -28,9 +28,9 @@ row plus eight things:
 
 | Step              | What it installs                                                        | Why a workspace is unusable without it |
 |-------------------|-------------------------------------------------------------------------|----------------------------------------|
-| Role ladder       | The tenant's own `roles` rows (`super_admin` … `underwriter`)            | Sign-in resolves a user's authority from these. No rows, no working session. |
+| Role ladder       | The tenant's own `roles` rows (`super_admin` … `user`)                  | Sign-in resolves a user's authority from these. No rows, no working session. |
 | Office and region | A default region and head office                                         | The employee form has nothing to file people under. |
-| CRM metadata      | Modules, objects, fields, forms, layouts, validations, dependencies, pages, pipelines, stages, wizards, document categories and checklists, per-role metadata permissions, lead-scoring rules, carriers and carrier products | The entire UI is generated from these. Without them the app renders an empty shell. |
+| CRM metadata      | Modules, objects, fields, forms, layouts, validations, dependencies, pages, pipelines, stages, wizards, document categories and checklists, per-role metadata permissions, lead-scoring rules | The entire UI is generated from these. Without them the app renders an empty shell. |
 | Automation        | The workflow catalogue (`prisma/crm-workflows.js`)                       | Optional — nothing breaks, nothing automates. |
 | Dashboards        | The dashboard catalogue (`prisma/crm-dashboards.js`) and its chart library | Optional. |
 | SLA policies      | Starter case / lead / task policies on a Mon–Fri 9–5 calendar             | Optional. |
@@ -56,8 +56,8 @@ Two sources, on purpose:
 
 ### What is never copied
 
-Business data. Records, leads, contacts, accounts, opportunities, cases, quotes, policies,
-applications, claims, commissions, documents, reports, social accounts and employees all stay with
+Business data. Records, leads, contacts, accounts, opportunities, cases,
+documents, reports, social accounts and employees all stay with
 the tenant that owns them. A new customer gets a configured product, not somebody else's book of
 business.
 
@@ -196,9 +196,9 @@ curl -sX POST http://localhost:3000/api/platform/tenants/onboard \
   -H "Authorization: Bearer $PLATFORM_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
-        "name": "Acme Life Insurance",
+        "name": "Acme Corp",
         "plan": "professional",
-        "industry": "life_insurance",
+        "industry": "technology",
         "billing_email": "billing@acme.test",
         "admin": {
           "employee_id": "ACME_ADMIN",
@@ -208,6 +208,35 @@ curl -sX POST http://localhost:3000/api/platform/tenants/onboard \
         }
       }'
 ```
+
+---
+
+## Industry verticals (vertical packs)
+
+The wizard gives a new tenant the generic CRM catalogue. A tenant for a specific industry can instead be
+created from a **vertical pack**: a folder of Builder metadata under `backend/prisma/verticals/<name>/`
+(modules, objects, forms, pipelines, workflows, assignment rules, SLA policies, templates, dashboards,
+business units, barrier zones, roles, staff, master data and public forms).
+
+```bash
+cd backend
+node scripts/install-vertical.js swan-capital --create-tenant          # create the tenant and install
+node scripts/install-vertical.js swan-capital --tenant swan-capital    # re-install or upgrade in place
+node scripts/install-vertical.js swan-capital --tenant swan-capital --demo   # add demo records
+```
+
+- `--create-tenant` creates the tenant from the pack's definition and runs only the **roles** and **org**
+  provisioning steps. The pack replaces the generic catalogue clone.
+- The install is **idempotent**: it matches rows by natural key and updates them in place. It never deletes
+  rows the pack does not mention, and never changes an existing employee.
+- New staff accounts get random passwords, printed once. Pass `--password` to set one, and change them at first
+  sign-in.
+- The pack's public forms are published and their `/f/<key>` paths printed.
+- Staff IDs must still be platform-wide unique (see below), so packs prefix them (SWAN uses `SW…`).
+
+Shipped packs: **swan-capital**, a financial-services CRM. See
+[SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md). How packs and the installer work:
+[PLATFORM_BUILDER_EXTENSIONS.md](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#11-vertical-packs).
 
 ---
 

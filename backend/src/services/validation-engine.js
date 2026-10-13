@@ -31,7 +31,8 @@
  *   lt_field / lte_field — other field name  numeric/date comparison to another field
  *   requires_field    — other field name     if this has a value, that one must too
  *   unique            —                      no other live record has this value (RecordService)
- *   custom            — JS expression        BROWSER ONLY — never executed here
+ *   expression        — formula              must evaluate true (RecordService, formula engine)
+ *   custom            — retired browser JS   inert; never executed anywhere
  *
  * A rule whose `value` cannot be parsed (bad regex, non-numeric bound) is
  * reported as a configuration problem rather than silently passing or failing
@@ -83,7 +84,7 @@ const RULE_TYPES = [
   'required', 'min', 'max', 'minLength', 'maxLength', 'pattern',
   'email', 'url', 'phone', 'integer', 'positive', 'non_negative',
   'in', 'not_in', 'min_date', 'max_date',
-  ...CROSS_FIELD_RULES, 'unique', 'custom',
+  ...CROSS_FIELD_RULES, 'unique', 'expression',
 ];
 
 /**
@@ -99,7 +100,10 @@ function evaluateRule(rule, value, allValues = {}, field = {}) {
   const misconfigured = (why) => ({ ok: false, config: `${field.label || field.name || 'Field'}: ${type} rule ${why}` });
 
   if (type === 'required') return isBlank(value) ? fail(`${field.label || 'This field'} is required`) : { ok: true };
-  if (type === 'custom') return { ok: true }; // browser-only — see module doc
+  // `expression` is async (formula language, may read other records), so
+  // RecordService evaluates it after this pass. `custom` is the retired
+  // browser-JS rule: it is inert everywhere, so legacy rows never block a save.
+  if (type === 'expression' || type === 'custom') return { ok: true };
   if (type === 'unique') return { ok: true };  // needs the database — RecordService handles it
 
   // Every other rule is skipped for blank values; `required` decides presence.

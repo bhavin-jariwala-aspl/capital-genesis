@@ -226,7 +226,7 @@ You will typically see 8 or 9 out of 10, with failures like:
 const SCHEMA = {
   type: 'object',
   properties: {
-    source: { enum: ['leads', 'opportunities', 'policies', 'claims', 'commissions'] },
+    source: { enum: ['leads', 'opportunities', 'cases', 'tasks', 'activities'] },
     chart:  { enum: ['bar', 'line', 'pie', 'table', 'kpi'] },
   },
   required: ['source', 'chart'],
@@ -263,7 +263,7 @@ decoder, not requested in the prompt.
 - **This is why `ReportPlan` is a JSON Schema** in the architecture, and why the schema's enums are
   generated from your registry.
 - **It guarantees shape, not truth.** The model can still choose `opportunities` when it should have
-  chosen `policies`. Correctness is Stage 6's job.
+  chosen `leads`. Correctness is Stage 6's job.
 
 > **✅ Checkpoint:** 10/10 parses, and you can state what constrained decoding does *not* guarantee.
 
@@ -329,15 +329,15 @@ SOURCE opportunities — "Opportunities": One row per sales opportunity (deal).
 
 ### Now do the important experiment
 
-Print **all ten sources** at once and count the tokens. You will get roughly 8 000–9 000.
+Print **all six sources** at once and count the tokens. You will get several thousand.
 
 Then ask yourself the question this whole stage exists for: *why not just send all of it every time?*
 
 Two reasons, and the second is the one people miss:
 
 1. It costs latency on every request.
-2. **Accuracy gets worse.** Models are measurably poorer at picking the right item from a list of 299
-   than from a list of 40. Sending everything is not "being thorough" — it is degrading the answer.
+2. **Accuracy gets worse.** Models are measurably poorer at picking the right item from a list of every
+   field than from a list of 40. Sending everything is not "being thorough" — it is degrading the answer.
 
 That is why `SchemaContextService` exists in the architecture: it selects the relevant source and
 about forty fields.
@@ -350,13 +350,9 @@ const { SOURCES } = require(REG);
 const SYNONYMS = {
   opportunities: ['deal', 'deals', 'pipeline', 'sales', 'revenue', 'opportunity'],
   leads:         ['lead', 'leads', 'prospect', 'enquiry'],
-  policies:      ['policy', 'policies', 'premium', 'in force', 'contract'],
-  claims:        ['claim', 'claims', 'payout', 'loss'],
-  commissions:   ['commission', 'payout', 'agent earnings'],
   cases:         ['case', 'cases', 'ticket', 'support', 'complaint'],
   tasks:         ['task', 'tasks', 'to-do'],
   activities:    ['activity', 'call', 'meeting', 'email log'],
-  quotes:        ['quote', 'quotes', 'quotation'],
   sla:           ['sla', 'breach', 'response time'],
 };
 
@@ -371,8 +367,8 @@ function pickSource(question) {
 }
 
 for (const q of [
-  'total sales by region', 'how many open claims', 'premium by product',
-  'top 10 agents by commission', 'what is the weather',
+  'total sales by region', 'how many open tickets', 'leads by source',
+  'top 10 owners by pipeline', 'what is the weather',
 ]) console.log(pickSource(q)?.padEnd(15) ?? 'NONE'.padEnd(15), '←', q);
 ```
 
@@ -412,8 +408,7 @@ const PLAN_SCHEMA = {
       additionalProperties: false,
       required: ['source'],
       properties: {
-        source: { enum: ['leads','opportunities','cases','tasks','activities',
-                         'quotes','policies','claims','commissions','sla'] },
+        source: { enum: ['leads','opportunities','cases','tasks','activities','sla'] },
         viz:    { enum: ['table','bar','line','area','pie','donut','funnel','kpi','pivot'] },
         metrics: { type: 'array', maxItems: 3, items: {
           type: 'object', required: ['agg'], additionalProperties: false,
@@ -758,7 +753,7 @@ const EXAMPLES = [
   { role: 'assistant', content: JSON.stringify({
       intent: 'refuse',
       refusal_reason: 'There is no profitability measure for employees in the reporting data. '
-                    + 'I can show commission earned, deals closed, or pipeline by owner.' }) },
+                    + 'I can show won revenue, deals closed, or pipeline by owner.' }) },
 ];
 // insert between system and the user's question
 ```
@@ -778,7 +773,7 @@ const EXAMPLES = [
   paragraphs of rules.
 - **Negative examples are essential.** A model shown only successful answers learns that everything
   is answerable.
-- **A good refusal says what you *can* do.** "I can show commission earned, deals closed…" turns a
+- **A good refusal says what you *can* do.** "I can show won revenue, deals closed…" turns a
   dead end into the next question.
 
 > **✅ Checkpoint:** all four test cases behave correctly, twice in a row.
@@ -810,7 +805,7 @@ const CASES = [
       intent:'report', source:'opportunities', group:['close_date'], agg:['sum'] } },
   { q: 'Top 10 opportunities by amount', expect: {
       intent:'report', source:'opportunities', agg:['sum','max'] } },
-  { q: 'Claims paid by carrier', expect: { intent:'report', source:'claims' } },
+  { q: 'Open cases by priority', expect: { intent:'report', source:'cases' } },
   // ── must clarify ────────────────────────────────────────────
   { q: 'Show me sales',        expect: { intent:'clarify' } },
   { q: 'Give me the numbers',  expect: { intent:'clarify' } },
@@ -956,7 +951,7 @@ Ask `"What's our revenue this quarter?"` — the plan should now come back with
   pick the wrong metric, which is visible and correctable.
 - `allowed_dimensions` is both a correctness and a security control.
 - **This list is a business deliverable, not an engineering one.** Get Revenue, Active customer,
-  In-force premium, Loss ratio, Commission earned and the financial-year convention written down and
+  Win rate, Pipeline value and the financial-year convention written down and
   agreed. It is the single highest-leverage artefact in the feature.
 
 > **✅ Checkpoint:** "revenue" resolves to the agreed definition every time, including the filter.

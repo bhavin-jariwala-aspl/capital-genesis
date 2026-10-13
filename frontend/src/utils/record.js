@@ -9,13 +9,8 @@ export function recordTitle(data) {
   return (
     data?.full_name ||
     `${data?.first_name || ''} ${data?.last_name || ''}`.trim() ||
-    data?.applicant_name ||
     data?.client_name ||
-    data?.policy_number ||
-    data?.application_number ||
-    data?.claim_number ||
     data?.case_number ||
-    data?.quote_number ||
     data?.name ||
     data?.title ||
     data?.label ||

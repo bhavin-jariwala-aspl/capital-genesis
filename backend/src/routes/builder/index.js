@@ -13,6 +13,10 @@ const RecordService         = require('../../services/record.service');
 const DocumentConfigService = require('../../services/document-config.service');
 const DocumentTemplateService = require('../../services/document-template.service');
 const RequestUtils          = require('../../utils/requestUtils');
+const AuditChainService     = require('../../services/audit-chain.service');
+const AccessScopeService    = require('../../services/access-scope.service');
+const PublicFormService     = require('../../services/public-form.service');
+const { check: checkFormula, FUNCTION_NAMES } = require('../../services/formula');
 const { ok, created }       = require('../../utils/response');
 const { ValidationError }   = require('../../utils/errors');
 const { requireFeature }    = require('../../middleware/require-feature');
@@ -34,6 +38,8 @@ module.exports = async function builderRoutes(fastify) {
   const recordSvc   = new RecordService(fastify.prisma, fastify.eventBus);
   const docCfg      = new DocumentConfigService(fastify.prisma);
   const docTpl      = new DocumentTemplateService(fastify.prisma);
+  const auditChain  = new AuditChainService(fastify.prisma);
+  const accessScope = new AccessScopeService(fastify.prisma);
   // Reuse the engine already registered on fastify (shares Prisma connection)
   const wfEngine    = fastify.workflowEngine ?? new WorkflowEngineService(fastify.prisma);
 
@@ -270,6 +276,51 @@ module.exports = async function builderRoutes(fastify) {
     return ok({ workflow_id: Number(req.params.id), steps_executed: log.length, log });
   });
 
+  // POST /builder/formula/check — validate a formula as the admin types it.
+  fastify.post('/formula/check', {
+    preHandler: [requireAdmin],
+    schema: { body: { type: 'object', required: ['expression'], properties: { expression: { type: 'string', maxLength: 4000 } } } },
+  }, async (req) => ok({ error: checkFormula(req.body.expression), functions: FUNCTION_NAMES }));
+
+  // ── PUBLIC WEB FORMS ─────────────────────────────────────
+  // The only way a form gets a public key: the ordinary form update cannot set
+  // `config` or `public_key`, so publishing is always explicit and audited.
+  const publicForms = new PublicFormService(fastify.prisma, recordSvc);
+  const fieldList = { type: 'array', maxItems: 50, items: { type: 'string', maxLength: 100 } };
+  const publishBody = {
+    type: 'object',
+    properties: {
+      success_message:      { type: 'string', maxLength: 1000 },
+      consent_field:        { type: ['string', 'null'], maxLength: 100 },
+      consent_text_version: { type: ['string', 'null'], maxLength: 50 },
+      capture_fields:       fieldList,
+      result_fields:        fieldList,
+      stage:                { type: ['string', 'null'], maxLength: 100 },
+      channel:              { type: ['string', 'null'], maxLength: 100 },
+      captcha:              { type: 'boolean' },
+      rotate:               { type: 'boolean' },
+    },
+    additionalProperties: false,
+  };
+
+  // POST /builder/forms/:id/publish — publish (or update / re-key) a public web form.
+  fastify.post('/forms/:id/publish', { preHandler: [requireAdmin], schema: { body: publishBody } }, async (req) => {
+    const { rotate = false, ...settings } = req.body ?? {};
+    const form = await publicForms.publish(Number(req.params.id), settings, { rotate });
+    await cache.invalidateForm(form.id);
+    await auditChain.append({ entityType: 'ui_form.public', entityId: form.id, action: rotate ? 'rekey' : 'publish', actor: req.user?.employee_id, sensitivity: 'sensitive', payload: settings });
+    return ok({ id: form.id, public_key: form.public_key, path: `/f/${form.public_key}`, settings: form.config?.public ?? {} });
+  });
+
+  // DELETE /builder/forms/:id/publish — take a public form offline (its key stops working).
+  fastify.delete('/forms/:id/publish', { preHandler: [requireAdmin] }, async (req, reply) => {
+    const id = Number(req.params.id);
+    await publicForms.unpublish(id);
+    await cache.invalidateForm(id);
+    await auditChain.append({ entityType: 'ui_form.public', entityId: id, action: 'unpublish', actor: req.user?.employee_id, sensitivity: 'sensitive' });
+    reply.code(204).send();
+  });
+
   // ── WORKFLOW STEPS ────────────────────────────────────────
 
   fastify.post('/workflows/:id/steps', { preHandler: [requireAdmin, requireFeature('auto_workflows')] }, async (req, reply) => {
@@ -369,11 +420,13 @@ module.exports = async function builderRoutes(fastify) {
     const result = await permSvc.setEntityPermissions(
       entityType, Number(entityId), permissions, actorId, req.user?.tenant_id,
     );
+    // Permission changes go on the tamper-evident chain (who widened access, when).
+    await auditChain.append({ entityType: `permission.${entityType}`, entityId, action: 'set', actor: actorId, sensitivity: 'sensitive', payload: { permissions } });
     return ok({ updated: result.length, permissions: result });
   });
 
   // ── OPERATIONAL PERMISSIONS ──────────────────────────────────────────────
-  // entity_type: task | activity
+  // entity_type: task | activity | record | barrier_override
 
   /**
    * GET /builder/permissions/operational
@@ -392,17 +445,23 @@ module.exports = async function builderRoutes(fastify) {
     ]);
     // Merge defaults so the UI can always show a complete picture
     const { defaultPermsForLevel } = require('../../services/permission.service');
+    const NO_ACCESS = { view_scope: 'none', create_scope: 'none', edit_scope: 'none', delete_scope: 'none', assign_scope: 'none' };
     const merged = {};
-    for (const et of (entity_type ? [entity_type] : ['task', 'activity'])) {
+    for (const et of (entity_type ? [entity_type] : ['task', 'activity', 'barrier_override'])) {
       merged[et] = {};
       for (const role of roles) {
         const explicit = permissions.find(
           p => p.entity_type === et && p.role_name === role.name,
         );
+        // The barrier override is never implied by rank; an unknown level gets
+        // the least-privileged defaults, never the admin ones.
+        const defaults = et === 'barrier_override'
+          ? NO_ACCESS
+          : defaultPermsForLevel(Number.isFinite(role.level) ? role.level : Number.POSITIVE_INFINITY);
         merged[et][role.name] = explicit ?? {
           entity_type:  et,
           role_name:    role.name,
-          ...defaultPermsForLevel(role.level ?? 1),
+          ...defaults,
           _is_default:  true,
         };
       }
@@ -419,7 +478,9 @@ module.exports = async function builderRoutes(fastify) {
     const { entityType, roleName } = req.params;
     const actorId = req.user?.employee_id ?? req.user?.employeeId;
 
-    const VALID_ENTITY_TYPES = ['task', 'activity', 'record'];
+    // `barrier_override`: a view_scope other than 'none' lets the role see
+    // inside every information barrier (Compliance / MLRO).
+    const VALID_ENTITY_TYPES = ['task', 'activity', 'record', 'barrier_override'];
     if (!VALID_ENTITY_TYPES.includes(entityType)) {
       throw new ValidationError(`Invalid entity_type: ${entityType}`);
     }
@@ -427,6 +488,8 @@ module.exports = async function builderRoutes(fastify) {
     const result = await permSvc.setOperationalPermission(
       entityType, roleName, req.body ?? {}, actorId,
     );
+    accessScope.invalidate();
+    await auditChain.append({ entityType: `permission.operational.${entityType}`, entityId: roleName, action: 'set', actor: actorId, sensitivity: 'sensitive', payload: req.body ?? {} });
     return ok(result);
   });
 

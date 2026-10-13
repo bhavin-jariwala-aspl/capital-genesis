@@ -11,7 +11,6 @@ const ForecastService        = require('../../services/forecast.service');
 const ImportService          = require('../../services/import.service');
 const CrmService             = require('../../services/crm.service');
 const ProductService         = require('../../services/product.service');
-const QuoteService           = require('../../services/quote.service');
 const LeadScoringService     = require('../../services/lead-scoring.service');
 const { ok }                 = require('../../utils/response');
 // `@fastify/sensible` is not part of this deployment, so the `httpErrors`
@@ -24,24 +23,34 @@ const EntitlementService = require('../../services/platform/entitlement.service'
 const { FEATURE_KEYS } = require('../../services/platform/feature-catalogue');
 
 /**
- * Which catalogue feature a shipped module belongs to.
+ * Copy a converted record's typed EAV values onto the record it became.
  *
- * Modules are metadata rows, so a tenant can add its own; those are ungated
- * (a custom object is a Professional feature, but once made it is theirs).
- * The shipped ones map to the feature that sells them, so a Starter tenant's
- * navigation simply does not show Claims — rather than showing it and having
- * the API refuse, which is how the product behaved until now.
+ * Only fields the target object actually defines are copied, so conversion
+ * works for any pair of objects without a hand-maintained field map; values
+ * for fields the target lacks are left behind on the source. `client_since`
+ * is stamped with today's date when the target defines it and nothing set it.
  */
-const MODULE_FEATURE = Object.freeze({
-  quotes:              'ins_quoting',
-  applications:        'ins_policy_admin',
-  policies:            'ins_policy_admin',
-  declarations:        'ins_policy_admin',
-  document_collection: 'docs_management',
-  underwriting:        'ins_underwriting',
-  claims:              'ins_claims',
-  commissions:         'ins_commissions',
-});
+async function copyEavToRecord(prisma, sourceRecordId, targetRecordId, tenantId) {
+  const target = await prisma.record.findUnique({ where: { id: Number(targetRecordId) }, select: { object_id: true } });
+  if (!target) return 0;
+  const [sourceEav, fields] = await Promise.all([
+    prisma.recordFieldValue.findMany({ where: { record_id: Number(sourceRecordId) } }),
+    prisma.uiField.findMany({ where: { object_id: target.object_id, is_active: true }, select: { name: true } }),
+  ]);
+  const allowed = new Set(fields.map((f) => f.name));
+  const rows = sourceEav
+    .filter((r) => allowed.has(r.field_name))
+    .map((r) => ({
+      record_id: Number(targetRecordId), field_name: r.field_name,
+      str_value: r.str_value, num_value: r.num_value, bool_value: r.bool_value,
+      date_value: r.date_value, json_value: r.json_value, tenant_id: tenantId,
+    }));
+  if (allowed.has('client_since') && !rows.some((r) => r.field_name === 'client_since')) {
+    rows.push({ record_id: Number(targetRecordId), field_name: 'client_since', str_value: new Date().toISOString().slice(0, 10), tenant_id: tenantId });
+  }
+  if (rows.length) await prisma.recordFieldValue.createMany({ data: rows, skipDuplicates: true });
+  return rows.length;
+}
 
 /** The enabled feature keys for this request's tenant (all, for platform admins). */
 async function entitledKeys(fastify, req) {
@@ -49,14 +58,6 @@ async function entitledKeys(fastify, req) {
   if (!tenantId || req.user?.role === 'platform_admin') return new Set(FEATURE_KEYS);
   const svc = fastify.entitlementService ?? (fastify.entitlementService = new EntitlementService(fastify.prisma));
   return new Set(await svc.enabledKeys(tenantId));
-}
-
-/** Drop shipped modules whose feature the tenant is not entitled to. */
-function gateModules(modules, keys) {
-  return modules.filter((m) => {
-    const feature = MODULE_FEATURE[m.name];
-    return !feature || keys.has(feature);
-  });
 }
 
 /**
@@ -93,7 +94,6 @@ module.exports = async function runtimeRoutes(fastify) {
   const importSvc   = new ImportService(fastify.prisma);
   const crmSvc      = new CrmService(fastify.prisma, fastify.eventBus);
   const productSvc  = new ProductService(fastify.prisma);
-  const quoteSvc    = new QuoteService(fastify.prisma);
   const scoringSvc  = new LeadScoringService(fastify.prisma);
   // RecordService/CrmService produce record.* domain events onto the shared bus;
   // the workflow engine and IntegrationService consume them independently.
@@ -106,9 +106,9 @@ module.exports = async function runtimeRoutes(fastify) {
     const roleName = req.user?.role;
     const tenantId = req.user?.tenant_id;
 
-    // 1. Load all modules, filtered by plan entitlement and then by role
+    // 1. Load all modules, filtered by role
     const keys = await entitledKeys(fastify, req);
-    const allModules = gateModules(await meta.getModules(), keys);
+    const allModules = await meta.getModules();
     const filteredModules = await permSvc.filterMetadataByRole(allModules, 'module', roleName, tenantId);
     const modules = await Promise.all(
       filteredModules.map(async (mod) => {
@@ -228,7 +228,7 @@ module.exports = async function runtimeRoutes(fastify) {
 
   // GET /api/runtime/modules — all active modules visible to the viewer's role
   fastify.get('/modules', { preHandler: [authenticate] }, async (req) => {
-    const modules  = gateModules(await meta.getModules(), await entitledKeys(fastify, req));
+    const modules  = await meta.getModules();
     const roleName = req.user?.role;
     // Filter modules and their nested objects by role permissions
     const tenantId = req.user?.tenant_id;
@@ -392,6 +392,49 @@ module.exports = async function runtimeRoutes(fastify) {
     return ok(await recSvc.getRecord(req.params.id, req.user));
   });
 
+  // GET /api/runtime/records/:id/related — records pointing here via lookups
+  fastify.get('/records/:id/related', { preHandler: [authenticate] }, async (req) => {
+    return ok(await recSvc.relatedRecords(req.params.id, req.user));
+  });
+
+  // GET /api/runtime/lookup/:objectName?q= — record picker for a lookup field
+  fastify.get('/lookup/:objectName', { preHandler: [authenticate] }, async (req) => {
+    const obj = await fastify.prisma.uiObject.findFirst({
+      where: { name: String(req.params.objectName), is_active: true }, select: { id: true },
+    });
+    if (!obj) throw new NotFoundError('Object');
+    return ok(await recSvc.searchLookup(obj.id, req.query?.q ?? '', req.user, req.query?.limit, req.query?.id));
+  });
+
+  // GET /api/runtime/objects/:id/actions — the object's record actions: every
+  // active manual workflow on it, rendered as a button on the record panel.
+  fastify.get('/objects/:id/actions', { preHandler: [authenticate] }, async (req) => {
+    const rows = await fastify.prisma.uiWorkflow.findMany({
+      where:   { object_id: Number(req.params.id), trigger_type: 'manual', is_active: true },
+      select:  { id: true, name: true, label: true, description: true },
+      orderBy: { id: 'asc' },
+    });
+    return ok(rows);
+  });
+
+  // POST /api/runtime/records/:id/actions/:workflowId — run a record action.
+  // The caller must be able to edit the record, and the workflow must be a
+  // manual workflow of the record's own object.
+  fastify.post('/records/:id/actions/:workflowId', { preHandler: [authenticate] }, async (req) => {
+    const record = await recSvc.getRecord(req.params.id, req.user);           // access + barrier check
+    await recSvc.assertCanEdit(record.object_id, req.user);
+    const wf = await fastify.prisma.uiWorkflow.findUnique({
+      where: { id: Number(req.params.workflowId) }, select: { id: true, object_id: true, trigger_type: true, is_active: true, label: true },
+    });
+    if (!wf || !wf.is_active || wf.trigger_type !== 'manual' || wf.object_id !== record.object_id) {
+      throw new NotFoundError('Action');
+    }
+    const anchor = await fastify.prisma.record.findUnique({ where: { id: record.id } });
+    const log = await wfEngine.manualRun(wf.id, anchor, req.user?.employee_id);
+    const failed = log.find((l) => l.error);
+    return ok({ action: wf.label, steps: log.length, error: failed?.error ?? null, log });
+  });
+
   // POST /api/runtime/records
   fastify.post('/records', { preHandler: [authenticate] }, async (req, reply) => {
     const { object_id: rawObjectId, stage_id, assigned_to, data: crmData, draft } = req.body ?? {};
@@ -410,13 +453,11 @@ module.exports = async function runtimeRoutes(fastify) {
   });
 
   // PATCH /api/runtime/records/:id/stage
-  // Handles pipeline stage changes AND triggers insurance domain automation.
+  // Handles pipeline stage changes AND triggers conversion automation.
   // When a record is dragged to a specific pipeline stage (Kanban), this
   // endpoint auto-triggers the corresponding business action:
   //   Prospect:    "converted"          → auto-convert lead to client
-  //   Application: "under_review"       → auto-create underwriting case
-  //   Application: "approved" (no-op — UW decision drives this)
-  //   Claim:       status changes       → sync to insurance_claims.status
+  //   Lead intake: "converted"          → auto-qualify lead to prospect
   fastify.patch('/records/:id/stage', { preHandler: [authenticate] }, async (req, reply) => {
     const { stage_id } = req.body ?? {};
     const recordId = Number(req.params.id);
@@ -456,7 +497,6 @@ module.exports = async function runtimeRoutes(fastify) {
         where: { id: updated.object_id }, select: { name: true },
       });
       const objectName = obj?.name;
-      const tenantId = Number(req.user?.tenant_id) || updated.tenant_id;
       const actorId = req.user?.employee_id;
 
       const stageIsConversion = isConversionStage(updated.pipeline_stage);
@@ -470,32 +510,8 @@ module.exports = async function runtimeRoutes(fastify) {
               create_account: true, create_contact: true,
               create_opportunity: false,
             }, actorId);
-            // Copy EAV fields to new client record (same logic as convert-lead route)
             try {
-              const sourceEav = await fastify.prisma.recordFieldValue.findMany({ where: { record_id: recordId } });
-              if (sourceEav.length && result.contact?.record_id) {
-                const tid = result.contact?.tenant_id;
-                const FIELD_MAP = {
-                  first_name: 'first_name', last_name: 'last_name', email: 'email',
-                  phone: 'phone', date_of_birth: 'date_of_birth', age: 'age',
-                  gender: 'gender', smoker_status: 'smoker_status', occupation: 'occupation',
-                  annual_income: 'annual_income', notes: 'notes',
-                  full_name: null, mobile: null, lead_source: null, lead_status: null,
-                  rating: null, preferred_product: null, coverage_interest: null, health_notes: null,
-                };
-                const rows = [];
-                const seen = new Set();
-                for (const row of sourceEav) {
-                  const tf = FIELD_MAP.hasOwnProperty(row.field_name) ? FIELD_MAP[row.field_name] : row.field_name;
-                  if (!tf || seen.has(tf)) continue;
-                  seen.add(tf);
-                  rows.push({ record_id: result.contact.record_id, field_name: tf, str_value: row.str_value, num_value: row.num_value, bool_value: row.bool_value, date_value: row.date_value, json_value: row.json_value, tenant_id: tid });
-                }
-                if (!seen.has('client_since')) {
-                  rows.push({ record_id: result.contact.record_id, field_name: 'client_since', str_value: new Date().toISOString().slice(0, 10), tenant_id: tid });
-                }
-                if (rows.length) await fastify.prisma.recordFieldValue.createMany({ data: rows, skipDuplicates: true });
-              }
+              if (result.contact?.record_id) await copyEavToRecord(fastify.prisma, recordId, result.contact.record_id, result.contact.tenant_id);
             } catch (err) { fastify.log.warn({ err }, '[stage-auto] EAV copy failed'); }
             automation.action = 'lead_converted';
             automation.contactRecordId = result.contact?.record_id ?? null;
@@ -509,58 +525,6 @@ module.exports = async function runtimeRoutes(fastify) {
             const result = await crmSvc.convertLeadToProspect(intake.id, {}, actorId);
             automation.action = 'lead_qualified';
             automation.prospectRecordId = result.prospectRecordId ?? null;
-          }
-        }
-
-        // ── APPLICATION: dragged to "under_review" → auto-create UW case
-        //    Only when underwriting_workflow feature flag is ON.
-        if (objectName === 'application' && stageName === 'under_review') {
-          const FeatureFlagService = require('../../services/platform/feature-flag.service');
-          const ffSvc = new FeatureFlagService(fastify.prisma);
-          const uwEnabled = await ffSvc.isEnabled('underwriting_workflow', tenantId);
-          if (uwEnabled) {
-            const InsuranceDomainService = require('../../services/insurance-domain.service');
-            const domainSvc = new InsuranceDomainService(fastify.prisma);
-            const app = await fastify.prisma.insuranceApplication.findUnique({ where: { record_id: recordId } });
-            if (app && ['submitted'].includes(app.status)) {
-              const existingUW = await fastify.prisma.underwritingCase.count({ where: { application_id: app.id } });
-              if (existingUW === 0) {
-                await domainSvc.convertToUnderwriting(app.id, {}, tenantId, actorId);
-                automation.action = 'sent_to_underwriting';
-              }
-            }
-          }
-        }
-
-        // ── APPLICATION: sync other stage changes to insurance domain status
-        if (objectName === 'application' && ['submitted', 'pending_medical', 'declined'].includes(stageName)) {
-          const app = await fastify.prisma.insuranceApplication.findUnique({ where: { record_id: recordId } });
-          if (app && app.status !== stageName) {
-            await fastify.prisma.insuranceApplication.update({ where: { id: app.id }, data: { status: stageName } });
-            // Also update EAV status field
-            await fastify.prisma.recordFieldValue.upsert({
-              where: { record_id_field_name: { record_id: recordId, field_name: 'status' } },
-              update: { str_value: stageName },
-              create: { record_id: recordId, field_name: 'status', str_value: stageName, tenant_id: tenantId },
-            });
-            automation.action = 'status_synced';
-          }
-        }
-
-        // ── CLAIM: sync pipeline stage to insurance_claims.status ─────
-        if (objectName === 'claim' && ['filed', 'under_investigation', 'approved', 'denied', 'paid', 'closed'].includes(stageName)) {
-          const InsuranceDomainService = require('../../services/insurance-domain.service');
-          const domainSvc = new InsuranceDomainService(fastify.prisma);
-          const claim = await fastify.prisma.insuranceClaim.findUnique({ where: { record_id: recordId } });
-          if (claim && claim.status !== stageName) {
-            await domainSvc.updateClaim(claim.id, { status: stageName }, tenantId, actorId);
-            // Update EAV status field
-            await fastify.prisma.recordFieldValue.upsert({
-              where: { record_id_field_name: { record_id: recordId, field_name: 'status' } },
-              update: { str_value: stageName },
-              create: { record_id: recordId, field_name: 'status', str_value: stageName, tenant_id: tenantId },
-            });
-            automation.action = 'claim_status_synced';
           }
         }
 
@@ -827,64 +791,10 @@ module.exports = async function runtimeRoutes(fastify) {
     }
     const result = await crmSvc.convertLead(lead.id, req.body ?? {}, req.user?.employee_id);
 
-    // Map prospect EAV fields → client EAV fields and copy to new client record.
-    // Prospect and client objects have different field schemas, so we translate
-    // field names during copy. Shared fields (date_of_birth, gender, etc.) carry
-    // over directly; prospect-only fields (lead_status, rating) are dropped;
-    // client-only fields (client_since) get defaults.
+    // Carry the prospect's form values over to the new client record.
     try {
-      const sourceEav = await fastify.prisma.recordFieldValue.findMany({
-        where: { record_id: recordId },
-      });
-      if (sourceEav.length && result.contact?.record_id) {
-        const tid = result.contact?.tenant_id ?? result.account?.tenant_id;
-        const contactRecordId = result.contact.record_id;
-
-        // Prospect → Client field name mapping (null = drop the field)
-        const FIELD_MAP = {
-          // Direct mappings (same name on both objects)
-          first_name: 'first_name', last_name: 'last_name', email: 'email',
-          phone: 'phone', date_of_birth: 'date_of_birth', age: 'age',
-          gender: 'gender', smoker_status: 'smoker_status', occupation: 'occupation',
-          annual_income: 'annual_income', notes: 'notes',
-          // Prospect-only fields → drop (not relevant on client)
-          full_name: null, mobile: null, lead_source: null, lead_status: null,
-          rating: null, preferred_product: null, coverage_interest: null,
-          health_notes: null,
-        };
-
-        const rows = [];
-        const seenFields = new Set();
-        for (const row of sourceEav) {
-          const targetField = FIELD_MAP.hasOwnProperty(row.field_name)
-            ? FIELD_MAP[row.field_name]
-            : row.field_name; // unmapped fields pass through as-is
-          if (!targetField || seenFields.has(targetField)) continue;
-          seenFields.add(targetField);
-          rows.push({
-            record_id:  contactRecordId,
-            field_name: targetField,
-            str_value:  row.str_value,
-            num_value:  row.num_value,
-            bool_value: row.bool_value,
-            date_value: row.date_value,
-            json_value: row.json_value,
-            tenant_id:  tid,
-          });
-        }
-
-        // Add client-specific defaults that don't exist on the prospect
-        const today = new Date().toISOString().slice(0, 10);
-        if (!seenFields.has('client_since')) {
-          rows.push({ record_id: contactRecordId, field_name: 'client_since', str_value: today, tenant_id: tid });
-        }
-
-        if (rows.length) {
-          await fastify.prisma.recordFieldValue.createMany({
-            data: rows,
-            skipDuplicates: true,
-          });
-        }
+      if (result.contact?.record_id) {
+        await copyEavToRecord(fastify.prisma, recordId, result.contact.record_id, result.contact.tenant_id ?? result.account?.tenant_id);
       }
     } catch (err) {
       fastify.log.warn({ err, recordId }, '[convert-lead] EAV copy failed');
@@ -1084,61 +994,6 @@ module.exports = async function runtimeRoutes(fastify) {
   fastify.delete('/products/:id', { preHandler: [authenticate] }, async (req, reply) => {
     await productSvc.deleteProduct(req.params.id);
     return reply.status(204).send();
-  });
-
-  // ── Quotes ────────────────────────────────────────────────────────────────
-
-  fastify.get('/quotes', { preHandler: [authenticate] }, async (req) => {
-    return ok(await quoteSvc.getQuotes(req.query));
-  });
-
-  fastify.get('/quotes/:id', { preHandler: [authenticate] }, async (req, reply) => {
-    const quote = await quoteSvc.getQuote(req.params.id);
-    if (!quote) return reply.code(404).send({ error: 'Quote not found' });
-    return ok(quote);
-  });
-
-  fastify.post('/quotes', { preHandler: [authenticate] }, async (req, reply) => {
-    const quote = await quoteSvc.createQuote(req.body ?? {}, req.user?.employee_id);
-    return reply.status(201).send(ok(quote));
-  });
-
-  fastify.put('/quotes/:id', { preHandler: [authenticate] }, async (req) => {
-    return ok(await quoteSvc.updateQuote(req.params.id, req.body ?? {}));
-  });
-
-  fastify.delete('/quotes/:id', { preHandler: [authenticate] }, async (req, reply) => {
-    await quoteSvc.deleteQuote(req.params.id);
-    return reply.status(204).send();
-  });
-
-  // Quote line items
-  fastify.post('/quotes/:id/line-items', { preHandler: [authenticate] }, async (req, reply) => {
-    const lineItem = await quoteSvc.addLineItem(req.params.id, req.body ?? {});
-    return reply.status(201).send(ok(lineItem));
-  });
-
-  fastify.put('/quotes/:id/line-items/:lineItemId', { preHandler: [authenticate] }, async (req) => {
-    return ok(await quoteSvc.updateLineItem(req.params.lineItemId, req.body ?? {}));
-  });
-
-  fastify.delete('/quotes/:id/line-items/:lineItemId', { preHandler: [authenticate] }, async (req, reply) => {
-    await quoteSvc.removeLineItem(req.params.lineItemId);
-    return reply.status(204).send();
-  });
-
-  // Quote status transitions
-  fastify.patch('/quotes/:id/submit', { preHandler: [authenticate] }, async (req) => {
-    return ok(await quoteSvc.submitQuote(req.params.id));
-  });
-
-  fastify.patch('/quotes/:id/approve', { preHandler: [authenticate] }, async (req) => {
-    return ok(await quoteSvc.approveQuote(req.params.id));
-  });
-
-  fastify.patch('/quotes/:id/reject', { preHandler: [authenticate] }, async (req) => {
-    const { rejection_reason } = req.body ?? {};
-    return ok(await quoteSvc.rejectQuote(req.params.id, rejection_reason));
   });
 
   // ── System Announcements (visible to all authenticated users) ─

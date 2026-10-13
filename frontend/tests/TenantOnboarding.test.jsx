@@ -11,8 +11,8 @@ describe('slugify', () => {
   it('matches the server derivation for ordinary names', () => {
     // Kept in step with `slugify` in backend/src/services/platform/tenant.service.js —
     // the wizard shows the operator the slug the server will actually store.
-    expect(slugify('Acme Life Insurance')).toBe('acme-life-insurance');
-    expect(slugify('Acme Insurance Group, Inc.')).toBe('acme-insurance-group-inc');
+    expect(slugify('Acme Logistics')).toBe('acme-logistics');
+    expect(slugify('Acme Holdings Group, Inc.')).toBe('acme-holdings-group-inc');
     expect(slugify('  Hello   World  ')).toBe('hello-world');
   });
 
@@ -112,7 +112,7 @@ describe('ProvisioningReport', () => {
 
 vi.mock('../src/services/platform.service', () => ({
   platformService: {
-    getIndustries: vi.fn(async () => ({ data: [{ value: 'life_insurance', label: 'Life Insurance' }] })),
+    getIndustries: vi.fn(async () => ({ data: [{ value: 'technology', label: 'Technology / SaaS' }] })),
     getProvisioningSteps: vi.fn(async () => ({
       data: [
         { key: 'roles', title: 'Role ladder' },

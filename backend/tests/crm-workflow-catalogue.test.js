@@ -14,7 +14,7 @@ const { resolveStorage } = require('../src/services/crm-storage-map');
 
 const STEP_TYPES = new Set([
   'trigger', 'condition', 'action', 'notification', 'delay',
-  'approval', 'webhook', 'integration', 'create_record', 'update_related',
+  'approval', 'webhook', 'integration', 'create_record', 'update_related', 'send_email', 'generate_document',
 ]);
 
 const OPERATORS = new Set([
@@ -25,16 +25,13 @@ const OPERATORS = new Set([
 
 const ROLES = new Set([
   'platform_admin', 'super_admin', 'admin', 'manager', 'user',
-  'uw_manager', 'senior_underwriter', 'underwriter',
 ]);
 
 describe('CRM workflow catalogue — shape', () => {
   it('ships a workflow for every stage of the CRM lifecycle', () => {
     const objects = new Set(WORKFLOWS.map(w => w.object));
-    // lead capture → qualification → quoting → application/underwriting →
-    // policy servicing → claims → commissions → data quality
-    ['lead_intake', 'prospect', 'quote', 'application', 'underwriting_case',
-      'policy', 'claim', 'commission', 'client'].forEach(o => {
+    // lead capture → qualification → nurture → client data quality
+    ['lead_intake', 'prospect', 'client'].forEach(o => {
       expect(objects).toContain(o);
     });
   });

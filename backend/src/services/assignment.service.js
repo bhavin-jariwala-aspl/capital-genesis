@@ -1,5 +1,6 @@
 'use strict';
 
+const { typedValue } = require('./record-compute');
 const { getTenantId } = require('../middleware/tenant-scope');
 
 /**
@@ -321,6 +322,7 @@ class AssignmentService {
         where:   { id: Number(recordId) },
         include: {
           crm_lead:        true,
+          crm_lead_intake: true,
           crm_contact:     true,
           crm_account:     true,
           crm_opportunity: true,
@@ -328,11 +330,20 @@ class AssignmentService {
         },
       });
       if (!full) return {};
-      const entity = full.crm_lead ?? full.crm_contact ?? full.crm_account
+      // Custom-object fields (and CRM overflow fields) live in the typed field
+      // table. Reading only the crm_* row made every rule_based condition on a
+      // Builder object silently fail and fall through to the fallback.
+      const rows = typeof this.db.recordFieldValue?.findMany === 'function'
+        ? await this.db.recordFieldValue.findMany({ where: { record_id: Number(recordId) } })
+        : [];
+      const data = Object.fromEntries(rows.map((r) => [r.field_name, typedValue(r)]));
+      const entity = full.crm_lead ?? full.crm_lead_intake ?? full.crm_contact ?? full.crm_account
                   ?? full.crm_opportunity ?? full.crm_case;
-      if (!entity) return {};
-      const { id: _id, record_id: _rid, created_at: _ca, updated_at: _ua, ...fields } = entity;
-      return fields;
+      if (entity) {
+        const { id: _id, record_id: _rid, created_at: _ca, updated_at: _ua, ...fields } = entity;
+        for (const [k, v] of Object.entries(fields)) if (v !== null && v !== undefined) data[k] = v;
+      }
+      return data;
     } catch {
       return {};
     }

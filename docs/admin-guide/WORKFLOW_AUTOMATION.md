@@ -13,7 +13,7 @@ Concepts:
 1. [How Workflows Are Stored](#how-workflows-are-stored)
 1. [Workflow Execution](#workflow-execution)
 1. [Built-in Workflows](#built-in-workflows)
-1. [Pipeline Drag-and-Drop Automation](#pipeline-drag-and-drop-automation-insurance)
+1. [Pipeline Drag-and-Drop Automation](#pipeline-drag-and-drop-automation)
 1. [Tuning the Built-in Workflows](#tuning-the-built-in-workflows)
 
 Builder Guide:
@@ -38,12 +38,11 @@ two items change what your existing ones can do.
 
 | Change | What it means for you |
 | ------ | --------------------- |
-| **18 built-in workflows** | The Builder now ships a full lifecycle suite instead of three demo workflows. See [Built-in Workflows](#built-in-workflows) for the catalogue and [Tuning the Built-in Workflows](#tuning-the-built-in-workflows) for what to adjust first. |
-| **Workflows now work on every module** | Conditions, actions and `{{placeholders}}` previously did nothing on Application, Policy, Claim, Quote and Client records — only the CRM objects worked. All modules now behave identically. If you worked around this by hard-coding text into a message, you can replace it with a placeholder. |
+| **Built-in workflows** | The Builder now ships a lead-to-client suite instead of three demo workflows. See [Built-in Workflows](#built-in-workflows) for the catalogue and [Tuning the Built-in Workflows](#tuning-the-built-in-workflows) for what to adjust first. |
+| **Workflows now work on every module** | Conditions, actions and `{{placeholders}}` previously did nothing on Client and custom-object records — only the CRM objects worked. All modules now behave identically. If you worked around this by hard-coding text into a message, you can replace it with a placeholder. |
 | **Scheduled workflows can sweep records** | `"per_record": true` runs a scheduled workflow once for every record, which is what any date-driven rule needs ("expiring within 30 days", "payment overdue"). Without it a scheduled workflow runs once with no record and every condition fails. |
 | **Ownership is automatable** | `assigned_to` can be read in conditions and messages, and set by an action step — so a workflow can re-route a record, not just talk about it. |
-| **Action values accept placeholders** | An action can compose a value from other fields, e.g. setting a note to `Auto-expired {{policy_number}}`. |
-| **Approval outcomes are visible** | Quote, Application and Commission carry an **Approval Status** field that records the reviewer's decision and prevents repeat submissions. |
+| **Action values accept placeholders** | An action can compose a value from other fields, e.g. setting a note to `Escalated {{case_number}}`. |
 
 > **Known limitation:** the workflow create/edit dialog has no field for trigger configuration, so
 > `interval_minutes` and `per_record` cannot yet be set from the Builder UI. A Scheduled workflow
@@ -190,7 +189,7 @@ Condition steps can read old/new values using dotted notation
 - Use `{{field_name}}` syntax to reference field values in notification/approval titles &
   messages, webhook bodies, and `create_record` / `update_related` values
 - A missing field becomes an **empty string** (the placeholder is not left visible)
-- In `${{coverage_amount}}` the `$` is literal text; only `{{coverage_amount}}` is the placeholder
+- In `${{amount}}` the `$` is literal text; only `{{amount}}` is the placeholder
 
 **Where the values come from:** placeholders are filled from a merged view of everywhere the
 record's data can live, so the same `{{field_name}}` syntax works on every object:
@@ -198,15 +197,14 @@ record's data can live, so the same `{{field_name}}` syntax works on every objec
 | Source | Applies to |
 | ------ | ---------- |
 | The object's CRM table | Lead, Prospect, Contact, Account, Opportunity, Case |
-| The typed field-value store | Application, Policy, Claim, Quote, Underwriting Case, Commission, Client, and all custom objects |
+| The typed field-value store | Client and all custom objects |
 | The record itself | `{{assigned_to}}`, `{{pipeline_stage_id}}`, `{{created_by}}`, `{{record_id}}` |
 
 Fields that have both a form name and a database name resolve under **both** — `{{annual_income}}`
 and `{{annual_revenue}}` return the same value on a Prospect.
 
-> **Changed in the workflow catalogue release.** Placeholders on insurance objects
-> (`{{application_number}}`, `{{claim_number}}`, `{{policy_number}}`, `{{coverage_amount}}`, …)
-> previously rendered blank because the engine read only the CRM tables. They now resolve
+> **Changed in the workflow catalogue release.** Placeholders on objects stored in the typed
+> field-value store (Client and custom objects) previously rendered blank because the engine read only the CRM tables. They now resolve
 > correctly. If you built a workflow that worked around this by hard-coding text into a message,
 > you can replace it with the placeholder. See the
 > [Workflow Engine Technical Reference](../developer-guide/WORKFLOW_ENGINE.md#placeholder-interpolation--where-values-come-from)
@@ -330,14 +328,14 @@ App scheduler (every 60s)           → runScheduled()                     → t
 
 ## Built-in Workflows
 
-Genesis CRM ships with **18 pre-configured workflows** covering the full CRM
-lifecycle, from lead capture through to commission payout. Each one implements
+Genesis CRM ships with **5 pre-configured workflows** covering the lead-to-client
+lifecycle, from lead capture through to client data hygiene. Each one implements
 an automation pattern that Salesforce, HubSpot, Zoho CRM, Dynamics 365, and
-Pipedrive all provide out of the box, adapted to the life-insurance object model.
+Pipedrive all provide out of the box, adapted to the Genesis CRM object model.
 
 They are installed by the seed script and are fully editable in
 **Builder > Workflows** — treat them as working templates and adjust the
-thresholds, roles, and wait times to match how your agency operates. Every
+thresholds, roles, and wait times to match how your team operates. Every
 workflow's description in the Builder names the industry pattern it implements.
 
 ### The catalogue
@@ -348,25 +346,13 @@ workflow's description in the Builder names the industry pattern it implements.
 | Lead | First-Response SLA & Re-routing | On Create | Waits 60 minutes; if still untouched, alerts the manager and re-assigns the lead to them |
 | Lead | Qualification Handoff to Prospect | On Update | On reaching Qualified, creates the Prospect record and notifies the manager |
 | Prospect | Cold Nurture Sweep | Scheduled (weekly) | Flags prospects stuck at New/Contacted with a cold rating |
-| Quote | Presented Follow-up Cadence | On Update | Reminds the owner 3 days after presenting if the client has not decided |
-| Quote | High-Value Approval | On Update | Holds quotes of 1,000,000+ cover at draft pending manager approval |
-| Quote | Expiry Warning | Scheduled (daily) | Warns the owner 7 days before an open quote's validity date |
-| Quote | Auto-Expire Past Validity | Scheduled (daily) | Closes out open quotes whose validity date has passed |
-| Application | Submission Handoff to Underwriting | On Create | Stamps the status, opens the underwriting case, notifies both sides |
-| Application | Jumbo Limit Referral & Approval | On Update | Refers 2,000,000+ cover to the chief underwriter, then approves or declines |
-| Underwriting Case | 48-Hour SLA Escalation | On Create | Queues the case; escalates to the chief underwriter if still pending after 48h |
-| Policy | In-Force Onboarding Handoff | On Create | Raises the welcome call, opens the commission record, notifies the manager |
-| Policy | 30-Day Renewal Outreach | Scheduled (daily) | Surfaces policies expiring within 30 days |
-| Policy | Lapse Prevention | Scheduled (daily) | Alerts on overdue premium payments while the policy can still be saved |
-| Claim | Intake Triage & Large-Loss Routing | On Create | Alerts the claims manager, routes 250,000+ claims to a senior underwriter |
-| Claim | Documentation SLA Escalation | On Create | Chases missing documents after 3 days, escalates to the manager |
-| Commission | Large Payout Approval | On Update | Requires manager sign-off before releasing a payout of 25,000+ |
 | Client | Data Hygiene Sweep | Scheduled (weekly) | Flags client records with no email address |
 
 ### Three shapes worth understanding
 
-Almost every workflow in the catalogue is one of these three. Learn them and you
-can read — and safely modify — any of the 18.
+The catalogue uses the first two; the third is the shape to follow when you add
+an approval of your own. Learn them and you can read — and safely modify — any
+workflow.
 
 **1. Gated linear chain** — the most common shape. Steps run top to bottom, and a
 condition that fails **stops the whole chain**. So you order conditions from
@@ -399,25 +385,23 @@ Trigger: Lead Captured — Start Response Clock
   → Action:       assigned_to = the sales manager
 ```
 
-The same shape drives the 48-hour underwriting escalation and the 3-day claim
-documentation chase.
+The same shape fits any "nobody touched it in time" rule, such as a case
+escalation.
 
 **3. Approval with a guard** — the only genuinely branching shape, and the one
-that most often gets broken when edited.
+that most often gets broken when edited. None of the built-in workflows uses it;
+this example is one you would build yourself.
 
 ```text
-Quote — High-Value Approval   (Quote, on_update)
+Opportunity — Large Deal Approval   (Opportunity, on_update)
 
-Trigger: Quote Updated
-  → Condition: status == "presented"
-  → Condition: coverage_amount >= 1,000,000
+Trigger: Opportunity Updated
+  → Condition: amount >= 1,000,000
   → Condition: approval_status is empty        ← latch: only the first time
   → Action:    approval_status = "pending"
-  → Action:    status = "draft"                ← hold it back from the client
   → Approval:  role "manager"
        ├─ APPROVED  → Action: approval_status = "approved"
-       │              Action: status = "presented"
-       │              Notification: owner — released
+       │              Notification: owner — approved
        │                    ↓ falls through to the guard
        └─ REJECTED  ──────→ Guard: approval_status != "approved"
                             Action: approval_status = "rejected"
@@ -436,9 +420,9 @@ arriving from the rejection link it is true and the rejection steps run.
 
 ### The Approval Status field
 
-The three approval workflows read and write an **Approval Status** field
-(Pending / Approved / Rejected) on Quote, Application, and Commission. The seed
-script creates it. It does two jobs:
+An approval workflow should read and write an **Approval Status** field
+(Pending / Approved / Rejected) on its object. Add it as a select field in the
+Builder. It does two jobs:
 
 - it shows the reviewer's decision on the record, and
 - it is the **latch** that stops the same record being sent for approval twice
@@ -459,28 +443,26 @@ Territory-based routing:
 
 Multi-level approval:
 
-- Chain two `approval` steps, each with its own guard, so a very large case needs
-  both the sales manager and the chief underwriter
+- Chain two `approval` steps, each with its own guard, so a very large deal needs
+  both the sales manager and a director
 
 Outbound sync:
 
 - Trigger: `field_changed` on status
-- Webhook or Integration step posting to your policy admin or billing system
+- Webhook or Integration step posting to your ERP or billing system
 
-## Pipeline Drag-and-Drop Automation (Insurance)
+## Pipeline Drag-and-Drop Automation
 
 In addition to the configurable workflow engine above, Genesis
-includes **built-in pipeline automation** for insurance modules.
+includes **built-in pipeline automation** for lead conversion.
 When a user drags a card to a new Kanban lane, the system
-auto-triggers the corresponding insurance domain action — no
+auto-triggers the corresponding conversion — no
 workflow configuration required.
 
 | Module | Lane | Auto-Action |
 | ------ | ---- | ----------- |
+| Lead Intake | Converted | Qualifies the lead into a prospect |
 | Prospects | Converted | Converts lead to client (Account + Contact + EAV copy) |
-| Applications | Under Review | Creates underwriting case with CRM Record + EAV |
-| Applications | Pending Medical / Declined | Syncs status to `insurance_applications` |
-| Claims | Any status lane | Syncs status to `insurance_claims` |
 
 This automation is hardcoded in the `PATCH /records/:id/stage`
 route (not configurable via the Workflow Builder). It runs after
@@ -492,44 +474,24 @@ the workflow engine's `on_update` and `field_changed` triggers, so
 custom workflows configured in the Workflow Builder will also execute
 on Kanban drag-and-drop moves. This enables user-configured automations
 (notifications, field updates, webhooks) on top of the built-in
-insurance domain actions.
-
-For the full insurance journey flow, see the
-[Genesis Insure Journey](../user-guide/GENESIS_INSURE_JOURNEY.md)
-documentation.
+conversion actions.
 
 ---
 
 ## Tuning the Built-in Workflows
 
-The built-in workflows are configured with defaults, not policy. These are the settings most
-agencies change first. Every one is edited the same way: open the workflow in
+The built-in workflows are configured with defaults, not fixed rules. These are the settings most
+teams change first. Every one is edited the same way: open the workflow in
 **Builder > Workflows**, click the step named below, and edit its **Configuration (JSON)**.
 
 Full plain-English descriptions of what each workflow does are in
 [Workflows — the workflows in detail](../user-guide/06-workflows.md#the-workflows-in-detail).
-
-### Money thresholds
-
-Each threshold is independent — changing one does not change the others.
-
-| Workflow | Step | Key | Default |
-| -------- | ---- | --- | ------- |
-| Quote — High-Value Approval | Gate: Coverage 1,000,000 or More? | `value` | `1000000` |
-| Application — Jumbo Limit Referral | Gate: Coverage 2,000,000 or More? | `value` | `2000000` |
-| Claim — Intake Triage | Gate: Large-Loss Claim? | `value` | `250000` |
-| Commission — Large Payout Approval | Gate: Amount 25,000 or More? | `value` | `25000` |
 
 ### Timings
 
 | Workflow | Step | Default | Notes |
 | -------- | ---- | ------- | ----- |
 | Lead — First-Response SLA | Wait 60 Minutes for First Touch | 60 minutes | Set to the SLA you actually promise |
-| Quote — Presented Follow-up | Wait 3 Days for a Decision | 3 days | |
-| Underwriting — 48-Hour SLA | Wait 48 Hours | 48 hours | |
-| Claim — Documentation SLA | Wait 3 Days for Documentation | 3 days | |
-| Quote — Expiry Warning | Gate: Expiring Within 7 Days? | 7 days | `date_within_days` value |
-| Policy — Renewal Outreach | Gate: Expiring Within 30 Days? | 30 days | 60–90 is common for longer sales cycles |
 | Prospect — Cold Nurture Sweep | trigger config | weekly | `interval_minutes: 10080` |
 | Client — Data Hygiene Sweep | trigger config | weekly | `interval_minutes: 10080` |
 
@@ -546,8 +508,7 @@ Every notification and approval step names its recipient one of four ways:
 | `"employee_id": "USR001"` | One named person |
 | `"notify_actor": true` | Whoever triggered the workflow |
 
-Roles used by the built-in workflows: `user` (agents), `manager`, `underwriter`,
-`senior_underwriter`, `uw_manager`. If your role names differ, update these — a `role` that matches
+Roles used by the built-in workflows: `user` (agents) and `manager`. If your role names differ, update these — a `role` that matches
 nobody means the step notifies nobody, and it does so without error.
 
 ### Turning things off
@@ -555,17 +516,14 @@ nobody means the step notifies nobody, and it does so without error.
 Deactivate rather than delete — a deleted built-in workflow comes back on the next install, while a
 deactivated one stays off and keeps its edits.
 
-The two most commonly deactivated:
-
-- **Quote — Auto-Expire Past Validity** — the only built-in workflow that changes records without
-  being asked. On its first run it expires every already-overdue quote.
-- **Policy — In-Force Onboarding Handoff**, step *Notify Sales Manager* — noisy on a high-volume book.
+The most commonly deactivated is **Lead — First-Response SLA & Re-routing**, when you prefer
+alerting without moving ownership.
 
 ### A caution on editing
 
 Two things will break a workflow quietly if changed carelessly:
 
-- **Guard steps** in the three approval workflows. Removing one makes every approval also run its
+- **Guard steps** in any approval workflow you build. Removing one makes every approval also run its
   own rejection steps. See [Three shapes worth understanding](#three-shapes-worth-understanding).
 - **The conversion latch** in *Lead — Qualification Handoff* (the "Not Already Converted" gate and
   the "Latch" action). They work as a pair; removing either produces a duplicate Prospect on every
@@ -731,7 +689,7 @@ live changes.
 ## Common Patterns
 
 Patterns 1–3 are not covered by the built-in workflows and are worth building. Pattern 4 shows how
-to extend one that already ships.
+to extend an approval workflow you have built.
 
 > The `field_changed` trigger used below is not currently selectable in the workflow dialog — see
 > [What's New](#whats-new). Use `on_update` with a condition on the current value instead; it fires
@@ -776,17 +734,17 @@ always fails.
 
 ### 4. Extending an Approval — Multi-Level Sign-off
 
-*Application — Jumbo Limit Referral* sends every case above the limit to the chief underwriter. To
-require a second sign-off above a higher limit, chain a second approval **inside the approved
+An approval such as the *Opportunity — Large Deal Approval* example above sends every deal over the
+limit to the sales manager. To require a second sign-off above a higher limit, chain a second approval **inside the approved
 branch**, each with its own guard:
 
 ```text
-… Approval: { role: "uw_manager" }
+… Approval: { role: "manager" }
    → Approved: Action: { field: "approval_status", value: "approved" }
-               Condition: { field: "coverage_amount", operator: "gte", value: 5000000 }
+               Condition: { field: "amount", operator: "gte", value: 5000000 }
                Approval: { role: "super_admin", title: "Board referral" }
-                  → Approved: Action: { field: "status", value: "approved" }
-                  → Rejected: Guard → Action: { field: "status", value: "declined" }
+                  → Approved: Action: { field: "stage", value: "negotiation" }
+                  → Rejected: Guard → Action: { field: "stage", value: "closed_lost" }
    → Rejected: Guard: { field: "approval_status", operator: "neq", value: "approved" }
                …
 ```

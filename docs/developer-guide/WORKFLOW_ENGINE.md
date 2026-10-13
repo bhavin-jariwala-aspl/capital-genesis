@@ -51,13 +51,18 @@ Recent capability changes, newest first. Each is described in full in the sectio
 
 | Capability | What changed | Where |
 | ---------- | ------------ | ----- |
-| **Storage-routed field access** | The engine read and wrote fields only on the five first-class `crm_*` tables. It now resolves a field through the same map the API write path uses, so `condition`, `action`, `create_record` and `update_related` behave identically on a CRM object, an insurance object, and a custom object. Before this, workflows on Application / Policy / Claim / Quote / Client silently did nothing. | [Field storage routing](#field-storage-routing) |
+| **`send_email` and `generate_document` steps** | Email a template to the record (picking a `<template>_<lang>` variant from a language field), and render a merge template filed on the record. | [Config keys per step type](#config-keys-per-step-type) |
+| **Formula conditions** | Operator `expression` evaluates a formula over the whole record (`AND`/`OR`/`IF`/`LOOKUP`…), so multi-field logic no longer needs chained steps. | [Operators Reference](#operators-reference) |
+| **Linked `create_record`, stage by name** | `create_record` runs through `RecordService` (formulas, BU stamping, assignment, events) and takes `link_field`, `store_as` and `stage`; an `action` on `stage` moves the record through the stage gates. | [Config keys per step type](#config-keys-per-step-type) |
+| **Maker-checker approvals** | `exclude_actor` / `exclude_field` remove the maker from the approver list. | [Config keys per step type](#config-keys-per-step-type) |
+| **Record actions** | Active `manual` workflows appear as buttons on their object's record panel. | [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md#3-record-actions) |
+| **Storage-routed field access** | The engine read and wrote fields only on the five first-class `crm_*` tables. It now resolves a field through the same map the API write path uses, so `condition`, `action`, `create_record` and `update_related` behave identically on a CRM object and a custom object. Before this, workflows on Client and custom objects silently did nothing. | [Field storage routing](#field-storage-routing) |
 | **Per-record scheduled sweeps** | `trigger_config.per_record: true` runs a scheduled workflow once for every live record of its object, so date-driven sweeps can read each record's own fields. Previously a scheduled workflow ran once with no record, making every condition fail. | [Scheduled sweeps](#scheduled-sweeps) |
 | **Record-level column access** | `assigned_to`, `pipeline_stage_id`, `created_by` and `record_id` are readable as placeholders and in conditions, and `assigned_to` / `pipeline_stage_id` are writable by an `action` step — so ownership re-routing is a first-class automation. | [Field storage routing](#field-storage-routing) |
 | **Interpolated action values** | `action.config.value` runs through `#interpolate`, so an action can compose a value from other fields. | [Config keys per step type](#config-keys-per-step-type) |
-| **`update_related` by business key** | `config.link_value` matches related records on an interpolated value (e.g. every claim carrying a `policy_number`) instead of only on the parent record's id. | [Config keys per step type](#config-keys-per-step-type) |
+| **`update_related` by business key** | `config.link_value` matches related records on an interpolated value (e.g. every related record carrying the same `email`) instead of only on the parent record's id. | [Config keys per step type](#config-keys-per-step-type) |
 | **Overflow-safe `create_record`** | Fields that are not writable columns on the target's CRM table are written to the typed EAV store instead of being dropped. | [Config keys per step type](#config-keys-per-step-type) |
-| **Shipped catalogue as code** | 18 benchmarked workflows defined in `prisma/crm-workflows.js` and installed by a script, rather than hand-built in the Builder. | [Shipped Workflow Catalogue](#shipped-workflow-catalogue) |
+| **Shipped catalogue as code** | Benchmarked workflows defined in `prisma/crm-workflows.js` and installed by a script, rather than hand-built in the Builder. | [Shipped Workflow Catalogue](#shipped-workflow-catalogue) |
 
 ---
 
@@ -75,9 +80,12 @@ Recent capability changes, newest first. Each is described in full in the sectio
 | **Notifications** | `notification` | Create in-app notification rows for resolved recipients | Alert assigned agent |
 | **Control** | `delay` | Persist a `WorkflowPendingStep`; scheduler resumes when due | Wait 24 hours |
 | | `approval` | Persist a `WorkflowPendingStep` + notify approvers; resumed via API token | Manager sign-off |
+| | `send_email` | Send an email template to the record (language variant aware) | Bilingual acknowledgement |
+| | `generate_document` | Render a merge template and file it on the record | Offer letter |
 | **Integration** | `webhook` | SSRF-protected HTTP POST/GET to an external URL | Sync with external system |
+| | `integration` | Run a registered integration, or publish a custom domain event | Enrich from a data provider |
 
-These nine `step_type` values are the **only** ones the engine recognizes. Any other value falls
+These eleven `step_type` values are the **only** ones the engine recognizes. Any other value falls
 through to the `default` case and is skipped (logged as `unknown step type: …`).
 
 ---
@@ -153,8 +161,18 @@ All config lives under `step.config`:
 { "integration": "clearbit", "body": {}, "field_map": { "company_size": "data.employees" } }
 //             …or publish a custom domain event other integrations/workflows react to
 { "event": "lead.qualified", "data": {} }
-// create_record
-{ "object_id": 5, "fields": {}, "assigned_to": "USR001", "stage_id": 2 }
+// create_record — runs through RecordService; stage by id or by API name
+{ "object_id": 5, "fields": { "party": "{{party}}" }, "assigned_to": "USR001", "stage": "initiated",
+  "link_field": "enquiry",      // set on the NEW record to this record's id
+  "store_as": "kyc_case" }      // set on THIS record to the new record's id
+// action on the stage pseudo-field — moves through updateRecordStage (gates apply)
+{ "field": "stage", "value": "offer_issued" }
+// approval — maker-checker
+{ "role": "operations_checker", "exclude_actor": true, "exclude_field": "captured_by" }
+// send_email — to the record's `email` unless to / to_field is given
+{ "template": "loan_offer", "to_field": "party_email", "language_field": "preferred_language" }
+// generate_document — a DocumentTemplate by name, filed on the record
+{ "template": "loan_offer_letter", "filename": "Offer {{application_number}}.pdf" }
 // update_related
 { "object_id": 5, "link_field": "account_id", "field": "status", "value": "…" }
 ```
@@ -194,14 +212,14 @@ run through `#interpolate` (~L671):
 
 - `{{key}}` matches word characters only (`\w+`). A **missing key becomes an empty string**
   (not left as `{{key}}`).
-- In `${{coverage_amount}}` the `$` is **literal text** — only `{{coverage_amount}}` is the
+- In `${{amount}}` the `$` is **literal text** — only `{{amount}}` is the
   placeholder — so it renders as `$<value>`.
 - The `data` object is **`#loadFields(record)`**, which merges every place a record's
   data can live:
 
   | Source | Contributes |
   | ------ | ----------- |
-  | `record_field_values` (typed EAV) | Insurance domain objects, `client`, and all custom objects |
+  | `record_field_values` (typed EAV) | `client` and all custom objects |
   | `crm_*` entity row | `lead` / `lead_intake` / `prospect` / `contact` / `account` / `opportunity` / `case` |
   | The `records` row | `assigned_to`, `pipeline_stage_id`, `record_id`, `created_by` |
 
@@ -210,7 +228,7 @@ run through `#interpolate` (~L671):
   exposed under **both** names, so `{{annual_income}}` and `{{annual_revenue}}` both resolve
   on a `crm_leads` row.
 
-  So `{{application_number}}` ⇒ the EAV value for an Application, and `{{first_name}}` ⇒ the
+  So `{{email}}` ⇒ the EAV value for a Client, and `{{first_name}}` ⇒ the
   `crm_leads` column for a Prospect — with no per-object special-casing in the step config.
 
 ### Field storage routing
@@ -224,7 +242,7 @@ so a workflow resolves a field exactly the way a form save does.
 | `lead`, `prospect` | `crm_leads` |
 | `lead_intake` | `crm_lead_intake` |
 | `contact`, `account`, `opportunity`, `case` | the matching `crm_*` table |
-| everything else (`application`, `policy`, `claim`, `quote`, `client`, custom objects) | `record_field_values` |
+| everything else (`client`, custom objects) | `record_field_values` |
 
 Writes follow the same routing (`#writeField`):
 
@@ -260,6 +278,9 @@ Condition steps evaluate `cfg.value` against the field via `#evaluate` (~L629). 
 | `today` | Date is today |
 | `date_within_days` | Date is within N days from now (N = `value`) |
 | `date_overdue` | Date is in the past |
+| `expression` | `value` is a formula over the whole record (see [formula language](PLATFORM_BUILDER_EXTENSIONS.md#1-formula-language)); `field` is ignored |
+
+Placeholders also include `{{id}}`, `{{stage}}` (stage API name) and `{{today}}`.
 
 Any unrecognized operator evaluates to `false`.
 
@@ -532,8 +553,8 @@ HubSpot, Zoho CRM, Dynamics 365, and Pipedrive; the installer appends it to the 
 description so it is visible in the Builder. `{{@manager}}` in a step config is resolved at
 install time to the tenant's active `manager` employee, so no employee ID is hard-coded.
 
-`SUPPORTING_FIELDS` in the same module declares metadata fields the catalogue depends on —
-currently `approval_status` on Quote, Application, and Commission — which the installer creates
+`SUPPORTING_FIELDS` in the same module declares metadata fields the catalogue depends on (for
+example an `approval_status` field that an approval workflow writes), which the installer creates
 if missing so an approval outcome is visible on the record rather than living only in
 automation state.
 
@@ -553,26 +574,13 @@ if a given mechanic regresses. Full behavioural descriptions are in
 | `lead_first_response_sla` | `crm_lead_intake` | on_create | `delay` → `WorkflowPendingStep` → scheduler resume · `action` write to the **records** row (`assigned_to`) · seed-time actor placeholder |
 | `lead_qualification_handoff` | `crm_lead_intake` | on_update | Boolean condition + boolean `action` write (`is_converted` latch) · `create_record` into a **different** storage kind (`crm_leads`) with alias mapping (`notes`→`description`) |
 | `prospect_nurture_sweep` | `crm_leads` | scheduled | `per_record` sweep · `in` operator · `field` recipient resolving `assigned_to` |
-| `quote_presented_followup` | EAV | on_update | `delay` across a scheduler restart · condition re-reading state **after** the delay |
-| `quote_high_value_approval` | EAV | on_update | `approval` branch + guard termination · numeric `gte` on an EAV `num_value` · `empty` latch · 6 `action` writes |
-| `quote_expiry_warning` | EAV | scheduled | `per_record` · `date_within_days` on an EAV `date_value` |
-| `quote_auto_expire` | EAV | scheduled | `per_record` · `date_overdue` · `action` write during a sweep |
-| `application_submitted_to_underwriting` | EAV | on_create | `create_record` EAV→EAV with interpolated key (`UWC-{{application_number}}`) · numeric field type coercion |
-| `application_jumbo_uw_approval` | EAV | on_update | `approval` + guard · `uw_manager` role resolution · 4 gates in series |
-| `underwriting_case_sla_escalation` | EAV | on_create | `delay` in hours · condition after resume · terminal `action` |
-| `policy_issued_onboarding` | EAV | on_create | `create_record` carrying `{{assigned_to}}` (a record-level column) into a child record |
-| `policy_renewal_outreach` | EAV | scheduled | `per_record` · `date_within_days` · two recipient strategies in one chain |
-| `policy_lapse_prevention` | EAV | scheduled | `per_record` · `date_overdue` |
-| `claim_intake_triage` | EAV | on_create | Notification **before** a gate (broad→narrow ordering) · `senior_underwriter` role · terminal `action` |
-| `claim_documentation_escalation` | EAV | on_create | `delay` in days · **boolean** condition against an EAV `bool_value` (`documents_received eq false`) |
-| `commission_payout_approval` | EAV | on_update | `approval` + guard · `gte` · status advance on approval |
 | `client_data_hygiene_sweep` | EAV | scheduled | `per_record` · `empty` operator |
 
-Two mechanics carry most of the catalogue and deserve care when refactoring:
+Two mechanics deserve care when refactoring:
 
-- **`per_record` sweeps** — 6 of 18 workflows. Breaking `#runScheduledWorkflow` silently disables
+- **`per_record` sweeps** — every date- or state-driven scheduled workflow. Breaking `#runScheduledWorkflow` silently disables
   every date-driven sweep, and the failure mode is *nothing happens*, not an error.
-- **Approval guard termination** — 3 of 18. Breaking fall-through ordering causes approvals to
+- **Approval guard termination** — every branching approval. Breaking fall-through ordering causes approvals to
   execute their own rejection steps, which corrupts record state rather than merely failing.
 
 ---
@@ -590,7 +598,7 @@ the rejected branch's steps as well. The catalogue's convention:
    `on_false` it evaluates true and runs the rejection steps.
 4. The rejected branch is ordered **after** the approved branch.
 
-See `quote_high_value_approval` for the canonical shape.
+`tests/crm-workflow-catalogue.test.js` asserts this shape for every approval in the catalogue.
 
 ---
 
@@ -699,7 +707,7 @@ Triggers reach the engine two ways, and the right one depends on whether an even
 1. Subscribe in `setEventBus()`:
 
    ```js
-   eventBus.subscribe('quote.accepted', (_e, p) => this.trigger('on_quote_accepted', p.objectId, p.record, p.actorId));
+   eventBus.subscribe('opportunity.won', (_e, p) => this.trigger('on_opportunity_won', p.objectId, p.record, p.actorId));
    ```
 
 2. Publish the event from the service that owns the transition (`record.service.js`,
@@ -809,7 +817,9 @@ workflow fire on this record last Tuesday, and what did each step decide?" — t
 server console output. A `workflow_run` / `workflow_run_step` pair written on every execution would
 make automation debuggable in production and is the single biggest operational gap.
 
-### 5. Conditions are single-field only
+### 5. Conditions are single-field only (resolved for most cases)
+
+The `expression` operator now covers multi-field logic in one step. The original note follows.
 
 `#evaluate` compares one field against one value. Multi-condition logic requires chaining several
 `condition` steps, which reads as AND; there is no OR without duplicating a whole branch. A

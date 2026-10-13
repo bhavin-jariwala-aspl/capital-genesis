@@ -111,7 +111,6 @@ describe('PermissionService — custom tenant roles keep their authority', () =>
     const svc = new PermissionService(db);
     expect(await svc.getEffectiveUiPermission('module', 1, 'regional_admin', 3)).toEqual({ can_view: true, can_edit: true });
     expect(db.uiPermission.findUnique).not.toHaveBeenCalled(); // bypassed the row lookup
-    await expect(svc.assertCanDecideUnderwriting('regional_admin', 3)).resolves.toBe(true);
   });
 
   it('still denies an unknown role the admin bypass', async () => {

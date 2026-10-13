@@ -62,7 +62,6 @@ optimistic record mutations via a separate entity store.
 |------|---------|
 | `frontend/src/hooks/useBootstrap.js` | Triggers metadata bootstrap on login/app start, handles background refresh |
 | `frontend/src/hooks/useResolvedObject.js` | Reusable hook replacing the common `resolveObject → getObject` pattern with MetadataStore-first lookup |
-| `frontend/src/hooks/usePrefetch.js` | Route prefetching utilities for preloading adjacent page metadata |
 
 ---
 
@@ -84,18 +83,8 @@ optimistic record mutations via a separate entity store.
 
 - **`frontend/src/pages/runtime/RecordFormPage.jsx`** — Uses MetadataStore for module/object/form lookups; optimistic
   record creation via EntityStore
-- **`frontend/src/pages/runtime/InsuranceQuotePage.jsx`** — Uses MetadataStore for resolveObject; prefetches insurance
-  flow metadata
 - **`frontend/src/pages/runtime/ModulePage.jsx`** — MetadataStore for module/object; syncs records to EntityStore
 - **`frontend/src/pages/runtime/WizardPage.jsx`** — MetadataStore for wizard and object lookups
-- **`frontend/src/pages/runtime/DeclarationPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/UnderwritingPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/ApplicationsPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/UnderwritingCaseReviewPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/PoliciesPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/ClaimsPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/CommissionsPage.jsx`** — Uses `useResolvedObject` hook
-- **`frontend/src/pages/runtime/DocumentCollectionPage.jsx`** — Uses `useResolvedObject` hook
 
 ---
 
@@ -143,13 +132,6 @@ When creating a record:
 - `FormRenderer` reads from cache instead of rebuilding rules on every render
 - Falls back to runtime compilation when field `required` state changes due to dependencies
 
-### 5. Route Prefetching
-
-- `usePrefetchInsuranceFlow()` — called from InsuranceQuotePage to preload application, declaration, underwriting, and
-  document metadata
-- `usePrefetchObject(name)` — generic prefetch for any object
-- `usePrefetchWizard(id)` / `usePrefetchForm(id)` — granular prefetch
-
 ---
 
 ## Performance Impact
@@ -158,7 +140,6 @@ When creating a record:
 |----------|--------|-------|
 | Create Prospect (cold) | ~1.5-2.5s (4-5 API calls) | ~200ms (1 API call: createRecord) |
 | Create Prospect (warm) | ~400-800ms (cached metadata, 1 API) | ~50ms (optimistic) |
-| Apply Now | ~2-3s (5-6 API calls) | ~100ms (optimistic create + instant navigate) |
 | Convert Lead | ~800ms-1.2s | ~100ms (optimistic + background sync) |
 | Wizard Submit | ~500ms per step | ~50ms per step (local state) + 1 API on final |
 | Page Navigation | ~800ms-1.5s (metadata waterfall) | ~0ms (metadata already local) |

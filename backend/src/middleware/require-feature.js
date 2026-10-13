@@ -9,17 +9,16 @@ const { getFeature } = require('../services/platform/feature-catalogue');
  *
  * ── Why this exists ─────────────────────────────────────────────────────────
  * The entitlement engine (September 2026) answers "does this tenant have
- * feature X?" correctly, but until now exactly one route asked it — the
- * underwriting guard. A Starter tenant could open Claims, Commissions and the
- * automation builders and use them in full, because nothing between the URL
+ * feature X?" correctly, but until now almost no route asked it. A Starter
+ * tenant could open the automation builders and use them in full, because nothing between the URL
  * and the service checked the plan. The price book was a suggestion.
  *
  * Two shapes, for two kinds of route file:
  *
- *   requireFeature('ins_claims')
+ *   requireFeature('auto_sla')
  *     A per-route preHandler. Use it where routes are declared one by one.
  *
- *   featureGateByPrefix([['/claims', 'ins_claims'], …])
+ *   featureGateByPrefix([['/sla', 'auto_sla'], …])
  *     A single plugin-level hook that maps the *route pattern* (not the URL)
  *     to a feature by its first segment. Use it where one plugin declares
  *     dozens of routes under a handful of prefixes — a table beats ninety
@@ -89,9 +88,9 @@ function requireFeature(featureKey) {
  * Plugin-level hook mapping route-pattern prefixes to features.
  *
  * Matches against `request.routeOptions.url` — the declared pattern such as
- * `/claims/:id/reserves` — so a match is on the route the developer wrote,
+ * `/sla/:id/targets` — so a match is on the route the developer wrote,
  * never on user-supplied path text. The longest matching prefix wins, so
- * `/claims/adjuster-queue` can be gated differently from `/claims` if ever
+ * `/sla/escalations` can be gated differently from `/sla` if ever
  * needed. Routes matching no prefix are left alone.
  *
  * @param {Array<[string, string]>} table `[prefix, featureKey]` pairs
@@ -106,7 +105,7 @@ function featureGateByPrefix(table) {
 
   return async function gateByPrefix(request) {
     const pattern = request.routeOptions?.url ?? '';
-    // The plugin prefix (`/api/insurance`) is part of the pattern; strip it so
+    // The plugin prefix (e.g. `/api/reports`) is part of the pattern; strip it so
     // the table can be written against the paths as declared in the file.
     const local = pattern.replace(/^\/api\/[^/]+/, '') || '/';
     const hit = entries.find((e) => local === e.prefix || local.startsWith(`${e.prefix}/`));

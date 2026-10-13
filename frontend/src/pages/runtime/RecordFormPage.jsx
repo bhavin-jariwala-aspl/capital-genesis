@@ -172,14 +172,6 @@ export default function RecordFormPage() {
   const confirmOptimisticRecord = useEntityStore((s) => s.confirmOptimisticRecord);
   const rollbackOptimisticRecord = useEntityStore((s) => s.rollbackOptimisticRecord);
 
-  const INSURANCE_ROUTES = {
-    application:       '/insurance/applications',
-    policy:            '/insurance/policies',
-    claim:             '/insurance/claims',
-    underwriting_case: '/insurance/underwriting',
-    commission:        '/insurance/commissions',
-  };
-
   const saveMutation = useMutation({
     mutationFn: (formData) => {
       if (isEdit) {
@@ -209,12 +201,7 @@ export default function RecordFormPage() {
         confirmOptimisticRecord(activeObject.id, context.tempId, result?.data);
       }
       queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
-      const insuranceRoute = INSURANCE_ROUTES[activeObject?.name];
-      if (insuranceRoute) {
-        navigate(insuranceRoute);
-      } else {
-        navigate(backPath);
-      }
+      navigate(backPath);
     },
     onError: (_err, _formData, context) => {
       // Rollback optimistic record on failure
@@ -297,17 +284,6 @@ export default function RecordFormPage() {
                       <a href="/builder/form" className="font-semibold underline underline-offset-2 hover:text-amber-900">
                         Builder → Form Builder
                       </a>.
-                    </span>
-                  </div>
-                )}
-                {/* Insurance workflow hint */}
-                {activeObject?.name === 'application' && (
-                  <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3 text-sm text-primary-800 dark:text-primary-400">
-                    <Mail className="h-4 w-4 shrink-0 text-primary-500" />
-                    <span>
-                      Complete the application details and click <strong>Save Changes</strong>.
-                      You will be redirected to <strong>Insurance &gt; Applications</strong> to
-                      continue processing (Underwriting &rarr; Policy Issuance).
                     </span>
                   </div>
                 )}

@@ -470,7 +470,7 @@ class LeadScoringService {
   // ── DEFAULT SCORING RULES ──────────────────────────────────────────────────
 
   /**
-   * The starter scoring model for a life-insurance agency.
+   * The starter scoring model for a relationship-led sales team.
    *
    * ── Why these replaced the previous set ─────────────────────────────────────
    * The old defaults were generic B2B-SaaS rules that did not fit this product
@@ -482,8 +482,8 @@ class LeadScoringService {
    *     contained that entire literal string. Neither rule could ever match a
    *     real record — they awarded 20 and 10 points to nobody.
    *   - "Target Industry" scored `Technology, Software, Finance, Healthcare,
-   *     Manufacturing`: a B2B firmographic list, meaningless for individual and
-   *     family life cover.
+   *     Manufacturing`: a B2B firmographic list, meaningless for individual
+   *     clients.
    *   - "Has Website" scored a company attribute on a consumer prospect.
    *   - Annual revenue and rating were filed as `behavioral`, which they are
    *     not — one is a financial attribute, the other a human judgement.
@@ -500,7 +500,7 @@ class LeadScoringService {
    * distinguish a perfect-fit prospect who is cold from a poor-fit prospect who
    * is keen, and those two need opposite treatment:
    *
-   *   demographic — who they are, and whether they can afford cover
+   *   demographic — who they are, and what they can afford
    *   behavioral  — where they came from and how far they have moved
    *   engagement  — whether we can actually reach them
    *
@@ -509,16 +509,16 @@ class LeadScoringService {
    * meaning anything. Disqualifiers are what keep the distribution honest.
    *
    * `annual_revenue` is read as the prospect's annual household income — the
-   * figure life cover is actually sized and underwritten against. The bands
-   * below are starting points; an agency should re-weight them against its own
+   * figure affordability is assessed against. The bands below are starting
+   * points; a team should re-weight them against its own
    * conversion data after a month, which is what the Builder guidance says.
    */
   async setupDefaultRules(createdBy, tenantId) {
     const defaultRules = [
       // ── Demographic — who they are, and what they can afford ─────────────
       {
-        name: 'Income supports permanent cover',
-        description: 'Household income above 150k — the band where whole-life and IUL become affordable.',
+        name: 'High-value prospect',
+        description: 'Household income above 150k — the band where larger products become affordable.',
         rule_type: 'demographic',
         field_name: 'annual_revenue',
         operator: 'greater_than',
@@ -526,8 +526,8 @@ class LeadScoringService {
         points: 20,
       },
       {
-        name: 'Income supports term cover',
-        description: 'Household income above 75k — comfortably term-affordable.',
+        name: 'Mid-value prospect',
+        description: 'Household income above 75k — comfortably able to buy the core products.',
         rule_type: 'demographic',
         field_name: 'annual_revenue',
         operator: 'greater_than',
@@ -536,7 +536,7 @@ class LeadScoringService {
       },
       {
         name: 'Employment on file',
-        description: 'A stated occupation is what income verification and the occupational risk class are built on.',
+        description: 'A stated occupation is what income verification and affordability checks are built on.',
         rule_type: 'demographic',
         field_name: 'job_title',
         operator: 'is_not_empty',
@@ -547,7 +547,7 @@ class LeadScoringService {
       // ── Behavioral — where they came from, and how far they have moved ────
       {
         name: 'Referred or introduced',
-        description: 'Referrals and partner introductions convert far better than any other source in insurance distribution.',
+        description: 'Referrals and partner introductions convert far better than any other source.',
         rule_type: 'behavioral',
         field_name: 'lead_source',
         operator: 'in_list',
@@ -573,7 +573,7 @@ class LeadScoringService {
         points: -10,
       },
       {
-        name: 'Needs analysis started',
+        name: 'Conversation started',
         description: 'Contacted or qualified — someone has had a real conversation.',
         rule_type: 'behavioral',
         field_name: 'lead_status',
@@ -591,8 +591,8 @@ class LeadScoringService {
         points: -30,
       },
       {
-        name: 'Agent rates it hot',
-        description: 'The producer\'s own read. Weighted below the source and status rules on purpose — this is a judgement, not an observation, and a model that leans on it mostly scores the salesperson.',
+        name: 'Owner rates it hot',
+        description: 'The owner\'s own read. Weighted below the source and status rules on purpose — this is a judgement, not an observation, and a model that leans on it mostly scores the salesperson.',
         rule_type: 'behavioral',
         field_name: 'rating',
         operator: 'equals',
@@ -603,7 +603,7 @@ class LeadScoringService {
       // ── Engagement — can we actually reach them ──────────────────────────
       {
         name: 'Reachable by phone',
-        description: 'Life cover is sold in conversation, and a needs analysis is a phone call. Scored above email for that reason.',
+        description: 'Advice-led products are sold in conversation, so a phone number is scored above email.',
         rule_type: 'engagement',
         field_name: 'phone',
         operator: 'is_not_empty',
@@ -612,7 +612,7 @@ class LeadScoringService {
       },
       {
         name: 'Reachable by email',
-        description: 'Needed for illustrations, applications and e-signature.',
+        description: 'Needed for proposals, applications and e-signature.',
         rule_type: 'engagement',
         field_name: 'email',
         operator: 'is_not_empty',

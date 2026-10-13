@@ -42,6 +42,7 @@ export const CONDITION_OPERATORS = [
   { value: 'after_today',      label: 'is after today',        group: 'Date' },
   { value: 'date_within_days', label: 'is within N days',      group: 'Date' },
   { value: 'date_overdue',     label: 'is overdue',            group: 'Date' },
+  { value: 'expression',       label: 'formula is true',       group: 'Formula' },
 ];
 
 /** Operators that need no `value` — asking for one would be misleading. */
@@ -82,7 +83,8 @@ export const STEP_SCHEMAS = {
       { key: 'operator', label: 'Operator', type: 'operator', required: true,
         help: 'How to compare.' },
       { key: 'value', label: 'Value', type: 'text',
-        help: 'What to compare against. For "is one of", give a comma-separated list. Not used by presence and date-only operators.' },
+        help: 'What to compare against. For "is one of", give a comma-separated list. Not used by presence and date-only operators. '
+          + 'For "formula is true", write a formula over the whole record, e.g. amount > 5000000 AND risk_grade != \'A\' (Field is then ignored).' },
       { key: 'source', label: 'Source', type: 'select', options: ['', 'new', 'old'],
         help: 'field_changed workflows only: compare the new value or the previous one. Leave blank for the current value.' },
     ],
@@ -157,8 +159,12 @@ export const STEP_SCHEMAS = {
       { key: 'role', label: 'Approver role', type: 'text', help: 'Every active employee with this role may decide.' },
       { key: 'employee_id', label: 'Specific approver', type: 'text' },
       { key: 'field', label: 'Approver from a field', type: 'field', help: 'e.g. the record owner\'s manager id.' },
+      { key: 'exclude_actor', label: 'Maker-checker: not the person who triggered it', type: 'select', options: ['', 'true'],
+        help: 'Four eyes: whoever caused this step can never approve it, even if they hold the approver role.' },
+      { key: 'exclude_field', label: 'Also exclude the person in field', type: 'field',
+        help: 'e.g. a `maker` field — that employee cannot approve.' },
     ],
-    example: { role: 'manager', title: 'Discount approval', message: 'Approve {{discount_pct}}% on {{name}}?' },
+    example: { role: 'manager', title: 'Discount approval', message: 'Approve {{discount_pct}}% on {{name}}?', exclude_actor: true },
     atLeastOneOf: {
       keys: ['role', 'employee_id', 'field'],
       message: 'An approval with no resolvable approver can never be completed — it will wait forever. Name a role, an employee, or a field to read one from.',
@@ -217,9 +223,41 @@ export const STEP_SCHEMAS = {
       { key: 'object_id', label: 'Target object', type: 'object', required: true,
         help: 'Engine: the step is a no-op without object_id, and skips cleanly if the object was since deleted.' },
       { key: 'fields', label: 'Field values', type: 'json', required: true,
-        help: 'Values support {{field}} placeholders from the triggering record.' },
+        help: 'Values support {{field}} placeholders from the triggering record, and {{id}} for its id.' },
+      { key: 'link_field', label: 'Link back through', type: 'text',
+        help: 'A lookup field on the NEW record that should point at this record — it then appears in this record\'s Related tab.' },
+      { key: 'store_as', label: 'Store new id in', type: 'text',
+        help: 'A lookup field on THIS record that receives the new record\'s id.' },
     ],
-    example: { object_id: 5, fields: { subject: 'Follow up with {{first_name}}', account_id: '{{id}}' } },
+    example: { object_id: 5, fields: { subject: 'Follow up with {{first_name}}' }, link_field: 'enquiry' },
+  },
+
+  send_email: {
+    summary: 'Sends an email template to an address on the record.',
+    standard:
+      'Name the template, not its content, so communications stay editable by the business in Email Templates. '
+      + 'With a language field, a template named <template>_<lang> (e.g. enquiry_ack_fr) is used when it exists — '
+      + 'that is how one workflow sends English and French correspondence.',
+    fields: [
+      { key: 'template', label: 'Email template name', type: 'text', required: true },
+      { key: 'to_field', label: 'Recipient field', type: 'field', help: 'Field holding the email address. Defaults to email.' },
+      { key: 'to', label: 'Or a fixed address', type: 'text', help: 'Supports {{field}} placeholders.' },
+      { key: 'language_field', label: 'Language field', type: 'field', help: 'e.g. preferred_language (en / fr).' },
+    ],
+    example: { template: 'enquiry_ack', to_field: 'email', language_field: 'preferred_language' },
+  },
+
+  generate_document: {
+    summary: 'Renders a merge template from this record and files it in the record\'s Docs.',
+    standard:
+      'Templates are business-owned (Builder ▸ Document Management ▸ Merge templates); the step only names one, '
+      + 'so wording changes never need a workflow edit. Pair it with a stage change: generate the offer letter '
+      + 'when the record reaches “Offer issued”, then share it or send it for e-signature from the Docs tab.',
+    fields: [
+      { key: 'template', label: 'Merge template name', type: 'text', required: true },
+      { key: 'filename', label: 'File name', type: 'text', help: 'Supports {{field}} placeholders, e.g. Offer {{application_no}}.' },
+    ],
+    example: { template: 'loan_offer_letter', filename: 'Offer letter {{application_no}}' },
   },
 
   update_related: {
@@ -285,7 +323,10 @@ export function validateStepConfig(stepType, config = {}) {
 
   const missing = schema.fields
     .filter((f) => f.required && !present(f.key))
+    // A formula condition reads the whole record — it needs a value, not a field.
+    .filter((f) => !(stepType === 'condition' && config.operator === 'expression' && f.key === 'field'))
     .map((f) => f.label);
+  if (stepType === 'condition' && config.operator === 'expression' && !present('value')) missing.push('Value');
 
   const warnings = [];
   if (schema.atLeastOneOf && !schema.atLeastOneOf.keys.some(present)) {

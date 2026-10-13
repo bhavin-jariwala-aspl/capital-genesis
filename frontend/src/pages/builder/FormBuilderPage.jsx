@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { metadataService } from '../../services/metadata.service';
 import { useBuilderStore } from '../../store/builderStore';
 import FormBuilder from '../../components/builder/FormBuilder';
+import PublicFormPanel from '../../components/builder/PublicFormPanel';
 import BuilderGuide from '../../components/builder/BuilderGuide';
 import Spinner from '../../components/ui/Spinner';
 import Alert from '../../components/ui/Alert';
@@ -174,6 +175,7 @@ export default function FormBuilderPage() {
       <div className="px-6 pt-5">
         <BuilderGuide section="/builder/form" />
       </div>
+      {!isNew && data?.data && <PublicFormPanel form={data.data} />}
       <FormBuilder
         onSave={(payload) => saveMutation.mutate(payload)}
         saving={saveMutation.isPending}

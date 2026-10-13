@@ -22,7 +22,7 @@ import { runtimeService } from '../src/services/metadata.service';
 
 const MODULES = [
   { id: 1, label: 'Leads',    icon: 'TrendingUp', color: 'blue',   category: 'crm' },
-  { id: 2, label: 'Policies', icon: 'Shield',     color: 'indigo', category: 'insurance' },
+  { id: 2, label: 'Accounts', icon: 'Building2',  color: 'indigo', category: 'crm' },
 ];
 
 function renderSidebar() {
@@ -49,9 +49,18 @@ describe('Sidebar', () => {
     renderSidebar();
     // Module links render from the grouped, memoised list…
     expect(await screen.findByText('Leads')).toBeInTheDocument();
-    expect(screen.getByText('Policies')).toBeInTheDocument();
-    // …under their category section header (Insurance), proving the grouping ran.
-    expect(screen.getByText('Insurance')).toBeInTheDocument();
+    expect(screen.getByText('Accounts')).toBeInTheDocument();
+    // …under their category section header (Modules), proving the grouping ran.
+    expect(screen.getByText('Modules')).toBeInTheDocument();
+  });
+
+  it('gives a category it does not know its own section, titled from the key', async () => {
+    runtimeService.getModules.mockResolvedValue({
+      data: [...MODULES, { id: 3, label: 'Loan Applications', icon: 'FileText', color: 'indigo', category: 'retail_lending' }],
+    });
+    renderSidebar();
+    expect(await screen.findByText('Loan Applications')).toBeInTheDocument();
+    expect(screen.getByText('Retail Lending')).toBeInTheDocument();
   });
 
   /**

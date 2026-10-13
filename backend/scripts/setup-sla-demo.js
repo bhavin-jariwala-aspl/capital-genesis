@@ -140,7 +140,7 @@ async function main() {
         { subject: 'Cannot access customer portal',                priority: 'high',     status: 'new',         type: 'technical', origin: 'web',   owner_id: own(1), created_at: hAgo(2) },
         { subject: 'Claim status inquiry — CLM-2026-001',          priority: 'medium',   status: 'in_progress', type: 'claim',     origin: 'phone', owner_id: own(0), created_at: dAgo(1) },
         { subject: 'Policy document request',                      priority: 'high',     status: 'new',         type: 'service',   origin: 'email', owner_id: own(1), created_at: hAgo(1.5), __resolve: 'Sent policy PDF to the client.' },
-        { subject: 'Complaint about premium increase',             priority: 'critical', status: 'in_progress', type: 'complaint', origin: 'phone', owner_id: own(2), created_at: dAgo(6), __resolve: 'Explained the rate change; client retained.' },
+        { subject: 'Complaint about price increase',               priority: 'critical', status: 'in_progress', type: 'complaint', origin: 'phone', owner_id: own(2), created_at: dAgo(6), __resolve: 'Explained the rate change; client retained.' },
         { subject: 'Address update request',                       priority: 'low',      status: 'new',         type: 'service',   origin: 'web',   owner_id: own(1), created_at: hAgo(0.5) },
       ];
       const created = await Promise.all(defs.map(({ __resolve, ...c }) => prisma.crmCase.create({ data: c })));

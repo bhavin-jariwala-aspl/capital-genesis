@@ -293,8 +293,7 @@ When adding a validation type: add it to `RULE_TYPES` and `evaluateRule` on the 
 ## Known gaps
 
 - Custom JavaScript validators are browser-only by design; there is no sandboxed server evaluation.
-- Uniqueness is checked for EAV objects and first-class CRM columns; insurance-domain mirrored tables are
-  covered through their EAV copy only.
+- Uniqueness is checked for EAV objects and first-class CRM columns.
 - Branding before login relies on the browser having signed in to that workspace before (the snapshot). A first
   visit on a fresh device shows product defaults until sign-in; a tenant-slug login URL would close this.
 - Brand asset URLs contain the tenant id, and the public branding route answers for any active tenant id — by

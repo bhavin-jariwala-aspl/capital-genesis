@@ -89,7 +89,7 @@ cd backend
 # Apply all migrations
 npx prisma migrate deploy
 
-# Seed demo data (creates users, modules, insurance data)
+# Seed demo data (creates users, modules, CRM data)
 node prisma/seed.js
 ```
 
@@ -129,10 +129,9 @@ Use one of the seeded accounts:
 |---|---|---|
 | Agency Owner (full access) | `owner@genesislife.local` | `Admin@123` |
 | Agent | `agent@genesislife.local` | `User@123` |
-| Underwriter | `underwriter@genesislife.local` | `Underwriter@123` |
 
-See the [Seeded Users table](../../docs/user-guide/SAMPLE_FLOW.md)
-for the complete list.
+See [`backend/prisma/seed.js`](../../backend/prisma/seed.js) for the complete
+list of seeded accounts.
 
 ### VS Code Workspace Settings (Optional)
 
@@ -341,13 +340,9 @@ genesis/
 │   │   │   ├── auth/           # Login, logout, password change
 │   │   │   ├── builder/        # Admin-only builder API
 │   │   │   ├── analytics/      # Live dashboard datasets (catalog + data)
-│   │   │   ├── insurance/      # Life Insurance calc engine + template APIs
 │   │   │   └── runtime/        # Runtime record/module API
 │   │   ├── services/
 │   │   │   ├── analytics.service.js           # Dashboard dataset catalog + tenant-scoped aggregations
-│   │   │   ├── calculation-engine.service.js  # Life insurance premium calculator (CSO mortality tables)
-│   │   │   ├── insurance-domain.service.js    # Full insurance AMS: policies, apps, UW, claims, commissions
-│   │   │   ├── template-engine.service.js     # Professional document renderer (quotes, illustrations, apps)
 │   │   │   ├── industry-templates.js          # Pre-built email templates for 11 industries
 │   │   │   └── ...             # All other business logic services
 │   │   └── utils/
@@ -368,7 +363,7 @@ genesis/
 │   │   ├── pages/
 │   │   │   ├── builder/        # Builder pages (admin only)
 │   │   │   ├── platform/       # Platform admin pages
-│   │   │   └── runtime/        # Runtime pages + insurance pages
+│   │   │   └── runtime/        # Runtime pages
 │   │   ├── hooks/              # Custom React hooks
 │   │   ├── services/           # API service layer
 │   │   ├── store/              # Zustand stores (authStore, themeStore)
@@ -386,7 +381,7 @@ in the database and rendered at runtime. No code deployment is needed to add or 
 
 | Table | Purpose |
 | ----- | ------- |
-| `ui_modules` | Sidebar modules (Prospects, Clients, Quotes, etc.) — `category` column groups into sidebar sections |
+| `ui_modules` | Sidebar modules (Prospects, Clients, Opportunities, etc.) — `category` column groups into sidebar sections |
 | `ui_objects` | Objects within modules (Lead, Opportunity, etc.) |
 | `ui_fields` | Fields on each object |
 | `ui_forms` / `ui_form_fields` | Form layouts (create/edit) |
@@ -439,7 +434,7 @@ Sidebar mounts
       → PermissionService.filterMetadataByRole(modules, 'module', roleName)
           → also filters each module's nested objects[] by role
   → response: [ { id, name, label, icon, color, category, objects: [...] } ]
-  → Sidebar groups modules by `category` (crm, insurance, tools, settings)
+  → Sidebar groups modules by `category` (crm, tools)
   → Each category renders as a separate sidebar section with its own header
   → Categories are defined in MODULE_CATEGORIES (frontend/src/utils/constants.js)
 ```
@@ -648,7 +643,6 @@ FormRenderer: handleSubmit(formData)
       → #assertObjectEditPermission(objectId, viewer)
       → CRM entity check:
           if object.name ∈ CRM_FIELDS → #upsertCrmEntity(objectName, data)
-          else if object.name ∈ INSURANCE_OBJECTS → #syncInsuranceDomain(...)
       → EAV upsert (chunked parallel, no wrapping transaction):
           Promise.all in batches of 5: db.recordFieldValue.upsert(...)
           typed columns written: str_value always + num|bool|date|json_value as applicable
@@ -657,7 +651,7 @@ FormRenderer: handleSubmit(formData)
       → AssignmentService.assign(record)  (if configured)
       → WorkflowEngine.trigger('record.created' | 'record.updated', record)
   → queryClient.invalidateQueries(['runtime-records', objectId])
-  → navigate(backPath or insuranceRoute)
+  → navigate(backPath)
 ```
 
 ---
@@ -699,33 +693,7 @@ await fastify.register(require('./routes/runtime'), { prefix: '/api/runtime' });
 module.exports = fastify;
 ```
 
-### Insurance Domain Architecture
-
-The insurance module (`/api/insurance`) provides a full Agency Management System:
-
-| Service | Purpose |
-| ------- | ------- |
-| `CalculationEngineService` | Actuarial premium engine with 2017 CSO mortality tables, 6 product types, 9 riders |
-| `RatingAdapterRegistry` | Adapter registry resolving per-carrier rating source (internal / simulated / API) |
-| `InsuranceDomainService` | Policy lifecycle, applications, underwriting, claims, commissions with tenant isolation |
-| `TemplateEngineService` | Professional PDF document rendering (quotes, illustrations, applications, comparisons) |
-
-**Insurance database tables** (migration `20260404000000_add_insurance_domain`):
-
-| Table | Purpose |
-| ----- | ------- |
-| `insurance_carriers` | Carrier metadata (NAIC code, AM Best rating) |
-| `carrier_products` | Product offerings per carrier |
-| `carrier_adapter_configs` | Per-carrier adapter config: type (simulated/api/disabled), API endpoint env-var name, health status |
-| `insurance_policies` | Policy lifecycle (pending/active/lapsed/matured/surrendered) |
-| `insurance_policy_beneficiaries` | Beneficiary designations with allocation percentages |
-| `insurance_policy_status_history` | Audit trail for status transitions |
-| `insurance_applications` | Application pipeline with auto-generated numbers |
-| `underwriting_cases` | UW decisions, risk classification, requirements |
-| `underwriting_requirements` | Document/medical requirements tracking |
-| `insurance_claims` | Claims filing with status workflow and timeline |
-| `claim_events` | Timeline events per claim |
-| `commission_entries` | Agent commissions with clawback tracking |
+### Record Storage & Pipeline Automation
 
 **Generic status timeline** (migration `20260611065018_add_status_events`):
 
@@ -733,100 +701,33 @@ The insurance module (`/api/insurance`) provides a full Agency Management System
 | ----- | ------- |
 | `status_events` | Generic per-record status timeline backing the `status_tracker` fieldtype. One row per milestone/scan event (`status`, `title`, `description`, `location`, `event_type`, `occurred_at`, `changed_by`). Works for any object — auto-appended on pipeline stage changes and via the status-events API. |
 
-**Frontend insurance pages**: InsuranceQuotePage, PoliciesPage, ApplicationsPage,
-UnderwritingPage, ClaimsPage, CommissionsPage — all located in `frontend/src/pages/runtime/`.
-
 **Record data hydration**: Both `RecordService.#hydrateMany()` (list views)
 and `#hydrateCrm()` (single record / edit forms) merge EAV custom fields
 with CRM denormalized table data using a **non-null-wins** strategy:
 EAV fields form the base layer; CRM fields override only when non-null.
-This ensures insurance-specific EAV fields like `date_of_birth` and
-`smoker_status` are preserved even when the corresponding CRM entity has
-null columns. See `FIELD_ALIAS` for canonical field name mappings.
+This ensures custom EAV fields are preserved even when the corresponding
+CRM entity has null columns. See `FIELD_ALIAS` for canonical field name mappings.
 
-**Dual storage model**: Insurance records exist in two places:
+**Automatic pipeline stage sync**: Lead conversions move the source record's
+`pipeline_stage_id` to the matching stage by name:
 
-1. **Insurance domain tables** (`insurance_policies`, etc.) — queried by
-   the dedicated `/insurance/*` API routes and pages
-2. **`record_field_values` (EAV)** — queried by the metadata-driven
-   `ModulePage` list/table views via `RecordService`
-
-The seed script writes EAV field values for all insurance record types
-so both the dedicated insurance pages AND the CRM list views show data.
-
-**Insurance domain bridge** (`RecordService.#syncInsuranceDomain`):
-When a CRM module record for an insurance object (application, policy,
-claim, etc.) is created or updated via the runtime API, the bridge
-auto-upserts the corresponding insurance domain table row. The
-`INSURANCE_OBJECTS` check runs before `CRM_FIELDS` in `#upsertCrmEntity`
-and uses `Promise.allSettled` so EAV and domain sync are independent:
-
-- **MODULES > Applications** (agent-facing form) ↔
-  **INSURANCE > Applications** (operations pipeline)
-- Bridge maps EAV field names to domain columns (`premium` →
-  `premium_amount`, `wiz_smoker_status` → `is_smoker`)
-- On create: generates sequence number, creates domain row
-- On update: merges non-empty fields only (no data loss)
-
-**Wizard integration**: The "Apply Now" flow on `InsuranceQuotePage`
-creates a CRM record then navigates to `/wizard/45?record_id=N`.
-`WizardPage` detects the `record_id` param, loads the existing record's
-EAV data as defaults, and on completion calls `updateRecord` (not
-`createRecord`). `WizardRenderer` supports flat `defaultValues` objects
-(auto-distributed to all steps) in addition to step-indexed objects.
-After wizard submission, the insurance domain bridge fires via
-`#upsertCrmEntity` → `#syncInsuranceDomain`, creating the
-`insurance_applications` row. The user is then redirected to
-**INSURANCE > Declarations** (`/insurance/declarations?record_id=N`)
-where the Send Declarations modal auto-opens with the application
-pre-selected, enabling the agent to immediately send required legal
-disclosures.
-
-**Automatic pipeline stage sync** (domain → pipeline): Every insurance
-domain status change propagates to the CRM record's `pipeline_stage_id`
-via `InsuranceDomainService.#syncPipelineStage(tx, recordId, statusName)`.
-This helper looks up the pipeline stage by name for the record's object
-and updates the record inside the same `$transaction`. Called from:
-
-- `convertToUnderwriting()` → application record → "under_review"
-- `updateUnderwritingCase()` → application record → "approved"/"declined"
-- `issuePolicy()` → application record → "issued"
-- `updateClaim()` → claim record → matches new status
 - `CrmService.convertLeadToProspect()` → lead record → "converted"
 - `CrmService.convertLead()` → prospect record → "converted"
-- `QuoteService.updateQuoteStatus()` → quote record → mapped name
 
-**Kanban drag-and-drop automation** (pipeline → domain): The reverse
+**Kanban drag-and-drop automation** (pipeline → conversion): The reverse
 direction is also supported. When a user drags a card to a new Kanban
 lane via `PATCH /api/runtime/records/:id/stage`, the route handler
-auto-triggers the corresponding insurance domain action:
+auto-triggers the corresponding conversion:
 
 - Lead → "converted" lane: calls `crmSvc.convertLeadToProspect()` (creates a Prospect)
 - Prospect → "converted" lane: calls `crmSvc.convertLead()` + EAV copy
-- Application → "under\_review" lane: calls `convertToUnderwriting()`
-- Application → status lanes: syncs `InsuranceApplication.status` + EAV
-- Claim → status lanes: calls `updateClaim()` + syncs EAV
 
 The response includes `automation: { action, error? }` so the frontend
 can react (e.g., navigate to the target module). Automation failures
 are logged but do not block the stage update.
 
-**CRM Record + EAV auto-creation**: When insurance domain objects are
-created (UW cases, policies, commissions), the new helper
-`#createRecordWithEav()` creates a CRM Record anchor with typed EAV
-field values and auto-resolves the pipeline stage from the status.
-This ensures newly created domain objects appear in module list views.
-
 The `Pipeline.jsx` component also adds an "Unsorted" column for records
 with no `pipeline_stage_id`, preventing them from disappearing in Kanban.
-
-**Sequence number generation**: All insurance sequence numbers (policy, application,
-claim, UW case, quote) use a `PREFIX-YYYY-NNNNNN` format. The generator
-(`#nextSeq`) uses raw SQL `SELECT ... FOR UPDATE` inside the creating
-`$transaction` to acquire an exclusive lock on the latest row, preventing
-concurrent transactions from generating duplicate numbers. The
-`#withRetry` wrapper (5 attempts, exponential backoff) handles the rare
-collision if `FOR UPDATE` cannot acquire the lock in time.
 
 ### Route Development Pattern
 
@@ -1139,9 +1040,9 @@ The schema lives at `backend/prisma/schema.prisma` and contains 55+ models. Key 
 - `AssignmentRule`, `RoundRobinState`, `AssignmentLog`
 - `ImportJob`, `Quota`, `AuditLog`
 
-**Products & Quotes**:
+**Products**:
 
-- `Product`, `Quote`, `QuoteLineItem`
+- `Product`
 
 **Integrations**:
 

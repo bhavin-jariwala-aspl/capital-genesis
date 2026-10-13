@@ -3,9 +3,9 @@
  *
  * Mirrors the server: `MODULE_FEATURE` in `routes/runtime` gates the
  * metadata-driven modules (the server already drops those from bootstrap, so
- * they never reach the sidebar), and `FEATURE_GATES` in `routes/insurance`
- * gates the API. This file covers the parts only the client knows about — the
- * bespoke insurance pages, the tools, and the Builder sections — so a locked
+ * they never reach the sidebar), and `requireFeature()` gates the API. This
+ * file covers the parts only the client knows about — the bespoke pages, the
+ * tools, and the Builder sections — so a locked
  * feature is hidden from navigation and explained on direct navigation rather
  * than rendered and then refused.
  *
@@ -15,12 +15,6 @@
 
 /** Human labels, for the locked-feature page. Kept short; the reason comes from the server. */
 export const FEATURE_LABEL = {
-  ins_quoting:        'Quoting & illustrations',
-  ins_policy_admin:   'Policy administration',
-  ins_underwriting:   'Underwriting workflow',
-  ins_claims:         'Claims management',
-  ins_commissions:    'Commissions',
-  ins_carrier_feeds:  'Carrier rate feeds',
   auto_workflows:     'Workflows',
   auto_assignment:    'Assignment rules',
   auto_lead_scoring:  'Lead scoring',
@@ -37,15 +31,6 @@ export const FEATURE_LABEL = {
 
 /** Route prefix → feature key. Longest prefix wins. */
 export const ROUTE_FEATURE = [
-  ['/insurance/quotes',        'ins_quoting'],
-  ['/quotes',                  'ins_quoting'],
-  ['/insurance/applications',  'ins_policy_admin'],
-  ['/insurance/policies',      'ins_policy_admin'],
-  ['/insurance/declarations',  'ins_policy_admin'],
-  ['/insurance/documents',     'docs_management'],
-  ['/insurance/underwriting',  'ins_underwriting'],
-  ['/insurance/claims',        'ins_claims'],
-  ['/insurance/commissions',   'ins_commissions'],
   ['/documents',               'docs_management'],
   ['/sla',                     'auto_sla'],
   ['/social-media',            'eng_social'],

@@ -8,9 +8,7 @@ Guides for end users, sales teams, and managers working with Genesis CRM daily.
 | ----- | ------------ | ----------------- |
 | [NEW_FEATURES_HOW_TO.md](NEW_FEATURES_HOW_TO.md) | All Users | ⭐ Plain-language how-to for the new Org Chart & SLA Board |
 | [DAILY_OPERATIONS.md](DAILY_OPERATIONS.md) | All Users | Navigation, records, search, import/export |
-| [PRODUCTS_AND_QUOTES.md](PRODUCTS_AND_QUOTES.md) | Sales Teams | Managing products, creating and approving quotes |
-| [GENESIS_INSURE_JOURNEY.md](GENESIS_INSURE_JOURNEY.md) | Insurance Teams | Full lead-to-policyholder journey across all 7 stages |
-| [UNDERWRITING_FLOW.md](UNDERWRITING_FLOW.md) | Insurance / UW Teams | Underwriting workflow, roles, feature toggle, application reports |
+| [PRODUCTS.md](PRODUCTS.md) | Sales Teams | Managing the product catalog: pricing, inventory, categories, vendors |
 
 ## Quick Navigation
 
@@ -19,16 +17,7 @@ Start with [DAILY_OPERATIONS.md](DAILY_OPERATIONS.md) — it covers roles,
 navigation, the dashboard, working with records, search, and keyboard shortcuts.
 
 **Working with Sales Catalog?**
-[PRODUCTS_AND_QUOTES.md](PRODUCTS_AND_QUOTES.md) covers the full product catalog and quote lifecycle from draft to accepted.
-
-**Insurance Agent?**
-[GENESIS_INSURE_JOURNEY.md](GENESIS_INSURE_JOURNEY.md) traces the complete
-end-to-end journey from lead capture through quote generation, underwriting,
-policy issuance, claims, and commissions.
-
-**Underwriting Team?**
-[UNDERWRITING_FLOW.md](UNDERWRITING_FLOW.md) covers the underwriting workflow,
-role separation, decision outcomes, application reports, and client emailing.
+[PRODUCTS.md](PRODUCTS.md) covers the full product catalog: pricing, inventory, categories, and vendors.
 
 ## Builder & Configuration Guides (Admins)
 
@@ -70,6 +59,8 @@ roughly in the order below.
 - [15. Employees](15-employees.md) — add and manage users
 - [16. Roles & Levels](16-roles-and-levels.md) — define the access hierarchy
 - [17. Org Chart](17-org-chart.md) — explore the whole reporting hierarchy interactively
+- [22. Business Units & Information Barriers](22-access-and-barriers.md) — segment records by legal entity and
+  wall off confidential work
 
 ## Related Sections
 

@@ -53,9 +53,9 @@ describe('DialogHost', () => {
 
     let typed;
     act(() => { typed = promptDialog({ title: 'New folder', placeholder: 'Folder name' }); });
-    await user.type(await screen.findByPlaceholderText('Folder name'), 'Claims 2026');
+    await user.type(await screen.findByPlaceholderText('Folder name'), 'Contracts 2026');
     await user.click(screen.getByRole('button', { name: 'Submit' }));
-    await expect(typed).resolves.toBe('Claims 2026');
+    await expect(typed).resolves.toBe('Contracts 2026');
 
     let cancelled;
     act(() => { cancelled = promptDialog({ title: 'New folder' }); });

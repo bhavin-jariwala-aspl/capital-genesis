@@ -24,46 +24,22 @@ function at(daysAgo, hour) {
 // ── Demo targets ────────────────────────────────────────────────────────────
 const TARGETS = [
   {
-    object_name: 'claim',
-    field_name:  'claim_status_timeline',
-    title:       'Claim Tracking',
+    object_name: 'prospect',
+    field_name:  'prospect_status_timeline',
+    title:       'Prospect Journey',
     // Happy-path milestones for the stepper (a subset of the pipeline stages, in order)
     milestones: [
-      { value: 'filed',               label: 'Filed',               color: '#6366f1' },
-      { value: 'under_investigation', label: 'Under Investigation', color: '#f59e0b' },
-      { value: 'approved',            label: 'Approved',            color: '#10b981' },
-      { value: 'paid',                label: 'Paid',                color: '#0ea5e9' },
-      { value: 'closed',              label: 'Closed',              color: '#64748b' },
+      { value: 'new',       label: 'New',       color: '#6366f1' },
+      { value: 'contacted', label: 'Contacted', color: '#3b82f6' },
+      { value: 'qualified', label: 'Qualified', color: '#10b981' },
+      { value: 'converted', label: 'Converted', color: '#8b5cf6' },
     ],
     timeline: [
-      { status: 'filed',               event_type: 'milestone', title: 'Claim Filed',             location: 'Online Portal',         description: 'Claim submitted by the policyholder and assigned a reference number.', daysAgo: 9, hour: 9 },
-      { status: 'filed',               event_type: 'note',      title: 'Documents Received',      location: 'Claims Intake, Mumbai', description: 'Hospital bills and discharge summary received and attached.',          daysAgo: 8, hour: 14 },
-      { status: 'under_investigation', event_type: 'milestone', title: 'Under Investigation',     location: 'Underwriting, Pune',    description: 'Assigned to investigator R. Mehta for verification.',                   daysAgo: 7, hour: 11 },
-      { status: 'under_investigation', event_type: 'scan',      title: 'Field Verification Done', location: 'Apollo Hospital, Pune', description: 'Treatment and admission dates verified with the provider.',             daysAgo: 4, hour: 16 },
-      { status: 'approved',            event_type: 'milestone', title: 'Claim Approved',          location: 'Claims HQ',             description: 'Approved for ₹1,85,000 after deductible.',                               daysAgo: 2, hour: 10 },
-      { status: 'paid',                event_type: 'milestone', title: 'Payout Initiated',        location: 'Finance, Bangalore',    description: 'NEFT transfer initiated to the registered bank account.',                daysAgo: 1, hour: 13 },
-      { status: 'paid',                event_type: 'note',      title: 'Payment Settled',         location: 'HDFC Bank',             description: 'Settlement confirmed — UTR ref shared with the customer.',               daysAgo: 0, hour: 9 },
-    ],
-  },
-  {
-    object_name: 'application',
-    field_name:  'application_status_timeline',
-    title:       'Application Tracking',
-    milestones: [
-      { value: 'submitted',       label: 'Submitted',       color: '#6366f1' },
-      { value: 'under_review',    label: 'Under Review',    color: '#f59e0b' },
-      { value: 'pending_medical', label: 'Pending Medical', color: '#a855f7' },
-      { value: 'approved',        label: 'Approved',        color: '#10b981' },
-      { value: 'issued',          label: 'Issued',          color: '#0ea5e9' },
-    ],
-    timeline: [
-      { status: 'submitted',       event_type: 'milestone', title: 'Application Submitted',  location: 'Agent Portal',          description: 'New business application captured and assigned an application number.', daysAgo: 12, hour: 10 },
-      { status: 'submitted',       event_type: 'note',      title: 'KYC Documents Received', location: 'New Business, Mumbai',   description: 'ID proof, address proof and income proof verified.',                    daysAgo: 11, hour: 15 },
-      { status: 'under_review',    event_type: 'milestone', title: 'Under Review',           location: 'Underwriting Desk',     description: 'Assigned to underwriter S. Iyer for risk assessment.',                  daysAgo: 9,  hour: 11 },
-      { status: 'pending_medical', event_type: 'milestone', title: 'Medical Exam Scheduled', location: 'Metropolis Labs, Pune', description: 'Tele-MER and blood profile scheduled for the applicant.',               daysAgo: 7,  hour: 9 },
-      { status: 'pending_medical', event_type: 'scan',      title: 'Medical Report Received', location: 'Underwriting Desk',     description: 'Reports within acceptable limits — no adverse findings.',               daysAgo: 4,  hour: 17 },
-      { status: 'approved',        event_type: 'milestone', title: 'Application Approved',    location: 'Underwriting HQ',       description: 'Approved at standard rates with no loading.',                           daysAgo: 2,  hour: 12 },
-      { status: 'issued',          event_type: 'milestone', title: 'Policy Issued',           location: 'Policy Servicing',      description: 'Policy document generated and emailed to the customer.',                daysAgo: 0,  hour: 10 },
+      { status: 'new',       event_type: 'milestone', title: 'Prospect Created',     location: 'Website Form',      description: 'Inbound enquiry captured and assigned to an owner.',              daysAgo: 9, hour: 9 },
+      { status: 'contacted', event_type: 'milestone', title: 'First Contact',        location: 'Phone',             description: 'Intro call completed; needs and budget discussed.',               daysAgo: 7, hour: 11 },
+      { status: 'contacted', event_type: 'note',      title: 'Follow-up Email Sent', location: 'Email',             description: 'Sent a summary of the call and a brochure.',                     daysAgo: 6, hour: 15 },
+      { status: 'qualified', event_type: 'milestone', title: 'Qualified',            location: 'Sales Review',      description: 'Fits the target profile; meeting booked with the decision maker.', daysAgo: 3, hour: 10 },
+      { status: 'converted', event_type: 'milestone', title: 'Converted to Client',  location: 'CRM',               description: 'Contact and account created from the prospect.',                 daysAgo: 0, hour: 12 },
     ],
   },
 ];

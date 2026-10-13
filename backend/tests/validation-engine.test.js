@@ -139,6 +139,6 @@ describe('evaluateRule — admin rules', () => {
   });
 
   it('exposes the full rule vocabulary', () => {
-    expect(RULE_TYPES).toEqual(expect.arrayContaining(['required', 'pattern', 'min_date', 'gt_field', 'unique', 'custom']));
+    expect(RULE_TYPES).toEqual(expect.arrayContaining(['required', 'pattern', 'min_date', 'gt_field', 'unique', 'expression']));
   });
 });

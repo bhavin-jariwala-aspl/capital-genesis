@@ -7,6 +7,8 @@ const { getTenantId } = require('../middleware/tenant-scope');
 const { logger } = require('./logging.service');
 const { leadScoreGrade } = require('../utils/lead-grade');
 const { validateValues } = require('./validation-engine');
+const { RecordCompute } = require('./record-compute');
+const AccessScopeService = require('./access-scope.service');
 
 // ── List-query bounds ─────────────────────────────────────────────────────────
 // The record list and CSV export used to be fully unbounded findMany() calls,
@@ -37,7 +39,6 @@ const {
   FIELD_ALIAS,
   REVERSE_ALIAS,
   MODEL_MAP,
-  INSURANCE_OBJECTS,
   toTypedValue,
   fromTypedRow,
 } = require('./crm-storage-map');
@@ -48,6 +49,19 @@ const {
  * CRM field values are stored in the crm_* relational tables, not here.
  * Writes audit_logs on create / update / stage-change / delete.
  */
+/** Which `Record` relation holds an object's first-class entity row. */
+const ENTITY_RELATION = {
+  lead: 'crm_lead', prospect: 'crm_lead', lead_intake: 'crm_lead_intake', contact: 'crm_contact',
+  account: 'crm_account', opportunity: 'crm_opportunity', case: 'crm_case',
+  product: 'product', email_template: 'email_template',
+};
+
+/** object id → API name (see #objectName). */
+const OBJECT_NAMES = new Map();
+
+/** Highest auto-number handed out per sequence in this process (see #generateAutoNumbers). */
+const ISSUED_AUTO_NUMBERS = new Map();
+
 class RecordService {
   /**
    * @param {import('@prisma/client').PrismaClient} prisma
@@ -58,7 +72,7 @@ class RecordService {
    * @param {import('./assignment.service')|null}  assignService   Optional — auto-assigns new records
    * @param {import('./lead-scoring.service')|null} scoringService Optional — auto-scores new/updated leads
    */
-  constructor(prisma, eventBus = null, permService = null, assignService = null, scoringService = null) {
+  constructor(prisma, eventBus = null, permService = null, assignService = null, scoringService = null, accessScope = null) {
     this.db         = prisma;
     this.eventBus   = eventBus;
     this.perm       = permService;
@@ -68,6 +82,75 @@ class RecordService {
     // Serialises concurrent createRecord calls for the same field so they
     // never compute the same next value.
     this.#autoNumLocks = new Map();
+    // Formula fields + formula-language validation rules.
+    this.compute = new RecordCompute(prisma, (id) => this.#loadData(id));
+    // Business-unit scope + information barriers (layered on owner scope).
+    this.scope = accessScope ?? new AccessScopeService(prisma);
+  }
+
+  /** The hydrated `data` map of a live record, or null. */
+  async #loadData(recordId) {
+    const rec = await this.db.record.findUnique({
+      where:  { id: Number(recordId) },
+      select: { id: true, object_id: true, deleted_at: true, object: { select: { name: true } } },
+    });
+    if (!rec || rec.deleted_at) return null;
+    const hydrated = await this.#hydrateCrm(rec);
+    return hydrated?.data ?? null;
+  }
+
+  /**
+   * Recompute the formula fields of the records this one points at through
+   * lookup fields, so a parent's roll-ups (SUM_RELATED / COUNT_RELATED) follow
+   * a change in its children. One level up, written straight to the typed
+   * field table without re-emitting events, so it cannot loop.
+   */
+  async #refreshParents(objectId, values, depth = 0) {
+    try {
+      const lookups = await this.db.uiField.findMany({
+        where:  { object_id: Number(objectId), is_active: true, field_type: 'lookup' },
+        select: { name: true },
+      });
+      const parentIds = [...new Set(lookups.map((f) => Number(values?.[f.name])).filter((n) => Number.isInteger(n) && n > 0))];
+      // Bulk loads (vertical installs, imports) collect parents and recompute
+      // them once at the end instead of once per child.
+      if (this.deferredParents) { for (const pid of parentIds) this.deferredParents.add(pid); return; }
+      for (const pid of parentIds) {
+        const parent = await this.db.record.findUnique({ where: { id: pid }, select: { id: true, object_id: true, deleted_at: true, tenant_id: true } });
+        if (!parent || parent.deleted_at) continue;
+        const formulas = await this.compute.formulaFields(parent.object_id);
+        if (!formulas.length) continue;
+        const data = { ...(await this.#loadData(pid)) };
+        const changed = await this.#writeChangedFormulas(parent, data, formulas);
+        // Roll-ups of roll-ups (household ← party ← holding) follow one more level.
+        if (changed && depth < 2) await this.#refreshParents(parent.object_id, data, depth + 1);
+      }
+    } catch (err) {
+      logger?.warn?.('[RecordService] parent formula refresh failed', { objectId, error: err.message });
+    }
+  }
+
+  /** Recompute a record's formulas and write only the values that changed. Returns whether any did. */
+  async #writeChangedFormulas(rec, data, formulas) {
+    const before = { ...data };
+    const names = await this.compute.applyFormulas(rec.object_id, data, rec.id, formulas);
+    const changed = names.filter((n) => String(before[n] ?? '') !== String(data[n] ?? ''));
+    if (changed.length) {
+      await this.#upsertCustomFieldValues(rec.id, Object.fromEntries(changed.map((n) => [n, data[n]])), rec.object_id, rec.tenant_id);
+    }
+    return changed.length > 0;
+  }
+
+  /** Start collecting parent refreshes instead of running them (bulk loads). */
+  deferParentRefresh() {
+    this.deferredParents = new Set();
+  }
+
+  /** Stop deferring; returns the parent record ids that were collected. */
+  takeDeferredParents() {
+    const ids = this.deferredParents ? [...this.deferredParents] : [];
+    this.deferredParents = null;
+    return ids;
   }
 
   // In-process lock map: key = "<tenantId>:<objectId>:<fieldName>"
@@ -196,36 +279,42 @@ class RecordService {
     return fields;
   }
 
+  /** An object's API name, memoised per process (ids never change name). */
+  async #objectName(objectId) {
+    if (objectId == null) return null;
+    const key = Number(objectId);
+    if (OBJECT_NAMES.has(key)) return OBJECT_NAMES.get(key);
+    if (typeof this.db.uiObject?.findUnique !== 'function') return null;
+    const row = await this.db.uiObject.findUnique({ where: { id: key }, select: { name: true } }).catch(() => null);
+    if (row?.name) OBJECT_NAMES.set(key, row.name);
+    return row?.name ?? null;
+  }
+
   // Hydrate a single record: attach CRM entity fields as `data`.
   // Merges EAV custom fields with CRM entity data (non-null CRM wins),
   // consistent with #hydrateMany behavior.
   async #hydrateCrm(record) {
-    const full = await this.db.record.findUnique({
-      where:   { id: record.id },
-      include: {
-        crm_lead:        true,
-        crm_lead_intake: true,
-        crm_contact:     true,
-        crm_account:     true,
-        crm_opportunity: true,
-        crm_case:        true,
-        product:         true,
-        quote:           true,
-        email_template:  true,
-      },
-    });
-    if (!full) return record;
-
+    // Include only the entity relation this object can have. Each included
+    // relation is a separate query, so including all eight for every record
+    // (the old behaviour) cost seconds per read against a remote database,
+    // and a custom object never has any of them.
+    const objectName = record.object?.name ?? await this.#objectName(record.object_id);
+    const relation = objectName == null ? null : ENTITY_RELATION[objectName];
+    const include = objectName == null
+      ? Object.fromEntries(Object.values(ENTITY_RELATION).map((r) => [r, true]))
+      : (relation ? { [relation]: true } : undefined);
     // Always load EAV fields — forms may use a mix of CRM + custom fields
-    const eavRows = await this.db.recordFieldValue.findMany({
-      where: { record_id: record.id },
-    });
+    const [full, eavRows] = await Promise.all([
+      this.db.record.findUnique({ where: { id: record.id }, ...(include ? { include } : {}) }),
+      this.db.recordFieldValue.findMany({ where: { record_id: record.id } }),
+    ]);
+    if (!full) return record;
     const eav = Object.fromEntries(
       eavRows.map(r => [r.field_name, RecordService.#readTypedValue(r)]),
     );
 
     const entity = full.crm_lead ?? full.crm_lead_intake ?? full.crm_contact ?? full.crm_account
-                ?? full.crm_opportunity ?? full.crm_case ?? full.product ?? full.quote
+                ?? full.crm_opportunity ?? full.crm_case ?? full.product
                 ?? full.email_template;
     if (entity) {
       // Determine object name for reverse alias mapping
@@ -271,11 +360,6 @@ class RecordService {
     } else {
       optionalQueries.push(Promise.resolve([]));
     }
-    if (this.db.quote?.findMany) {
-      optionalQueries.push(this.db.quote.findMany({ where: { record_id: { in: ids } } }));
-    } else {
-      optionalQueries.push(Promise.resolve([]));
-    }
     if (this.db.emailTemplate?.findMany) {
       optionalQueries.push(this.db.emailTemplate.findMany({ where: { record_id: { in: ids } } }));
     } else {
@@ -287,7 +371,7 @@ class RecordService {
       optionalQueries.push(Promise.resolve([]));
     }
 
-    const [leads, contacts, accounts, opportunities, cases, eavRows, products, quotes, emailTemplates, leadIntakes] = await Promise.all([
+    const [leads, contacts, accounts, opportunities, cases, eavRows, products, emailTemplates, leadIntakes] = await Promise.all([
       ...coreQueries,
       ...optionalQueries,
     ]);
@@ -296,7 +380,7 @@ class RecordService {
       [leads, 'lead'], [contacts, 'contact'], [accounts, 'account'],
       [opportunities, 'opportunity'], [cases, 'case'],
       [leadIntakes, 'lead_intake'],
-      [products, null], [quotes, null], [emailTemplates, null],
+      [products, null], [emailTemplates, null],
     ];
     for (const [entityList, objName] of entitySets) {
       for (const entity of entityList) {
@@ -312,10 +396,10 @@ class RecordService {
       eavByRecordId.get(row.record_id)[row.field_name] = RecordService.#readTypedValue(row);
     }
     // Merge CRM denormalized fields with EAV fields so that:
-    //  - EAV fields provide the base (custom / insurance-specific values)
+    //  - EAV fields provide the base (custom-field values)
     //  - CRM canonical fields take precedence ONLY when non-null
     // This ensures records with a first-class CRM entity ALSO surface any
-    // additional form-saved EAV fields (e.g. date_of_birth, smoker_status)
+    // additional form-saved EAV fields (e.g. date_of_birth, occupation)
     // without null CRM columns wiping out valid EAV data.
     return records.map(r => {
       const eav = eavByRecordId.get(r.id) ?? {};
@@ -342,7 +426,7 @@ class RecordService {
    * Throws a `ValidationError` whose `details` lists every failing field so the
    * form can show them inline; mis-configured rules are logged, not enforced.
    */
-  async #assertValid(objectId, values, { partial, recordId }) {
+  async #assertValid(objectId, values, { partial, recordId, merged = null }) {
     let fields;
     try {
       fields = await this.db.uiField.findMany({
@@ -361,6 +445,14 @@ class RecordService {
     const checkable = fields.filter((f) => f.field_type !== 'auto_number' && !f.config?.auto_number
       && f.field_type !== 'formula' && !f.config?.computed);
     const { errors, warnings } = validateValues(checkable, values, { partial });
+    // Formula-language rules see the whole record (stored values plus this
+    // submission), since they usually relate several fields.
+    if (checkable.some((f) => (f.validations ?? []).some((v) => v.validation_type === 'expression'))) {
+      const all = typeof merged === 'function' ? await merged() : (merged ?? values);
+      const expr = await this.compute.expressionErrors(checkable, all, recordId);
+      for (const e of expr.errors) if (!errors.some((x) => x.field === e.field)) errors.push(e);
+      warnings.push(...expr.warnings);
+    }
     for (const w of warnings) logger?.warn?.(`[RecordService] validation rule ignored: ${w}`, { objectId });
 
     // Uniqueness — needs the database, so it lives here rather than in the engine.
@@ -435,22 +527,6 @@ class RecordService {
       return;
     }
 
-    // Insurance domain objects — bridge to domain tables + save all to EAV
-    if (INSURANCE_OBJECTS.has(obj.name)) {
-      logger?.info?.('[RecordService] Insurance bridge triggered', { recordId, objectName: obj.name, fieldCount: Object.keys(crmData).length });
-      // Save EAV and sync to insurance domain — run sequentially so both complete
-      const results = await Promise.allSettled([
-        this.#upsertCustomFieldValues(recordId, crmData, objectId, tenantId),
-        this.#syncInsuranceDomain(recordId, obj.name, crmData, tenantId),
-      ]);
-      for (const [i, r] of results.entries()) {
-        if (r.status === 'rejected') {
-          logger?.error?.(`[RecordService] Insurance bridge step ${i} failed`, { recordId, error: r.reason?.message });
-        }
-      }
-      return;
-    }
-
     const allowedFields = CRM_FIELDS[obj.name];
     if (!allowedFields) {
       // Non-CRM custom object — persist field values in the typed EAV table.
@@ -515,124 +591,6 @@ class RecordService {
     ]);
   }
 
-  // ── Insurance domain bridge ──────────────────────────────────────────────
-  // When a CRM module record (application, policy, etc.) is created/updated,
-  // sync key fields to the corresponding insurance domain table so the
-  // INSURANCE section (Applications, Policies, etc.) stays in sync.
-
-  async #syncInsuranceDomain(recordId, objectName, data, tenantId) {
-    try {
-      logger?.info?.('[RecordService] Insurance domain sync', { recordId, objectName, tenantId, fieldCount: Object.keys(data).length });
-      if (objectName === 'application') {
-        await this.#syncInsuranceApplication(recordId, data, tenantId);
-      }
-      // Future: policy, claim, etc. can be added here
-    } catch (err) {
-      logger?.warn?.('[RecordService] Insurance domain sync failed', {
-        recordId, objectName, error: err.message,
-      });
-    }
-  }
-
-  async #syncInsuranceApplication(recordId, data, tenantId) {
-    // ── Resolve or create CrmContact from applicant details ────────────
-    // Note: we do NOT pre-read the existing application here to avoid
-    // the RC-06 findUnique→create gap; upsert below handles that atomically.
-    const firstName = data.wiz_first_name || data.first_name || '';
-    const lastName  = data.wiz_last_name  || data.last_name  || '';
-    const email     = data.wiz_email      || data.email      || '';
-    const phone     = data.wiz_phone      || data.phone      || '';
-    const dob       = data.wiz_dob || data.wiz_date_of_birth || data.date_of_birth || null;
-
-    let contactId = null;
-    if (email || (firstName && lastName)) {
-      // Try to find existing contact by email first, then by name
-      let contact = null;
-      if (email) {
-        contact = await this.db.crmContact.findFirst({
-          where: { email, tenant_id: tenantId },
-        });
-      }
-      if (!contact && firstName && lastName) {
-        contact = await this.db.crmContact.findFirst({
-          where: { first_name: firstName, last_name: lastName, tenant_id: tenantId },
-        });
-      }
-      if (!contact) {
-        // RC-05 fix: catch unique constraint violation from a concurrent create
-        // for the same contact and fall back to a lookup.
-        try {
-          contact = await this.db.crmContact.create({
-            data: {
-              first_name: firstName,
-              last_name:  lastName,
-              email:      email || null,
-              phone:      phone || null,
-              birthdate:  dob ? new Date(dob) : null,
-              tenant_id:  tenantId,
-            },
-          });
-        } catch (err) {
-          if (err.code === 'P2002') {
-            // Another concurrent request just created this contact — find it
-            contact = email
-              ? await this.db.crmContact.findFirst({ where: { email, tenant_id: tenantId } })
-              : await this.db.crmContact.findFirst({ where: { first_name: firstName, last_name: lastName, tenant_id: tenantId } });
-          } else {
-            throw err;
-          }
-        }
-      } else if (dob && !contact.birthdate) {
-        // Update existing contact with DOB if missing
-        await this.db.crmContact.update({
-          where: { id: contact.id },
-          data: { birthdate: new Date(dob) },
-        });
-      }
-      contactId = contact?.id ?? null;
-    }
-
-    const appData = {
-      product_type:      data.product_type || data.wiz_product_type || 'term_life',
-      product_name:      data.product_name || data.wiz_product_name || null,
-      coverage_amount:   Number(data.coverage_amount || data.wiz_coverage_amount) || 0,
-      premium_amount:    Number(data.premium || data.premium_amount) || null,
-      age:               Number(data.age || data.wiz_age) || null,
-      gender:            data.gender || data.wiz_gender || null,
-      date_of_birth:     dob ? new Date(dob) : null,
-      is_smoker:         data.smoker_status === 'current' || data.wiz_smoker_status === 'current' || false,
-      health_class:      data.health_class || data.wiz_health_class || null,
-      term_years:        Number(data.term_years || data.wiz_term_years) || null,
-      payment_frequency: data.payment_frequency || data.wiz_payment_frequency || null,
-      notes:             data.notes || null,
-      status:            data.status || 'submitted',
-      submitted_at:      data.submitted_date ? new Date(data.submitted_date) : new Date(),
-      contact_id:        contactId,
-    };
-
-    // RC-06 fix: replace findUnique→create/update with an atomic upsert on record_id.
-    const appNumber = data.application_number
-      || `APP-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
-
-    // Build selective update (don't overwrite non-empty fields with empty values)
-    const updateData = {};
-    for (const [k, v] of Object.entries(appData)) {
-      if (v != null && v !== '' && v !== 0) updateData[k] = v;
-    }
-
-    await this.db.insuranceApplication.upsert({
-      where:  { record_id: Number(recordId) },
-      create: {
-        record_id:  Number(recordId),
-        app_number: appNumber,
-        ...appData,
-        created_by: data.created_by || null,
-        tenant_id:  tenantId,
-      },
-      update: updateData,
-    });
-  }
-
   // ── Auto-number generation ───────────────────────────────────────────────
 
   /**
@@ -651,13 +609,19 @@ class RecordService {
       const prefix = autoNum.prefix || '';
       const year = new Date().getFullYear();
       const searchPrefix = `${prefix}${year}-`;
+      // Width from the format's trailing N run (YYYY-NNNNNN → 6), minimum 3.
+      // Fixed width keeps the string ordering below numeric: with unpadded
+      // growth, "…-1000" sorted below "…-999" and numbers were reissued.
+      const width = Math.max(3, (/(N+)\s*$/.exec(String(autoNum.format ?? '')) ?? [, 'NNN'])[1].length);
 
       // Serialise concurrent auto-number generation for this field (RC-04).
       // The lock ensures only one request reads the current max and writes
       // the next value at a time within this process.
       const lockKey = `${tenantId ?? 0}:${objectId}:${field.name}`;
       await this.#withAutoNumLock(lockKey, async () => {
-        const where = { field_name: field.name, str_value: { startsWith: searchPrefix } };
+        // Scoped to this object: two objects with a same-named field used to
+        // share (and collide on) one sequence.
+        const where = { field_name: field.name, str_value: { startsWith: searchPrefix }, record: { object_id: Number(objectId) } };
         if (tenantId) where.tenant_id = tenantId;
         const last = await this.db.recordFieldValue.findFirst({
           where,
@@ -670,7 +634,13 @@ class RecordService {
           const match = last.str_value.match(/-(\d+)$/);
           if (match) nextNum = parseInt(match[1], 10) + 1;
         }
-        crmData[field.name] = `${searchPrefix}${String(nextNum).padStart(3, '0')}`;
+        // The number is only persisted later in the create, so a concurrent
+        // create in this process could read the same max. Never reissue a
+        // number this process has already handed out for the sequence.
+        const seqKey = `${lockKey}:${searchPrefix}`;
+        nextNum = Math.max(nextNum, (ISSUED_AUTO_NUMBERS.get(seqKey) ?? 0) + 1);
+        ISSUED_AUTO_NUMBERS.set(seqKey, nextNum);
+        crmData[field.name] = `${searchPrefix}${String(nextNum).padStart(width, '0')}`;
       });
     }
   }
@@ -726,8 +696,28 @@ class RecordService {
       : new Map();
 
     const rid = Number(recordId);
-    const entries = Object.entries(fieldData);
+    let entries = Object.entries(fieldData);
     const CHUNK = 5;
+
+    // Fields the record does not have yet are inserted in one statement; only
+    // existing ones are updated row by row. A new record therefore costs two
+    // round trips instead of one upsert (select + write) per field.
+    const rfv = this.db.recordFieldValue;
+    if (typeof rfv.createMany === 'function' && typeof rfv.findMany === 'function') {
+      const present = new Set((await rfv.findMany({ where: { record_id: rid }, select: { field_name: true } }) ?? []).map((r) => r.field_name));
+      const fresh = entries.filter(([name]) => !present.has(name));
+      if (fresh.length) {
+        await rfv.createMany({
+          data: fresh.map(([fieldName, value]) => ({
+            record_id: rid, field_name: fieldName,
+            ...RecordService._typedValuePublic(value, typeMap.get(fieldName) ?? 'string'),
+            ...(tenantId ? { tenant_id: tenantId } : {}),
+          })),
+          skipDuplicates: true,
+        });
+        entries = entries.filter(([name]) => present.has(name));
+      }
+    }
 
     for (let i = 0; i < entries.length; i += CHUNK) {
       const batch = entries.slice(i, i + CHUNK);
@@ -764,6 +754,12 @@ class RecordService {
    */
   async #ownerFilter(viewer) {
     if (!viewer) return {};
+    const scopeWhere = this.scope.whereFor(await this.scope.forViewer(viewer));
+    return { ...(await this.#ownerOnlyFilter(viewer)), ...scopeWhere };
+  }
+
+  /** The owner / hierarchy part of #ownerFilter, before unit and barrier scope. */
+  async #ownerOnlyFilter(viewer) {
     const { role, employee_id } = viewer;
     const level = viewer.role_level ?? ROLE_LEVEL[role] ?? 0;
     if (level <= ADMIN_THRESHOLD) return {};
@@ -780,6 +776,31 @@ class RecordService {
   }
 
   /**
+   * Re-evaluate a record's formula fields (and its parents' roll-ups) after
+   * something other than this service changed it — a workflow action, an
+   * update_related step. Writes straight to the typed field table; no events.
+   */
+  async recompute(recordId) {
+    const rec = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { id: true, object_id: true, tenant_id: true, deleted_at: true } });
+    if (!rec || rec.deleted_at) return;
+    const formulas = await this.compute.formulaFields(rec.object_id).catch(() => []);
+    const data = { ...(await this.#loadData(rec.id)) };
+    const changed = formulas.length ? await this.#writeChangedFormulas(rec, data, formulas) : false;
+    if (changed || !formulas.length) await this.#refreshParents(rec.object_id, data);
+    return changed;
+  }
+
+  /** Throw unless the viewer may edit records of this object. */
+  async assertCanEdit(objectId, viewer) {
+    return this.#assertObjectEditPermission(objectId, viewer);
+  }
+
+  /** Public form of the viewer's record filter, for related lists / lookups / analytics. */
+  async accessWhere(viewer) {
+    return this.#ownerFilter(viewer);
+  }
+
+  /**
    * Verify the viewer is allowed to access a specific record.
    * Throws NotFoundError (not AuthorizationError) to avoid leaking record existence
    * to users who have no permission to see it.
@@ -789,15 +810,17 @@ class RecordService {
     if (!viewer) return;
     const { role, employee_id } = viewer;
     const level = viewer.role_level ?? ROLE_LEVEL[role] ?? 0;
-    if (level <= ADMIN_THRESHOLD) return;
 
     const record = (recordOrId && typeof recordOrId === 'object')
       ? recordOrId
       : await this.db.record.findUnique({
           where:  { id: Number(recordOrId) },
-          select: { id: true, created_by: true, assigned_to: true },
+          select: { id: true, created_by: true, assigned_to: true, business_unit_id: true, barrier_zone_id: true },
         });
     if (!record) throw new NotFoundError('Record');
+    // Unit and barrier scope apply to every role (barriers bind admins too).
+    if (!this.scope.canSee(await this.scope.forViewer(viewer), record)) throw new NotFoundError('Record');
+    if (level <= ADMIN_THRESHOLD) return;
 
     if (level <= MANAGER_THRESHOLD) {
       const rows = await this.db.employeeHierarchy.findMany({
@@ -834,12 +857,6 @@ class RecordService {
     const obj = await this.db.uiObject.findUnique({
       where: { id: Number(objectId) }, select: { name: true },
     });
-    // Legacy: a standalone lead_score object (removed from new seeds) is served
-    // read-only from the LeadScore table. Kept for tenants that still have it.
-    if (obj?.name === 'lead_score') {
-      return this.#getLeadScoreRecords(Number(objectId), stageId, viewer);
-    }
-
     const ownerWhere = await this.#ownerFilter(viewer);
     // deleted_at: null → trashed (soft-deleted) records are never shown to users.
     const where = { object_id: Number(objectId), deleted_at: null, ...ownerWhere };
@@ -868,7 +885,7 @@ class RecordService {
         'clients should paginate with limit/offset.',
       );
     }
-    const hydrated = await this.#hydrateMany(records);
+    const hydrated = await this.#attachLookupLabels(Number(objectId), await this.#hydrateMany(records));
     // Leads carry their scoring result inline (score + grade columns).
     if (obj?.name === 'lead_intake') return this.#attachLeadScores(hydrated);
     return hydrated;
@@ -884,12 +901,164 @@ class RecordService {
     });
     if (!record || record.deleted_at) throw new NotFoundError('Record');
     await this.#assertAccess(record, viewer);
-    const hydrated = await this.#hydrateCrm(record);
+    const [hydrated] = await this.#attachLookupLabels(record.object_id, [await this.#hydrateCrm(record)]);
     if (record.object?.name === 'lead_intake') {
       const [withScore] = await this.#attachLeadScores([hydrated]);
       return withScore;
     }
     return hydrated;
+  }
+
+  // ── Lookup (reference) fields ─────────────────────────────────────────────
+  // A `lookup` field stores the id of a record of `config.target_object`. The
+  // list/detail payloads carry `labels[field]` (the linked record's title) so
+  // the UI never shows a bare id, and every lookup implies a related list on
+  // the target record — no per-object code or page needed.
+
+  /** Name of the field used as a record's title for an object. */
+  async titleFieldFor(objectId) {
+    const obj = await this.db.uiObject.findUnique({ where: { id: Number(objectId) }, select: { config: true } }).catch(() => null);
+    if (obj?.config?.title_field) return obj.config.title_field;
+    const fields = await this.db.uiField.findMany({
+      where:   { object_id: Number(objectId), is_active: true },
+      select:  { name: true, field_type: true },
+      orderBy: { order_index: 'asc' },
+    }).catch(() => []);
+    const preferred = ['display_name', 'name', 'full_name', 'title', 'subject', 'code', 'reference'];
+    for (const p of preferred) if (fields.some((f) => f.name === p)) return p;
+    return fields.find((f) => ['text', 'auto_number', 'email'].includes(f.field_type))?.name ?? null;
+  }
+
+  /** id → title for records of one object (EAV-stored titles). */
+  async #titlesFor(objectId, ids) {
+    if (!ids.length) return new Map();
+    const titleField = await this.titleFieldFor(objectId);
+    if (!titleField) return new Map();
+    const rows = await this.db.recordFieldValue.findMany({
+      where:  { record_id: { in: ids }, field_name: titleField },
+      select: { record_id: true, str_value: true },
+    });
+    return new Map(rows.map((r) => [r.record_id, r.str_value]));
+  }
+
+  /** Lookup fields of an object with their resolved target object id. */
+  async #lookupFields(objectId) {
+    if (typeof this.db.uiField?.findMany !== 'function') return [];
+    const fields = await this.db.uiField.findMany({
+      where:  { object_id: Number(objectId), is_active: true, field_type: 'lookup' },
+      select: { name: true, config: true },
+    }).catch(() => []);
+    if (!fields?.length) return [];
+    const names = [...new Set(fields.map((f) => f.config?.target_object).filter(Boolean))];
+    const targets = await this.db.uiObject.findMany({ where: { name: { in: names } }, select: { id: true, name: true } });
+    const idByName = new Map(targets.map((t) => [t.name, t.id]));
+    return fields
+      .map((f) => ({ name: f.name, targetObjectId: idByName.get(f.config?.target_object) ?? null }))
+      .filter((f) => f.targetObjectId);
+  }
+
+  async #attachLookupLabels(objectId, records) {
+    if (!records.length) return records;
+    const lookups = await this.#lookupFields(objectId);
+    if (!lookups.length) return records;
+    const labelsByField = new Map();
+    for (const lf of lookups) {
+      const ids = [...new Set(records.map((r) => Number(r.data?.[lf.name])).filter((n) => Number.isInteger(n) && n > 0))];
+      labelsByField.set(lf.name, await this.#titlesFor(lf.targetObjectId, ids));
+    }
+    return records.map((r) => {
+      const labels = {};
+      for (const [field, titles] of labelsByField) {
+        const id = Number(r.data?.[field]);
+        if (Number.isInteger(id) && id > 0) labels[field] = titles.get(id) ?? `#${id}`;
+      }
+      return Object.keys(labels).length ? { ...r, labels } : r;
+    });
+  }
+
+  /**
+   * Records of an object for a lookup picker, filtered by title and scoped to
+   * what the viewer may see. `q` empty → the most recent records.
+   */
+  async searchLookup(objectId, q, viewer, limit = 20, id = null) {
+    const titleField = await this.titleFieldFor(objectId);
+    const access = await this.#ownerFilter(viewer);
+    const take = Math.min(Math.max(Number(limit) || 20, 1), 50);
+    let ids;
+    if (id) {
+      // Resolve one known id (a form re-opening a saved lookup value).
+      const row = await this.db.record.findFirst({ where: { id: Number(id), object_id: Number(objectId), deleted_at: null, ...access }, select: { id: true } });
+      ids = row ? [row.id] : [];
+    } else if (q && titleField) {
+      const rows = await this.db.recordFieldValue.findMany({
+        where:  { field_name: titleField, str_value: { contains: String(q) }, record: { object_id: Number(objectId), deleted_at: null, ...access } },
+        select: { record_id: true },
+        take,
+      });
+      ids = rows.map((r) => r.record_id);
+    } else {
+      const rows = await this.db.record.findMany({
+        where:   { object_id: Number(objectId), deleted_at: null, ...access },
+        select:  { id: true },
+        orderBy: { created_at: 'desc' },
+        take,
+      });
+      ids = rows.map((r) => r.id);
+    }
+    const titles = await this.#titlesFor(Number(objectId), ids);
+    return ids.map((id) => ({ id, label: titles.get(id) ?? `#${id}` }));
+  }
+
+  /**
+   * Every record that points at this one through a lookup field, grouped by
+   * the object and field it came through — the record's related lists.
+   */
+  async relatedRecords(recordId, viewer, perRelation = 25) {
+    const record = await this.db.record.findUnique({
+      where:   { id: Number(recordId) },
+      include: { object: { select: { name: true } } },
+    });
+    if (!record || record.deleted_at) throw new NotFoundError('Record');
+    await this.#assertAccess(record, viewer);
+
+    const incoming = await this.db.uiField.findMany({
+      where:  { is_active: true, field_type: 'lookup', config: { path: '$.target_object', equals: record.object.name } },
+      select: { name: true, label: true, object: { select: { id: true, name: true, label: true, plural_label: true, module_id: true } } },
+    });
+    const access = await this.#ownerFilter(viewer);
+    const out = [];
+    for (const f of incoming) {
+      const where = {
+        field_name: f.name,
+        str_value:  String(record.id),
+        record:     { object_id: f.object.id, deleted_at: null, ...access },
+      };
+      const [rows, total] = await Promise.all([
+        this.db.recordFieldValue.findMany({ where, select: { record_id: true }, take: perRelation, orderBy: { record_id: 'desc' } }),
+        this.db.recordFieldValue.count({ where }),
+      ]);
+      const ids = rows.map((r) => r.record_id);
+      const [titles, anchors] = await Promise.all([
+        this.#titlesFor(f.object.id, ids),
+        this.db.record.findMany({
+          where:  { id: { in: ids } },
+          select: { id: true, created_at: true, pipeline_stage: { select: { label: true, color: true } } },
+        }),
+      ]);
+      const anchorById = new Map(anchors.map((a) => [a.id, a]));
+      out.push({
+        object: f.object,
+        field:  { name: f.name, label: f.label },
+        total,
+        records: ids.map((id) => ({
+          id,
+          label:      titles.get(id) ?? `#${id}`,
+          stage:      anchorById.get(id)?.pipeline_stage ?? null,
+          created_at: anchorById.get(id)?.created_at ?? null,
+        })),
+      });
+    }
+    return out;
   }
 
   /**
@@ -942,75 +1111,6 @@ class RecordService {
     });
   }
 
-  /**
-   * Build read-only "records" for the lead_score object from the LeadScore
-   * table. Each score is mapped to the object's field shape (lead_name, email,
-   * company, total_score, grade, scored_at, scoring_details) and, when the
-   * object has a grade pipeline, placed in the matching grade column.
-   */
-  async #getLeadScoreRecords(objectId, stageId, viewer) {
-    const tenantId = Number(viewer?.tenant_id) || getTenantId();
-    const [scores, stages] = await Promise.all([
-      this.db.leadScore.findMany({
-        where: tenantId ? { tenant_id: tenantId } : {},
-        orderBy: { total_score: 'desc' },
-        include: {
-          lead:        { select: { first_name: true, last_name: true, email: true, company: true } },
-          lead_intake: { select: { first_name: true, last_name: true, email: true, company: true } },
-        },
-      }),
-      this.db.uiPipelineStage.findMany({
-        where: { pipeline: { object_id: Number(objectId) } },
-        select: { id: true, name: true, label: true, color: true },
-      }),
-    ]);
-
-    const stageByName = Object.fromEntries(stages.map(s => [s.name, s]));
-    const gradeStageName = { A: 'grade_a', B: 'grade_b', C: 'grade_c', D: 'grade_d', F: 'grade_f' };
-
-    let records = scores.map((s) => {
-      const grade = leadScoreGrade(s.total_score);
-      const stage = stageByName[gradeStageName[grade]] ?? null;
-      // Scores may reference a Lead (crm_lead_intake) or a legacy Prospect (crm_leads).
-      const entity = s.lead_intake ?? s.lead;
-      const name = [entity?.first_name, entity?.last_name].filter(Boolean).join(' ');
-      return {
-        id: s.id,
-        object_id: Number(objectId),
-        pipeline_stage_id: stage?.id ?? null,
-        pipeline_stage: stage
-          ? { id: stage.id, label: stage.label, color: stage.color, name: stage.name }
-          : null,
-        created_at: s.calculated_at,
-        _readonly: true,
-        data: {
-          lead_name:       name || (entity?.email ?? '—'),
-          email:           entity?.email ?? null,
-          company:         entity?.company ?? null,
-          total_score:     s.total_score,
-          grade,
-          scored_at:       s.calculated_at,
-          scoring_details: RecordService.#summarizeScoringDetails(s.scoring_details),
-        },
-      };
-    });
-
-    if (stageId != null && stageId !== '') {
-      records = records.filter(r => r.pipeline_stage_id === Number(stageId));
-    }
-    return records;
-  }
-
-  /** Render the LeadScore.scoring_details JSON into a readable summary string. */
-  static #summarizeScoringDetails(details) {
-    if (!details || typeof details !== 'object') return null;
-    const rules = Array.isArray(details.rules) ? details.rules : [];
-    if (!rules.length) return 'No scoring rules matched.';
-    return rules
-      .map(r => `${r.rule_name ?? r.field ?? 'Rule'}: ${r.points >= 0 ? '+' : ''}${r.points} pts`)
-      .join('\n');
-  }
-
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   async createRecord(objectId, stageId, createdBy, assignedTo = null, viewer = null, crmData = null, { draft = false } = {}) {
@@ -1022,13 +1122,15 @@ class RecordService {
     }
     // ── Server-side validation (is_required, field-type formats, admin rules) ──
     // Runs before anything is written so a rejected submission leaves no trace.
-    // A draft (e.g. Quote → Apply Now, completed later in the wizard) is checked
-    // like a patch: submitted values must be valid, absent ones may come later.
+    // A draft (a record started in one step and completed later in a wizard) is
+    // checked like a patch: submitted values must be valid, absent ones may come later.
+    if (crmData) await this.compute.applyFormulas(objectId, crmData, null);
     await this.#assertValid(objectId, crmData ?? {}, { partial: draft, recordId: null });
     // ── Auto-number generation for fields with auto_number config ─────────
     if (crmData) {
       await this.#generateAutoNumbers(objectId, crmData, tenantId);
     }
+    const stamp = crmData ? await this.scope.stampFor(objectId, crmData) : {};
     const record = await this.db.record.create({
       data: {
         object_id:         Number(objectId),
@@ -1036,6 +1138,7 @@ class RecordService {
         created_by:        createdBy ?? null,
         assigned_to:       assignedTo ?? null,
         tenant_id:         tenantId,
+        ...stamp,
       },
       include: { pipeline_stage: { select: { id: true, label: true, color: true, name: true } } },
     });
@@ -1051,6 +1154,8 @@ class RecordService {
     this.#emit('record.created', { objectId, record, actorId: createdBy });
     // ── Auto-score leads/prospects (fire-and-forget) ──────────────────────
     if (crmData) this.#maybeScoreLead(record.id, objectId, tenantId);
+    // A new child changes its parents' roll-ups.
+    if (crmData) await this.#refreshParents(objectId, crmData);
     return this.#hydrateCrm(record);
   }
 
@@ -1060,13 +1165,26 @@ class RecordService {
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
 
-    const updatePayload = {};
+    const updatePayload = crmData ? await this.scope.stampFor(existing.object_id, crmData) : {};
     if (assignedTo !== undefined) updatePayload.assigned_to = assignedTo ?? null;
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
 
     // Only the submitted fields are validated on update (a partial patch must
     // not fail because an untouched required field is missing from the body).
-    if (crmData) await this.#assertValid(existing.object_id, crmData, { partial: true, recordId: Number(id) });
+    if (crmData) {
+      // Formulas and formula rules see the stored record overlaid with this
+      // patch. Loaded only when the object actually has either, so a plain
+      // update costs no extra read.
+      let merged = null;
+      const getMerged = async () => (merged ??= { ...(await this.#loadData(id)), ...crmData });
+      const formulas = await this.compute.formulaFields(existing.object_id).catch(() => []);
+      if (formulas?.length) {
+        const values = await getMerged();
+        const computed = await this.compute.applyFormulas(existing.object_id, values, Number(id), formulas);
+        for (const name of computed) crmData[name] = values[name];
+      }
+      await this.#assertValid(existing.object_id, crmData, { partial: true, recordId: Number(id), merged: getMerged });
+    }
 
     // Run record update + CRM entity upsert in parallel where possible
     const [updated] = await Promise.all([
@@ -1082,7 +1200,44 @@ class RecordService {
     this.#emit('record.updated', { objectId: updated.object_id, record: updated, actorId: updatedBy });
     // ── Re-score leads/prospects when their CRM data changes ──────────────
     if (crmData) this.#maybeScoreLead(Number(id), existing.object_id, tenantId);
+    if (crmData) await this.#refreshParents(existing.object_id, crmData);
     return this.#hydrateCrm(updated);
+  }
+
+  /**
+   * Stage gates — Builder-configured conditions for entering a stage:
+   *   stage.config.required_fields  fields that must be filled
+   *   stage.config.entry_rule       { expression, message } — a formula that
+   *                                 must be true (e.g. "KYC approved and
+   *                                 security perfected" before disbursement)
+   * Enforced here, so Kanban drags, API calls, bulk moves and workflow moves
+   * all obey the same rule.
+   */
+  async #assertStageGate(recordId, stageId) {
+    if (!stageId || typeof this.db.uiPipelineStage?.findUnique !== 'function') return;
+    const stage = await this.db.uiPipelineStage.findUnique({ where: { id: Number(stageId) }, select: { label: true, config: true } });
+    const cfg = stage?.config ?? {};
+    const required = Array.isArray(cfg.required_fields) ? cfg.required_fields : [];
+    if (!required.length && !cfg.entry_rule?.expression) return;
+    const data = (await this.#loadData(recordId)) ?? {};
+    const blank = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);
+    const missing = required.filter((f) => blank(data[f]));
+    if (missing.length) {
+      const err = new ValidationError(`Complete ${missing.join(', ')} before moving to ${stage.label}`);
+      err.details = missing.map((f) => ({ field: f, message: `Required for ${stage.label}` }));
+      throw err;
+    }
+    if (cfg.entry_rule?.expression) {
+      const { evaluate, truthy } = require('./formula');
+      let ok;
+      try {
+        ok = truthy(await evaluate(cfg.entry_rule.expression, this.compute.context({ ...data }, Number(recordId))));
+      } catch (e) {
+        logger?.warn?.('[RecordService] stage entry rule failed to evaluate — blocking', { stageId, error: e.message });
+        ok = false;
+      }
+      if (!ok) throw new ValidationError(cfg.entry_rule.message || `This record does not meet the conditions for ${stage.label}`);
+    }
   }
 
   async updateRecordStage(id, stageId, updatedBy, viewer) {
@@ -1090,6 +1245,7 @@ class RecordService {
     if (!existing) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
+    if (stageId && Number(stageId) !== existing.pipeline_stage_id) await this.#assertStageGate(existing.id, stageId);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     const updated = await this.db.record.update({
       where: { id: Number(id) },
@@ -1346,6 +1502,8 @@ class RecordService {
   async bulkUpdateStage(ids, stageId, updatedBy, viewer) {
     const numIds = await this.#filterAccessibleIds(ids.map(Number), viewer);
     if (!numIds.length) return { updated: 0 };
+    // Every record must pass the target stage's gate; a bulk move is all-or-nothing.
+    for (const rid of numIds) await this.#assertStageGate(rid, stageId);
     // Fetch existing records for workflow triggers
     const existingRecords = await this.db.record.findMany({
       where: { id: { in: numIds } },

@@ -39,7 +39,15 @@ The page lists every pipeline with its linked object, stages, and active status.
    Trash for admin recovery; turn it **off** for **hard delete** (permanent). See
    [Trash: recovering deleted records](#trash-recovering-deleted-records).
 7. Watch the **Preview** strip update as you edit, showing the stage chips in their colors and order.
-8. Click **Save Pipeline**. The button is disabled until at least one stage has a label and an object is selected.
+8. (Optional) Open a stage's **Entry rules** to stop records entering it until they are ready:
+   - Required fields: the API names, comma-separated, of fields that must be filled before a record may
+     move into the stage.
+   - A formula that must be true, such as `security_complete AND kyc_status = 'approved'`, and the message
+     users see when it is not.
+
+   The rules apply however the record moves: dragging on the board, a bulk stage change, the API or a
+   workflow.
+9. Click **Save Pipeline**. The button is disabled until at least one stage has a label and an object is selected.
 
 To edit later, click the **pencil** icon on a pipeline row. To set who can use it, click the **shield**
 (Permissions) icon. To review who changed the pipeline and when, click the **history** (clock) icon. To remove
@@ -61,6 +69,7 @@ in the **History** modal; a record's own history is on its detail page.
 | Stage label | The stage's display name | At least one labeled stage is required to save |
 | Add Stage | Appends a new empty stage row | New stages get the next palette color |
 | Stage order | Left-to-right order of stages | Reorder by their position in the list |
+| Entry rules | Required fields and a formula rule a record must satisfy to enter the stage | Optional; enforced by the server for every kind of move |
 | Save Pipeline | Creates or updates the pipeline and its stages | Disabled until a labeled stage exists |
 
 ## Tips

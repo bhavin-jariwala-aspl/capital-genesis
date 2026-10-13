@@ -56,7 +56,7 @@ To change a template later, expand its row and click **Edit**; the same dialog r
 
 | Variable group | Examples | Where values come from |
 | --- | --- | --- |
-| Object Fields | `{{first_name}}`, `{{company}}`, `{{quote_number}}` | Auto-filled from the linked record when sending. |
+| Object Fields | `{{first_name}}`, `{{company}}`, `{{opportunity_name}}` | Auto-filled from the linked record when sending. |
 | System Variables | `{{sender_name}}`, `{{sender_email}}`, `{{company_name}}`, `{{help_center_url}}` | Filled from sender and tenant settings. |
 
 System fields such as `id`, `record_id`, `owner_id`, `created_by`, `created_at`, `updated_at`, and `external_id`

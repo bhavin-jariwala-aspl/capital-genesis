@@ -16,7 +16,7 @@ const {
   NON_MEASURE_CHARTS, WIDGET_TYPE_BY_SHAPE, buildDashboard,
 } = require('../prisma/crm-dashboards');
 const { DATASETS } = require('../src/services/analytics.service');
-const { chartTypesUsed, LIBRARY_CHARTS } = require('../scripts/seed-dashboards');
+const { LIBRARY_CHARTS } = require('../scripts/seed-dashboards');
 
 const datasetByKey = new Map(DATASETS.map((d) => [d.key, d]));
 const allWidgets = DASHBOARDS.flatMap((d) => d.widgets.map((w) => ({ ...w, dashboard: d.name, palette: d.palette })));
@@ -202,13 +202,7 @@ describe('buildDashboard', () => {
   });
 });
 
-describe('the catalogue demonstrates the whole chart library', () => {
-  it('puts every chart type the renderer supports on a dashboard', () => {
-    const used = new Set(chartTypesUsed());
-    const missing = [...CHART_TYPES].filter((t) => !used.has(t));
-    expect(missing).toEqual([]);
-  });
-
+describe('the saved chart library', () => {
   it('keeps the saved chart library pointing at real datasets and valid types', () => {
     for (const [name, datasetKey, chartType] of LIBRARY_CHARTS) {
       expect(datasetByKey.has(datasetKey)).toBe(true);

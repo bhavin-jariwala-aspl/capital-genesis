@@ -222,7 +222,7 @@ export const BUILDER_GUIDES = {
   '/builder/dashboard': {
     what: 'Widget dashboards over the analytics datasets and saved reports.',
     standards: [
-      'One question per widget, and put the answer in the title. "Premium by month" is a label; "Is premium '
+      'One question per widget, and put the answer in the title. "Revenue by month" is a label; "Is revenue '
       + 'growing?" is a dashboard.',
       'Five to nine widgets per board. Past that, nobody reads any of them — build a second board.',
       'Lead with the number that matters, then the trend, then the breakdown. Readers scan top-left first.',
@@ -407,7 +407,7 @@ export const BUILDER_GUIDES = {
       + 'start at 2.',
       'Add a role only when a group genuinely needs different access. Roles that differ by nothing but their '
       + 'name make permissions harder to reason about for no benefit.',
-      'Name roles after the job, not the person or the team. "underwriter" survives a reorganisation; '
+      'Name roles after the job, not the person or the team. "account_manager" survives a reorganisation; '
       + '"north_team_lead" does not.',
     ],
     pitfalls: [

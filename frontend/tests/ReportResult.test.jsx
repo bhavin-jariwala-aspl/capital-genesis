@@ -386,28 +386,28 @@ describe('stale filter operators are repaired on load', () => {
 
 describe('the column picker matches what a table renders', () => {
   const SOURCES = [
-    { key: 'policies', default_columns: ['policy_number', 'status', 'premium_amount'] },
+    { key: 'opportunities', default_columns: ['name', 'stage', 'amount'] },
     { key: 'leads', default_columns: ['last_name', 'first_name', 'company'] },
   ];
 
   it('ticks the source defaults for a table with no columns chosen', () => {
     // The engine falls back to these, so an empty picker disagreed with the preview.
-    const seeded = withSeededColumns({ source: 'policies', viz: 'table', columns: [] }, SOURCES);
-    expect(seeded.columns).toEqual(['policy_number', 'status', 'premium_amount']);
+    const seeded = withSeededColumns({ source: 'opportunities', viz: 'table', columns: [] }, SOURCES);
+    expect(seeded.columns).toEqual(['name', 'stage', 'amount']);
   });
 
   it('leaves a deliberate column choice alone', () => {
-    const chosen = { source: 'policies', viz: 'table', columns: ['premium_amount'] };
+    const chosen = { source: 'opportunities', viz: 'table', columns: ['amount'] };
     expect(withSeededColumns(chosen, SOURCES)).toBe(chosen);
   });
 
   it('does not seed a chart — columns are not used there', () => {
-    const chart = { source: 'policies', viz: 'bar', columns: [] };
+    const chart = { source: 'opportunities', viz: 'bar', columns: [] };
     expect(withSeededColumns(chart, SOURCES)).toBe(chart);
   });
 
   it('is a no-op before the source catalogue has loaded', () => {
-    const config = { source: 'policies', viz: 'table', columns: [] };
+    const config = { source: 'opportunities', viz: 'table', columns: [] };
     expect(withSeededColumns(config, [])).toBe(config);
   });
 
@@ -422,7 +422,7 @@ describe('the column picker matches what a table renders', () => {
   });
 
   it('copies the defaults rather than aliasing the catalogue', () => {
-    const seeded = withSeededColumns({ source: 'policies', viz: 'table', columns: [] }, SOURCES);
+    const seeded = withSeededColumns({ source: 'opportunities', viz: 'table', columns: [] }, SOURCES);
     seeded.columns.push('mutated');
     expect(SOURCES[0].default_columns).toHaveLength(3);
   });

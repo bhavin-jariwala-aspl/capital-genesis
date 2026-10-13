@@ -18,7 +18,7 @@ const tenantContext = new AsyncLocalStorage();
 
 // Models that should NOT be tenant-filtered. Everything here either has no
 // `tenant_id` column at all (Tenant, SubscriptionPlan, FeatureFlag,
-// PlatformAuditLog, SystemAnnouncement, CarrierAdapterConfig) or is platform
+// PlatformAuditLog, SystemAnnouncement) or is platform
 // control-plane data whose callers filter the tenant explicitly.
 // `tests/tenant-scope-coverage.test.js` asserts against the Prisma DMMF that
 // every model outside this set carries a `tenant_id` column, so a new model
@@ -36,7 +36,6 @@ const GLOBAL_MODELS = new Set([
   'ApiRateLimit',
   'SecurityPolicy',
   'DataExportRequest',
-  'CarrierAdapterConfig',
 ]);
 
 // Models with a NULLABLE tenant_id where `null` means "system-wide row shared
@@ -111,9 +110,19 @@ function injectTenantScope(action, args, tenantId, { shared = false } = {}) {
       if (args.create) {
         args.create.tenant_id = tenantId;
       }
+      // An update must never re-home the row: pin rather than trust the body.
+      if (args.update && Object.prototype.hasOwnProperty.call(args.update, 'tenant_id')) {
+        args.update.tenant_id = tenantId;
+      }
     } else {
       args.where = args.where || {};
       args.where.tenant_id = tenantId;
+      // Scoping the WHERE stops writes to another tenant's rows; pinning
+      // data.tenant_id stops a body that carries `tenant_id` (a spread request
+      // payload) from moving one of this tenant's rows into another tenant.
+      if (args.data && typeof args.data === 'object' && Object.prototype.hasOwnProperty.call(args.data, 'tenant_id')) {
+        args.data.tenant_id = tenantId;
+      }
     }
   }
 

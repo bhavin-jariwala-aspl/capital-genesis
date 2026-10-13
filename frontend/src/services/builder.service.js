@@ -4,6 +4,12 @@ import api from './api';
 const wrap = (promise) => promise.then((r) => ({ data: r.data?.data ?? r.data }));
 
 export const builderService = {
+  // Formula language — syntax check as the admin types
+  checkFormula:   (expression) => wrap(api.post('/builder/formula/check', { expression })),
+  // Public web forms
+  publishForm:    (id, settings = {}) => wrap(api.post(`/builder/forms/${id}/publish`, settings)),
+  unpublishForm:  (id) => wrap(api.delete(`/builder/forms/${id}/publish`)),
+
   // Dashboards
   getDashboards:  ()    => wrap(api.get('/builder/dashboards')),
   getDashboard:   (id)  => wrap(api.get(`/builder/dashboards/${id}`)),

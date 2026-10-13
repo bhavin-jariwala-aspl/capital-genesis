@@ -67,7 +67,13 @@ describe('authenticate — tenant context reaches the handler', () => {
   it('rejects a missing, malformed, or forged token with 401', async () => {
     expect((await get('/whoami')).statusCode).toBe(401);
     expect((await get('/whoami', 'not-a-jwt')).statusCode).toBe(401);
-    const forged = token({ sub: 'X', tenant_id: 1 }).replace(/.$/, (c) => (c === 'a' ? 'b' : 'a'));
+    // Flip a character in the MIDDLE of the signature. The last base64url
+    // character of an HMAC-SHA256 signature carries unused padding bits, so
+    // changing it can decode to the same bytes and the "forged" token stays
+    // valid — which made this test fail about one run in twelve.
+    const good = token({ sub: 'X', tenant_id: 1 });
+    const sigAt = good.lastIndexOf('.') + 10;
+    const forged = good.slice(0, sigAt) + (good[sigAt] === 'a' ? 'b' : 'a') + good.slice(sigAt + 1);
     expect((await get('/whoami', forged)).statusCode).toBe(401);
     const res = await app.inject({ method: 'GET', url: '/whoami', headers: { authorization: 'Basic abc' } });
     expect(res.statusCode).toBe(401);

@@ -62,6 +62,52 @@ const ENTITY = {
   },
 };
 
+// Any metadata object. Policies name the object (`object_id`) and how its
+// pipeline maps onto the clock in `config`:
+//   first_response_stages — stages in which first response is still due
+//                            (default: no stage yet)
+//   closed_stages          — stages that complete resolution
+//   canceled_stages        — stages that cancel the timers (lost, withdrawn)
+//   dimension_field        — field whose value picks a target row (e.g. priority)
+// The reconciler builds rows from records + typed field values and then runs
+// the very same timer / pause / escalation logic as the built-in entities.
+ENTITY.record = {
+  model:          null,
+  dynamic:        true,
+  statusField:    'stage',
+  dimField:       '__dimension',
+  ownerField:     'assigned_to',
+  openWhere:      null,
+  priorityLadder: [],
+  label:          (r) => r.__title || `Record #${r.id}`,
+  metricStatus: {
+    first_response: () => 'running',
+    resolution:     () => 'running',
+  },
+};
+
+/** Per-object engine config for `record` policies, from the policy's config. */
+function recordEntityConfig(policyCfg = {}) {
+  const first = new Set(policyCfg.first_response_stages ?? []);
+  const closed = new Set(policyCfg.closed_stages ?? []);
+  const canceled = new Set(policyCfg.canceled_stages ?? []);
+  return {
+    ...ENTITY.record,
+    dimField: policyCfg.dimension_field || '__dimension',
+    closed, canceled,
+    metricStatus: {
+      first_response: (r) => {
+        if (canceled.has(r.stage)) return 'canceled';
+        const stillDue = first.size ? first.has(r.stage) : !r.stage;
+        return stillDue ? 'running' : 'met';
+      },
+      resolution: (r) => (closed.has(r.stage) ? 'met' : canceled.has(r.stage) ? 'canceled' : 'running'),
+    },
+  };
+}
+
+const TITLE_FIELDS = ['display_name', 'name', 'full_name', 'title', 'subject', 'reference'];
+
 const METRIC_LABEL = { first_response: 'First response', resolution: 'Resolution' };
 
 // ── Business-hours calendar math (offset-based, DST-free) ───────────────────
@@ -210,11 +256,13 @@ class SlaService {
   async reconcile() {
     if (this.#running) return { skipped: true };
     this.#running = true;
-    const summary = { case: 0, lead: 0, task: 0 };
+    const summary = { case: 0, lead: 0, task: 0, record: 0 };
     try {
       for (const type of Object.keys(ENTITY)) {
+        if (ENTITY[type].dynamic) continue;
         summary[type] = await this.#reconcileEntity(type);
       }
+      summary.record = await this.#reconcileRecords();
     } catch (err) {
       this.log.error?.({ err }, '[sla] reconcile error');
     } finally {
@@ -260,6 +308,86 @@ class SlaService {
           this.log.error?.({ err, type, id: rec.id }, '[sla] record error');
         }
       });
+    }
+    return processed;
+  }
+
+  /**
+   * `record` policies: one pass per object. Rows are built from the record
+   * anchor (stage, owner, timestamps) plus the typed field values the policies
+   * read (dimension + condition fields + a title), then handed to the shared
+   * timer logic.
+   */
+  async #reconcileRecords() {
+    const policies = await this.db.slaPolicy.findMany({
+      where:   { entity_type: 'record', is_active: true, object_id: { not: null } },
+      include: { targets: true, escalations: true, business_hours: true },
+      orderBy: [{ object_id: 'asc' }, { order_index: 'asc' }],
+    });
+    if (!policies.length) return 0;
+    const byObject = new Map();
+    for (const p of policies) {
+      if (!byObject.has(p.object_id)) byObject.set(p.object_id, []);
+      byObject.get(p.object_id).push(p);
+    }
+
+    let processed = 0;
+    for (const [objectId, pols] of byObject) {
+      // The first policy (by order) owns the stage mapping for the object.
+      const cfg = recordEntityConfig(pols[0].config ?? {});
+      const terminal = [...cfg.closed, ...cfg.canceled];
+      const openRecs = await this.db.record.findMany({
+        where: {
+          object_id: objectId, deleted_at: null,
+          ...(terminal.length ? { NOT: { pipeline_stage: { name: { in: terminal } } } } : {}),
+        },
+        select: { id: true, tenant_id: true, created_at: true, updated_at: true, assigned_to: true, pipeline_stage: { select: { name: true } } },
+        take: 5000,
+      });
+      const openIds = new Set(openRecs.map((r) => r.id));
+      const live = await this.db.slaInstance.findMany({
+        where:  { entity_type: 'record', status: { in: ['running', 'paused', 'breached'] }, policy_id: { in: pols.map((p) => p.id) } },
+        select: { entity_id: true },
+      });
+      const missing = [...new Set(live.map((i) => i.entity_id))].filter((id) => !openIds.has(id));
+      const closedRecs = missing.length
+        ? await this.db.record.findMany({
+          where:  { id: { in: missing } },
+          select: { id: true, tenant_id: true, created_at: true, updated_at: true, assigned_to: true, pipeline_stage: { select: { name: true } } },
+        })
+        : [];
+      const anchors = [...openRecs, ...closedRecs];
+      if (!anchors.length) continue;
+
+      const wanted = new Set([cfg.dimField, ...TITLE_FIELDS]);
+      for (const p of pols) for (const c of p.conditions ?? []) if (c?.field) wanted.add(c.field);
+      const values = await this.db.recordFieldValue.findMany({
+        where:  { record_id: { in: anchors.map((a) => a.id) }, field_name: { in: [...wanted] } },
+        select: { record_id: true, field_name: true, str_value: true, num_value: true },
+      });
+      const fieldsById = new Map();
+      for (const v of values) {
+        if (!fieldsById.has(v.record_id)) fieldsById.set(v.record_id, {});
+        fieldsById.get(v.record_id)[v.field_name] = v.num_value != null ? Number(v.num_value) : v.str_value;
+      }
+
+      for (const a of anchors) {
+        const f = fieldsById.get(a.id) ?? {};
+        const row = {
+          ...f,
+          id: a.id, tenant_id: a.tenant_id, created_at: a.created_at, updated_at: a.updated_at,
+          assigned_to: a.assigned_to, stage: a.pipeline_stage?.name ?? null,
+          __title: TITLE_FIELDS.map((t) => f[t]).find(Boolean) ?? null,
+        };
+        await tenantContext.run({ tenantId: a.tenant_id }, async () => {
+          try {
+            await this.#processRecord('record', cfg, Object.keys(cfg.metricStatus), row, pols);
+            processed++;
+          } catch (err) {
+            this.log.error?.({ err, type: 'record', id: a.id }, '[sla] record error');
+          }
+        });
+      }
     }
     return processed;
   }
@@ -439,6 +567,7 @@ class SlaService {
   }
 
   async #raisePriority(cfg, rec) {
+    if (!cfg.model) return; // metadata records have no priority ladder to climb
     const ladder = cfg.priorityLadder;
     const field = cfg.dimField;
     if (cfg.model === 'crmLead') return; // don't rewrite lead ratings
@@ -458,6 +587,8 @@ class SlaService {
         status:      'open',
         priority:    'high',
         due_date:    new Date(Date.now() + 60 * 60 * 1000),
+        // A metadata record's task attaches to the record itself.
+        ...(cfg.model ? {} : { record_id: rec.id }),
       },
     });
   }
@@ -552,14 +683,21 @@ class SlaService {
   }
 
   async #enrich(instances) {
-    const byType = { case: [], lead: [], task: [] };
+    const byType = { case: [], lead: [], task: [], record: [] };
     for (const i of instances) byType[i.entity_type]?.push(i.entity_id);
 
-    const [cases, leads, tasks] = await Promise.all([
+    const [cases, leads, tasks, recordTitles] = await Promise.all([
       byType.case.length ? this.db.crmCase.findMany({ where: { id: { in: byType.case } }, select: { id: true, subject: true, priority: true, status: true } }) : [],
       byType.lead.length ? this.db.crmLead.findMany({ where: { id: { in: byType.lead } }, select: { id: true, first_name: true, last_name: true, company: true, lead_status: true } }) : [],
       byType.task.length ? this.db.task.findMany({ where: { id: { in: byType.task } }, select: { id: true, title: true, priority: true, status: true } }) : [],
+      byType.record.length ? this.db.recordFieldValue.findMany({ where: { record_id: { in: byType.record }, field_name: { in: TITLE_FIELDS } }, select: { record_id: true, field_name: true, str_value: true } }) : [],
     ]);
+    const recordTitle = {};
+    for (const t of recordTitles) {
+      const rank = TITLE_FIELDS.indexOf(t.field_name);
+      const cur = recordTitle[t.record_id];
+      if (t.str_value && (!cur || rank < cur.rank)) recordTitle[t.record_id] = { rank, value: t.str_value };
+    }
     const caseMap = Object.fromEntries(cases.map((r) => [r.id, r]));
     const leadMap = Object.fromEntries(leads.map((r) => [r.id, r]));
     const taskMap = Object.fromEntries(tasks.map((r) => [r.id, r]));
@@ -575,6 +713,7 @@ class SlaService {
       if (i.entity_type === 'case' && caseMap[i.entity_id]) { label = caseMap[i.entity_id].subject || label; sub = caseMap[i.entity_id].status; }
       if (i.entity_type === 'lead' && leadMap[i.entity_id]) { const l = leadMap[i.entity_id]; label = `${l.first_name || ''} ${l.last_name || ''}`.trim() || label; sub = l.company || l.lead_status; }
       if (i.entity_type === 'task' && taskMap[i.entity_id]) { label = taskMap[i.entity_id].title || label; sub = taskMap[i.entity_id].status; }
+      if (i.entity_type === 'record' && recordTitle[i.entity_id]) label = recordTitle[i.entity_id].value;
       return {
         id: i.id, entity_type: i.entity_type, entity_id: i.entity_id, metric: i.metric,
         metric_label: METRIC_LABEL[i.metric] || i.metric,
@@ -592,6 +731,7 @@ module.exports.ENTITY = ENTITY;
 module.exports.CONDITION_OPS = CONDITION_OPS;
 module.exports.METRIC_LABEL = METRIC_LABEL;
 module.exports.conditionsMatch = conditionsMatch;
+module.exports.recordEntityConfig = recordEntityConfig;
 /**
  * Which metrics an entity can actually be measured on.
  *

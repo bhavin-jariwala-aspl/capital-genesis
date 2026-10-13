@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import clsx from 'clsx';
 import {
   Mail, Phone, Building2, MapPin, Globe, Hash,
-  CheckCircle2, XCircle, User,
+  User,
 } from 'lucide-react';
 import Badge from '../ui/Badge';
 import StatusTracker from '../ui/StatusTracker';
+import FieldValue, { hasValue } from './FieldValue';
 import { statusVariant, optionLabel } from '../../utils/metadata-helpers';
-import { fmtDate, fmtDateTime, fmtCurrency, fmtPct } from '../../utils/formatters';
 import { recordTitle, initials, gradientFor } from '../../utils/record';
 
 /**
@@ -28,107 +28,10 @@ import { recordTitle, initials, gradientFor } from '../../utils/record';
 
 const ft = (f) => f.field_type ?? f.type;
 
-/** Format a numeric value, falling back to the raw string when it isn't a number. */
-function fmtNumeric(value, formatter) {
-  const num = Number(value);
-  return Number.isFinite(num) ? formatter(num) : String(value);
-}
-
-/** Coerce a stored multi-select value into an array (arrays, JSON strings, CSV). */
-function toArray(value) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed;
-    } catch { /* not JSON — fall through */ }
-    return value.split(',').map((v) => v.trim()).filter(Boolean);
-  }
-  return [];
-}
-
 /** Fields that are structural or rendered elsewhere — skip them in the grid. */
 const SKIP_TYPES = new Set(['hidden', 'image', 'file', 'divider', 'status_tracker', 'password']);
 const SKIP_NAMES = new Set(['full_name', 'id', 'tenant_id', 'created_at', 'updated_at']);
 
-function hasValue(v) {
-  if (v === null || v === undefined || v === '') return false;
-  if (Array.isArray(v) && v.length === 0) return false;
-  return true;
-}
-
-/** Render a single field's value, coloured where meaningful. */
-function FieldValue({ field, value }) {
-  const type = ft(field);
-  const options = field.options ?? [];
-
-  // Status / select with metadata colours → coloured badge
-  if ((type === 'select' || type === 'radio') || field.name === 'status') {
-    if (options.length) {
-      return <Badge variant={statusVariant(value, options)} dot>{optionLabel(value, options)}</Badge>;
-    }
-    return <span className="text-sm font-medium text-gray-900 dark:text-white/90">{String(value)}</span>;
-  }
-
-  if (type === 'multi_select') {
-    const values = toArray(value);
-    return (
-      <div className="flex flex-wrap gap-1">
-        {values.map((v) => (
-          <Badge key={v} variant={statusVariant(v, options)}>{optionLabel(v, options)}</Badge>
-        ))}
-      </div>
-    );
-  }
-
-  if (type === 'checkbox' || typeof value === 'boolean') {
-    const on = value === true || value === 'true' || value === 1;
-    return (
-      <span className={clsx(
-        'inline-flex items-center gap-1 text-sm font-medium',
-        on ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-white/40',
-      )}>
-        {on ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-        {on ? 'Yes' : 'No'}
-      </span>
-    );
-  }
-
-  if (type === 'currency') {
-    return <span className="text-sm font-semibold text-gray-900 dark:text-white/90">{fmtNumeric(value, fmtCurrency)}</span>;
-  }
-  if (type === 'percent') {
-    return <span className="text-sm font-medium text-gray-900 dark:text-white/90">{fmtNumeric(value, fmtPct)}</span>;
-  }
-  if (type === 'number' || type === 'integer' || type === 'decimal') {
-    return <span className="text-sm font-medium text-gray-900 dark:text-white/90">{fmtNumeric(value, (n) => n.toLocaleString())}</span>;
-  }
-  if (type === 'datetime') {
-    return <span className="text-sm text-gray-700 dark:text-white/70">{fmtDateTime(value)}</span>;
-  }
-  if (type === 'date') {
-    return <span className="text-sm text-gray-700 dark:text-white/70">{fmtDate(value)}</span>;
-  }
-  if (type === 'email') {
-    return <a href={`mailto:${value}`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline break-all">{value}</a>;
-  }
-  if (type === 'phone') {
-    return <a href={`tel:${value}`} className="text-sm text-primary-600 dark:text-primary-400 hover:underline">{value}</a>;
-  }
-  if (type === 'url') {
-    return <a href={value} target="_blank" rel="noreferrer" className="text-sm text-primary-600 dark:text-primary-400 hover:underline break-all">{value}</a>;
-  }
-  if (type === 'color') {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-sm text-gray-700 dark:text-white/70">
-        <span className="h-4 w-4 rounded-full ring-1 ring-black/10" style={{ background: value }} />
-        {value}
-      </span>
-    );
-  }
-
-  return <span className="text-sm text-gray-700 dark:text-white/80 whitespace-pre-wrap break-words">{String(value)}</span>;
-}
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
@@ -211,10 +114,10 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
               <p className="mt-0.5 text-sm text-gray-500 dark:text-white/40 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" />
                 {object?.label || object?.name}
-                {(data.application_number || data.policy_number || data.quote_number || data.claim_number) && (
+                {(data.case_number) && (
                   <span className="inline-flex items-center gap-1 ml-1 font-mono text-xs">
                     <Hash className="h-3 w-3" />
-                    {data.application_number || data.policy_number || data.quote_number || data.claim_number}
+                    {data.case_number}
                   </span>
                 )}
               </p>
@@ -267,7 +170,7 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
               {section.fields.map((f) => (
                 <div key={f.name} className={clsx(ft(f) === 'textarea' || ft(f) === 'rich_text' ? 'sm:col-span-2 xl:col-span-3' : '')}>
                   <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-white/30 mb-1">{f.label}</dt>
-                  <dd><FieldValue field={f} value={data[f.name]} /></dd>
+                  <dd><FieldValue field={f} value={data[f.name]} label={record?.labels?.[f.name]} /></dd>
                 </div>
               ))}
             </dl>

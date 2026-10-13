@@ -9,8 +9,8 @@ const { getTenantId } = require('../middleware/tenant-scope');
 /**
  * DocumentService — the single entry point for all document management.
  *
- * Every document in the system (generic CRM attachments, insurance
- * application documents, auto-archived reports, compliance artifacts) is a row
+ * Every document in the system (generic CRM attachments, standalone DMS
+ * uploads, auto-archived reports, generated templates) is a row
  * in the unified `documents` table with its bytes stored via the shared
  * StorageProvider under one canonical, tenant-first key scheme. No route talks
  * to `fs` or builds storage paths directly.
@@ -46,9 +46,8 @@ class DocumentService {
    * @param {Buffer} p.buffer
    * @param {string} p.filename           original filename
    * @param {string} [p.mimeType]
-   * @param {string} [p.entityType]        lead|contact|application|policy|…
+   * @param {string} [p.entityType]        lead|contact|account|case|…
    * @param {number} [p.entityId]          owning record id (generic)
-   * @param {number} [p.applicationId]     typed link for insurance applications
    * @param {number} [p.recordId]          runtime records.id bridge (unique)
    * @param {string} [p.category]
    * @param {string} [p.description]
@@ -62,7 +61,7 @@ class DocumentService {
   async upload(p) {
     const {
       tenantId, buffer, filename, mimeType,
-      entityType = null, entityId = null, applicationId = null, recordId = null,
+      entityType = null, entityId = null, recordId = null,
       category = null, folderId = null, description = null, notes = null,
       isPublic = false, status = 'uploaded', uploadedBy = null, refPrefix = null,
     } = p;
@@ -107,7 +106,7 @@ class DocumentService {
     const fileHash = hashBuffer(buffer);
 
     // Dedup: identical bytes for the same owner → return existing document.
-    const ownerWhere = this.#ownerWhere({ entityType, entityId, applicationId, folderId });
+    const ownerWhere = this.#ownerWhere({ entityType, entityId, folderId });
     const existing = await this.db.document.findFirst({
       where: { file_hash: fileHash, deleted_at: null, ...ownerWhere },
     });
@@ -120,7 +119,7 @@ class DocumentService {
     });
     const version = prior ? prior.version + 1 : 1;
 
-    const key = buildDocumentKey({ tenantId, entityType, entityId: entityId ?? applicationId, category, filename });
+    const key = buildDocumentKey({ tenantId, entityType, entityId, category, filename });
     await this.storage.put(key, buffer);
 
     // Best-effort text extraction for full-text search (never blocks the upload).
@@ -129,10 +128,9 @@ class DocumentService {
     try {
       const doc = await this.db.document.create({
         data: {
-          document_ref: await this.#nextRef(refPrefix ?? entityType ?? 'GEN', { entityType, entityId, applicationId, folderId }),
+          document_ref: await this.#nextRef(refPrefix ?? entityType ?? 'GEN', { entityType, entityId, folderId }),
           entity_type: entityType,
           entity_id: entityId,
-          application_id: applicationId,
           record_id: recordId,
           original_filename: filename,
           stored_key: key,
@@ -171,7 +169,7 @@ class DocumentService {
     return this.db.document.findFirst({ where: { record_id: Number(recordId), deleted_at: null } });
   }
 
-  async list({ entityType, entityId, applicationId, category, status, folderId, search, limit = 50, offset = 0 } = {}) {
+  async list({ entityType, entityId, category, status, folderId, search, limit = 50, offset = 0 } = {}) {
     // Full-text content matches (pdf/docx/txt bodies) come from the FULLTEXT
     // index via a raw query; merged with LIKE matches on filename/ref/description
     // so a search hits both metadata and document contents.
@@ -181,7 +179,6 @@ class DocumentService {
       deleted_at: null,
       ...(entityType && { entity_type: entityType }),
       ...(entityId != null && { entity_id: Number(entityId) }),
-      ...(applicationId != null && { application_id: Number(applicationId) }),
       ...(category && { category }),
       ...(status && { status }),
       ...(folderId !== undefined && { folder_id: folderId != null ? Number(folderId) : null }),
@@ -233,7 +230,7 @@ class DocumentService {
     return this.db.document.update({ where: { id: Number(id) }, data: update });
   }
 
-  /** Compliance/underwriting review decision. */
+  /** Review decision (approve / reject / waive). */
   async review(id, { status, reviewedBy, rejectionReason }) {
     return this.db.document.update({
       where: { id: Number(id) },
@@ -299,17 +296,16 @@ class DocumentService {
     }
   }
 
-  #ownerWhere({ entityType, entityId, applicationId, folderId }) {
-    if (applicationId != null) return { application_id: Number(applicationId) };
+  #ownerWhere({ entityType, entityId, folderId }) {
     if (entityType && entityId != null) return { entity_type: entityType, entity_id: Number(entityId) };
     // Owner-less (standalone-DMS) uploads have no owning record — the normal case
     // for a plain folder upload. Scope dedup/versioning/ref-numbering to the target
     // folder so unrelated files elsewhere in the tenant are never treated as
     // duplicates of, or versions of, one another. `folder_id: null` = the Unfiled bucket.
-    return { entity_type: null, entity_id: null, application_id: null, folder_id: folderId != null ? Number(folderId) : null };
+    return { entity_type: null, entity_id: null, folder_id: folderId != null ? Number(folderId) : null };
   }
 
-  /** Generate the next per-owner document reference, e.g. DOC-APP2026001-003. */
+  /** Generate the next per-owner document reference, e.g. DOC-CONTACT-003. */
   async #nextRef(prefix, owner) {
     const where = this.#ownerWhere(owner);
     const count = Object.keys(where).length

@@ -9,8 +9,10 @@ import { slaService } from '../../services/sla.service';
 import { ENTITY_LABEL, PRIORITY_LABEL } from '../../utils/sla';
 import BuilderGuide from '../../components/builder/BuilderGuide';
 import { confirmDialog } from '../../utils/dialog';
+import { builderService } from '../../services/builder.service';
+import ObjectPicker from '../../components/ui/ObjectPicker';
 
-const ENTITIES = ['case', 'lead', 'task'];
+const ENTITIES = ['case', 'lead', 'task', 'record'];
 const METRICS = [['first_response', 'First response'], ['resolution', 'Resolution']];
 const TRIGGERS = [['warning', 'Warning (at risk)'], ['breach', 'Breach']];
 const ACTIONS = [
@@ -22,6 +24,7 @@ const PRIORITY_HINTS = {
   case: ['*', 'low', 'medium', 'high', 'critical'],
   lead: ['*', 'cold', 'warm', 'hot'],
   task: ['*', 'low', 'normal', 'high', 'urgent'],
+  record: ['*'],
 };
 const DAYS = [['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'], ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun']];
 const inputCls = 'rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white';
@@ -210,6 +213,8 @@ function PolicyModal({ policy, hours, capabilities, onClose, onSaved }) {
     entity_type: policy.entity_type || 'case', is_active: policy.is_active ?? true,
     order_index: policy.order_index ?? 0, business_hours_id: policy.business_hours_id || '',
     conditions: policy.conditions || [],
+    object_id: policy.object_id || '',
+    config: { first_response_stages: [], closed_stages: [], canceled_stages: [], dimension_field: '', ...(policy.config ?? {}) },
     targets: policy.targets?.map((t) => ({ ...t })) || [{ metric: 'first_response', priority: '*', target_minutes: 240, warning_pct: 80 }],
     escalations: policy.escalations?.map((e) => ({ ...e })) || [{ metric: '*', trigger: 'warning', action: 'notify_owner' }],
   });
@@ -231,6 +236,9 @@ function PolicyModal({ policy, hours, capabilities, onClose, onSaved }) {
         targets: form.targets.filter((t) => t.metric && t.target_minutes).map((t) => ({ ...t, target_minutes: Number(t.target_minutes), warning_pct: Number(t.warning_pct) || 80 })),
         escalations: form.escalations.filter((e) => e.action && e.trigger),
         conditions: form.conditions.filter((c) => c.field && c.op),
+        ...(form.entity_type === 'record'
+          ? { object_id: Number(form.object_id) || null, config: { ...form.config, dimension_field: form.config.dimension_field || undefined } }
+          : { object_id: undefined, config: undefined }),
       };
       return isEdit ? slaService.updatePolicy(policy.id, payload) : slaService.createPolicy(payload);
     },
@@ -252,6 +260,10 @@ function PolicyModal({ policy, hours, capabilities, onClose, onSaved }) {
           </Field>
         </div>
         <Field label="Description"><input className={inputCls + ' w-full'} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Optional" /></Field>
+        {form.entity_type === 'record' && (
+          <RecordClockConfig objectId={form.object_id} config={form.config} disabled={isEdit && !!policy.object_id}
+            onObject={(id) => set('object_id', id)} onConfig={(cfg) => set('config', cfg)} />
+        )}
         <div className="grid grid-cols-3 gap-3">
           <Field label="Business hours">
             <select className={inputCls + ' w-full'} value={form.business_hours_id} onChange={(e) => set('business_hours_id', e.target.value)}>
@@ -423,6 +435,53 @@ function Section({ title, onAdd, children }) {
         <button onClick={onAdd} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-500/10"><Plus className="h-3.5 w-3.5" /> Add</button>
       </div>
       <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+/* ── Record (any object) clock mapping ─────────────────────────────────── */
+// A record SLA times a Builder object's records. Its pipeline stages say when
+// first response is still due, when the record counts as resolved and when the
+// timers are cancelled; the server rejects stage names the pipeline lacks.
+function RecordClockConfig({ objectId, config, onObject, onConfig, disabled }) {
+  const { data } = useQuery({
+    queryKey: ['pipelines', objectId],
+    queryFn: () => builderService.getPipelines(objectId),
+    enabled: !!objectId,
+  });
+  const stages = (data?.data ?? []).flatMap((p) => p.stages ?? []);
+  const toggle = (key, name) => {
+    const cur = new Set(config[key] ?? []);
+    if (cur.has(name)) cur.delete(name); else cur.add(name);
+    onConfig({ ...config, [key]: [...cur] });
+  };
+  const group = (key, label, hint) => (
+    <Field label={label}>
+      <div className="flex flex-wrap gap-1.5">
+        {stages.map((st) => {
+          const on = (config[key] ?? []).includes(st.name);
+          return (
+            <button key={`${key}:${st.id}`} type="button" onClick={() => toggle(key, st.name)}
+              className={'rounded-full border px-2.5 py-1 text-xs ' + (on ? 'border-primary-600 bg-primary-600 text-on-primary' : 'border-gray-200 text-gray-600 dark:border-white/10 dark:text-white/60')}>
+              {st.label}
+            </button>
+          );
+        })}
+        {!stages.length && <span className="text-xs text-gray-400">Pick an object with a pipeline.</span>}
+      </div>
+      <p className="mt-1 text-[11px] text-gray-400">{hint}</p>
+    </Field>
+  );
+  return (
+    <div className="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-white/10">
+      <ObjectPicker label="Object" value={objectId} onChange={onObject} disabled={disabled} required />
+      {group('first_response_stages', 'First response is due while in', 'Leave empty to treat “no stage yet” as awaiting first response.')}
+      {group('closed_stages', 'Resolved when it reaches', 'At least one is required — otherwise resolution never stops.')}
+      {group('canceled_stages', 'Cancel the timers in', 'e.g. Withdrawn, Declined.')}
+      <Field label="Priority field (optional)">
+        <input className={inputCls + ' w-full'} value={config.dimension_field || ''} onChange={(e) => onConfig({ ...config, dimension_field: e.target.value })}
+          placeholder="API name, e.g. priority — targets can then differ per value" />
+      </Field>
     </div>
   );
 }

@@ -45,16 +45,16 @@ configuring a `status_tracker` field on a specific object.
 ### 1. Define the milestones
 
 Decide the ordered lifecycle stages. Ideally each `value` matches a pipeline
-stage `name` on the object so auto-capture lines up (see step 4). Example for an
-insurance application:
+stage `name` on the object so auto-capture lines up (see step 4). Example for a
+support case:
 
 ```js
 const stages = [
-  { value: 'submitted',       label: 'Submitted',       color: '#6366f1' },
-  { value: 'under_review',    label: 'Under Review',    color: '#f59e0b' },
-  { value: 'pending_medical', label: 'Pending Medical', color: '#a855f7' },
-  { value: 'approved',        label: 'Approved',        color: '#10b981' },
-  { value: 'issued',          label: 'Issued',          color: '#0ea5e9' },
+  { value: 'new',             label: 'New',             color: '#6366f1' },
+  { value: 'in_progress',     label: 'In Progress',     color: '#f59e0b' },
+  { value: 'waiting',         label: 'Waiting on Customer', color: '#a855f7' },
+  { value: 'resolved',        label: 'Resolved',        color: '#10b981' },
+  { value: 'closed',          label: 'Closed',          color: '#0ea5e9' },
 ];
 ```
 
@@ -111,9 +111,11 @@ current status is derived from the most recent event.
 
 ## Fast path: the demo seeder
 
-A ready-made seeder wires the tracker onto the **Claim** and **Application**
-objects and seeds a realistic timeline on every record (scaled to each record's
-current pipeline stage):
+A ready-made seeder wires the tracker onto the objects listed in its `TARGETS`
+array and seeds a realistic timeline on every record (scaled to each record's
+current pipeline stage). It ships with one target, the Prospect pipeline (its
+original Claim and Application targets were removed with the insurance domain on
+2026-10-13):
 
 ```bash
 cd backend
