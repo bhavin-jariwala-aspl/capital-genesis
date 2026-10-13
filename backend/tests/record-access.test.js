@@ -217,3 +217,24 @@ describe('RecordService.getRecord — access enforcement for re-assignment', () 
     await expect(svc.getRecord(999, viewer('user', 'E001'))).rejects.toThrow(NotFoundError);
   });
 });
+
+describe('RecordService — per-role view scope and managers seeing owned records', () => {
+  const other = { id: 12, object_id: 7, created_by: 'E002', assigned_to: null, data: {}, pipeline_stage: null };
+
+  it('a role with view_scope "all" on the object sees records it neither created nor owns', async () => {
+    const db = makeRecordPrisma({ record: other });
+    db.uiPermission = { findMany: jest.fn().mockResolvedValue([{ entity_id: 7 }]) };
+    await expect(new RecordService(db).getRecord(12, viewer('credit_analyst_wide', 'E009'))).resolves.toBeDefined();
+  });
+
+  it('without that scope the same user is still denied', async () => {
+    const db = makeRecordPrisma({ record: other });
+    db.uiPermission = { findMany: jest.fn().mockResolvedValue([]) };
+    await expect(new RecordService(db).getRecord(12, viewer('credit_analyst_narrow', 'E009'))).rejects.toThrow(NotFoundError);
+  });
+
+  it("a manager sees a record owned (not created) by someone in the team", async () => {
+    const db = makeRecordPrisma({ record: { ...other, created_by: null, assigned_to: 'E002' }, hierarchyRows: [{ descendant_id: 'E002' }] });
+    await expect(new RecordService(db).getRecord(12, { ...viewer('manager', 'M1'), role_level: 4 })).resolves.toBeDefined();
+  });
+});

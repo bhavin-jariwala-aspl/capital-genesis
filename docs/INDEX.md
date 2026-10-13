@@ -159,7 +159,7 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 | [user-guide/20-document-management.md](user-guide/20-document-management.md) | Using the Documents module: upload, folders, search, sharing, templates & e-signature |
 | [user-guide/21-appearance.md](user-guide/21-appearance.md) | Appearance & Branding: brand colours, corner radius, density, typeface, dark-mode default, sidebar and chart palette |
 | [developer-guide/APPLICATION_SETTINGS.md](developer-guide/APPLICATION_SETTINGS.md) | Tenant-wide settings model, API, and CRM benchmark |
-| [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md) | Formula language, lookups and related lists, record actions, stage gates, business units, information barriers, audit chain, public web forms, object analytics, record SLAs, vertical packs |
+| [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md) | Formula language, lookups and related lists, record actions, stage gates, business units, information barriers, audit chain, public web forms, object analytics, record SLAs, vertical packs, personal-data protection, client portal, merge and bulk reassign, sessions and MFA, SMS and the durable job queue, sandbox integrations, public data feeds, calendar feed, French labels, containers and CI |
 | [developer-guide/SECURITY.md](developer-guide/SECURITY.md) | Auth, RBAC, input validation, webhook security |
 | [developer-guide/DESIGN_SYSTEM.md](developer-guide/DESIGN_SYSTEM.md) | The widget design language — tokens, shared components, patterns, new-page checklist |
 | [developer-guide/CONTRIBUTING.md](developer-guide/CONTRIBUTING.md) | Code style, testing, PR process |
@@ -255,8 +255,8 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 - [SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md](SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md) —
   Product requirements for the SWAN Capital Solutions financial-services CRM
 - [SWAN-CAPITAL/IMPLEMENTATION.md](SWAN-CAPITAL/IMPLEMENTATION.md) —
-  What Phase 0 + Phase 1 delivered, PRD traceability, install steps, roles and logins, and what is
-  not yet delivered
+  All 25 modules and 22 products: PRD traceability, product catalogue, dashboards, portal, install
+  steps, roles and logins, demo data and walk-through, and what needs the client's accounts
 - [developer-guide/CONTRIBUTING.md](developer-guide/CONTRIBUTING.md) —
   Code standards, testing, PR process, architecture principles
 

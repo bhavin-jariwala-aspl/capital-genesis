@@ -37,12 +37,79 @@ function Tagline({ text, className }) {
  * layout) so staff see their company, not the vendor, before they sign in —
  * see appearanceStore.applyPreLoginBranding.
  */
+/**
+ * The second sign-in step: an authenticator code (or a recovery code), or —
+ * when the organisation requires MFA and the user has not enrolled — a short
+ * enrolment that ends signed in, showing the recovery codes once.
+ */
+function MfaStep({ mfa, onDone, onCancel, onError }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [setup, setSetup] = useState(null);
+  const [recovery, setRecovery] = useState(null);
+  const [pending, setPending] = useState(null);
+
+  useEffect(() => {
+    if (!mfa.setup) return;
+    authService.mfaSetup(mfa.token).then(setSetup).catch((e) => onError(e.response?.data?.error?.message || e.message));
+  }, [mfa, onError]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); onError(null);
+    try {
+      if (mfa.setup) {
+        const res = await authService.mfaEnable(code.trim(), mfa.token);
+        setRecovery(res.recovery_codes);
+        setPending(res);
+      } else {
+        onDone(await authService.mfaVerify(mfa.token, code.trim()));
+      }
+    } catch (err) {
+      onError(err.response?.data?.error?.message || err.response?.data?.message || err.message);
+    } finally { setBusy(false); }
+  };
+
+  if (recovery) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-gray-700 dark:text-gray-300">Two-factor authentication is on. Keep these recovery codes somewhere safe — each works once if you lose your phone.</p>
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3 font-mono text-sm dark:bg-white/5">{recovery.map((c) => <span key={c}>{c}</span>)}</div>
+        <Button size="lg" className="w-full" onClick={() => onDone(pending)}>I have saved them — continue</Button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      {mfa.setup ? (
+        <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          <p>Your organisation requires two-factor authentication. Add this key to an authenticator app (Microsoft Authenticator, Google Authenticator, 1Password…), then enter the 6-digit code it shows.</p>
+          {setup ? (
+            <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
+              <p className="break-all font-mono text-sm tracking-wider">{setup.secret.replace(/(.{4})/g, '$1 ').trim()}</p>
+              <a href={setup.otpauth_uri} className="mt-1 inline-block text-xs text-primary-600 hover:underline">Open in an authenticator app on this device</a>
+            </div>
+          ) : <p className="text-xs text-gray-400">Preparing your key…</p>}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-700 dark:text-gray-300">Enter the 6-digit code from your authenticator app, or one of your recovery codes.</p>
+      )}
+      <Input label="Code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="text" autoFocus />
+      <Button type="submit" size="lg" loading={busy} disabled={busy || code.trim().length < 6} className="w-full">{mfa.setup ? 'Turn on and sign in' : 'Verify'}</Button>
+      <button type="button" onClick={onCancel} className="w-full text-xs text-gray-500 hover:underline">Back to sign in</button>
+    </form>
+  );
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const { token, setAuth } = useAuthStore();
   const appearance = useAppearanceStore((s) => s.current);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  // Second factor (PRD E-02): { token, setup, remember } between password and code.
+  const [mfa, setMfa] = useState(null);
 
   const appName  = appearance['appearance.app_name'] || 'Genesis CRM';
   const tagline  = appearance['appearance.login_tagline'] || 'Your business, beautifully managed.';
@@ -65,15 +132,26 @@ export default function Login() {
   const onSubmit = async ({ employee_id, password, remember }) => {
     setError(null);
     try {
-      const { token, employee } = await authService.login(employee_id, password);
-      setAuth(token, employee, remember);
+      const res = await authService.login(employee_id, password);
+      if (res.mfa_required || res.mfa_setup_required) {
+        setMfa({ token: res.mfa_token, setup: Boolean(res.mfa_setup_required), remember });
+        return;
+      }
+      setAuth(res.token, res.employee, remember, res.refresh_token);
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
     }
   };
 
-  const form = (
+  const finish = (res, remember) => {
+    setAuth(res.token, res.employee, remember, res.refresh_token);
+    navigate('/', { replace: true });
+  };
+
+  const form = mfa ? (
+    <MfaStep mfa={mfa} onDone={(res) => finish(res, mfa.remember)} onCancel={() => setMfa(null)} onError={setError} />
+  ) : (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <Input
         label="Employee ID"

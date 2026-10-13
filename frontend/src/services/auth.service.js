@@ -5,6 +5,25 @@ export const authService = {
   login:          (employeeId, password) =>
     apiWrapper.extract(api.post('/auth/login', { employee_id: employeeId, password })),
 
+  mfaVerify:      (mfaToken, code) =>
+    apiWrapper.extract(api.post('/auth/mfa/verify', { mfa_token: mfaToken, code })),
+
+  mfaSetup:       (mfaToken = null) =>
+    apiWrapper.extract(api.post('/auth/mfa/setup', mfaToken ? { mfa_token: mfaToken } : {})),
+
+  mfaEnable:      (code, mfaToken = null) =>
+    apiWrapper.extract(api.post('/auth/mfa/enable', mfaToken ? { code, mfa_token: mfaToken } : { code })),
+
+  mfaDisable:     (code) =>
+    apiWrapper.extract(api.post('/auth/mfa/disable', { code })),
+
+  signOutEverywhere: () =>
+    apiWrapper.extract(api.post('/auth/logout', { everywhere: true })),
+
+  /** Private iCalendar feed path for the signed-in user (RM-FR-03). */
+  calendarSubscription: () =>
+    apiWrapper.extract(api.get('/calendar/subscription')),
+
   me:             () =>
     apiWrapper.extract(api.get('/auth/me')),
 

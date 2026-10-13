@@ -42,6 +42,7 @@ This document describes every table in the database — what business informatio
 15. [Multi-Tenant Platform & Administration](#multi-tenant-platform--administration)
 16. [Status & Workflow Tracking](#status--workflow-tracking)
 17. [Access Segmentation & Audit Chain](#access-segmentation--audit-chain)
+18. [Sessions & Background Jobs](#sessions--background-jobs)
 
 ---
 
@@ -107,6 +108,10 @@ User accounts and employee records with authentication and organizational assign
 | branch_id | INTEGER | nullable, FK→branches |
 | region_id | INTEGER | nullable, FK→regions |
 | is_active | BOOLEAN | NOT NULL, default true |
+| tokens_valid_after | DATETIME(3) | nullable — tokens issued before this time are rejected (deactivation, password change, sign out everywhere) |
+| mfa_enabled | BOOLEAN | NOT NULL, default false |
+| mfa_secret | VARCHAR(255) | nullable — TOTP secret, stored encrypted (`enc:v1:`) |
+| mfa_recovery | JSON | nullable — SHA-256 hashes of unused recovery codes |
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |
 | tenant_id | INTEGER | NOT NULL, indexed |
@@ -147,6 +152,7 @@ Top-level modules organizing UI objects into business domains (e.g., CRM, Settin
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |
 | category | VARCHAR(50) | NOT NULL, default 'crm' (added in `add_module_category`; values: crm, settings) |
+| config | JSON | nullable (added in `module_config`) — e.g. `label_fr` |
 | tenant_id | INTEGER | NOT NULL, indexed |
 
 **Relationships:** Referenced by `ui_objects(module_id)`.
@@ -531,6 +537,7 @@ Base container for all business objects managed through the platform, linked to 
 | assigned_to | VARCHAR(20) | nullable, FK→employees |
 | created_by | VARCHAR(100) | nullable |
 | created_at | DATETIME(3) | default CURRENT_TIMESTAMP(3) |
+| updated_by | VARCHAR(100) | nullable (added in `record_updated_by`) — who last edited, moved or bulk-changed the record |
 | updated_at | DATETIME(3) | last modification |
 | deleted_at | DATETIME(3) | nullable, indexed (added in `add_record_soft_delete`) — NULL = live; NOT NULL = in Trash (soft-deleted, hidden from users, admin-recoverable) |
 | deleted_by | VARCHAR(100) | nullable (added in `add_record_soft_delete`) — actor who deleted it |
@@ -1675,6 +1682,46 @@ Append-only, hash-chained per tenant.
 | hash | CHAR(64) | SHA-256 over the canonical event and `prev_hash` |
 | created_at | DATETIME(3) | |
 | tenant_id | INTEGER | FK→tenants |
+
+## Sessions & Background Jobs
+
+### `auth_refresh_tokens`
+
+Refresh tokens for staff sessions (PRD E-01). Global (not tenant-scoped through the extension); `tenant_id` is recorded for reporting.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK, auto-increment |
+| employee_id | VARCHAR(20) | indexed |
+| token_hash | CHAR(64) | UNIQUE — SHA-256 of the token; the token itself is never stored |
+| family | CHAR(32) | indexed — every rotation of one sign-in shares a family; reuse of a retired token revokes the family |
+| expires_at | DATETIME(3) | NOT NULL |
+| revoked_at | DATETIME(3) | nullable |
+| replaced_by | INTEGER | nullable — the token that superseded this one |
+| user_agent | VARCHAR(255) | nullable |
+| ip | VARCHAR(64) | nullable |
+| created_at | DATETIME(3) | default CURRENT_TIMESTAMP(3) |
+| tenant_id | INTEGER | nullable |
+
+### `job_queue`
+
+Durable job queue (PRD E-03): retried integration and SMS calls. Worked by every API instance every 15 seconds.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER | PK, auto-increment |
+| type | VARCHAR(60) | handler name, e.g. `integration.call` |
+| payload | JSON | NOT NULL |
+| status | VARCHAR(20) | `queued` \| `running` \| `done` \| `dead` |
+| attempts / max_attempts | INTEGER | default 0 / 6 |
+| run_after | DATETIME(3) | next attempt time (exponential back-off) |
+| locked_at | DATETIME(3) | nullable — lease; released after 10 minutes |
+| last_error | TEXT | nullable |
+| dedupe_key | VARCHAR(191) | nullable, indexed — one pending job per key |
+| created_at / updated_at | DATETIME(3) | |
+| tenant_id | INTEGER | nullable — the job runs inside this tenant |
+
+Index: (`status`, `run_after`).
 
 ## Appendix: Cross-Cutting Conventions
 

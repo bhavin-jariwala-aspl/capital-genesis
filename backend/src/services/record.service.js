@@ -49,6 +49,8 @@ const {
  * CRM field values are stored in the crm_* relational tables, not here.
  * Writes audit_logs on create / update / stage-change / delete.
  */
+const { encrypt: encryptField, mask: maskValue } = require('./field-protection');
+
 /** Which `Record` relation holds an object's first-class entity row. */
 const ENTITY_RELATION = {
   lead: 'crm_lead', prospect: 'crm_lead', lead_intake: 'crm_lead_intake', contact: 'crm_contact',
@@ -56,11 +58,20 @@ const ENTITY_RELATION = {
   product: 'product', email_template: 'email_template',
 };
 
+/** tenant:role → { ok, at } — whether a role may see personal data unmasked. */
+const PII_CACHE = new Map();
+
 /** object id → API name (see #objectName). */
 const OBJECT_NAMES = new Map();
 
 /** Highest auto-number handed out per sequence in this process (see #generateAutoNumbers). */
 const ISSUED_AUTO_NUMBERS = new Map();
+
+/** Roles' wide-visibility objects, cached briefly per tenant and role. */
+const WIDE_SCOPE = new Map();
+
+/** Per-object field defaults, cached briefly (metadata changes rarely). */
+const FIELD_DEFAULTS = new Map();
 
 class RecordService {
   /**
@@ -655,9 +666,20 @@ class RecordService {
   async #getFieldTypeMap(objectId) {
     const fields = await this.db.uiField.findMany({
       where:  { object_id: Number(objectId), is_active: true },
-      select: { name: true, data_type: true },
+      select: { name: true, data_type: true, config: true },
     });
-    return new Map(fields.map(f => [f.name, f.data_type ?? 'string']));
+    const map = new Map(fields.map(f => [f.name, f.data_type ?? 'string']));
+    // Fields stored encrypted (personal data, PRD E-16) — see field-protection.
+    map.encrypted = new Set(fields.filter((f) => f.config?.encrypt).map((f) => f.name));
+    return map;
+  }
+
+  /** Typed column values for one field, encrypting it when configured to. */
+  static #storedValue(typeMap, fieldName, value) {
+    if (typeMap.encrypted?.has(fieldName) && value != null && value !== '') {
+      return { str_value: encryptField(String(value)) };
+    }
+    return RecordService._typedValuePublic(value, typeMap.get(fieldName) ?? 'string');
   }
 
   /**
@@ -710,7 +732,7 @@ class RecordService {
         await rfv.createMany({
           data: fresh.map(([fieldName, value]) => ({
             record_id: rid, field_name: fieldName,
-            ...RecordService._typedValuePublic(value, typeMap.get(fieldName) ?? 'string'),
+            ...RecordService.#storedValue(typeMap, fieldName, value),
             ...(tenantId ? { tenant_id: tenantId } : {}),
           })),
           skipDuplicates: true,
@@ -722,8 +744,7 @@ class RecordService {
     for (let i = 0; i < entries.length; i += CHUNK) {
       const batch = entries.slice(i, i + CHUNK);
       await Promise.all(batch.map(([fieldName, value]) => {
-        const dataType = typeMap.get(fieldName) ?? 'string';
-        const typed    = RecordService._typedValuePublic(value, dataType);
+        const typed    = RecordService.#storedValue(typeMap, fieldName, value);
         const createData = { record_id: rid, field_name: fieldName, ...typed };
         if (tenantId) createData.tenant_id = tenantId;
         return this.db.recordFieldValue.upsert({
@@ -761,18 +782,43 @@ class RecordService {
   /** The owner / hierarchy part of #ownerFilter, before unit and barrier scope. */
   async #ownerOnlyFilter(viewer) {
     const { role, employee_id } = viewer;
-    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? 0;
+    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? Number.POSITIVE_INFINITY; // unknown level = least privilege, never admin
     if (level <= ADMIN_THRESHOLD) return {};
+    let own;
     if (level <= MANAGER_THRESHOLD) {
-      const rows = await this.db.employeeHierarchy.findMany({
-        where:  { ancestor_id: employee_id, depth: { gt: 0 } },
-        select: { descendant_id: true },
-      });
-      const ids = [employee_id, ...rows.map(r => r.descendant_id)];
-      return { created_by: { in: ids } };
+      // Managers: records their team created or owns.
+      const ids = await this.#teamIds(employee_id);
+      own = [{ created_by: { in: ids } }, { assigned_to: { in: ids } }];
+    } else {
+      // user — own records + records explicitly assigned to them
+      own = [{ created_by: employee_id }, { assigned_to: employee_id }];
     }
-    // user — own records + records explicitly assigned to them
-    return { OR: [{ created_by: employee_id }, { assigned_to: employee_id }] };
+    // Objects whose permission gives this role every record (back-office desks).
+    const wide = await this.#wideObjectIds(role);
+    return { OR: [...own, ...(wide.length ? [{ object_id: { in: wide } }] : [])] };
+  }
+
+  async #teamIds(employeeId) {
+    const rows = await this.db.employeeHierarchy.findMany({
+      where:  { ancestor_id: employeeId, depth: { gt: 0 } },
+      select: { descendant_id: true },
+    });
+    return [employeeId, ...rows.map((r) => r.descendant_id)];
+  }
+
+  /** Object ids where the role's object permission has view_scope 'all' (cached briefly). */
+  async #wideObjectIds(role) {
+    const key = `${getTenantId() ?? ''}|${role}`;
+    const hit = WIDE_SCOPE.get(key);
+    if (hit && hit.until > Date.now()) return hit.ids;
+    if (!this.db.uiPermission?.findMany) return [];
+    const rows = await this.db.uiPermission.findMany({
+      where: { entity_type: 'object', role_name: String(role ?? ''), view_scope: 'all', can_view: true },
+      select: { entity_id: true },
+    }).catch(() => []);
+    const ids = rows.map((r) => r.entity_id);
+    WIDE_SCOPE.set(key, { until: Date.now() + 30_000, ids });
+    return ids;
   }
 
   /**
@@ -809,26 +855,23 @@ class RecordService {
   async #assertAccess(recordOrId, viewer) {
     if (!viewer) return;
     const { role, employee_id } = viewer;
-    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? 0;
+    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? Number.POSITIVE_INFINITY; // unknown level = least privilege, never admin
 
     const record = (recordOrId && typeof recordOrId === 'object')
       ? recordOrId
       : await this.db.record.findUnique({
           where:  { id: Number(recordOrId) },
-          select: { id: true, created_by: true, assigned_to: true, business_unit_id: true, barrier_zone_id: true },
+          select: { id: true, object_id: true, created_by: true, assigned_to: true, business_unit_id: true, barrier_zone_id: true },
         });
     if (!record) throw new NotFoundError('Record');
     // Unit and barrier scope apply to every role (barriers bind admins too).
     if (!this.scope.canSee(await this.scope.forViewer(viewer), record)) throw new NotFoundError('Record');
     if (level <= ADMIN_THRESHOLD) return;
+    if (record.object_id != null && (await this.#wideObjectIds(role)).includes(Number(record.object_id))) return;
 
     if (level <= MANAGER_THRESHOLD) {
-      const rows = await this.db.employeeHierarchy.findMany({
-        where:  { ancestor_id: employee_id, depth: { gte: 0 } },
-        select: { descendant_id: true },
-      });
-      const allowed = new Set(rows.map(r => r.descendant_id));
-      if (!allowed.has(record.created_by)) throw new NotFoundError('Record');
+      const allowed = new Set(await this.#teamIds(employee_id));
+      if (!allowed.has(record.created_by) && !allowed.has(record.assigned_to)) throw new NotFoundError('Record');
       return;
     }
 
@@ -885,7 +928,7 @@ class RecordService {
         'clients should paginate with limit/offset.',
       );
     }
-    const hydrated = await this.#attachLookupLabels(Number(objectId), await this.#hydrateMany(records));
+    const hydrated = await this.#maskPii(Number(objectId), await this.#attachLookupLabels(Number(objectId), await this.#hydrateMany(records)), viewer);
     // Leads carry their scoring result inline (score + grade columns).
     if (obj?.name === 'lead_intake') return this.#attachLeadScores(hydrated);
     return hydrated;
@@ -901,7 +944,8 @@ class RecordService {
     });
     if (!record || record.deleted_at) throw new NotFoundError('Record');
     await this.#assertAccess(record, viewer);
-    const [hydrated] = await this.#attachLookupLabels(record.object_id, [await this.#hydrateCrm(record)]);
+    await this.#auditView(record, viewer);
+    const [hydrated] = await this.#maskPii(record.object_id, await this.#attachLookupLabels(record.object_id, [await this.#hydrateCrm(record)]), viewer);
     if (record.object?.name === 'lead_intake') {
       const [withScore] = await this.#attachLeadScores([hydrated]);
       return withScore;
@@ -1023,9 +1067,10 @@ class RecordService {
 
     const incoming = await this.db.uiField.findMany({
       where:  { is_active: true, field_type: 'lookup', config: { path: '$.target_object', equals: record.object.name } },
-      select: { name: true, label: true, object: { select: { id: true, name: true, label: true, plural_label: true, module_id: true } } },
+      select: { name: true, label: true, object: { select: { id: true, name: true, label: true, plural_label: true, module_id: true, config: true } } },
     });
     const access = await this.#ownerFilter(viewer);
+    const filtered = Object.keys(access).length > 0;
     const out = [];
     for (const f of incoming) {
       const where = {
@@ -1033,10 +1078,20 @@ class RecordService {
         str_value:  String(record.id),
         record:     { object_id: f.object.id, deleted_at: null, ...access },
       };
-      const [rows, total] = await Promise.all([
+      // Records hidden from this viewer (other business units, information
+      // barriers) are counted so Client 360 can say "Restricted — contact
+      // Compliance" instead of implying there are none (C360-FR-06). Objects
+      // whose very existence is confidential (an STR: no tipping off) set
+      // `config.conceal_existence` and are never counted.
+      const conceal = Boolean(f.object.config?.conceal_existence);
+      const [rows, total, all] = await Promise.all([
         this.db.recordFieldValue.findMany({ where, select: { record_id: true }, take: perRelation, orderBy: { record_id: 'desc' } }),
         this.db.recordFieldValue.count({ where }),
+        filtered && !conceal
+          ? this.db.recordFieldValue.count({ where: { ...where, record: { object_id: f.object.id, deleted_at: null } } })
+          : null,
       ]);
+      if (conceal && !total) continue;
       const ids = rows.map((r) => r.record_id);
       const [titles, anchors] = await Promise.all([
         this.#titlesFor(f.object.id, ids),
@@ -1046,10 +1101,12 @@ class RecordService {
         }),
       ]);
       const anchorById = new Map(anchors.map((a) => [a.id, a]));
+      const { config: _cfg, ...object } = f.object;
       out.push({
-        object: f.object,
+        object,
         field:  { name: f.name, label: f.label },
         total,
+        restricted: all == null ? 0 : Math.max(0, all - total),
         records: ids.map((id) => ({
           id,
           label:      titles.get(id) ?? `#${id}`,
@@ -1113,6 +1170,31 @@ class RecordService {
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
+  /** Fill fields the payload leaves out with their Builder default value. */
+  async #withDefaults(objectId, data) {
+    const key = Number(objectId);
+    let defs = FIELD_DEFAULTS.get(key);
+    if (!defs || defs.until < Date.now()) {
+      const rows = await this.db.uiField.findMany({
+        where: { object_id: key, is_active: true, default_value: { not: null } },
+        select: { name: true, field_type: true, default_value: true },
+      }).catch(() => []);
+      defs = { until: Date.now() + 60_000, rows: rows.filter((f) => f.default_value !== '' && !['formula', 'auto_number', 'heading'].includes(f.field_type)) };
+      FIELD_DEFAULTS.set(key, defs);
+    }
+    if (!defs.rows.length) return data;
+    const out = { ...(data ?? {}) };
+    for (const f of defs.rows) {
+      if (out[f.name] !== undefined) continue;
+      const raw = String(f.default_value);
+      if (raw === '{{today}}') out[f.name] = new Date().toISOString().slice(0, 10);
+      else if (['checkbox', 'boolean', 'toggle'].includes(f.field_type)) out[f.name] = ['true', '1', 'yes'].includes(raw.toLowerCase());
+      else if (['number', 'integer', 'decimal', 'currency', 'percent', 'percentage'].includes(f.field_type) && Number.isFinite(Number(raw))) out[f.name] = Number(raw);
+      else out[f.name] = raw;
+    }
+    return out;
+  }
+
   async createRecord(objectId, stageId, createdBy, assignedTo = null, viewer = null, crmData = null, { draft = false } = {}) {
     await this.#assertObjectEditPermission(objectId, viewer);
     // Resolve tenant �� explicit from JWT, or fall back to AsyncLocalStorage middleware
@@ -1124,6 +1206,9 @@ class RecordService {
     // Runs before anything is written so a rejected submission leaves no trace.
     // A draft (a record started in one step and completed later in a wizard) is
     // checked like a patch: submitted values must be valid, absent ones may come later.
+    // Builder defaults apply to every create path (website forms, workflows,
+    // imports, the API), not only to forms rendered in the browser.
+    crmData = await this.#withDefaults(objectId, crmData);
     if (crmData) await this.compute.applyFormulas(objectId, crmData, null);
     await this.#assertValid(objectId, crmData ?? {}, { partial: draft, recordId: null });
     // ── Auto-number generation for fields with auto_number config ─────────
@@ -1165,8 +1250,17 @@ class RecordService {
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
 
+    // A form opened by a viewer who sees personal data masked sends the mask
+    // back unchanged — never let "••••0123" overwrite the real value.
+    if (crmData) {
+      for (const f of await this.#piiFields(existing.object_id)) {
+        if (typeof crmData[f] === 'string' && crmData[f].includes('•')) delete crmData[f];
+      }
+    }
+
     const updatePayload = crmData ? await this.scope.stampFor(existing.object_id, crmData) : {};
     if (assignedTo !== undefined) updatePayload.assigned_to = assignedTo ?? null;
+    if (updatedBy) updatePayload.updated_by = String(updatedBy).slice(0, 100);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
 
     // Only the submitted fields are validated on update (a partial patch must
@@ -1249,7 +1343,7 @@ class RecordService {
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     const updated = await this.db.record.update({
       where: { id: Number(id) },
-      data:  { pipeline_stage_id: stageId ? Number(stageId) : null },
+      data:  { pipeline_stage_id: stageId ? Number(stageId) : null, ...(updatedBy ? { updated_by: String(updatedBy).slice(0, 100) } : {}) },
       // config included so callers can read metadata flags (e.g. is_conversion_stage)
       // instead of matching hardcoded stage names.
       include: { pipeline_stage: { select: { id: true, label: true, color: true, name: true, config: true } } },
@@ -1511,7 +1605,7 @@ class RecordService {
     });
     await this.db.record.updateMany({
       where: { id: { in: numIds } },
-      data:  { pipeline_stage_id: stageId ? Number(stageId) : null },
+      data:  { pipeline_stage_id: stageId ? Number(stageId) : null, ...(updatedBy ? { updated_by: String(updatedBy).slice(0, 100) } : {}) },
     });
     // Audit each stage change (bulk pipeline move).
     const newStage = stageId ? Number(stageId) : null;
@@ -1550,6 +1644,194 @@ class RecordService {
 
   // ── CSV export ─────────────────────────────────────────────────────────────
 
+  // ── Bulk reassign, merge and unmerge (PRD X-09, C360-FR-08) ─────────────
+
+  /** Managers and administrators only (an RM leaving, a duplicate client). */
+  #assertManager(viewer, what) {
+    if (!viewer) return;
+    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role];
+    if (!(Number.isFinite(level) && level <= MANAGER_THRESHOLD)) throw new AuthorizationError(`Only managers and administrators can ${what}`);
+  }
+
+  /** Reassign many records to one owner (e.g. when an RM leaves). */
+  async bulkAssign(ids, assignedTo, updatedBy, viewer) {
+    this.#assertManager(viewer, 'reassign records in bulk');
+    const numIds = await this.#filterAccessibleIds((ids ?? []).map(Number), viewer);
+    if (!numIds.length) return { updated: 0 };
+    const owner = assignedTo ? await this.db.employee.findUnique({ where: { employee_id: String(assignedTo) }, select: { employee_id: true, is_active: true } }) : null;
+    if (assignedTo && (!owner || owner.is_active === false)) throw new ValidationError('The new owner is not an active employee');
+    const existing = await this.db.record.findMany({ where: { id: { in: numIds } }, select: { id: true, object_id: true, assigned_to: true } });
+    await this.db.record.updateMany({ where: { id: { in: numIds } }, data: { assigned_to: assignedTo ? String(assignedTo) : null, ...(updatedBy ? { updated_by: String(updatedBy).slice(0, 100) } : {}) } });
+    await this.#auditBulk(existing.map((r) => ({ record_id: r.id, changes: { assigned_to: { old: r.assigned_to, new: assignedTo ?? null }, bulk: true } })), updatedBy, 'reassign');
+    for (const r of existing) this.#emit('record.updated', { objectId: r.object_id, record: { ...r, assigned_to: assignedTo ?? null }, actorId: updatedBy });
+    return { updated: numIds.length };
+  }
+
+  /** Lookup fields (anywhere) that point at records of this object. */
+  async #incomingLookupFields(objectName) {
+    const rows = await this.db.uiField.findMany({
+      where: { is_active: true, field_type: 'lookup', config: { path: '$.target_object', equals: objectName } }, select: { name: true },
+    });
+    return [...new Set(rows.map((r) => r.name))];
+  }
+
+  /**
+   * Merge a duplicate into the surviving record: blank fields on the survivor
+   * are filled from the duplicate, every lookup pointing at the duplicate is
+   * re-pointed, and the duplicate goes to the Trash. The full change set is
+   * written to the audit chain, which is what makes unmerge possible.
+   */
+  async mergeRecords(sourceId, targetId, viewer) {
+    this.#assertManager(viewer, 'merge records');
+    if (Number(sourceId) === Number(targetId)) throw new ValidationError('A record cannot be merged into itself');
+    const [src, tgt] = await Promise.all([sourceId, targetId].map((id) => this.db.record.findUnique({ where: { id: Number(id) }, include: { object: { select: { name: true } } } })));
+    if (!src || src.deleted_at || !tgt || tgt.deleted_at) throw new NotFoundError('Record');
+    await this.#assertAccess(src, viewer);
+    await this.#assertAccess(tgt, viewer);
+    if (src.object_id !== tgt.object_id) throw new ValidationError('Only records of the same object can be merged');
+    await this.#assertObjectEditPermission(src.object_id, viewer);
+
+    const [srcData, tgtData, fields] = await Promise.all([
+      this.#loadData(src.id), this.#loadData(tgt.id),
+      this.db.uiField.findMany({ where: { object_id: src.object_id, is_active: true }, select: { name: true, field_type: true, config: true } }),
+    ]);
+    const writable = fields.filter((f) => !['formula', 'heading'].includes(f.field_type) && !f.config?.auto_number && f.name !== 'ext_ref');
+    const filled = {};
+    for (const f of writable) {
+      const v = srcData?.[f.name];
+      const cur = tgtData?.[f.name];
+      if ((cur == null || cur === '') && v != null && v !== '') filled[f.name] = v instanceof Date ? v.toISOString().slice(0, 10) : v;
+    }
+    if (Object.keys(filled).length) await this.#upsertCustomFieldValues(tgt.id, filled, tgt.object_id, tgt.tenant_id);
+
+    const names = await this.#incomingLookupFields(src.object.name);
+    const pointing = names.length
+      ? await this.db.recordFieldValue.findMany({ where: { field_name: { in: names }, str_value: String(src.id) }, select: { id: true, record_id: true } })
+      : [];
+    if (pointing.length) {
+      await this.db.recordFieldValue.updateMany({ where: { id: { in: pointing.map((r) => r.id) } }, data: { str_value: String(tgt.id), num_value: tgt.id } });
+    }
+    const actor = viewer?.employee_id ?? null;
+    await this.db.record.update({ where: { id: src.id }, data: { deleted_at: new Date(), deleted_by: actor } });
+    await this.#chain().append({
+      entityType: 'record.merge', entityId: src.id, action: 'merge', actor, sensitivity: 'sensitive', tenantId: src.tenant_id,
+      payload: { source: src.id, target: tgt.id, object_id: src.object_id, repointed: pointing.map((r) => r.id), filled: Object.keys(filled) },
+    });
+    // Survivor and everything now pointing at it recompute their formulas.
+    await this.recompute(tgt.id).catch(() => {});
+    for (const rid of [...new Set(pointing.map((r) => r.record_id))].slice(0, 200)) await this.recompute(rid).catch(() => {});
+    return { merged: src.id, into: tgt.id, repointed: pointing.length, filled: Object.keys(filled) };
+  }
+
+  /** Reverse a merge within 30 days, from the change set on the audit chain. */
+  async unmergeRecord(sourceId, viewer) {
+    this.#assertManager(viewer, 'unmerge records');
+    const evt = await this.db.auditChainEvent.findFirst({ where: { entity_type: 'record.merge', entity_id: String(sourceId) }, orderBy: { seq: 'desc' } });
+    if (!evt) throw new NotFoundError('Merge');
+    if (Date.now() - new Date(evt.created_at).getTime() > 30 * 86400000) throw new ValidationError('Merges can be reversed only within 30 days');
+    const undone = await this.db.auditChainEvent.findFirst({ where: { entity_type: 'record.unmerge', entity_id: String(sourceId), seq: { gt: evt.seq } } });
+    if (undone) throw new ValidationError('This merge has already been reversed');
+    const { source, target, repointed = [], filled = [] } = evt.payload ?? {};
+    const tgt = await this.db.record.findUnique({ where: { id: Number(target) } });
+    if (!tgt) throw new NotFoundError('Record');
+    await this.#assertAccess(tgt, viewer);
+    await this.db.record.update({ where: { id: Number(source) }, data: { deleted_at: null, deleted_by: null } });
+    if (repointed.length) {
+      await this.db.recordFieldValue.updateMany({ where: { id: { in: repointed }, str_value: String(target) }, data: { str_value: String(source), num_value: Number(source) } });
+    }
+    // Clear the fields the merge filled on the survivor, if still unchanged.
+    const [srcData, tgtData] = await Promise.all([this.#loadData(Number(source)), this.#loadData(Number(target))]);
+    const clear = filled.filter((f) => String(srcData?.[f] ?? '') === String(tgtData?.[f] ?? ''));
+    if (clear.length) await this.db.recordFieldValue.deleteMany({ where: { record_id: Number(target), field_name: { in: clear } } });
+    await this.#chain().append({ entityType: 'record.unmerge', entityId: source, action: 'unmerge', actor: viewer?.employee_id ?? null, sensitivity: 'sensitive', tenantId: tgt.tenant_id, payload: { source, target, restored: repointed.length, cleared: clear } });
+    await this.recompute(Number(target)).catch(() => {});
+    await this.recompute(Number(source)).catch(() => {});
+    return { restored: Number(source), repointed: repointed.length, cleared: clear };
+  }
+
+  // ── Personal data: masking, audited reveal, view audit (PRD X-08, CMP-FR-07) ─
+
+  /** Names of an object's fields flagged `config.pii`. */
+  async #piiFields(objectId) {
+    if (typeof this.db.uiField?.findMany !== 'function') return [];
+    const fields = await this.db.uiField.findMany({ where: { object_id: Number(objectId), is_active: true }, select: { name: true, config: true } }).catch(() => []);
+    return (fields ?? []).filter((f) => f.config?.pii).map((f) => f.name);
+  }
+
+  /**
+   * Whether the viewer sees personal data unmasked: admin-tier roles, and roles
+   * holding the `view_pii` operational permission. Internal callers (no
+   * viewer — workflows, formulas, integrations) always see real values.
+   */
+  async canViewPii(viewer) {
+    if (!viewer) return true;
+    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role];
+    if (Number.isFinite(level) && level <= ADMIN_THRESHOLD) return true;
+    const key = `${viewer.tenant_id ?? getTenantId()}:${viewer.role}`;
+    const hit = PII_CACHE.get(key);
+    if (hit && hit.at > Date.now() - 30_000) return hit.ok;
+    if (typeof this.db.operationalPermission?.findFirst !== 'function') return false;
+    const row = await this.db.operationalPermission.findFirst({ where: { entity_type: 'view_pii', role_name: viewer.role, view_scope: { not: 'none' } }, select: { id: true } });
+    PII_CACHE.set(key, { ok: Boolean(row), at: Date.now() });
+    return Boolean(row);
+  }
+
+  /** Replace PII values with masks for viewers without the permission; lists the masked fields. */
+  async #maskPii(objectId, records, viewer) {
+    if (!viewer || !records?.length) return records;
+    const pii = await this.#piiFields(objectId);
+    if (!pii.length || await this.canViewPii(viewer)) return records;
+    return records.map((r) => {
+      if (!r?.data) return r;
+      const data = { ...r.data };
+      const masked = [];
+      for (const f of pii) {
+        if (data[f] != null && data[f] !== '') { data[f] = maskValue(data[f]); masked.push(f); }
+      }
+      return masked.length ? { ...r, data, masked } : r;
+    });
+  }
+
+  /**
+   * Reveal one masked field. Allowed only on a record the viewer may open;
+   * every reveal is written to the tamper-evident audit chain.
+   */
+  async revealField(recordId, fieldName, viewer) {
+    const record = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { id: true, object_id: true, tenant_id: true, deleted_at: true, created_by: true, assigned_to: true, business_unit_id: true, barrier_zone_id: true } });
+    if (!record || record.deleted_at) throw new NotFoundError('Record');
+    await this.#assertAccess(record, viewer);
+    const pii = await this.#piiFields(record.object_id);
+    if (!pii.includes(String(fieldName))) throw new ValidationError(`${fieldName} is not a protected field`);
+    const row = await this.db.recordFieldValue.findUnique({ where: { record_id_field_name: { record_id: record.id, field_name: String(fieldName) } } }).catch(() => null);
+    await this.#chain().append({ entityType: 'pii.reveal', entityId: record.id, action: 'reveal', actor: viewer?.employee_id ?? null, sensitivity: 'sensitive', payload: { field: String(fieldName), object_id: record.object_id }, tenantId: record.tenant_id });
+    return { field: String(fieldName), value: row ? RecordService.#readTypedValue(row) : null };
+  }
+
+  /**
+   * Record that a sensitive record was viewed (CMP-FR-07): anything behind an
+   * information barrier, and objects whose config sets `audit_views`.
+   */
+  async #auditView(record, viewer) {
+    if (!viewer) return;
+    try {
+      let sensitive = Boolean(record.barrier_zone_id);
+      if (!sensitive && typeof this.db.uiObject?.findUnique === 'function') {
+        const obj = await this.db.uiObject.findUnique({ where: { id: record.object_id }, select: { config: true } }).catch(() => null);
+        sensitive = Boolean(obj?.config?.audit_views);
+      }
+      if (sensitive) await this.#chain().append({ entityType: 'record.view', entityId: record.id, action: 'view', actor: viewer.employee_id ?? null, sensitivity: 'sensitive', payload: { object_id: record.object_id }, tenantId: record.tenant_id });
+    } catch { /* auditing never blocks a read */ }
+  }
+
+  /** The tamper-evident audit chain (lazily constructed). */
+  #chain() {
+    if (!this.auditChain) {
+      const AuditChainService = require('./audit-chain.service');
+      this.auditChain = new AuditChainService(this.db);
+    }
+    return this.auditChain;
+  }
+
   async exportRecordsCsv(objectId, viewer) {
     const ownerWhere = await this.#ownerFilter(viewer);
     const anchors = await this.db.record.findMany({
@@ -1560,7 +1842,7 @@ class RecordService {
     });
     if (!anchors.length) return 'id,stage,assigned_to,created_by,created_at\r\n';
 
-    const hydrated = await this.#hydrateMany(anchors);
+    const hydrated = await this.#maskPii(Number(objectId), await this.#hydrateMany(anchors), viewer);
     // Collect all CRM field keys present across all records
     const crmKeys = [...new Set(hydrated.flatMap(r => Object.keys(r.data ?? {})))];
     const headers = ['id', 'stage', 'assigned_to', 'created_by', 'created_at', ...crmKeys];

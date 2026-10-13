@@ -17,6 +17,7 @@ security.
 - **JWT Token Management**: Secure token generation with configurable expiry (default 8 hours)
 - **Token Verification**: Middleware-based JWT verification on all protected routes
 - **Configuration**: Environment-based JWT secret management (`JWT_SECRET`, `JWT_EXPIRY`)
+- **Refresh and revocation (October 2026)**: rotating refresh tokens and per-user revocation; see [Sessions, two-factor and personal data](#sessions-two-factor-and-personal-data-october-2026)
 
 ```javascript
 // Fastify JWT plugin with secure configuration
@@ -642,6 +643,52 @@ Full design: [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md).
 - **Documents inherit record access.** Every `/api/documents/:id` route and the record document list
   check that the caller can see the record the document is attached to.
 
+## Sessions, two-factor and personal data (October 2026)
+
+Delivered for the SWAN Capital PRD (E-01, E-02, E-16, X-08), for every tenant.
+
+### Refresh tokens (`auth_refresh_tokens`)
+
+- Stored only as SHA-256 hashes.
+- Each use retires the token and issues a new one in the same *family*. Presenting a retired token again is treated as theft, and the whole family is revoked.
+- `POST /api/auth/logout` revokes one token, or every session with `everywhere: true`.
+
+### Access-token revocation (`employees.tokens_valid_after`)
+
+- `authenticate` rejects any token issued before this time, and any token of an inactive employee. The check is cached for 30 seconds per instance, and the instance that revokes applies it immediately.
+- It is set on deactivation (tenant and platform consoles), password change, password reset and *Sign out everywhere*.
+- Tokens with a `purpose` claim (the five-minute MFA challenge) are never accepted as sessions.
+
+### Two-factor (TOTP) (`utils/totp.js`)
+
+- RFC 6238 with ±1 step and constant-time comparison.
+- The secret is stored encrypted (`enc:v1:`). Ten recovery codes are stored as hashes and each works once.
+- Enforced when the tenant's security policy requires MFA. Users who have not enrolled are taken through set-up at sign-in.
+
+### Personal data
+
+- Fields with `config.encrypt` are stored AES-256-GCM encrypted under `FIELD_ENCRYPTION_KEY`. Set a dedicated 32-byte key in production; without it the key is derived from `JWT_SECRET`, which ties the two secrets together.
+- Fields with `config.pii` are masked for roles without `view_pii`. Each reveal is written to the hash-chained audit, and so are views of objects with `config.audit_views`.
+- `config.conceal_existence` removes even the count of hidden related records (STR "no tipping-off").
+
+### Portal realm (`/api/portal`)
+
+- Clients and introducers sign in with a 6-digit email code: 10-minute expiry, 5 attempts, rate limited per IP and per email.
+- Their `gp1.` tokens are HMAC-signed with a separate key and are not JWTs, so staff routes cannot accept them and portal routes cannot accept staff tokens.
+- Every portal query is filtered to records linked to the signed-in person.
+- Uploads are restricted to PDF, JPEG and PNG, checked by content (magic bytes), up to 10 MB.
+
+### Calendar feed tokens
+
+- Signed over the user's `tokens_valid_after`, so any revocation also kills the feed URL.
+- Every failure answers 404.
+
+### Public data feeds
+
+- Publish only the fields an administrator lists. Fields marked `pii` or `encrypt` are dropped even when listed.
+
+Tests: `auth-hardening.test.js`, `field-protection.test.js`, `portal.test.js`, `calendar-feed.test.js`, `public-feed.test.js`.
+
 ## Areas for Security Enhancement
 
 ### Recommended Improvements
@@ -662,21 +709,15 @@ response headers) have shipped — see the sections above. What remains:
      id; provisioning generates tenant-qualified region and branch codes.
 
 2. **Session Management**
-   - Deactivating a user (`POST /api/platform/security/deactivate-user`) stops new sign-ins but does
-     not invalidate tokens already issued — unlike a tenant suspension, which is now enforced on
-     every request by the lifecycle gate.
-   - Fix: extend the same memoised per-request check to a user-level revocation list, or add a
-     token version column compared on each request.
-   - Also outstanding: concurrent session limits, and invalidation on password change.
+   - Delivered in October 2026: refresh-token rotation, revocation on deactivation and password
+     change, and *Sign out everywhere* (see above).
+   - Still open: concurrent-session limits, SSO (OIDC/SAML) and SMS as a second factor.
 
 3. **Audit Logging**
-   - Pipeline data and pipeline-config actions are now fully audited (see
-     *Comprehensive Pipeline Audit Trail* above); every platform-console action is audited via
-     `PlatformAuditService`, including each provisioning run and its per-step outcome.
-   - Remaining gap: **permission** changes still only record `updated_by` and do not write `AuditLog`
-     entries.
-   - Recommend adding audit log entries to `setEntityPermissions` / `setOperationalPermission`.
+   - Permission changes (object and operational) are now written to the hash-chained audit
+     (`audit_chain_events`), as are barrier memberships, wall-crossings, form publishing, PII reveals,
+     record merges and sensitive views. `GET /api/access/audit-chain/verify` checks the chain.
 
 ---
 
-Document Version: 1.1 — Last Updated: September 12, 2026
+Document Version: 1.2 — Last Updated: October 13, 2026

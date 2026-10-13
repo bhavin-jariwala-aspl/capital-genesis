@@ -19,6 +19,9 @@ import ClientDetails from '../../components/runtime/ClientDetails';
 import FieldValue from '../../components/runtime/FieldValue';
 import RelatedPanel from '../../components/runtime/RelatedPanel';
 import RecordActions from '../../components/runtime/RecordActions';
+import RecordMerge from '../../components/runtime/RecordMerge';
+import { EmployeePicker } from '../../components/ui/EmployeePicker';
+import { useAuthStore } from '../../store/authStore';
 import { recordTitle, initials, gradientFor } from '../../utils/record';
 import clsx from 'clsx';
 import { fmtCurrency } from '../../utils/formatters';
@@ -414,6 +417,18 @@ export default function ModulePage() {
     },
   });
 
+  // ── Bulk reassign (managers / admins — e.g. an RM leaving) ─────────────────
+  const canReassign = useAuthStore((s) => s.isAdmin() || s.isManager());
+  const [reassignTo, setReassignTo] = useState('');
+  const bulkAssign = useMutation({
+    mutationFn: () => runtimeService.bulkAssignRecords([...selectedIds], reassignTo || null),
+    onSuccess: () => {
+      setSelectedIds(new Set());
+      setReassignTo('');
+      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
+    },
+  });
+
   const handleBulkDelete  = useCallback(() => {
     if (selectedIds.size === 0) return;
     bulkDelete.mutate();
@@ -524,7 +539,7 @@ export default function ModulePage() {
         sortable: true,
         // Formatted from the field's metadata (type, options, lookup label) —
         // the same renderer the record panel uses.
-        render:   (_, row) => <FieldValue field={f} value={row.data?.[f.name]} label={row.labels?.[f.name]} compact />,
+        render:   (_, row) => <FieldValue field={f} value={row.data?.[f.name]} label={row.labels?.[f.name]} masked={row.masked?.includes(f.name)} recordId={row.id} compact />,
       }));
 
     if (pipeline) {
@@ -687,6 +702,18 @@ export default function ModulePage() {
                   >
                     <Trash2 className="w-3 h-3" /> Delete
                   </button>
+                  {canReassign && (
+                    <span className="flex items-center gap-1">
+                      <EmployeePicker value={reassignTo} onChange={setReassignTo} placeholder="Reassign to…" wrapperClass="w-44" />
+                      <button
+                        onClick={() => reassignTo && bulkAssign.mutate()}
+                        disabled={!reassignTo || bulkAssign.isPending}
+                        className="text-xs font-medium text-primary-700 hover:underline disabled:opacity-50"
+                      >
+                        Reassign
+                      </button>
+                    </span>
+                  )}
                   <button onClick={handleClearSelect} className="text-gray-400 hover:text-gray-600">
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -855,6 +882,7 @@ export default function ModulePage() {
                   </Button>
                 )}
                 {canEdit && <RecordActions objectId={activeObject?.id} recordId={activeRecord.id} />}
+                {canEdit && <RecordMerge objectName={activeObject?.name} recordId={activeRecord.id} onMerged={() => setActiveRecord?.(null)} />}
                 {canEdit && (
                   <Button
                     size="xs" variant="ghost"

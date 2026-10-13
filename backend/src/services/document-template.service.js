@@ -1,5 +1,7 @@
 'use strict';
 
+const { htmlToPdf } = require('../utils/pdf');
+
 const { getTenantId } = require('../middleware/tenant-scope');
 
 /**
@@ -111,21 +113,45 @@ class DocumentTemplateService {
     if (!tpl) throw Object.assign(new Error('Template not found'), { statusCode: 404 });
 
     const content = mergeTemplate(tpl.body, data);
-    const isHtml = tpl.format !== 'text';
-    const ext = isHtml ? 'html' : 'txt';
-    const mimeType = isHtml ? 'text/html' : 'text/plain';
+    const category = tpl.output_category || 'generated';
+    // PDF when the template asks for it, or when its category does not accept
+    // HTML (regulated document categories usually allow PDF and images only).
+    let format = tpl.format === 'text' ? 'text' : tpl.format === 'pdf' ? 'pdf' : 'html';
+    if (format === 'html') {
+      const cat = await this.db.uiDocumentCategory?.findFirst?.({ where: { code: category }, select: { allowed_mime: true } }).catch(() => null);
+      const allowed = Array.isArray(cat?.allowed_mime) ? cat.allowed_mime : null;
+      if (allowed && !allowed.includes('text/html') && allowed.includes('application/pdf')) format = 'pdf';
+    }
     const safeBase = String(filename || tpl.name || 'document').replace(/\.[a-z0-9]+$/i, '');
+    let buffer;
+    let mimeType;
+    let ext;
+    if (format === 'pdf') {
+      const tenant = getTenantId() ? await this.db.tenant?.findUnique?.({ where: { id: getTenantId() }, select: { name: true } }).catch(() => null) : null;
+      buffer = htmlToPdf(content, {
+        title: safeBase,
+        author: tenant?.name ?? 'Genesis CRM',
+        letterhead: { name: data.letterhead_name || tenant?.name || 'Genesis CRM', subtitle: data.letterhead_subtitle || null, right: data.today_long || null },
+        footer: data.letterhead_footer || null,
+      });
+      mimeType = 'application/pdf';
+      ext = 'pdf';
+    } else {
+      buffer = Buffer.from(content, 'utf8');
+      mimeType = format === 'html' ? 'text/html' : 'text/plain';
+      ext = format === 'html' ? 'html' : 'txt';
+    }
     const outName = `${safeBase}.${ext}`;
 
     return this.documents.upload({
       tenantId: getTenantId(),
-      buffer: Buffer.from(content, 'utf8'),
+      buffer,
       filename: outName,
       mimeType,
       entityType,
       entityId,
       folderId,
-      category: tpl.output_category || 'generated',
+      category,
       description: `Generated from template "${tpl.name}"`,
       uploadedBy,
     });

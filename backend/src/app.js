@@ -42,6 +42,9 @@ const reportRoutes        = require('./routes/reports/index');
 const analyticsRoutes     = require('./routes/analytics/index');
 const aiReportRoutes      = require('./routes/ai-reports/index');
 const accessRoutes        = require('./routes/access/index');
+const publicRoutes        = require('./routes/public/index');
+const portalRoutes        = require('./routes/portal/index');
+const calendarRoutes      = require('./routes/calendar/index');
 
 // ── Workflow engine & Social media ────────────────────────
 const WorkflowEngineService = require('./services/workflow.service');
@@ -163,6 +166,22 @@ async function buildApp() {
   // new record gets formulas, unit/barrier stamping, assignment and events.
   workflowEngine.setRecordService(new RecordService(prisma, eventBus, null, new AssignmentService(prisma)));
 
+  // Durable job queue (PRD E-03): failed integration / SMS calls retry with
+  // back-off from the `job_queue` table instead of being lost.
+  const JobQueue = require('./services/job-queue.service');
+  const jobQueue = new JobQueue(prisma).register('integration.call', async (p) => {
+    let log;
+    try {
+      log = await integrationService.executeByName(p.integration, p.body ?? {});
+    } catch (err) {
+      if (/not found|not active|No connector|unknown provider/i.test(err.message)) err.permanent = true;
+      throw err;
+    }
+    if (p.field_map && p.record_id) await workflowEngine.applyFieldMap(p.record_id, p.field_map, log?.response_body);
+  });
+  workflowEngine.setJobQueue(jobQueue);
+  fastify.decorate('jobQueue', jobQueue);
+
   fastify.decorate('workflowEngine', workflowEngine);
   fastify.decorate('integrationService', integrationService);
 
@@ -178,6 +197,10 @@ async function buildApp() {
   // ── SLA engine (decorated so routes can trigger a manual reconcile) ───────
   const slaService = new SlaService(prisma, fastify.log);
   fastify.decorate('slaService', slaService);
+  // Timers start (and stop) when the record changes, not only at the next sweep.
+  const slaNow = (_e, p) => { const id = p?.record?.id; if (id) slaService.reconcileRecord(id).catch((err) => fastify.log.warn({ err }, '[sla] record refresh failed')); };
+  eventBus.subscribe('record.created', slaNow);
+  eventBus.subscribe('record.field_changed', slaNow);
 
   // ── Reminder engine (due-sweep turns reminders into notifications) ────────
   const reminderService = new ReminderService(prisma, eventBus);
@@ -236,6 +259,21 @@ async function buildApp() {
     },
   });
 
+  // Once a day, recompute formulas that read the date (TODAY / NOW / AGE) so
+  // flags like "review due" and "days to maturity" stay true on records
+  // nobody edits. Checks hourly; does the work once per day.
+  const FormulaRefreshService = require('./services/formula-refresh.service');
+  const formulaRefresh = new FormulaRefreshService(prisma, new RecordService(prisma));
+  schedulers.add({
+    name: 'formula-refresh', intervalMs: 3_600_000, startDelayMs: 300_000, log: fastify.log,
+    run: () => formulaRefresh.run(),
+  });
+
+  schedulers.add({
+    name: 'job-queue', intervalMs: 15_000, startDelayMs: 20_000, log: fastify.log,
+    run: () => jobQueue.work(),
+  });
+
   fastify.addHook('onReady', async () => schedulers.startAll());
   fastify.addHook('onClose', async () => schedulers.stopAll());
 
@@ -288,6 +326,8 @@ async function buildApp() {
       // Per-loop status of the background schedulers: last run, duration,
       // result summary and last error — the operator's view of automation.
       schedulers: schedulers.statuses(),
+      // Durable job queue depth by status (queued / running / done / dead).
+      job_queue: dbStatus === 'connected' ? await jobQueue.stats().catch(() => 'unavailable') : 'unavailable',
     };
 
     return reply.code(healthy ? 200 : 503).send(payload);
@@ -315,6 +355,11 @@ async function buildApp() {
   fastify.register(analyticsRoutes,     { prefix: '/api/analytics' });
   fastify.register(aiReportRoutes,      { prefix: '/api/ai-reports' });
   fastify.register(accessRoutes,        { prefix: '/api/access' });
+  // Unauthenticated website intake (published web forms) and the client /
+  // introducer portal, which has its own sign-in realm.
+  fastify.register(publicRoutes,        { prefix: '/api/public' });
+  fastify.register(portalRoutes,        { prefix: '/api/portal' });
+  fastify.register(calendarRoutes,      { prefix: '/api/calendar' });
 
   // ── Global error handler ────────────────────────────────
   fastify.setErrorHandler((error, request, reply) => {

@@ -7,7 +7,8 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Alert from '../../components/ui/Alert';
 import PageHeader from '../../components/ui/PageHeader';
-import { ArrowLeft, RotateCcw, Trash2, Trash } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Trash2, Trash, GitMerge } from 'lucide-react';
+import { runtimeService } from '../../services/metadata.service';
 import { confirmDialog } from '../../utils/dialog';
 
 const selectCls = 'rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-gray-900 dark:text-white/80 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
@@ -71,6 +72,14 @@ export default function RecordsTrashPage() {
     mutationFn: (id) => builderService.restoreRecord(id),
     onSuccess:  invalidate,
     onError:    (e) => setError(e.response?.data?.message || e.message),
+  });
+
+  // A record merged into another (C360-FR-08) sits here; reversing the merge
+  // also moves its linked records back. Possible for 30 days.
+  const unmergeMutation = useMutation({
+    mutationFn: (id) => runtimeService.unmergeRecord(id),
+    onSuccess:  invalidate,
+    onError:    (e) => setError(e.response?.data?.error?.message || e.response?.data?.message || e.message),
   });
 
   const purgeMutation = useMutation({
@@ -143,6 +152,15 @@ export default function RecordsTrashPage() {
             loading={restoreMutation.isPending && restoreMutation.variables === row.id}
           >
             <RotateCcw className="w-3.5 h-3.5 mr-1" />Restore
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            title="If this record was merged into another, reverse the merge (within 30 days)"
+            onClick={() => unmergeMutation.mutate(row.id)}
+            loading={unmergeMutation.isPending && unmergeMutation.variables === row.id}
+          >
+            <GitMerge className="w-3.5 h-3.5 mr-1" />Reverse merge
           </Button>
           <button
             title="Delete permanently"

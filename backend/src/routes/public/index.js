@@ -7,12 +7,14 @@ const { RateLimiter, clientIp } = require('../../utils/rate-limit');
 const PublicFormService = require('../../services/public-form.service');
 const RecordService = require('../../services/record.service');
 const AssignmentService = require('../../services/assignment.service');
+const PublicFeedService = require('../../services/public-feed.service');
 
 /**
  * /api/public — unauthenticated website intake.
  *
  *   GET  /forms/:key   render description of a published form
  *   POST /forms/:key   submit it → a record of the form's object
+ *   GET  /feeds/:workspace/:name   read-only data feed (NAVs, FX board, PLR)
  *
  * The record goes through the full record path (validation, formulas,
  * business-unit stamping, assignment, events → workflows / SLA), so every
@@ -65,6 +67,18 @@ module.exports = async function publicRoutes(fastify) {
   }
 
   fastify.get('/forms/:key', { schema: { params: keyParams } }, async (req) => ok(await svc.describe(req.params.key)));
+
+  // Website data feeds (PRD I-02): public, cacheable, any origin may read them.
+  const feeds = new PublicFeedService(fastify.prisma);
+  fastify.get('/feeds/:slug/:name', {
+    schema: { params: { type: 'object', required: ['slug', 'name'], properties: { slug: { type: 'string', pattern: '^[a-z0-9-]{2,100}$' }, name: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,59}$' } } } },
+  }, async (req, reply) => {
+    const r = await limiter.hit(`pub:feed:${clientIp(req)}`, { max: 300, windowSec: 10 * 60 });
+    if (r.limited) throw new RateLimitedError('Too many requests. Please try again later.', r.retryAfterSec);
+    const data = await feeds.feed(req.params.slug, req.params.name);
+    reply.header('Cache-Control', 'public, max-age=300').header('Access-Control-Allow-Origin', '*');
+    return ok(data);
+  });
 
   fastify.post('/forms/:key', {
     preHandler: [enforce],

@@ -23,6 +23,20 @@ const INTEGRATION_TYPES = [
   { value: 'inbound_webhook',  label: 'Inbound Webhook' },
   { value: 'enrichment',       label: 'Enrichment' },
   { value: 'custom',           label: 'Custom' },
+  { value: 'simulator',        label: 'Sandbox simulator' },
+];
+
+// Sandbox providers (backend: services/integration-simulators.js). Each answers
+// with the same response contract as the live system, so workflows and their
+// field mappings can be built and tested before the real connection exists.
+const SIMULATOR_PROVIDERS = [
+  { value: 'screening',  label: 'Sanctions / PEP screening' },
+  { value: 'mcib',       label: 'Credit bureau (MCIB)' },
+  { value: 'lms',        label: 'Core loan system (booking)' },
+  { value: 'ta',         label: 'Transfer agent (fund orders)' },
+  { value: 'oms',        label: 'Order management system' },
+  { value: 'fx_dealing', label: 'FX dealing system' },
+  { value: 'sms',        label: 'SMS gateway' },
 ];
 
 const TYPE_META = {
@@ -30,6 +44,7 @@ const TYPE_META = {
   inbound_webhook:  { color: 'info',    icon: Webhook, label: 'Inbound Webhook' },
   enrichment:       { color: 'purple',  icon: RefreshCw, label: 'Enrichment' },
   custom:           { color: 'default', icon: Settings2, label: 'Custom' },
+  simulator:        { color: 'warning', icon: Zap, label: 'Sandbox simulator' },
 };
 
 const HTTP_METHODS = ['POST', 'PUT', 'PATCH'];
@@ -137,6 +152,23 @@ function EventSubscriptions({ config, onChange }) {
 }
 
 function ConfigEditor({ type, config, onChange }) {
+  if (type === 'simulator') {
+    return (
+      <div className="space-y-4">
+        <Select
+          label="Simulated system"
+          options={SIMULATOR_PROVIDERS}
+          value={config.provider ?? 'screening'}
+          onChange={e => onChange({ ...config, provider: e.target.value })}
+        />
+        <p className="form-help">
+          Returns deterministic, realistic responses in the live system&apos;s format. Switch the type to
+          Outbound Webhook or Enrichment and enter the provider URL to go live — workflows need no change.
+        </p>
+      </div>
+    );
+  }
+
   if (type === 'outbound_webhook') {
     return (
       <div className="space-y-4">

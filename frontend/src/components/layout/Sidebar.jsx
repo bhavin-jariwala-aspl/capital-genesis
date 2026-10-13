@@ -127,6 +127,16 @@ export default function Sidebar({ open, onClose }) {
 
   const modules = useMemo(() => modulesData?.data || [], [modulesData]);
 
+  // Approvals waiting for this user — shown as a count on the Approvals link.
+  const { data: approvalsData } = useQuery({
+    queryKey: ['approvals', 'mine'],
+    queryFn: () => runtimeService.getApprovals('mine'),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    enabled: !isPlatformAdmin() || workspaceExpanded,
+  });
+  const pendingApprovals = (Array.isArray(approvalsData) ? approvalsData : approvalsData?.data ?? []).length;
+
   // Plan entitlements. Metadata modules are already filtered server-side in
   // bootstrap; this covers the bespoke tools and Builder sections the server
   // has no row for. A locked entry is hidden rather than shown-and-refused.
@@ -238,6 +248,14 @@ export default function Sidebar({ open, onClose }) {
           {/* Tools — available to every authenticated user (not a module, so
               it is not covered by the metadata-driven section below) */}
           <SectionLabel>Tools</SectionLabel>
+          <NavItem
+            to="/approvals"
+            icon={ClipboardCheck}
+            label={pendingApprovals ? `Approvals (${pendingApprovals})` : 'Approvals'}
+            active={isActive('/approvals')}
+            onClick={handleLinkClick}
+            accent={pendingApprovals ? 'amber' : undefined}
+          />
           <NavItem
             to="/reminders"
             icon={Bell}

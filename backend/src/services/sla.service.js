@@ -244,6 +244,16 @@ function pickTarget(targets, metric, dim) {
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────
+/** The row the shared timer logic reads for a generic record. */
+function recordRow(a, f = {}) {
+  return {
+    ...f,
+    id: a.id, tenant_id: a.tenant_id, created_at: a.created_at, updated_at: a.updated_at,
+    assigned_to: a.assigned_to, stage: a.pipeline_stage?.name ?? null,
+    __title: TITLE_FIELDS.map((t) => f[t]).find(Boolean) ?? null,
+  };
+}
+
 class SlaService {
   #running = false;
 
@@ -371,25 +381,55 @@ class SlaService {
         fieldsById.get(v.record_id)[v.field_name] = v.num_value != null ? Number(v.num_value) : v.str_value;
       }
 
-      for (const a of anchors) {
-        const f = fieldsById.get(a.id) ?? {};
-        const row = {
-          ...f,
-          id: a.id, tenant_id: a.tenant_id, created_at: a.created_at, updated_at: a.updated_at,
-          assigned_to: a.assigned_to, stage: a.pipeline_stage?.name ?? null,
-          __title: TITLE_FIELDS.map((t) => f[t]).find(Boolean) ?? null,
-        };
-        await tenantContext.run({ tenantId: a.tenant_id }, async () => {
-          try {
-            await this.#processRecord('record', cfg, Object.keys(cfg.metricStatus), row, pols);
-            processed++;
-          } catch (err) {
-            this.log.error?.({ err, type: 'record', id: a.id }, '[sla] record error');
-          }
-        });
-      }
+      // Records are independent: process a few at a time (each is several
+      // round trips, which dominates on a remote database).
+      let next = 0;
+      const worker = async () => {
+        while (next < anchors.length) {
+          const a = anchors[next++];
+          await tenantContext.run({ tenantId: a.tenant_id }, async () => {
+            try {
+              await this.#processRecord('record', cfg, Object.keys(cfg.metricStatus), recordRow(a, fieldsById.get(a.id)), pols);
+              processed++;
+            } catch (err) {
+              this.log.error?.({ err, type: 'record', id: a.id }, '[sla] record error');
+            }
+          });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(6, anchors.length) }, worker));
     }
     return processed;
+  }
+
+  /**
+   * Start, advance or finish one record's timers right away — called when a
+   * record is created or changes stage, so a new enquiry shows its
+   * speed-to-lead clock immediately instead of at the next sweep.
+   */
+  async reconcileRecord(recordId) {
+    const a = await this.db.record.findUnique({
+      where: { id: Number(recordId) },
+      select: { id: true, object_id: true, tenant_id: true, created_at: true, updated_at: true, assigned_to: true, deleted_at: true, pipeline_stage: { select: { name: true } } },
+    });
+    if (!a || a.deleted_at) return false;
+    const pols = await this.db.slaPolicy.findMany({
+      where:   { entity_type: 'record', is_active: true, object_id: a.object_id },
+      include: { targets: true, escalations: true, business_hours: true },
+      orderBy: { order_index: 'asc' },
+    });
+    if (!pols.length) return false;
+    const cfg = recordEntityConfig(pols[0].config ?? {});
+    const wanted = new Set([cfg.dimField, ...TITLE_FIELDS]);
+    for (const p of pols) for (const c of p.conditions ?? []) if (c?.field) wanted.add(c.field);
+    const values = await this.db.recordFieldValue.findMany({
+      where:  { record_id: a.id, field_name: { in: [...wanted] } },
+      select: { record_id: true, field_name: true, str_value: true, num_value: true },
+    });
+    const f = {};
+    for (const v of values) f[v.field_name] = v.num_value != null ? Number(v.num_value) : v.str_value;
+    await tenantContext.run({ tenantId: a.tenant_id }, () => this.#processRecord('record', cfg, Object.keys(cfg.metricStatus), recordRow(a, f), pols));
+    return true;
   }
 
   async #processRecord(type, cfg, metricNames, rec, tenantPolicies) {
@@ -441,7 +481,9 @@ class SlaService {
       status = 'canceled';
     } else if (mStatus === 'met') {
       status = 'met';
-      completed_at = rec.updated_at || now;
+      // When the timer is created after the fact, the moment the record first
+      // reached a completing stage (its status history) is when it was met.
+      completed_at = (type === 'record' ? await this.#metAt(cfg, metric, rec) : null) || rec.updated_at || now;
       breached = completed_at > dueAt;
       breached_at = breached ? dueAt : null;
       warned = true;
@@ -458,6 +500,16 @@ class SlaService {
         status, warned, breached, completed_at, breached_at,
       },
     });
+  }
+
+  /** First stage change in the record's history that satisfies the metric. */
+  async #metAt(cfg, metric, rec) {
+    if (!this.db.statusEvent?.findMany) return null;
+    const events = await this.db.statusEvent.findMany({
+      where: { record_id: rec.id, event_type: 'milestone' }, orderBy: { occurred_at: 'asc' }, select: { status: true, occurred_at: true },
+    }).catch(() => []);
+    const hit = events.find((e) => cfg.metricStatus[metric]({ ...rec, stage: e.status }) === 'met');
+    return hit?.occurred_at ?? null;
   }
 
   async #updateInstance({ type, cfg, rec, policy, metric, ownerId, existing, cal, mStatus, now }) {

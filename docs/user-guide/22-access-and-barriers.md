@@ -18,6 +18,24 @@ Two access controls that sit on top of record ownership and the reporting hierar
 A record someone may not see behaves as if it does not exist: it is missing from lists, search, related lists,
 lookups, dashboards and documents. Opening its link answers "not found".
 
+### Who sees a record: three layers
+
+A user sees a record only when all three layers allow it:
+
+| Layer | Question it answers | Where it is set |
+| --- | --- | --- |
+| **Record visibility** | Own records only, or every record of this object? Users see what they created or own; managers also see their team's. A role whose object permission says **Records: All** sees every record of that object. | **Builder → Permissions → object → Records** column |
+| **Business unit** | Is the record in one of my units? | **Access & Barriers → Business units → Members** |
+| **Information barrier** | Am I inside the wall around this record? | **Access & Barriers → Barrier zones** and **Wall-crossings** |
+
+Related lists show hidden rows as "N restricted — contact Compliance", except on registers configured to conceal even
+that count (the STR register).
+
+### A workspace that does not use them
+
+The page is empty until units and zones are created. A workspace with one legal entity and no confidential desks
+(for example the generic *Genesis CRM Demo*) needs neither. Record visibility and permissions still apply.
+
 ## Where to find it
 
 Sidebar → **Tools** → **Access & Barriers**. Everyone can request a wall-crossing. Managing units needs an
@@ -65,6 +83,59 @@ To bring someone over a wall for a specific piece of work:
 Every change to units, zones, members, crossings, permissions and public forms is written to a hash-chained log.
 Each entry is sealed with the previous one, so editing or deleting any entry breaks the chain. **Verify
 integrity** recomputes the chain and reports either "intact" or the first broken entry.
+
+## Worked example: SWAN Capital Solutions
+
+The SWAN Capital workspace (`swan-capital`, sign in as `SWADMIN`) uses all three layers.
+
+### Business units: the six licensed entities
+
+| Code | Name | Legal entity and licence | Members |
+| --- | --- | --- | --- |
+| LND | Lending | Swan Life Ltd (Loans business line) — FSC IS10000013 | Loans manager, loans executives, credit analyst, credit committee, operations checker, RMs |
+| WLT | Wealth | Swan Wealth Managers Ltd — FSC IX09000018 · CM12000023 · DF09000007 | Portfolio manager, RMs |
+| FND | Funds | Swan Global Funds Ltd — FSC CI11000044 | Portfolio managers, operations checker, RMs |
+| SEC | Securities | Swan CMB Securities Ltd — FSC IP16000002 | Trader, senior RM |
+| ADV | Corporate Advisory | Swan Corporate Advisors Ltd — FSC IZ19000019 | Corporate advisors |
+| FX | Forex | Swan Forex Ltd — Bank of Mauritius FX Dealer Licence No. 03 | FX dealer, corporate RM |
+
+Group functions (COO, Compliance, MLRO, audit, marketing, BD) have no unit membership, so they see every unit. A
+loan application is tagged `LND`, so a trader (`SEC` only) never sees it, while a client's party record has no
+unit and is shared by every entity.
+
+### Barrier zones
+
+| Zone | What sits behind it | Standing members |
+| --- | --- | --- |
+| `ADV_PRIVATE` | Advisory mandates, deal teams, insider lists, investor books, deal documents | Corporate advisors, Compliance officer, MLRO |
+| `MLRO_STR` | Suspicious-transaction reports (the count is concealed too: no tipping-off) | MLRO |
+| `COMPLIANCE_ONLY` | Watch-list entries (restricted-list entries stay public) | Compliance officer, MLRO |
+| `VIP_CLIENTS` | Clients flagged VIP / sensitive; every view is recorded on the audit chain | COO, senior RM, MLRO |
+
+Only the MLRO holds **Barrier Override**. The tenant administrator (`SWADMIN`) is in no zone, so cannot open advisory
+mandates or STRs, which is deliberate.
+
+### Wall-crossings in the demo
+
+| For | Zone | Reason | Outcome |
+| --- | --- | --- | --- |
+| Senior RM | `ADV_PRIVATE` | Investor sounding with two wealth clients for an advisory raise | Approved by Compliance, 21 days |
+| Credit analyst | `ADV_PRIVATE` | Credit view on a debt tranche | Approved by Compliance, 30 days |
+| Trader | `ADV_PRIVATE` | Market colour on the issuer | Rejected by the MLRO: the trading desk stays public-side |
+| FX dealer | `ADV_PRIVATE` | FX hedging for foreign-currency proceeds | Pending (approve it from the Wall-crossings tab) |
+| RM | `VIP_CLIENTS` | Cover the VIP book during leave | Approved by the MLRO, 14 days |
+| Internal auditor | `COMPLIANCE_ONLY` | Audit of the watch-list process | Approved by Compliance, 10 days |
+
+The **Audit chain** tab starts with a baseline of this set-up, followed by every request and decision. **Verify
+integrity** reports "intact".
+
+### Try it
+
+1. Sign in as the trader (`SWTRD1`): Corporate Advisory shows no mandates, and a client's Related tab reads
+   "restricted — contact Compliance".
+2. Sign in as the FX dealer (`SWFX1`) and look at the pending crossing; then sign in as the Compliance officer
+   (`SWCOMP1`) and approve it. The FX dealer now sees that mandate and appears on its insider list.
+3. As the MLRO (`SWMLRO`), open **Audit chain** and choose **Verify integrity**.
 
 ## Tips
 

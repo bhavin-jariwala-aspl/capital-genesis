@@ -43,7 +43,7 @@ class ReminderService {
    */
   async #visibleEmployeeIds(viewer) {
     if (!viewer) return null;
-    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? 0;
+    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? Number.POSITIVE_INFINITY; // unknown level = least privilege, never admin
     if (level <= ADMIN_THRESHOLD) return null; // admin/super_admin/platform_admin → all
     const viewerId = viewer.employee_id ?? viewer.employeeId;
     if (level <= MANAGER_THRESHOLD) {

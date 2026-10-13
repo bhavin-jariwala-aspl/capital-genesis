@@ -285,11 +285,16 @@ class InboundWebhookConnector {
   }
 }
 
+const { SimulatorConnector } = require('./integration-simulators');
+
 const CONNECTOR_REGISTRY = {
   outbound_webhook:  OutboundWebhookConnector,
   inbound_webhook:   InboundWebhookConnector,
   enrichment:        EnrichmentConnector,
   custom:            CustomConnector,
+  // Sandbox stand-ins for screening, credit bureau, LMS, TA, OMS, FX dealing
+  // and SMS — same response contract as a live connector.
+  simulator:         SimulatorConnector,
   // email_sync — planned (requires IMAP/OAuth mailbox sync); not yet offered.
 };
 

@@ -25,7 +25,7 @@ class TaskService {
   async #assertRecordAccess(recordId, viewer) {
     if (!viewer) return;
     const { role } = viewer;
-    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? 0;
+    const level = viewer.role_level ?? ROLE_LEVEL[role] ?? Number.POSITIVE_INFINITY; // unknown level = least privilege, never admin
     if (level <= ADMIN_THRESHOLD) return;
     const record = await this.db.record.findUnique({
       where:  { id: recordId },

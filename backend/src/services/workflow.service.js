@@ -5,6 +5,9 @@ const { logger } = require('./logging.service');
 const { tenantContext } = require('../middleware/tenant-scope');
 const IntegrationService = require('./integration.service');
 const { evaluate: evaluateFormula, truthy } = require('./formula');
+
+/** Integration errors that a retry cannot fix (missing / inactive / misconfigured). */
+const CONFIG_ERROR = /not found|not active|No connector|unknown provider|CONFIG/i;
 const {
   MODEL_MAP,
   CRM_FIELDS,
@@ -86,6 +89,39 @@ class WorkflowEngineService {
   setIntegrationService(integrationService) {
     this.integrationService = integrationService;
     return this;
+  }
+
+  /** Durable job queue (PRD E-03): integration and SMS calls that fail are
+   *  queued for retry with back-off instead of being lost. */
+  setJobQueue(jobQueue) {
+    this.jobQueue = jobQueue;
+    return this;
+  }
+
+  /** Apply an integration step's `field_map` from a provider response — used
+   *  by the job queue when a retried call finally succeeds. */
+  async applyFieldMap(recordId, fieldMap, responseBody) {
+    if (!fieldMap || !responseBody || typeof responseBody !== 'object') return [];
+    const record = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { id: true, object_id: true } });
+    if (!record) return [];
+    const written = [];
+    for (const [recordField, respPath] of Object.entries(fieldMap)) {
+      const val = String(respPath).split('.').reduce((o, k) => (o == null ? o : o[k]), responseBody);
+      if (val !== undefined) { await this.#writeField(record, recordField, val); written.push(recordField); }
+    }
+    return written;
+  }
+
+  /** Queue a failed integration call for retry; returns the job or null. */
+  async #queueRetry(step, record, integration, body, fieldMap, err) {
+    if (!this.jobQueue || CONFIG_ERROR.test(String(err?.message ?? ''))) return null;
+    try {
+      return await this.jobQueue.enqueue('integration.call',
+        { integration, body, record_id: record?.id ?? null, field_map: fieldMap ?? null },
+        { delayMs: 30_000, dedupeKey: `wfstep:${step.id}:${record?.id ?? ''}`, tenantId: record?.tenant_id });
+    } catch {
+      return null;
+    }
   }
 
   /** RecordService used by `create_record`, so created records run the full
@@ -341,7 +377,55 @@ class WorkflowEngineService {
    * @param {string}  actingEmployeeId  The employee_id of the user submitting the decision
    * @returns {{ status, continued, log }}
    */
-  async processApproval(token, approved, actingEmployeeId) {
+  /**
+   * Approval requests for the inbox. `scope: 'mine'` — waiting for this
+   * employee; `'all'` — every pending request in the tenant (managers);
+   * `'decided'` — the employee's recent decisions.
+   */
+  async listApprovals(employeeId, { scope = 'mine', limit = 200 } = {}) {
+    const where = { approval_token: { not: null } };
+    if (scope === 'decided') where.approval_status = { in: ['approved', 'rejected'] };
+    else where.approval_status = 'pending';
+    const rows = await this.db.workflowPendingStep.findMany({
+      where, orderBy: { created_at: 'desc' }, take: scope === 'decided' ? 500 : 1000,
+      include: { workflow: { select: { label: true, object_id: true } } },
+    });
+    const me = String(employeeId ?? '');
+    const mine = rows.filter((r) => {
+      const c = r.context ?? {};
+      if (scope === 'mine') return Array.isArray(c.approver_ids) && c.approver_ids.map(String).includes(me);
+      if (scope === 'decided') return String(c.decided_by ?? '') === me;
+      return true;
+    }).slice(0, limit);
+    if (!mine.length) return [];
+
+    // Record titles and where to open them.
+    const objectIds = [...new Set(mine.map((r) => r.context?.object_id ?? r.workflow?.object_id).filter(Boolean))];
+    const objects = objectIds.length ? await this.db.uiObject.findMany({ where: { id: { in: objectIds } }, select: { id: true, label: true, module_id: true, config: true } }) : [];
+    const objById = new Map(objects.map((o) => [o.id, o]));
+    const recordIds = mine.map((r) => r.record_id).filter(Boolean);
+    const titleFields = [...new Set(objects.map((o) => o.config?.title_field).filter(Boolean))];
+    const titles = recordIds.length && titleFields.length ? await this.db.recordFieldValue.findMany({ where: { record_id: { in: recordIds }, field_name: { in: titleFields } }, select: { record_id: true, field_name: true, str_value: true } }) : [];
+    const people = [...new Set(mine.flatMap((r) => [r.actor_id, ...(r.context?.approver_ids ?? []), r.context?.decided_by]).filter(Boolean).map(String))];
+    const emps = people.length ? await this.db.employee.findMany({ where: { employee_id: { in: people } }, select: { employee_id: true, employee_name: true } }) : [];
+    const nameOf = (id) => emps.find((e) => e.employee_id === String(id))?.employee_name ?? id ?? null;
+
+    return mine.map((r) => {
+      const c = r.context ?? {};
+      const obj = objById.get(c.object_id ?? r.workflow?.object_id);
+      const title = obj?.config?.title_field ? titles.find((t) => t.record_id === r.record_id && t.field_name === obj.config.title_field)?.str_value : null;
+      return {
+        id: r.id, token: r.approval_status === 'pending' ? r.approval_token : null, status: r.approval_status,
+        title: c.title ?? r.workflow?.label ?? 'Approval required', message: c.message ?? null, workflow: r.workflow?.label ?? null,
+        requested_at: r.created_at, requested_by: r.actor_id, requested_by_name: nameOf(r.actor_id),
+        approvers: (c.approver_ids ?? []).map((id) => ({ id, name: nameOf(id) })),
+        decided_by: c.decided_by ?? null, decided_by_name: c.decided_by ? nameOf(c.decided_by) : null, decided_at: c.decided_at ?? null, comment: c.comment ?? null,
+        record: r.record_id ? { id: r.record_id, title: title ?? `#${r.record_id}`, object: obj?.label ?? null, link: obj ? `/module/${obj.module_id}/object/${obj.id}?record=${r.record_id}` : null } : null,
+      };
+    });
+  }
+
+  async processApproval(token, approved, actingEmployeeId, comment = null) {
     const pending = await this.db.workflowPendingStep.findUnique({
       where:   { approval_token: token },
       include: { workflow: { include: { steps: { orderBy: { order_index: 'asc' } } } } },
@@ -376,6 +460,17 @@ class WorkflowEngineService {
         select: { approval_status: true },
       });
       throw new Error(`Approval already resolved: ${current?.approval_status ?? 'unknown'}`);
+    }
+
+    // Who decided, when, and why — shown in the inbox history and on the audit trail.
+    await this.db.workflowPendingStep.update({
+      where: { id: pending.id },
+      data:  { context: { ...(pending.context ?? {}), decided_by: actingEmployeeId ?? null, decided_at: new Date().toISOString(), comment: comment ? String(comment).slice(0, 1000) : null } },
+    }).catch(() => {});
+    if (pending.record_id) {
+      await this.db.auditLog.create({
+        data: { record_id: pending.record_id, employee_id: actingEmployeeId ?? null, action: outcome === 'approved' ? 'approval_approved' : 'approval_rejected', changes: { approval: pending.context?.title ?? null, comment: comment ?? null }, tenant_id: pending.tenant_id },
+      }).catch(() => {});
     }
 
     const nextStepId = approved
@@ -496,10 +591,20 @@ class WorkflowEngineService {
           const value = typeof cfg.value === 'string'
             ? this.#interpolate(cfg.value, crmCache.fields)
             : cfg.value;
-          const written = await this.#writeField(record, cfg.field, value);
+          // `lookup.field` writes through a lookup to the linked record — e.g.
+          // a conflict check's decision updating its mandate's status.
+          let target = record;
+          let field = cfg.field;
+          if (String(field).includes('.')) {
+            const [head, ...rest] = String(field).split('.');
+            const linkedId = Number(crmCache.fields[head]);
+            target = Number.isInteger(linkedId) && linkedId > 0 ? { id: linkedId } : null;
+            field = rest.join('.');
+          }
+          const written = target ? await this.#writeField(target, field, value) : false;
           crmCache.fields = null; // invalidate — the record was just mutated
           // Formulas (and parents' roll-ups) depending on the field follow it.
-          if (written && cfg.field !== 'stage' && this.recordService) await this.recordService.recompute(record.id).catch(() => {});
+          if (written && field !== 'stage' && this.recordService) await this.recordService.recompute(target.id).catch(() => {});
           logEntry.result = written
             ? `set ${cfg.field}=${value}`
             : `no-op (could not resolve storage for field '${cfg.field}')`;
@@ -575,6 +680,9 @@ class WorkflowEngineService {
       case 'approval': {
         const token      = crypto.randomBytes(24).toString('hex');
         const recipients = await this.#resolveRecipients(cfg, record, actorId, crmCache);
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const approvalTitle = this.#interpolate(cfg.title ?? 'Approval required', crmCache.fields);
+        const approvalBody  = this.#interpolate(cfg.message ?? '', crmCache.fields);
 
         await this.db.workflowPendingStep.create({
           data: {
@@ -588,6 +696,11 @@ class WorkflowEngineService {
               // Persisted so processApproval can verify the acting employee is
               // one of the intended approvers (approver-bound enforcement).
               approver_ids:    recipients,
+              // Shown in the Approvals inbox.
+              title:           approvalTitle,
+              message:         approvalBody || null,
+              step_name:       step.name ?? null,
+              object_id:       record?.object_id ?? null,
             },
             approval_token:  token,
             approval_status: 'pending',
@@ -595,20 +708,18 @@ class WorkflowEngineService {
         });
 
         if (recipients.length) {
-          if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-          const fieldCtx = crmCache.fields;
-          const title = this.#interpolate(cfg.title ?? 'Approval required', fieldCtx);
-          const body  = this.#interpolate(cfg.message ?? '',                fieldCtx);
           await this.db.notification.createMany({
             data: recipients.map((employeeId) => ({
               employee_id: employeeId,
               type:        'approval',
-              title,
-              body:        body || null,
-              // Frontend uses this link to call the approval API
-              link:        `/api/runtime/workflows/approval/${token}`,
+              title:       approvalTitle,
+              body:        approvalBody || null,
+              // Opens the Approvals inbox on this request.
+              link:        `/approvals?token=${token}`,
             })),
           });
+        } else {
+          logger.warn(`[workflow] approval '${step.name}' has no eligible approver; it waits in the administrators' Approvals inbox`);
         }
 
         logEntry.result = `awaiting approval — token ${token.substring(0, 8)}…`;
@@ -715,7 +826,8 @@ class WorkflowEngineService {
               if (written.length) logEntry.result += ` · enriched ${written.join(', ')}`;
             }
           } catch (err) {
-            logEntry.result = `integration '${cfg.integration}' failed: ${err.message}`;
+            const job = await this.#queueRetry(step, record, cfg.integration, this.#interpolatePayload(cfg.body, fieldCtx) ?? { record: fieldCtx }, cfg.field_map, err);
+            logEntry.result = `integration '${cfg.integration}' failed: ${err.message}${job ? ` · queued for retry (job #${job.id})` : ''}`;
             logEntry.error  = err.message;
             return step.on_false_id ?? null;
           }
@@ -926,7 +1038,9 @@ class WorkflowEngineService {
       // Config: { template, to_field? = 'email', to?, language_field? }
       case 'send_email': {
         if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-        const ctx = { ...crmCache.fields, id: record?.id ?? '' };
+        // Template variables: dates as YYYY-MM-DD rather than Date#toString.
+        const ctx = Object.fromEntries(Object.entries({ ...crmCache.fields, id: record?.id ?? '' })
+          .map(([k, v]) => [k, v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : v]));
         const to = cfg.to ? this.#interpolate(cfg.to, ctx) : ctx[cfg.to_field ?? 'email'];
         if (!to || !cfg.template) {
           logEntry.result = 'no-op (missing template or recipient address)';
@@ -955,6 +1069,47 @@ class WorkflowEngineService {
         return step.on_true_id ?? defaultNextId;
       }
 
+      // ── Send SMS ──────────────────────────────────────────────────────────
+      // Sends a short text through an SMS integration (Builder ▸ Integrations),
+      // so the gateway is swapped by configuration, never by editing workflows.
+      // Config: { integration, message, message_<lang>?, to_field?, to?,
+      //           language_field?, suppress_field? }
+      //   suppress_field — a boolean field (e.g. do_not_contact) that, when
+      //                    true, skips the send for marketing messages.
+      case 'send_sms': {
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const ctx = Object.fromEntries(Object.entries({ ...crmCache.fields, id: record?.id ?? '' })
+          .map(([k, v]) => [k, v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : v]));
+        const yes = (v) => v === true || ['true', '1', 'yes'].includes(String(v ?? '').toLowerCase());
+        if (cfg.suppress_field && yes(ctx[cfg.suppress_field])) {
+          logEntry.result = `skipped — ${cfg.suppress_field} is set`;
+          return step.on_true_id ?? defaultNextId;
+        }
+        const to = String((cfg.to ? this.#interpolate(cfg.to, ctx) : ctx[cfg.to_field ?? 'mobile']) ?? '').trim();
+        const lang = cfg.language_field ? String(ctx[cfg.language_field] ?? '').trim().toLowerCase() : '';
+        const text = (lang && cfg[`message_${lang}`]) || cfg.message;
+        if (!to || !text || !cfg.integration) {
+          logEntry.result = 'no-op (missing integration, message or recipient number)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        if (!this.integrationService) {
+          logEntry.result = 'sms skipped — IntegrationService not wired';
+          logEntry.error  = 'IntegrationService not available';
+          return step.on_false_id ?? null;
+        }
+        const message = String(this.#interpolate(text, ctx)).slice(0, 480);
+        try {
+          const log = await this.integrationService.executeByName(cfg.integration, { to, message, record_id: record?.id ?? null });
+          logEntry.result = `sms → ${to} via '${cfg.integration}' (log #${log?.id ?? '?'})`;
+        } catch (err) {
+          const job = await this.#queueRetry(step, record, cfg.integration, { to, message, record_id: record?.id ?? null }, null, err);
+          logEntry.result = `sms via '${cfg.integration}' failed: ${err.message}${job ? ` · queued for retry (job #${job.id})` : ''}`;
+          logEntry.error  = err.message;
+          return step.on_false_id ?? null;
+        }
+        return step.on_true_id ?? defaultNextId;
+      }
+
       // ── Generate document ─────────────────────────────────────────────────
       // Renders a merge template (offer letter, decline letter, KYC refresh
       // request…) from this record's values and files it on the record, so it
@@ -972,7 +1127,15 @@ class WorkflowEngineService {
           return step.on_true_id ?? defaultNextId;
         }
         if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-        const ctx = { ...crmCache.fields, record_id: record.id, today: new Date().toISOString().slice(0, 10) };
+        const ctx = { ...(await this.#displayValues(record.object_id, crmCache.fields)), record_id: record.id, today: new Date().toISOString().slice(0, 10) };
+        // Letterhead: the legal entity of the record's business unit, when it has one.
+        const anchor = await this.db.record.findUnique({ where: { id: Number(record.id) }, select: { business_unit_id: true } }).catch(() => null);
+        const unit = anchor?.business_unit_id ? await this.db.businessUnit.findUnique({ where: { id: anchor.business_unit_id }, select: { name: true, legal_name: true, regulator: true, licence: true, config: true } }).catch(() => null) : null;
+        if (unit) {
+          ctx.letterhead_subtitle = [unit.legal_name || unit.name, unit.config?.address].filter(Boolean).join(' · ');
+          ctx.letterhead_footer = [unit.legal_name || unit.name, unit.licence ? `Licensed by the ${unit.regulator || 'regulator'} (${unit.licence})` : null].filter(Boolean).join(' — ');
+        }
+        ctx.today_long = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         const DocumentService = require('./document.service');
         const DocumentTemplateService = require('./document-template.service');
         const obj = await this.db.uiObject.findUnique({ where: { id: Number(record.object_id) }, select: { name: true } });
@@ -994,6 +1157,38 @@ class WorkflowEngineService {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Field values as a reader expects them in a letter: picklist labels instead
+   * of codes, grouped amounts with two decimals, dates as YYYY-MM-DD.
+   * `<field>_raw` keeps the stored value for templates that need it.
+   */
+  async #displayValues(objectId, fields) {
+    const defs = objectId ? await this.db.uiField.findMany({ where: { object_id: Number(objectId) }, select: { name: true, field_type: true, options: true, config: true } }).catch(() => []) : [];
+    const byName = new Map(defs.map((d) => [d.name, d]));
+    const out = {};
+    for (const [k, v] of Object.entries(fields ?? {})) {
+      out[`${k}_raw`] = v;
+      const d = byName.get(k);
+      const t = d?.field_type;
+      const fmt = d?.config?.format;
+      if (v == null || v === '') { out[k] = ''; continue; }
+      if (v instanceof Date) { out[k] = Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10); continue; }
+      if (['select', 'radio'].includes(t) && Array.isArray(d.options)) {
+        const o = d.options.find((x) => (x && typeof x === 'object' ? String(x.value) : String(x)) === String(v));
+        out[k] = o && typeof o === 'object' ? (o.label ?? v) : v;
+        continue;
+      }
+      const isMoney = t === 'currency' || fmt === 'currency';
+      if ((isMoney || t === 'decimal' || t === 'number' || fmt === 'number') && Number.isFinite(Number(v)) && typeof v !== 'boolean') {
+        out[k] = Number(v).toLocaleString('en-US', isMoney ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 4 });
+        continue;
+      }
+      if (typeof v === 'boolean' || v === 'true' || v === 'false') { out[k] = String(v) === 'true' ? 'Yes' : 'No'; continue; }
+      out[k] = v;
+    }
+    return out;
+  }
 
   /**
    * Resolve notification recipient employee_ids from step config.
@@ -1096,7 +1291,13 @@ class WorkflowEngineService {
   }
 
   #interpolate(template, data = {}) {
-    return String(template).replace(/\{\{(\w+)\}\}/g, (_, k) => data[k] ?? '');
+    return String(template).replace(/\{\{(\w+)\}\}/g, (_, k) => {
+      const v = data[k];
+      // Dates read back from typed columns are Date objects: show them as
+      // YYYY-MM-DD, not "Tue Oct 13 2026 04:00:00 GMT+0400".
+      if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10);
+      return v ?? '';
+    });
   }
 
   /**

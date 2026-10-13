@@ -329,3 +329,47 @@ describe('WorkflowEngineService — linear step chaining (no on_*_id links)', ()
   });
 });
 
+
+describe('WorkflowEngineService — send_sms', () => {
+  const smsStep = (config) => ({ id: 11, name: 'Text', step_type: 'send_sms', order_index: 1, config, on_true_id: null, on_false_id: null });
+  const run = async (config, fields) => {
+    const svc = new WorkflowEngineService(makePrisma(makeWorkflow([smsStep(config)]), fields));
+    const integrationService = { executeByName: jest.fn().mockResolvedValue({ id: 3 }) };
+    svc.setIntegrationService(integrationService);
+    await svc.manualRun(1, makeRecord(), 'E001');
+    return integrationService.executeByName;
+  };
+
+  it('sends the message in the record language through the named integration', async () => {
+    const call = await run(
+      { integration: 'swan_sms', message: 'Hi {{first_name}}', message_fr: 'Bonjour {{first_name}}', to_field: 'phone', language_field: 'lead_source' },
+      { first_name: 'Anne', phone: '+23057000000', lead_source: 'fr' },
+    );
+    expect(call).toHaveBeenCalledWith('swan_sms', expect.objectContaining({ to: '+23057000000', message: 'Bonjour Anne' }));
+  });
+
+  it('skips when the suppression field is set or there is no number', async () => {
+    expect(await run({ integration: 'swan_sms', message: 'x', to_field: 'phone', suppress_field: 'is_converted' }, { phone: '+2305', is_converted: true })).not.toHaveBeenCalled();
+    expect(await run({ integration: 'swan_sms', message: 'x', to_field: 'phone' }, { first_name: 'A' })).not.toHaveBeenCalled();
+  });
+});
+
+describe('WorkflowEngineService — durable retry (E-03)', () => {
+  it('queues a failed integration call for retry, but not a configuration error', async () => {
+    const step = { id: 12, name: 'Screen', step_type: 'integration', order_index: 1, config: { integration: 'swan_screening', field_map: { hits: 'hits' } }, on_true_id: null, on_false_id: null };
+    for (const [message, queued] of [['ECONNRESET', true], ["Integration 'swan_screening' not found", false]]) {
+      const svc = new WorkflowEngineService(makePrisma(makeWorkflow([step]), { first_name: 'A' }));
+      svc.setIntegrationService({ executeByName: jest.fn().mockRejectedValue(new Error(message)) });
+      const jobQueue = { enqueue: jest.fn().mockResolvedValue({ id: 5 }) };
+      svc.setJobQueue(jobQueue);
+      await svc.manualRun(1, makeRecord(), 'E001');
+      if (queued) {
+        expect(jobQueue.enqueue).toHaveBeenCalledWith('integration.call',
+          expect.objectContaining({ integration: 'swan_screening', record_id: 100, field_map: { hits: 'hits' } }),
+          expect.objectContaining({ dedupeKey: 'wfstep:12:100' }));
+      } else {
+        expect(jobQueue.enqueue).not.toHaveBeenCalled();
+      }
+    }
+  });
+});

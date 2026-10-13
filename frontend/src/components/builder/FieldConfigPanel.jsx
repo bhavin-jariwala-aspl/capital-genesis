@@ -126,6 +126,7 @@ export default function FieldConfigPanel() {
         {activeTab === 'field' && (
           <>
             <Input label="Label" value={field.label || ''} onChange={(e) => update({ label: e.target.value })} />
+            <Input label="Label (French)" value={cfg.label_fr || ''} onChange={(e) => setCfg({ label_fr: e.target.value })} help="Shown to users who read the CRM in French" />
             <Input label="API Name" value={field.name || ''} onChange={(e) => update({ name: e.target.value })} help="snake_case identifier" />
             <Select
               label="Field Type"

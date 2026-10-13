@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Link2, ChevronRight } from 'lucide-react';
+import { Link2, ChevronRight, Lock } from 'lucide-react';
 import Spinner from '../ui/Spinner';
 import { runtimeService } from '../../services/metadata.service';
 import { fmtDate } from '../../utils/formatters';
@@ -44,8 +44,16 @@ export default function RelatedPanel({ recordId }) {
             </h4>
             <span className="text-xs text-gray-400">{g.total}</span>
           </header>
+          {g.restricted > 0 && (
+            // Hidden by business-unit scope or an information barrier — say so
+            // rather than imply there are none (C360-FR-06).
+            <p className="mb-2 ml-5 inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+              <Lock className="h-3 w-3" />
+              {g.restricted} restricted — contact Compliance
+            </p>
+          )}
           {g.records.length === 0 ? (
-            <p className="text-xs text-gray-400 pl-5">None</p>
+            !g.restricted && <p className="text-xs text-gray-400 pl-5">None</p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-white/5 rounded-xl border border-gray-100 dark:border-white/10">
               {g.records.map((r) => (

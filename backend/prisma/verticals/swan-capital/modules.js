@@ -15,6 +15,9 @@ const comp = require('./objects-compliance');
 
 const modules = [
   // ── Client 360 ──────────────────────────────────────────────────────────────
+  { name: 'swan_products', label: 'Products & Services', category: 'client_360', icon: 'Package', color: 'indigo', order_index: 5,
+    description: 'SWAN\'s 22 products and services as published on swancapitalsolutions.com — terms, eligibility, security, documents, fees and how to apply (M24)',
+    objects: [core.financialProduct] },
   { name: 'swan_clients', label: 'Clients', category: 'client_360', icon: 'Users', color: 'indigo', order_index: 10,
     description: 'Client 360: parties, households, relationships per entity, contact points and consents (M02)',
     objects: [core.party, growth.clientGroup, core.clientRelationship, core.partyRelationship, growth.contactPoint, core.consentRecord] },
@@ -78,8 +81,8 @@ const modules = [
 
   // ── Masters ─────────────────────────────────────────────────────────────────
   { name: 'swan_masters', label: 'Masters', category: 'masters', icon: 'Database', color: 'gray', order_index: 90,
-    description: 'Products, routing, PLR, countries, FX board, model portfolios, risk factors, collateral types, approval matrix, catalogue, reason codes (M24)',
-    objects: [core.financialProduct, core.productRouting, core.plrRate, core.country, core.fxRate, core.modelPortfolio,
+    description: 'Website routing, PLR, countries, FX board, model portfolios, risk factors, collateral types, approval matrix, catalogue, reason codes (M24)',
+    objects: [core.productRouting, core.plrRate, core.country, core.fxRate, core.modelPortfolio,
       comp.kycRiskFactor, comp.collateralType, comp.approvalMatrix, comp.serviceCatalogue, comp.reasonCode] },
 ];
 
@@ -88,6 +91,65 @@ const modules = [
 for (const obj of modules.flatMap((m) => m.objects)) {
   if (!obj.fields.some((f) => f.name === 'ext_ref')) {
     obj.fields.push({ name: 'ext_ref', label: 'External reference', type: 'text', help: 'Id in the source system (LMS, PMS, TA, OMS) or migration file — used to match imports and integration callbacks.' });
+  }
+}
+
+// Client and introducer portal sections (config.portal).
+const portal = require('./portal');
+for (const obj of modules.flatMap((m) => m.objects)) {
+  if (portal[obj.name]) obj.config = { ...(obj.config ?? {}), portal: portal[obj.name] };
+}
+
+// Website data feeds (PRD I-02): GET /api/public/feeds/swan-capital/<name>.
+// They replace the website's own NAV / rate tables, so the figures shown on
+// swancapitalsolutions.com are the CRM's masters.
+const feeds = {
+  fx_rate: { name: 'fx-rates', fields: ['currency_code', 'rate_to_mur', 'buy_tt', 'sell_tt', 'rate_date'], latest_by: { group: 'currency_code', order: 'rate_date' }, sort: { field: 'currency_code' } },
+  fund_share_class: { name: 'fund-nav', fields: ['class_code', 'name', 'currency_code', 'latest_nav', 'latest_nav_date', 'risk_rating', 'min_investment', 'dealing_frequency'], sort: { field: 'class_code' } },
+  plr_rate: { name: 'plr', fields: ['rate', 'effective_from'], sort: { field: 'effective_from', dir: 'desc' }, limit: 1 },
+};
+for (const obj of modules.flatMap((m) => m.objects)) {
+  if (feeds[obj.name]) obj.config = { ...(obj.config ?? {}), public_feed: feeds[obj.name] };
+}
+
+// Personal calendar feed (RM-FR-03): dated records appear in their owner's calendar.
+const calendars = {
+  meeting_note: [{ date_field: 'meeting_date', time_field: 'meeting_time', duration_min: 60, label: 'Meeting' }, { date_field: 'follow_up_date', label: 'Follow up' }],
+  mandate_review: [{ date_field: 'due_date', label: 'Mandate review due' }],
+  fx_deal: [{ date_field: 'value_date', label: 'FX value date' }],
+  covenant_test: [{ date_field: 'test_date', label: 'Covenant test' }],
+  marketing_event: [{ date_field: 'event_date', label: 'Event' }],
+  advisory_deliverable: [{ date_field: 'due_date', label: 'Deliverable due' }],
+};
+for (const obj of modules.flatMap((m) => m.objects)) {
+  if (calendars[obj.name]) obj.config = { ...(obj.config ?? {}), calendar: calendars[obj.name] };
+}
+
+// French labels (PRD X-02 / E-15): `config.label_fr` on modules, objects,
+// fields, pipelines and stages, `label_fr` on select options. Labels without a
+// translation (codes, currencies, product names) display in English.
+const fr = require('./i18n-fr');
+const frOf = (label) => (label == null ? undefined : fr[label] ?? fr[String(label).trim()]);
+const withFr = (node, extra = {}) => {
+  const t = frOf(node.label);
+  const pl = frOf(node.plural_label);
+  if (!t && !pl && !Object.keys(extra).length) return;
+  node.config = { ...(node.config ?? {}), ...(t ? { label_fr: t } : {}), ...(pl ? { plural_label_fr: pl } : {}), ...extra };
+};
+for (const mod of modules) {
+  withFr(mod);
+  for (const obj of mod.objects) {
+    withFr(obj);
+    for (const f of obj.fields) {
+      withFr(f);
+      if (Array.isArray(f.options)) {
+        f.options = f.options.map((o) => (o && typeof o === 'object' && frOf(o.label) ? { ...o, label_fr: frOf(o.label) } : o));
+      }
+    }
+    for (const p of [obj.pipeline, ...(obj.pipelines ?? [])].filter(Boolean)) {
+      withFr(p);
+      for (const st of p.stages ?? []) withFr(st);
+    }
   }
 }
 

@@ -84,6 +84,12 @@ model Employee {
   is_active           Boolean   @default(true)
   reset_token         String?   @db.VarChar(255) // sha256 hash of the active password-reset token
   reset_token_expires DateTime? // when the reset token stops being valid
+  // Session hardening (PRD E-01/E-02): tokens issued before this instant are
+  // rejected (deactivation, password change, "sign out everywhere"); TOTP MFA.
+  tokens_valid_after  DateTime?
+  mfa_enabled         Boolean   @default(false)
+  mfa_secret          String?   @db.VarChar(255) // encrypted (field-protection)
+  mfa_recovery        Json? // sha256 hashes of unused recovery codes
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
 
@@ -156,6 +162,7 @@ model UiModule {
   id          Int      @id @default(autoincrement())
   name        String   @db.VarChar(100)
   label       String   @db.VarChar(100)
+  config      Json? // { label_fr, … }
   description String?  @db.Text
   icon        String?  @db.VarChar(50) // Lucide icon name
   color       String?  @db.VarChar(20) // Tailwind color e.g. "blue"
@@ -619,6 +626,7 @@ model Record {
   assigned_to       String?  @db.VarChar(20) // FK → employees.employee_id
   created_by        String?  @db.VarChar(100)
   created_at        DateTime @default(now())
+  updated_by        String?  @db.VarChar(100) // who last changed the record (PRD E-13)
   updated_at        DateTime @updatedAt
 
   // Soft-delete / Trash: when set, the record is hidden from all users but
@@ -854,6 +862,10 @@ model UiPermission {
   role_name   String   @db.VarChar(50)
   can_view    Boolean  @default(true)
   can_edit    Boolean  @default(false)
+  /// Which records of the object the role sees: null/'own' = own and assigned
+  /// (managers: their team's), 'all' = every record within the viewer's
+  /// business units and barrier zones.
+  view_scope  String?  @db.VarChar(10)
   updated_by  String?  @db.VarChar(20)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -2998,4 +3010,47 @@ model AuditChainEvent {
   @@unique([tenant_id, seq])
   @@index([entity_type, entity_id])
   @@map("audit_chain_events")
+}
+
+/// Rotating refresh tokens (PRD E-01). Only a hash is stored; each use issues a
+/// new token and revokes the old one, and a reused (already rotated) token
+/// revokes the whole family.
+model AuthRefreshToken {
+  id          Int       @id @default(autoincrement())
+  employee_id String    @db.VarChar(20)
+  token_hash  String    @unique @db.Char(64)
+  family      String    @db.Char(32)
+  expires_at  DateTime
+  revoked_at  DateTime?
+  replaced_by Int?
+  user_agent  String?   @db.VarChar(255)
+  ip          String?   @db.VarChar(64)
+  created_at  DateTime  @default(now())
+  tenant_id   Int?
+
+  @@index([employee_id])
+  @@index([family])
+  @@map("auth_refresh_tokens")
+}
+
+/// Durable job queue (PRD E-03): outbound work that must survive failures and
+/// restarts. Claimed atomically, so any number of API pods can work it.
+model JobQueue {
+  id           Int       @id @default(autoincrement())
+  type         String    @db.VarChar(60)
+  payload      Json
+  status       String    @default("queued") @db.VarChar(20) // queued | running | done | dead
+  attempts     Int       @default(0)
+  max_attempts Int       @default(6)
+  run_after    DateTime  @default(now())
+  locked_at    DateTime?
+  last_error   String?   @db.Text
+  dedupe_key   String?   @db.VarChar(191)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  tenant_id    Int?
+
+  @@index([status, run_after])
+  @@index([dedupe_key])
+  @@map("job_queue")
 }

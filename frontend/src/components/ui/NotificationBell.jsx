@@ -76,7 +76,11 @@ export default function NotificationBell() {
   }, [open, notifications, markRead]);
 
   const handleClick = (n) => {
-    if (n.link) navigate(n.link);
+    if (n.link) {
+      // Older approval notifications pointed at the API itself; open the inbox instead.
+      const m = /\/api\/runtime\/workflows\/approval\/([a-f0-9]+)/.exec(n.link);
+      navigate(m ? `/approvals?token=${m[1]}` : n.link);
+    }
     setOpen(false);
   };
 

@@ -1,5 +1,7 @@
 'use strict';
 
+const { decrypt } = require('./field-protection');
+
 /**
  * Record compute — runs the formula engine against metadata records.
  *
@@ -24,7 +26,7 @@ function typedValue(row) {
   if (row.date_value != null) return row.date_value.toISOString().slice(0, 10);
   if (row.bool_value != null) return row.bool_value;
   if (row.num_value != null) return Number(row.num_value);
-  return row.str_value ?? null;
+  return decrypt(row.str_value ?? null);
 }
 
 class RecordCompute {

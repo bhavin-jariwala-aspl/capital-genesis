@@ -32,7 +32,7 @@ class SearchService {
     const q = query.trim().toLowerCase();
 
     // ── Owner IDs for restriction ────────────────────────────────────────────
-    const viewerLevel = viewer ? (viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? 0) : 0;
+    const viewerLevel = viewer ? (viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? Number.POSITIVE_INFINITY) : 0;
     let ownerIds = null; // null = no restriction
     if (viewer && viewerLevel > MANAGER_THRESHOLD) {
       ownerIds = [viewer.employee_id];

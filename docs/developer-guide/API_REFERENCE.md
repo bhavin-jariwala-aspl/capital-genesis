@@ -27,7 +27,7 @@
 
 ### Background schedulers (not HTTP-triggered)
 
-Six server-side loops run inside the API process, registered through the `SchedulerRegistry` in
+Eight server-side loops run inside the API process, registered through the `SchedulerRegistry` in
 [`utils/scheduler.js`](../../backend/src/utils/scheduler.js) from [`app.js`](../../backend/src/app.js). Each has an
 overlap guard (a slow tick is skipped, never queued) and claims its own rows atomically so several pods can run
 the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `last_started_at`, `last_duration_ms`,
@@ -41,6 +41,8 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 | `social-sync` | every 5 min (30s offset) | `SocialMediaService.runSyncCycle()` — for accounts due under their own `sync_frequency`: token refresh, profile metrics, mentions (keyword-matched, routed), engagement; then campaign roll-ups. |
 | `reminder` | every 60s (45s offset) | `ReminderService.sweepDue()` — fires due reminders as in-app notifications. |
 | `report-schedule` | every 60s (20s offset) | `ReportScheduleService.sweepDue()` — emails saved reports whose subscription is due. |
+| `job-queue` | every 15s (20s offset) | `JobQueue.work()` — runs due jobs from the durable `job_queue` table (retried integration and SMS calls); exponential back-off, dead-letter after 6 attempts. Depth by status is on `/health` under `job_queue`. |
+| `formula-refresh` | hourly (5 min offset), works once a day | `FormulaRefreshService.run()` — recomputes date-dependent formulas (`TODAY`, `NOW`, `AGE`). |
 
 ## Route groups
 
@@ -62,7 +64,9 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 | `/api/platform` | Super-admin multi-tenant control plane | Platform/super-admin console |
 | `/api/integrations` | Inbound integration webhook | External systems |
 | `/api/access` | Business units, information barriers, wall-crossings, audit chain | Tools ▸ Access & Barriers |
-| `/api/public` | Published web forms (**no authentication**) | Websites, `/f/:key` |
+| `/api/public` | Published web forms and website data feeds (**no authentication**) | Websites, `/f/:key` |
+| `/api/portal` | Client & introducer portal (separate sign-in realm) | `/portal/:workspace` |
+| `/api/calendar` | Personal iCalendar feed | Calendar apps, My account ▸ Security |
 
 ---
 
@@ -89,6 +93,8 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 - [Notifications · `/api/notifications`](#notifications--apinotifications)
 - [Access · `/api/access`](#access--apiaccess)
 - [Public forms · `/api/public`](#public-forms--apipublic)
+- [Portal · `/api/portal`](#portal--apiportal)
+- [Calendar · `/api/calendar`](#calendar--apicalendar)
 
 ---
 
@@ -113,7 +119,13 @@ create/update/delete require **admin** (`requireAdmin`). Source: `backend/src/ro
 
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
-| POST `/api/auth/login` | Authenticate by `employee_id` + `password`; returns JWT + employee. | Public | Login page form submit via `authService.login()` (`frontend/src/pages/Login.jsx`). |
+| POST `/api/auth/login` | Authenticate by `employee_id` + `password`. Returns `{ token, refresh_token, employee }`, or `{ mfa_required \| mfa_setup_required, mfa_token }` when two-factor applies. | Public | Login page form submit via `authService.login()` (`frontend/src/pages/Login.jsx`). |
+| POST `/api/auth/refresh` | Body `{ refresh_token }`. Rotates: returns a new `{ token, refresh_token, employee }` and retires the old token. Replaying a retired token revokes its whole family. | Public (the token is the credential) | `services/api.js` on a 401, single-flight. |
+| POST `/api/auth/logout` | Body `{ refresh_token?, everywhere? }`. Revokes the refresh token; `everywhere: true` also revokes every issued access token (`tokens_valid_after`). | JWT | `authStore.logout()`; *Sign out everywhere* on My account ▸ Security. |
+| POST `/api/auth/mfa/verify` | Body `{ mfa_token, code }` (TOTP or recovery code). Completes a two-factor sign-in. | Challenge token | `Login.jsx` second step. |
+| POST `/api/auth/mfa/setup` | Starts enrolment; returns `{ secret, otpauth_uri }`. Body `{ mfa_token? }` when enrolment is forced at sign-in. | JWT or challenge token | `AccountSecurityPage.jsx`, `Login.jsx`. |
+| POST `/api/auth/mfa/enable` | Body `{ code, mfa_token? }`. Turns MFA on; returns ten recovery codes once (and a session when called during sign-in). | JWT or challenge token | Same. |
+| POST `/api/auth/mfa/disable` | Body `{ code }`. Turns MFA off (not allowed while the security policy requires it). | JWT | `AccountSecurityPage.jsx`. |
 | POST `/api/auth/forgot-password` | Emails a password-reset link if the identifier matches; always returns a generic message (no account-existence leak). | Public | Forgot-password form via `authService.forgotPassword()` (`frontend/src/pages/ForgotPassword.jsx`). |
 | POST `/api/auth/reset-password` | Consumes the emailed token + `new_password` to set a new password. | Public | Reset-password page (link from email) via `authService.resetPassword()` (`frontend/src/pages/ResetPassword.jsx`). |
 | GET `/api/auth/entitlements` | `{ plan, features, locked }` — the feature keys this workspace may use and, for each locked one, the source and reason. Platform admins get every key. The same block ships inside `/runtime/bootstrap`. | JWT (`authenticate`) | `authService.entitlements()`; `useEntitlements()` reads the bootstrap copy so every screen has it from first render. |
@@ -430,6 +442,10 @@ endpoints (`/crm/*`) have no direct frontend caller.
 | DELETE `/api/runtime/records/:id` | Deletes a record; 204. **Soft** (moves to admin Trash, recoverable) or **hard** (permanent) per the record's pipeline `config.delete_mode` (resolved in `RecordService`) — the deleting user never sees the mode, the record just disappears from their list. | JWT | `metadataService.deleteRecord(id)` — delete action on list/detail. |
 | POST `/api/runtime/records/bulk-delete` | Deletes many records; body `{ ids }`. Resolves soft/hard per record from its pipeline, same as the single delete. | JWT | `metadataService.bulkDeleteRecords(ids)` — multi-select "Delete" on list page. |
 | POST `/api/runtime/records/bulk-stage` | Moves many records to a stage; body `{ ids, stage_id }`. | JWT | `metadataService.bulkUpdateRecordStage(ids, stageId)` — multi-select "Change stage". |
+| POST `/api/runtime/records/bulk-assign` | Reassigns many records; body `{ ids, assigned_to }` (an active employee, or null). Audited per record. | JWT + manager | `metadataService.bulkAssignRecords` — multi-select "Reassign". |
+| POST `/api/runtime/records/:id/merge` | Merge this (duplicate) record into `{ into }`: fills empty fields, re-points lookups, trashes the duplicate; change set stored on the audit chain. | JWT + manager | `RecordMerge.jsx` — record panel "Merge". |
+| POST `/api/runtime/records/:id/unmerge` | Reverse a merge within 30 days. | JWT + manager | Trash ▸ "Reverse merge". |
+| POST `/api/runtime/records/:id/reveal` | Body `{ field }`. Returns the unmasked value of a `pii` field to a user with `view_pii`; audited to the chain. | JWT + `view_pii` | `FieldValue.jsx` — *Reveal*. |
 | GET `/api/runtime/records/export?object_id=X` | Streams a CSV export of the object's records (attachment). | JWT + `RecordService` scoping | `metadataService.exportRecords(...)` (via `apiWrapper.blob`) — "Export CSV" button on list page. |
 | GET `/api/runtime/records/:id/audit` | Returns the record's last 50 audit-log entries (with actor); asserts view access first. | JWT | `metadataService.getRecordAudit(id)` — "History/Audit" tab on record detail. |
 
@@ -468,7 +484,8 @@ Record writes also: compute formula fields, enforce `expression` validation rule
 
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
-| POST `/api/runtime/workflows/approval/:token` | Resolves a pending workflow approval step; body `{ action: 'approve' \| 'reject' }`. Any authenticated employee holding the token can act. | JWT | **No direct frontend caller found in service layer** — invoked from an approval link/notification (email) that carries the `:token`; scheduled/triggered workflows themselves run server-side via `fastify.workflowEngine`. |
+| POST `/api/runtime/workflows/approval/:token` | Decide a pending approval; body `{ action: 'approve' \| 'reject', comment? }`. Only an approver named when the request was created may act; the decision, decider, time and comment are stored and written to the record's history. Unknown, already decided or not-yours answers 400. | JWT | `runtimeService.decideApproval` — **Tools ▸ Approvals** (`ApprovalsPage.jsx`). |
+| GET `/api/runtime/workflows/approvals?scope=mine\|all\|decided` | The approvals inbox: requests waiting for the user (`mine`), every pending request (`all`, managers and administrators), or the user's decisions (`decided`). Each item has title, message, workflow, requester, approvers, record link and decision details. | JWT | `runtimeService.getApprovals` — Approvals page and the sidebar count. |
 
 ### Forecast / Quotas
 
@@ -567,10 +584,10 @@ Super-admin / multi-tenant control plane. Source: `backend/src/routes/platform/i
 
 1. `requirePlatformAdmin` (`backend/src/middleware/authenticate.js`) — requires the caller's role level ≤
 `platform_admin`, i.e. level **1** in the inverted ladder (lower = more powerful). The threshold comes from the frozen
-`BUILTIN_ROLE_LEVEL` constant, never from the `roles` table, and the gate _also_ insists on the literal role name
+`BUILTIN_ROLE_LEVEL` constant, never from the `roles` table, and the gate *also* insists on the literal role name
 `platform_admin`: a tenant-authored role could otherwise move the bar for the whole deployment. `levelOf()` refuses to
-honour a `role_level: 1` claim on any other role name. See `developer-guide/SECURITY.md`, _Authorization: three
-escalation paths closed_.
+honour a `role_level: 1` claim on any other role name. See `developer-guide/SECURITY.md`, *Authorization: three
+escalation paths closed*.
 2. A tenant-scope bypass — `tenantContext.enterWith({ tenantId: null })` so platform admin operates cross-tenant
 (queries are not filtered to a single tenant).
 
@@ -843,10 +860,10 @@ over CRM data — see [REPORTING.md](REPORTING.md) for the engine.
 Any authenticated user can create, save, share and schedule reports; no admin is
 involved. Two independent controls apply:
 
-- **Visibility** — who may _open_ a report (`private` / `team` / `shared` / `everyone`,
+- **Visibility** — who may *open* a report (`private` / `team` / `shared` / `everyone`,
   `ReportLibraryService.canView`). Admins may always view; only the author or an admin
   may edit (`assertCanEdit`).
-- **Scope** — which records a report _shows_. `resolveScope()` downgrades any requested
+- **Scope** — which records a report *shows*. `resolveScope()` downgrades any requested
   scope to what the caller's role allows (admins `all`, managers `team` via
   `employeeHierarchy`, everyone else `me`), so sharing never widens data access.
 
@@ -865,7 +882,7 @@ Every handler runs inside `tenantContext.run()` (see
 | POST `/api/reports/:id/run` | Run a saved report; logs a `reportExecution` row and, for a plain run (no `params`/`global`/`overrides`), appends a trend snapshot. Result carries `insights` and `meta.parameters`. | JWT | `reportService.runSaved(id, scope, params)` — the viewer. |
 | GET `/api/reports/:id/snapshots` | The report's headline numbers over time, `?scope=`: `{ columns, snapshots: [{ at, scope, row_count, grand }], enough }`. | JWT (viewer) | `TrendStrip` under a saved report. |
 | GET `/api/reports/vocabulary` | Every operator, aggregation, formula op, period, visualization, visibility and schedule option the builder may offer. | JWT | `reportService.getVocabulary()` — populates all builder dropdowns. |
-| GET `/api/reports/templates` | The starter report gallery (~26 working configs). | JWT | `TemplateGallery.jsx` — first screen of _New report_. |
+| GET `/api/reports/templates` | The starter report gallery (~26 working configs). | JWT | `TemplateGallery.jsx` — first screen of *New report*. |
 | GET `/api/reports/templates/:key` | One template. | JWT | Deep link `/reports/new?template=<key>`. |
 | GET `/api/reports/field-values` | Distinct values present for `?source=&field=`, so the filter UI offers a pick-list. | JWT | `svc.getFieldValues()` — `FilterGroupBuilder.jsx`. |
 | GET `/api/reports/folders` | List folders with report counts. | JWT | Library folder rail. |
@@ -875,7 +892,7 @@ Every handler runs inside `tenantContext.run()` (see
 | POST `/api/reports/:id/duplicate` | Save-as-a-copy, owned by the caller and private. | JWT (viewer) | How a non-owner adapts someone else's report. |
 | POST `/api/reports/:id/favorite` | Star / unstar for the caller only. | JWT (viewer) | Library star button. |
 | GET `/api/reports/:id/data` | The report reshaped for a dashboard widget: `?shape=series\|metric\|rows`. Optional dashboard-level filters `?date_range=<preset\|from,to>&owner=<id[,id]>` applied on the source's primary date / owner. Returns rows plus metadata describing its own axes/measures. | JWT (viewer) | `useDataSource` → report-backed widgets; `DashboardRenderer` date bar. |
-| POST `/api/reports/drilldown` | Records behind a bucket of an _unsaved_ config (`{ config, keys }`). | JWT | Builder preview drill-down. |
+| POST `/api/reports/drilldown` | Records behind a bucket of an *unsaved* config (`{ config, keys }`). | JWT | Builder preview drill-down. |
 | POST `/api/reports/:id/drilldown` | Records behind a bucket of a saved report. | JWT (viewer) | Chart / matrix click-through. |
 | GET `/api/reports/:id/history` | Last 25 executions, including scheduled runs. | JWT (viewer) | Run-history modal. |
 | POST `/api/reports/export` | Run a config and stream CSV or Excel (`format: 'csv'\|'xlsx'`). | JWT | Builder export buttons, `responseType: 'blob'`. |
@@ -962,7 +979,7 @@ designed for; the builder pre-fills it when you pick the dataset.
   array as its series list; for `composed` charts the first key is drawn as bars
   and the second as the overlaid line.
 - **Metric trends can be inverted.** A metric where more is worse (a backlog of
-  unresolved items) reports a _rise_ as `trend: 'down'`.
+  unresolved items) reports a *rise* as `trend: 'down'`.
 - **Reads are capped** at `MAX_ROWS = 5000` per query (smaller for point-per-record
   charts such as scatter/bubble/timeline).
 
@@ -1288,7 +1305,7 @@ header widget (polls count + list, marks read).
 
 ## Access · `/api/access`
 
-Mounted from `backend/src/routes/access/index.js` (`SegmentationService`, `AuditChainService`). _Compliance_
+Mounted from `backend/src/routes/access/index.js` (`SegmentationService`, `AuditChainService`). *Compliance*
 means an admin role or a role holding the `barrier_override` operational permission. All bodies are schema-validated.
 
 | Method & Path | Purpose / Relevance | Auth |
@@ -1315,3 +1332,28 @@ tenant. Rate limits: 20 submissions per IP and 600 per form per 10 minutes (429 
 |---|---|
 | GET `/api/public/forms/:key` | The renderable form: `{ title, description, columns, consent_field, captcha, captcha_site_key, fields }` |
 | POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language? }`. Creates the record through `RecordService` in the form's tenant. Returns `{ message, reference, results? }` |
+| GET `/api/public/feeds/:workspace/:name` | Read-only data feed configured by an object's `config.public_feed`: `{ feed, updated_at, items }`. Any origin; cached 60 s on the server and 5 min by clients; 300 requests per IP per 10 minutes. Personal or encrypted fields are never included. |
+
+## Portal · `/api/portal`
+
+Mounted from `backend/src/routes/portal/index.js`. A separate realm: sign-in by a one-time email code, and a `gp1.` portal token that staff routes never accept (and vice versa). Every handler runs inside the token's tenant. Rate limits: 30 sign-in attempts per IP and 5 codes per email per 15 minutes.
+
+| Method & Path | Purpose |
+|---|---|
+| GET `/api/portal/:slug` | Workspace branding (name, logo, colour) for the sign-in page |
+| POST `/api/portal/:slug/login/request` | Body `{ realm: client \| introducer, email }`. Sends a code when the email matches a record (always answers the same way). Outside production with no SMTP, returns `dev_code` |
+| POST `/api/portal/:slug/login/verify` | Body `{ realm, email, code }` → `{ token, me }` |
+| GET `/api/portal/me` | The signed-in person |
+| GET `/api/portal/views` | The sections (`config.portal.<realm>`) available to this realm |
+| GET / POST `/api/portal/records/:object` | The user's own records of a portal object / create one (only `create.fields`, with `create.defaults`) |
+| GET `/api/portal/records/:object/options/:field` | Options for a create-form lookup, limited to the user's own records |
+| GET `/api/portal/documents` · GET `…/documents/:id/download` | Portal-visible documents on the user's records |
+| POST `/api/portal/records/:id/documents` | Upload (base64; PDF, JPEG, PNG; 10 MB) to a record whose section allows `uploads` |
+| GET / POST `/api/portal/messages` | Messages with the record owner (stored as activities; the owner is notified) |
+
+## Calendar · `/api/calendar`
+
+| Method & Path | Purpose | Auth |
+|---|---|---|
+| GET `/api/calendar/subscription` | `{ path }` of the user's private iCalendar feed | JWT |
+| GET `/api/calendar/feed/:token.ics` | `text/calendar`: the user's scheduled activities, open tasks and pending reminders (−30 to +180 days). The token is signed over the user's revocation point; any failure answers 404. 120 requests per IP per hour | The token |

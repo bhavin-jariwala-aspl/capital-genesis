@@ -36,6 +36,9 @@ const GLOBAL_MODELS = new Set([
   'ApiRateLimit',
   'SecurityPolicy',
   'DataExportRequest',
+  // Session tokens are looked up by their own hash before any tenant is known
+  // (the refresh endpoint); callers filter by employee explicitly.
+  'AuthRefreshToken',
 ]);
 
 // Models with a NULLABLE tenant_id where `null` means "system-wide row shared

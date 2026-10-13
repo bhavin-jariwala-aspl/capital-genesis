@@ -69,6 +69,7 @@ export function EntityPermissionPanel({ entityType, entityId, className = '' }) 
           initial[role.name] = {
             can_view: existing ? existing.can_view : true,
             can_edit: existing ? existing.can_edit : false,
+            view_scope: existing?.view_scope === 'all' ? 'all' : 'own',
           };
         }
         setLocal(initial);
@@ -97,6 +98,7 @@ export function EntityPermissionPanel({ entityType, entityId, className = '' }) 
         role_name,
         can_view: p.can_view,
         can_edit: p.can_edit,
+        ...(entityType === 'object' ? { view_scope: p.view_scope === 'all' ? 'all' : 'own' } : {}),
       }));
       await saveEntityPermissions(entityType, entityId, permissions);
       setSaved(true);
@@ -174,6 +176,7 @@ export function EntityPermissionPanel({ entityType, entityId, className = '' }) 
               <th className="px-3 py-2 text-left font-semibold text-gray-600 dark:text-white/50 w-full">Role</th>
               <th className="px-3 py-2 text-center font-semibold text-gray-600 dark:text-white/50 whitespace-nowrap">Can View</th>
               <th className="px-3 py-2 text-center font-semibold text-gray-600 dark:text-white/50 whitespace-nowrap">Can Edit</th>
+              {entityType === 'object' && <th className="px-3 py-2 text-center font-semibold text-gray-600 dark:text-white/50 whitespace-nowrap" title="Which records of this object the role sees">Records</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -206,6 +209,20 @@ export function EntityPermissionPanel({ entityType, entityId, className = '' }) 
                       className="accent-primary-600 cursor-pointer disabled:cursor-not-allowed"
                     />
                   </td>
+                  {entityType === 'object' && (
+                    <td className="px-3 py-2 text-center">
+                      <select
+                        value={locked ? 'all' : p.view_scope ?? 'own'}
+                        disabled={locked || !p.can_view}
+                        onChange={(e) => { const v = e.target.value; setLocal((prev) => ({ ...prev, [role.name]: { ...prev[role.name], view_scope: v } })); setSaved(false); }}
+                        className="rounded border border-gray-200 bg-white px-1 py-0.5 text-xs dark:border-white/10 dark:bg-white/5"
+                        aria-label={`Records ${role.label} sees`}
+                      >
+                        <option value="own">Own &amp; team</option>
+                        <option value="all">All</option>
+                      </select>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -215,7 +232,7 @@ export function EntityPermissionPanel({ entityType, entityId, className = '' }) 
 
       <p className="text-[10px] text-gray-400">
         Admins always have full access. Hiding an entity removes it from the UI for that role.
-        Removing edit access makes it read-only.
+        Removing edit access makes it read-only.{entityType === 'object' && ' Records: “Own & team” — records the user created or owns (managers: their team’s); “All” — every record, within the user’s business units and barrier zones.'}
       </p>
     </div>
   );

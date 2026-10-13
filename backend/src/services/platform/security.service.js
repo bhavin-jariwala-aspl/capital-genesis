@@ -113,10 +113,15 @@ class SecurityService extends BaseRepository {
       throw new ValidationError('Cannot deactivate a platform admin');
     }
 
-    return this.db.employee.update({
+    const now = new Date();
+    const updated = await this.db.employee.update({
       where: { employee_id: employeeId },
-      data: { is_active: false },
+      data: { is_active: false, tokens_valid_after: now },
     });
+    // End every session now, not when issued tokens expire (PRD E-01).
+    await this.db.authRefreshToken?.updateMany({ where: { employee_id: employeeId, revoked_at: null }, data: { revoked_at: now } }).catch(() => {});
+    require('../session-revocation').markRevoked(employeeId, now.getTime());
+    return updated;
   }
 
   async reactivateUser(employeeId) {

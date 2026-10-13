@@ -113,7 +113,17 @@ describe('SWAN pack — automation', () => {
         }
         if (s.step_type === 'action') {
           if (c.field === 'stage') { if (!stagesOf(wf.object).has(c.value)) problems.push(`${at}: unknown stage ${c.value}`); }
-          else if (!own.has(c.field)) problems.push(`${at}: unknown field ${c.field}`);
+          else if (String(c.field).includes('.')) {
+            // Write-through: `lookup.field` on the linked record.
+            const [head, tail] = String(c.field).split('.');
+            const lk = objects[wf.object].fields.find((f) => f.name === head);
+            if (lk?.type !== 'lookup') problems.push(`${at}: ${head} is not a lookup`);
+            else if (!fieldsOf(lk.config.target_object).has(tail)) problems.push(`${at}: ${lk.config.target_object} has no ${tail}`);
+          } else if (!own.has(c.field) && !['assigned_to', 'pipeline_stage_id'].includes(c.field)) problems.push(`${at}: unknown field ${c.field}`);
+        }
+        if (s.step_type === 'integration') {
+          if (!(pack.integrations ?? []).some((i) => i.name === c.integration)) problems.push(`${at}: integration ${c.integration}`);
+          for (const f of Object.keys(c.field_map ?? {})) if (!own.has(f)) problems.push(`${at}: field_map ${f}`);
         }
         if (s.step_type === 'create_record') {
           if (!objects[c.object]) { problems.push(`${at}: unknown object ${c.object}`); continue; }
@@ -174,7 +184,7 @@ describe('SWAN pack — automation', () => {
 describe('SWAN pack — content', () => {
   it('builds wizards, dashboards and public forms from real fields and forms', () => {
     const problems = [];
-    for (const w of pack.wizards) for (const s of w.steps) for (const f of s.fields) if (!fieldsOf(w.object).has(f)) problems.push(`${w.name}/${s.name}: ${f}`);
+    for (const w of pack.wizards) for (const s of w.steps) for (const e of s.fields) { const f = typeof e === 'string' ? e : e.field; if (!fieldsOf(w.object).has(f)) problems.push(`${w.name}/${s.name}: ${f}`); }
     for (const d of pack.dashboards) {
       for (const w of d.widgets) {
         const o = w.data.object;
@@ -205,5 +215,125 @@ describe('SWAN pack — content', () => {
     const routed = new Set(md.product_routing.map((r) => r.product_code));
     for (const p of md.financial_product) expect(routed.has(p.code)).toBe(true);
     for (const m of pack.masterData) for (const r of m.records) for (const k of Object.keys(r)) if (!k.startsWith('_')) expect(`${m.object}.${fieldsOf(m.object).has(k) ? 'ok' : k}`).toBe(`${m.object}.ok`);
+  });
+});
+
+describe('SWAN pack — deep references', () => {
+  const { compile } = require('../src/services/formula');
+  const fieldDef = (o, n) => objects[o]?.fields.find((f) => f.name === n);
+  // The object a field's value points at: a lookup, or a formula that is a
+  // pure path through lookups (e.g. `share_class.fund`).
+  const targetOf = (o, n, depth = 0) => {
+    const f = fieldDef(o, n);
+    if (!f || depth > 4) return null;
+    if (f.type === 'lookup') return f.config.target_object;
+    if (f.type === 'formula' && /^[a-z_][\w.]*$/i.test(f.config.expression)) return pathEnd(o, f.config.expression, depth + 1, true);
+    return null;
+  };
+  const pathEnd = (o, path, depth = 0, wantTarget = false, problems = null, where = '') => {
+    const segs = path.split('.');
+    let cur = o;
+    for (let i = 0; i < segs.length; i += 1) {
+      if (!fieldDef(cur, segs[i])) { problems?.push(`${where}: ${cur} has no ${segs[i]} (in ${path})`); return null; }
+      if (i < segs.length - 1) {
+        const t = targetOf(cur, segs[i], depth);
+        if (!t) { problems?.push(`${where}: ${cur}.${segs[i]} is not a lookup (in ${path})`); return null; }
+        cur = t;
+      } else if (wantTarget) return targetOf(cur, segs[i], depth);
+    }
+    return null;
+  };
+
+  it('resolves every dotted path and every LOOKUP / related-object field', () => {
+    const problems = [];
+    for (const o of Object.values(objects)) {
+      for (const f of o.fields) {
+        if (f.type !== 'formula') continue;
+        (function walk(n) {
+          if (!n) return;
+          if (n.k === 'ref' && n.name.includes('.')) pathEnd(o.name, n.name, 0, false, problems, `${o.name}.${f.name}`);
+          if (n.k === 'call') {
+            const fn = String(n.name).toUpperCase();
+            const lit = (i) => (n.args?.[i]?.k === 'lit' ? n.args[i].v : undefined);
+            const idx = { LOOKUP: [1, 3, 4], LATEST: [1, 2], COUNT_RELATED: [1, 2], SUM_RELATED: [1, 2, 3] }[fn];
+            if (idx && objects[lit(0)]) {
+              for (const i of idx) { const v = lit(i); if (typeof v === 'string' && v !== 'id' && !fieldDef(lit(0), v)) problems.push(`${o.name}.${f.name}: ${fn}(${lit(0)}) has no ${v}`); }
+            }
+            (n.args ?? []).forEach(walk);
+          }
+          if (n.k === 'bin') { walk(n.l); walk(n.r); }
+          if (n.k === 'neg' || n.k === 'not') walk(n.e);
+        }(compile(f.config.expression)));
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('builds demo data from real fields, options and earlier references', () => {
+    const problems = [];
+    const seen = {};
+    for (const set of [...pack.masterData, ...pack.demo]) {
+      if (set.recompute) { for (const n of [].concat(set.recompute)) if (!objects[n]) problems.push(`recompute ${n}`); continue; }
+      const o = objects[set.object];
+      if (!o) { problems.push(`unknown object ${set.object}`); continue; }
+      seen[set.object] = seen[set.object] ?? new Set();
+      for (const r of set.records) {
+        for (const [k, v] of Object.entries(r)) {
+          if (k.startsWith('_')) continue;
+          const f = fieldDef(set.object, k);
+          if (!f) { problems.push(`${set.object}: unknown field ${k}`); continue; }
+          if (f.type === 'formula') problems.push(`${set.object}: writes formula ${k}`);
+          if (f.type === 'select' && v != null && !f.options.some((x) => x.value === v)) problems.push(`${set.object}.${k}: '${v}' is not an option`);
+          if (typeof v === 'string' && v.startsWith('@')) {
+            const m = /^@(\w+):(\w+)=(.+)$/.exec(v);
+            if (!m || f.type !== 'lookup' || f.config.target_object !== m[1]) problems.push(`${set.object}.${k}: bad reference ${v}`);
+            else if (!seen[m[1]]?.has(`${m[2]}=${m[3]}`)) problems.push(`${set.object}.${k}: ${v} is not defined earlier`);
+          }
+        }
+        for (const [k, v] of Object.entries(r)) if (!k.startsWith('_') && v != null) seen[set.object].add(`${k}=${v}`);
+        if (r._stage && !stagesOf(set.object).has(r._stage)) problems.push(`${set.object}: stage ${r._stage}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('keys every demo row uniquely by ext_ref', () => {
+    for (const set of pack.demo.filter((x) => !x.recompute)) {
+      const keys = set.records.map((r) => r.ext_ref);
+      expect({ object: set.object, missing: keys.filter((k) => !k).length, dupes: keys.filter((k, i) => keys.indexOf(k) !== i) }).toEqual({ object: set.object, missing: 0, dupes: [] });
+    }
+  });
+
+  it('fills every template placeholder from a field of the template\'s object', () => {
+    const problems = [];
+    const ctx = new Set(['today', 'id', 'stage', 'record_id']);
+    const scan = (where, object, text) => {
+      for (const m of String(text ?? '').matchAll(/\{\{(\w+)\}\}/g)) if (!ctx.has(m[1]) && !fieldDef(object, m[1])) problems.push(`${where}: {{${m[1]}}}`);
+    };
+    for (const t of pack.emailTemplates) if (t.object) for (const part of [t.subject, t.body_html, t.body_text]) scan(`email ${t.name}`, t.object, part);
+    for (const t of pack.documentTemplates) if (t.entity_type) scan(`document ${t.name}`, t.entity_type, t.body);
+    expect([...new Set(problems)]).toEqual([]);
+  });
+
+  it('exposes only real fields on the portal, linked through a lookup', () => {
+    const problems = [];
+    for (const o of Object.values(objects)) {
+      for (const [realm, cfg] of Object.entries(o.config?.portal ?? {})) {
+        const at = `${o.name}.portal.${realm}`;
+        const link = fieldDef(o.name, cfg.link);
+        if (link?.type !== 'lookup') problems.push(`${at}: link ${cfg.link} is not a lookup`);
+        else if (link.config.target_object !== (realm === 'client' ? 'party' : 'introducer')) problems.push(`${at}: link points at ${link.config.target_object}`);
+        for (const f of [...(cfg.fields ?? []), ...(cfg.create?.fields ?? []), ...Object.keys(cfg.create?.defaults ?? {})]) if (!fieldDef(o.name, f)) problems.push(`${at}: ${f}`);
+        for (const [f, target] of Object.entries(cfg.create?.lookups ?? {})) if (fieldDef(o.name, f)?.config?.target_object !== target) problems.push(`${at}: lookup ${f}`);
+        if (cfg.create?.stage && !stagesOf(o.name).has(cfg.create.stage)) problems.push(`${at}: stage ${cfg.create.stage}`);
+        if (cfg.consent_gate && !fieldDef(o.name, cfg.consent_gate)) problems.push(`${at}: consent_gate`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('installs a sandbox integration for every system a workflow calls', () => {
+    const { SIMULATOR_PROVIDERS } = require('../src/services/integration-simulators');
+    for (const i of pack.integrations) expect(SIMULATOR_PROVIDERS).toContain(i.config.provider);
   });
 });

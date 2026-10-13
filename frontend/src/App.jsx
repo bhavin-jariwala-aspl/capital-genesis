@@ -18,6 +18,8 @@ import ResetPassword from './pages/ResetPassword';
 const SharedDocumentPage = lazy(() => import('./pages/SharedDocumentPage'));
 const SignDocumentPage = lazy(() => import('./pages/SignDocumentPage'));
 const PublicFormPage = lazy(() => import('./pages/PublicFormPage'));
+const AccountSecurityPage = lazy(() => import('./pages/AccountSecurityPage'));
+const PortalPage = lazy(() => import('./pages/portal/PortalPage'));
 const AccessPage = lazy(() => import('./pages/runtime/AccessPage'));
 
 // ── Lightweight route-load spinner (avoids importing Spinner component eagerly) ─
@@ -52,6 +54,7 @@ const FormBuilderPage          = lazy(() => import('./pages/builder/FormBuilderP
 const DashboardBuilderPage     = lazy(() => import('./pages/builder/DashboardBuilderPage'));
 const PipelineBuilderPage      = lazy(() => import('./pages/builder/PipelineBuilderPage'));
 const RecordsTrashPage         = lazy(() => import('./pages/builder/RecordsTrashPage'));
+const ApprovalsPage            = lazy(() => import('./pages/runtime/ApprovalsPage'));
 const WorkflowBuilderPage      = lazy(() => import('./pages/builder/WorkflowBuilderPage'));
 const WizardBuilderPage        = lazy(() => import('./pages/builder/WizardBuilderPage'));
 const PermissionsBuilderPage   = lazy(() => import('./pages/builder/PermissionsBuilderPage'));
@@ -124,6 +127,7 @@ function App() {
             <Route path="/sign/:token" element={<SignDocumentPage />} />
             {/* Published Builder form — web-to-record intake */}
             <Route path="/f/:key" element={<PublicFormPage />} />
+            <Route path="/portal/:slug" element={<PortalPage />} />
           
           {/* Protected Routes */}
           <Route element={token ? <AppLayout /> : <Navigate to="/login" replace />}>
@@ -137,6 +141,7 @@ function App() {
             <Route path="/record/:objectId/new" element={<RecordFormPage />} />
             <Route path="/record/:objectId/:recordId" element={<RecordFormPage />} />
             <Route path="/wizard/:wizardId" element={<WizardPage />} />
+            <Route path="/approvals" element={<ApprovalsPage />} />
             {/* Plan-gated. FeatureGate infers the feature from the path (see
                 utils/featureMap.js) and shows a locked-feature page instead of
                 rendering a screen the API will refuse. */}
@@ -149,6 +154,7 @@ function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reminders" element={<RemindersPage />} />
               <Route path="/access" element={<AccessPage />} />
+              <Route path="/account/security" element={<AccountSecurityPage />} />
               {/* Standalone Document Management module (domain-neutral) */}
               <Route path="/documents" element={<DocumentsPage />} />
               {/* Report authoring is deliberately OUTSIDE the admin-only /builder guard

@@ -1,5 +1,7 @@
 'use strict';
 
+const { isEncrypted, decrypt } = require('./field-protection');
+
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const RecordService = require('./record.service');
@@ -91,12 +93,14 @@ class VerticalInstaller {
    * @param {import('@prisma/client').PrismaClient} prisma tenant-scoped client
    * @param {{ tenantId: number, log?: Function, demo?: boolean, password?: string }} opts
    */
-  constructor(prisma, { tenantId, log = () => {}, demo = false, password = null } = {}) {
+  constructor(prisma, { tenantId, log = () => {}, demo = false, password = null, recompute = null, resetPasswords = false } = {}) {
     this.db = prisma;
     this.tenantId = tenantId;
     this.log = log;
     this.demo = demo;
     this.password = password;
+    this.recompute = recompute;
+    this.resetPasswords = resetPasswords;
     // Records are written after all metadata, so metadata reads made by the
     // record service (field lists, object config, stages) can be memoised for
     // the run — each one is a remote round trip, several per record.
@@ -104,6 +108,8 @@ class VerticalInstaller {
     this.ids = { module: {}, object: {}, field: {}, form: {}, stage: {} };
     this.summary = {};
     this.unchanged = {};
+    this.touched = new Set();
+    this.formulaChanged = new Set();
     // record cache: objectName → { byId: Map<id, {values, stage}>, loaded }
     this.recCache = {};
   }
@@ -146,8 +152,17 @@ class VerticalInstaller {
     // rather than once per child (and racing between concurrent children).
     this.records.deferParentRefresh();
     this.touched = new Set();
+    this.objectDefs = Object.fromEntries((pack.modules ?? []).flatMap((m) => m.objects ?? []).map((o) => [o.name, o]));
+    // --recompute: treat these objects' formulas as changed, so every record is recomputed.
+    if (this.recompute) {
+      const withFormulas = Object.values(this.objectDefs).filter((o) => (o.fields ?? []).some((f) => (f.field_type ?? f.type) === 'formula')).map((o) => o.name);
+      for (const n of this.recompute === true ? withFormulas : this.recompute) this.formulaChanged.add(n);
+    }
     await step('master data', () => this.#recordSets(pack.masterData ?? []));
     if (this.demo) await step('demo records', () => this.#recordSets(pack.demo ?? []));
+    if (this.demo) await step('demo ownership', () => this.#ownership(pack));
+    if (this.demo) await step('demo history', () => this.#history(pack.demo ?? []));
+    if (this.demo && typeof pack.platformDemo === 'function') await step('demo activity, documents & access', () => this.#platformDemo(pack.platformDemo));
     await step('recompute roll-ups', () => this.#recomputePass(pack.modules ?? []));
     return { summary: this.summary, unchanged: this.unchanged, credentials, publicForms };
   }
@@ -172,6 +187,36 @@ class VerticalInstaller {
       else { row = cur; this.#skip(kind); out.set(key, row); continue; }
       this.#count(kind);
       out.set(key, row);
+    }
+    return out;
+  }
+
+  /**
+   * Like #sync, but new rows are inserted with one createMany and read back
+   * with `refetch` — on a remote database a single-row create costs a whole
+   * transaction (BEGIN/INSERT/SELECT/COMMIT ≈ 1.3 s), so batching matters.
+   */
+  async #syncBatch(model, kind, existing, items, keyOf, dataOf, createExtra, refetch) {
+    const byKey = new Map(existing.map((r) => [keyOf(r), r]));
+    const out = new Map();
+    const fresh = [];
+    const changed = [];
+    for (const item of items) {
+      const key = keyOf(item);
+      const data = dataOf(item);
+      const cur = byKey.get(key);
+      if (!cur) { fresh.push({ ...createExtra(item), ...data }); continue; }
+      if (!matches(cur, data)) changed.push({ key, id: cur.id, data }); else { out.set(key, cur); this.#skip(kind); }
+    }
+    // Updates are independent rows: run them concurrently (each is several round trips to a remote DB).
+    await pool(changed, 8, async ({ key, id, data }) => {
+      out.set(key, await this.db[model].update({ where: { id }, data }));
+      this.#count(kind);
+    });
+    if (fresh.length) {
+      await this.db[model].createMany({ data: fresh });
+      this.#count(kind, fresh.length);
+      for (const row of await refetch()) { const k = keyOf(row); if (!out.has(k)) out.set(k, row); }
     }
     return out;
   }
@@ -257,7 +302,18 @@ class VerticalInstaller {
         await this.db.employeeHierarchy.create({ data: { ancestor_id: emp.employee_id, descendant_id: emp.employee_id, depth: 0 } }).catch(() => {});
         issued.push({ employee_id: s.employee_id, role: s.role, password });
         this.#count('staff_created');
-      } else this.#skip('staff');
+      } else {
+        // Profile fields follow the pack; the role and password never change here.
+        const data = {};
+        if (s.employee_name && emp.employee_name !== s.employee_name) data.employee_name = s.employee_name;
+        if (s.email && emp.email !== s.email) data.email = s.email;
+        if (this.resetPasswords && this.password) {
+          data.password = await bcrypt.hash(this.password, 12);
+          data.tokens_valid_after = new Date();
+          issued.push({ employee_id: s.employee_id, role: s.role, password: this.password });
+        }
+        if (Object.keys(data).length) { emp = await this.db.employee.update({ where: { employee_id: s.employee_id }, data }); this.#count('staff_updated'); } else this.#skip('staff');
+      }
       for (const [i, code] of (s.business_units ?? []).entries()) {
         const bu = unitId[code];
         if (!bu || hasUnit.has(`${emp.employee_id}|${bu}`)) continue;
@@ -297,7 +353,7 @@ class VerticalInstaller {
 
     const modRows = await this.#sync('uiModule', 'modules', modules, mods,
       (m) => m.name,
-      (m) => ({ label: m.label, description: m.description ?? null, icon: m.icon ?? null, color: m.color ?? null, category: m.category ?? 'crm', order_index: m.order_index ?? 0, is_active: true }),
+      (m) => ({ label: m.label, description: m.description ?? null, icon: m.icon ?? null, color: m.color ?? null, category: m.category ?? 'crm', order_index: m.order_index ?? 0, is_active: true, config: m.config ?? null }),
       (m) => ({ name: m.name }));
     const objByName = new Map(objects.map((o) => [o.name, o]));
     for (const mod of mods) {
@@ -319,8 +375,7 @@ class VerticalInstaller {
     this.ids.object[obj.name] = row.id;
     this.ids.field[obj.name] = {};
 
-    const existingFields = new Map((this.pre.fieldsByObject.get(row.id) ?? []).map((f) => [f.name, f]));
-    for (const [i, f] of (obj.fields ?? []).entries()) await this.#field(row.id, obj.name, f, i + 1, existingFields.get(f.name));
+    await this.#fields(row.id, obj.name, obj.fields ?? []);
     const existingForms = new Map((this.pre.formsByObject.get(row.id) ?? []).map((f) => [f.name, f]));
     for (const form of obj.forms ?? []) await this.#form(row.id, obj.name, form, existingForms.get(form.name));
     if (obj.pipeline) {
@@ -329,28 +384,39 @@ class VerticalInstaller {
     }
   }
 
-  async #field(objectId, objectName, f, order, cur) {
-    const data = {
-      label: f.label, field_type: f.type, data_type: f.data_type ?? DATA_TYPE[f.type] ?? 'string',
-      is_required: Boolean(f.required), is_unique: Boolean(f.unique), placeholder: f.placeholder ?? null,
-      help_text: f.help ?? null, default_value: f.default ?? null, options: f.options ?? null,
-      config: f.config ?? {}, order_index: f.order ?? order, is_active: true,
-    };
-    let row = cur;
-    if (!row) { row = await this.db.uiField.create({ data: { object_id: objectId, name: f.name, ...data } }); this.#count('fields'); }
-    else if (!matches(row, data)) { row = await this.db.uiField.update({ where: { id: row.id }, data }); this.#count('fields'); }
-    else this.#skip('fields');
-    this.ids.field[objectName][f.name] = row.id;
-
-    // Validations: the pack owns this field's rule list.
-    const want = (f.validations ?? []).map((v, i) => ({ validation_type: v.type, value: v.value != null ? String(v.value) : null, error_message: v.message ?? '', order_index: i + 1 }));
-    const have = (this.pre.validationsByField.get(row.id) ?? []).map((v) => ({ validation_type: v.validation_type, value: v.value ?? null, error_message: v.error_message ?? '', order_index: v.order_index }));
-    if (same(want, have)) return;
-    await this.db.uiValidation.deleteMany({ where: { field_id: row.id } });
-    if (want.length) {
-      await this.db.uiValidation.createMany({ data: want.map((v) => ({ field_id: row.id, ...v })) });
-      this.#count('validations', want.length);
+  /** An object's fields (batched) and the validation rules the pack owns for them. */
+  async #fields(objectId, objectName, fields) {
+    // A new or edited formula leaves existing records with stale (or no) values;
+    // mark the object so the recompute pass revisits all of its records.
+    const before = new Map((this.pre.fieldsByObject.get(objectId) ?? []).map((f) => [f.name, f.config?.expression ?? null]));
+    if (fields.some((f) => (f.field_type ?? f.type) === 'formula' && before.get(f.name) !== (f.config?.expression ?? null))) {
+      this.formulaChanged.add(objectName);
     }
+    const rows = await this.#syncBatch('uiField', 'fields', this.pre.fieldsByObject.get(objectId) ?? [], fields.map((f, i) => ({ ...f, _order: f.order ?? i + 1 })),
+      (f) => f.name,
+      (f) => ({
+        label: f.label, field_type: f.field_type ?? f.type, data_type: f.data_type ?? DATA_TYPE[f.type] ?? 'string',
+        is_required: Boolean(f.required ?? f.is_required), is_unique: Boolean(f.unique ?? f.is_unique), placeholder: f.placeholder ?? null,
+        help_text: f.help ?? f.help_text ?? null, default_value: f.default ?? f.default_value ?? null, options: f.options ?? null,
+        config: f.config ?? {}, order_index: f._order ?? f.order_index, is_active: true,
+      }),
+      (f) => ({ object_id: objectId, name: f.name }),
+      () => this.db.uiField.findMany({ where: { object_id: objectId } }));
+    for (const f of fields) this.ids.field[objectName][f.name] = rows.get(f.name).id;
+
+    // Validations: the pack owns each field's rule list; replace only lists that differ.
+    const stale = [];
+    const fresh = [];
+    for (const f of fields) {
+      const id = rows.get(f.name).id;
+      const want = (f.validations ?? []).map((v, i) => ({ validation_type: v.type, value: v.value != null ? String(v.value) : null, error_message: v.message ?? '', order_index: i + 1 }));
+      const have = (this.pre.validationsByField.get(id) ?? []).map((v) => ({ validation_type: v.validation_type, value: v.value ?? null, error_message: v.error_message ?? '', order_index: v.order_index }));
+      if (same(want, have)) continue;
+      stale.push(id);
+      fresh.push(...want.map((v) => ({ field_id: id, ...v })));
+    }
+    if (stale.length) await this.db.uiValidation.deleteMany({ where: { field_id: { in: stale } } });
+    if (fresh.length) { await this.db.uiValidation.createMany({ data: fresh }); this.#count('validations', fresh.length); }
   }
 
   async #form(objectId, objectName, form, cur) {
@@ -386,10 +452,11 @@ class VerticalInstaller {
     let row = cur;
     if (!row) { row = await this.db.uiPipeline.create({ data: { object_id: objectId, name: p.name, ...data } }); this.#count('pipelines'); }
     else if (!matches(row, data)) { row = await this.db.uiPipeline.update({ where: { id: row.id }, data }); this.#count('pipelines'); }
-    const stages = await this.#sync('uiPipelineStage', 'stages', cur?.stages ?? [], p.stages.map((st, i) => ({ ...st, _order: i + 1 })),
+    const stages = await this.#syncBatch('uiPipelineStage', 'stages', cur?.stages ?? [], p.stages.map((st, i) => ({ ...st, _order: i + 1 })),
       (s) => s.name,
-      (s) => ({ label: s.label, color: s.color ?? '#6366f1', order_index: s._order, config: s.config ?? null }),
-      (s) => ({ pipeline_id: row.id, name: s.name }));
+      (s) => ({ label: s.label, color: s.color ?? '#6366f1', order_index: s._order ?? s.order_index, config: s.config ?? null }),
+      (s) => ({ pipeline_id: row.id, name: s.name }),
+      () => this.db.uiPipelineStage.findMany({ where: { pipeline_id: row.id } }));
     this.ids.stage[objectName] = Object.fromEntries([...stages].map(([k, v]) => [k, v.id]));
   }
 
@@ -540,17 +607,17 @@ class VerticalInstaller {
         await this.db.uiWorkflow.deleteMany({ where: { id: { in: ids } } });
       }
       const wf = await this.db.uiWorkflow.create({ data: { name: def.name, ...head } });
-      const idByKey = {};
-      for (const s of steps) {
-        const row = await this.db.uiWorkflowStep.create({ data: { workflow_id: wf.id, name: s.name, step_type: s.step_type, order_index: s.order_index, config: s.config } });
-        idByKey[s.key] = row.id;
-      }
-      for (const s of steps) {
+      // Steps in one batch, then resolve keys through their (unique) order_index.
+      await this.db.uiWorkflowStep.createMany({ data: steps.map((s) => ({ workflow_id: wf.id, name: s.name, step_type: s.step_type, order_index: s.order_index, config: s.config })) });
+      const created = await this.db.uiWorkflowStep.findMany({ where: { workflow_id: wf.id }, select: { id: true, order_index: true } });
+      const idByOrder = new Map(created.map((r) => [r.order_index, r.id]));
+      const idByKey = Object.fromEntries(steps.map((s) => [s.key, idByOrder.get(s.order_index)]));
+      await Promise.all(steps.map((s) => {
         const data = {};
         if (s.on_true) data.on_true_id = idByKey[s.on_true];
         if (s.on_false) data.on_false_id = idByKey[s.on_false];
-        if (Object.keys(data).length) await this.db.uiWorkflowStep.update({ where: { id: idByKey[s.key] }, data });
-      }
+        return Object.keys(data).length ? this.db.uiWorkflowStep.update({ where: { id: idByKey[s.key] }, data }) : null;
+      }));
       this.#count('workflows');
     }
   }
@@ -625,14 +692,25 @@ class VerticalInstaller {
     for (const p of perms) {
       const objectId = this.ids.object[p.object];
       if (!objectId) throw new Error(`Permission: unknown object ${p.object}`);
-      for (const role of [].concat(p.roles ?? p.role)) items.push({ objectId, role, can_view: Boolean(p.can_view), can_edit: Boolean(p.can_edit) });
+      for (const role of [].concat(p.roles ?? p.role)) items.push({ objectId, role, can_view: Boolean(p.can_view), can_edit: Boolean(p.can_edit), view_scope: p.view_scope ?? null });
     }
     if (!items.length) return;
+    // A pack may grant the same object/role twice (e.g. a base list and an
+    // extension): merge, the most permissive grant wins.
+    const merged = new Map();
+    for (const it of items) {
+      const k = `${it.objectId}|${it.role}`;
+      const cur = merged.get(k);
+      merged.set(k, cur ? { ...cur, can_view: cur.can_view || it.can_view, can_edit: cur.can_edit || it.can_edit, view_scope: cur.view_scope === 'all' || it.view_scope === 'all' ? 'all' : (cur.view_scope ?? it.view_scope) } : it);
+    }
+    items.length = 0;
+    items.push(...merged.values());
     const existing = await this.db.uiPermission.findMany({ where: { entity_type: 'object' } });
-    await this.#sync('uiPermission', 'object_permissions', existing, items,
+    await this.#syncBatch('uiPermission', 'object_permissions', existing, items,
       (x) => `${x.entity_id ?? x.objectId}|${x.role_name ?? x.role}`,
-      (x) => ({ can_view: x.can_view, can_edit: x.can_edit }),
-      (x) => ({ entity_type: 'object', entity_id: x.objectId, role_name: x.role }));
+      (x) => ({ can_view: x.can_view, can_edit: x.can_edit, view_scope: x.view_scope ?? null }),
+      (x) => ({ entity_type: 'object', entity_id: x.objectId, role_name: x.role }),
+      () => this.db.uiPermission.findMany({ where: { entity_type: 'object' } }));
   }
 
   // ── Records (master data and demo) ───────────────────────────────────────
@@ -700,7 +778,9 @@ class VerticalInstaller {
       const existing = await this.#findByKey(objectName, Object.fromEntries(keys.map((k) => [k, values[k]])));
       if (existing) {
         const cur = cache.byId.get(existing);
-        const changed = Object.entries(values).some(([f, v]) => cur.values[f] !== storedString(v));
+        // Encrypted fields are stored as ciphertext: compare the plain value.
+        const plain = (x) => (isEncrypted(x) ? decrypt(x) : x);
+        const changed = Object.entries(values).some(([f, v]) => plain(cur.values[f]) !== storedString(v));
         if (changed) { await this.records.updateRecord(existing, null, null, undefined, values); this.touched.add(objectName); }
         if (stageId && cur.stage !== stageId) await this.db.record.update({ where: { id: existing }, data: { pipeline_stage_id: stageId } });
         if (!changed && (!stageId || cur.stage === stageId)) { this.#skip(`records.${objectName}`); return; }
@@ -727,8 +807,9 @@ class VerticalInstaller {
       // against them (e.g. a fund order needs the investor's KYC approved).
       if (set.recompute) {
         const t = Date.now();
-        await this.#recomputeObjects([].concat(set.recompute));
-        this.log(`      recompute ${[].concat(set.recompute).join(', ')} (${((Date.now() - t) / 1000).toFixed(1)}s)`);
+        const names = this.#withStaleUpstream([].concat(set.recompute));
+        await this.#recomputeObjects(names);
+        this.log(`      recompute ${names.join(', ')} (${((Date.now() - t) / 1000).toFixed(1)}s)`);
         continue;
       }
       const t = Date.now();
@@ -746,11 +827,12 @@ class VerticalInstaller {
    */
   async #recomputePass(mods) {
     const deferred = this.records.takeDeferredParents();
-    if (!this.touched.size && !deferred.length) return;
+    if (!this.touched.size && !this.formulaChanged.size && !deferred.length) return;
     const objs = Object.fromEntries(mods.flatMap((m) => m.objects ?? []).map((o) => [o.name, o]));
     const deps = formulaDependencies(objs);
-    // Closure: objects depending (transitively) on something written now.
-    const dirty = new Set(this.touched);
+    // Closure: objects depending (transitively) on something written now, or
+    // whose formulas changed in this run.
+    const dirty = new Set([...this.touched, ...this.formulaChanged]);
     let grew = true;
     while (grew) {
       grew = false;
@@ -761,6 +843,259 @@ class VerticalInstaller {
     const order = topoOrder([...dirty].filter((n) => deps.get(n)?.size), deps);
     await this.#recomputeObjects(order);
     this.records.takeDeferredParents();
+  }
+
+  /**
+   * A checkpoint's objects, preceded (in dependency order) by the objects they
+   * read whose formulas changed in this run, so a roll-up such as "marketing
+   * consent" never reads a key its source records have not computed yet.
+   */
+  #withStaleUpstream(names) {
+    const objs = this.objectDefs ?? {};
+    const deps = formulaDependencies(objs);
+    const upstream = new Set();
+    const visit = (n) => { for (const d of deps.get(n) ?? []) if (!upstream.has(d)) { upstream.add(d); visit(d); } };
+    names.forEach(visit);
+    const stale = [...upstream].filter((n) => this.formulaChanged.has(n) && !names.includes(n));
+    return [...topoOrder(stale, deps), ...names];
+  }
+
+  /**
+   * Status history for back-dated demo records: a stage timeline from
+   * `_created` to the record's current stage, and a matching updated_at, so the
+   * record's timeline, stage-ageing reports and SLA outcomes look like a year
+   * of real use. Records that already have history are left alone.
+   */
+  async #history(sets) {
+    const EXIT = new Set(['declined', 'withdrawn', 'lapsed', 'rejected', 'disqualified', 'abandoned', 'cancelled', 'canceled', 'lost', 'dismissed', 'refused', 'nurture', 'on_hold', 'exited', 'dormant', 'closed_no_filing']);
+    const DAY = 86400000;
+    const hash = (str) => { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
+    let written = 0;
+    for (const set of sets) {
+      if (!set.object || !Array.isArray(set.records) || !set.records.some((r) => r._created)) continue;
+      const objectId = this.ids.object[set.object];
+      const stages = objectId ? await this.db.uiPipelineStage.findMany({ where: { pipeline: { object_id: objectId } }, orderBy: { order_index: 'asc' }, select: { id: true, name: true, label: true } }) : [];
+      const keys = [].concat(set.key ?? 'ext_ref');
+      const cache = await this.#cache(set.object);
+      const rows = [];
+      for (const raw of set.records) {
+        if (!raw._created) continue;
+        const keyVals = await this.#resolveRefs(Object.fromEntries(keys.map((k) => [k, raw[k]]))).catch(() => null);
+        const id = keyVals ? await this.#findByKey(set.object, keyVals).catch(() => null) : null;
+        if (id) rows.push({ id, raw, stageId: cache.byId.get(id)?.stage ?? null });
+      }
+      if (!rows.length) continue;
+      const have = new Set((await this.db.statusEvent.findMany({ where: { record_id: { in: rows.map((r) => r.id) } }, select: { record_id: true }, distinct: ['record_id'] })).map((e) => e.record_id));
+      const events = [];
+      const stamps = [];
+      for (const { id, raw, stageId } of rows) {
+        if (have.has(id)) continue;
+        const created = new Date(`${raw._created}T09:00:00.000Z`).getTime();
+        const age = Math.max(Date.now() - created, DAY);
+        const current = stages.find((st) => st.id === stageId);
+        const normal = stages.filter((st) => !EXIT.has(st.name));
+        let path = [];
+        if (current) {
+          if (EXIT.has(current.name)) path = [...normal.slice(0, Math.max(1, Math.floor(normal.length / 3))), current];
+          else path = normal.slice(0, normal.findIndex((st) => st.id === current.id) + 1);
+          if (!path.length) path = [current];
+        }
+        const terminal = current && (EXIT.has(current.name) || current.id === normal[normal.length - 1]?.id);
+        const h = hash(`${set.object}|${raw.ext_ref ?? id}`);
+        const span = terminal ? Math.min(age * (0.35 + 0.4 * h), 40 * DAY) : age * (0.4 + 0.5 * h);
+        const step = path.length > 1 ? span / (path.length - 1) : 0;
+        path.forEach((st, i) => events.push({
+          record_id: id, status: st.name, title: st.label, event_type: 'milestone',
+          occurred_at: new Date(created + i * step + (i ? Math.floor(h * 3600000) : 0)), changed_by: raw._owner ?? null, tenant_id: this.tenantId,
+        }));
+        stamps.push({ id, at: new Date(created + (path.length > 1 ? span : Math.min(age, 2 * DAY) * h) + Math.floor(h * 3600000)) });
+      }
+      if (events.length) { await this.db.statusEvent.createMany({ data: events }); written += events.length; }
+      await pool(stamps, RECORD_CONCURRENCY, ({ id, at }) => this.db.record.update({ where: { id }, data: { updated_at: at } }));
+      if (stamps.length) this.#count(`history.${set.object}`, stamps.length);
+    }
+    if (written) this.log(`      ${written} status events written`);
+  }
+
+  /**
+   * Owners for demo records loaded without one: the pack's assignment rules
+   * route them (as they would a live record), then anything still unowned
+   * takes the owner of the record it belongs to (party, application, mandate…).
+   * Reference data stays unowned — it is visible through view_scope.
+   */
+  async #ownership(pack) {
+    const AssignmentService = require('./assignment.service');
+    const assign = new AssignmentService(this.db);
+    const reference = new Set(pack.referenceObjects ?? []);
+    let n = 0;
+    for (const name of new Set((pack.assignmentRules ?? []).map((r) => r.object))) {
+      const objectId = this.ids.object[name];
+      if (!objectId) continue;
+      const recs = await this.db.record.findMany({ where: { object_id: objectId, assigned_to: null, deleted_at: null }, select: { id: true } });
+      await pool(recs, 4, async (r) => { const who = await assign.assign(objectId, r.id, {}).catch(() => null); if (who) n += 1; });
+    }
+    for (let pass = 0; pass < 2; pass += 1) {
+      for (const [name, def] of Object.entries(this.objectDefs ?? {})) {
+        const objectId = this.ids.object[name];
+        if (!objectId || reference.has(name)) continue;
+        const lookups = (def.fields ?? []).filter((f) => f.type === 'lookup' && f.config?.target_object && !reference.has(f.config.target_object)).map((f) => f.name);
+        if (!lookups.length) continue;
+        const recs = await this.db.record.findMany({ where: { object_id: objectId, assigned_to: null, deleted_at: null }, select: { id: true } });
+        if (!recs.length) continue;
+        const vals = await this.db.recordFieldValue.findMany({ where: { record_id: { in: recs.map((r) => r.id) }, field_name: { in: lookups } }, select: { record_id: true, field_name: true, str_value: true } });
+        const parentIds = [...new Set(vals.map((v) => Number(v.str_value)).filter((x) => Number.isInteger(x) && x > 0))];
+        const parents = parentIds.length ? await this.db.record.findMany({ where: { id: { in: parentIds }, assigned_to: { not: null } }, select: { id: true, assigned_to: true } }) : [];
+        const ownerOf = new Map(parents.map((p) => [p.id, p.assigned_to]));
+        const updates = [];
+        for (const r of recs) {
+          for (const lk of lookups) {
+            const v = vals.find((x) => x.record_id === r.id && x.field_name === lk);
+            const o = v && ownerOf.get(Number(v.str_value));
+            if (o) { updates.push({ id: r.id, o }); break; }
+          }
+        }
+        await pool(updates, RECORD_CONCURRENCY, ({ id, o }) => this.db.record.update({ where: { id }, data: { assigned_to: o } }));
+        n += updates.length;
+      }
+    }
+    if (n) this.#count('owners_assigned', n);
+  }
+
+  /**
+   * Activities, tasks, reminders, documents (with review status, share links
+   * and e-signature requests), wall-crossings and the audit-chain baseline for
+   * a demo tenant. The pack supplies `platformDemo(ctx)`, which reads the live
+   * records and returns plain items; everything is written through the same
+   * services the application uses and is idempotent by natural key.
+   */
+  async #platformDemo(build) {
+    const recCache = {};
+    const ctx = {
+      now: Date.now(),
+      records: async (name) => {
+        if (recCache[name]) return recCache[name];
+        const objectId = this.ids.object[name];
+        if (!objectId) return (recCache[name] = []);
+        const rows = await this.db.record.findMany({ where: { object_id: objectId, deleted_at: null }, select: { id: true, assigned_to: true, created_at: true, updated_at: true, pipeline_stage: { select: { name: true } } } });
+        const vals = rows.length ? await this.db.recordFieldValue.findMany({ where: { record_id: { in: rows.map((r) => r.id) } }, select: { record_id: true, field_name: true, str_value: true } }) : [];
+        const byId = new Map(rows.map((r) => [r.id, { id: r.id, owner: r.assigned_to, created_at: r.created_at, updated_at: r.updated_at, stage: r.pipeline_stage?.name ?? null, v: {} }]));
+        for (const v of vals) { const r = byId.get(v.record_id); if (r) r.v[v.field_name] = v.str_value; }
+        return (recCache[name] = [...byId.values()]);
+      },
+    };
+    const items = await build(ctx);
+    const T = this.tenantId;
+    const of = (kind) => items.filter((i) => i.kind === kind);
+
+    // Activities
+    const acts = of('activity');
+    if (acts.length) {
+      const have = new Set((await this.db.activity.findMany({ where: { record_id: { in: [...new Set(acts.map((a) => a.record_id))] } }, select: { record_id: true, subject: true } })).map((a) => `${a.record_id}|${a.subject}`));
+      const fresh = acts.filter((a) => !have.has(`${a.record_id}|${a.subject}`));
+      if (fresh.length) await this.db.activity.createMany({ data: fresh.map(({ kind, ...a }) => ({ ...a, tenant_id: T })) });
+      this.#count('activities', fresh.length);
+    }
+    // Tasks
+    const tasks = of('task');
+    if (tasks.length) {
+      const have = new Set((await this.db.task.findMany({ where: { assigned_to: { in: [...new Set(tasks.map((t) => t.assigned_to))] } }, select: { record_id: true, title: true } })).map((t) => `${t.record_id}|${t.title}`));
+      const fresh = tasks.filter((t) => !have.has(`${t.record_id}|${t.title}`));
+      if (fresh.length) await this.db.task.createMany({ data: fresh.map(({ kind, ...t }) => ({ ...t, tenant_id: T })) });
+      this.#count('tasks', fresh.length);
+    }
+    // Reminders
+    const rems = of('reminder');
+    if (rems.length) {
+      const have = new Set((await this.db.reminder.findMany({ where: { employee_id: { in: [...new Set(rems.map((r) => r.employee_id))] } }, select: { employee_id: true, title: true } })).map((r) => `${r.employee_id}|${r.title}`));
+      const fresh = rems.filter((r) => !have.has(`${r.employee_id}|${r.title}`));
+      if (fresh.length) await this.db.reminder.createMany({ data: fresh.map(({ kind, ...r }) => ({ ...r, tenant_id: T })) });
+      this.#count('reminders', fresh.length);
+    }
+
+    // Documents (PDF), then review status, share links and signatures.
+    const docs = of('document');
+    const docId = new Map();
+    if (docs.length) {
+      const DocumentService = require('./document.service');
+      const { renderPdf } = require('../utils/pdf');
+      const ds = new DocumentService(this.db);
+      const existing = await this.db.document.findMany({ where: { entity_id: { in: [...new Set(docs.map((d) => d.entity_id))] }, deleted_at: null }, select: { id: true, entity_id: true, original_filename: true } });
+      for (const e of existing) docId.set(`${e.entity_id}|${e.original_filename}`, e.id);
+      const fresh = docs.filter((d) => !docId.has(`${d.entity_id}|${d.filename}`));
+      await pool(fresh, 4, async (d) => {
+        const buffer = renderPdf(d.pdf);
+        const doc = await ds.upload({
+          tenantId: T, buffer, filename: d.filename, mimeType: 'application/pdf', entityType: d.entity_type, entityId: d.entity_id,
+          category: d.category, description: d.description ?? null, uploadedBy: d.uploaded_by ?? null, status: d.status ?? 'uploaded',
+        });
+        const extra = {};
+        if (d.uploaded_at) extra.uploaded_at = d.uploaded_at;
+        if (d.reviewed_by) { extra.reviewed_by = d.reviewed_by; extra.reviewed_at = d.reviewed_at ?? d.uploaded_at ?? new Date(); }
+        if (d.rejection_reason) extra.rejection_reason = d.rejection_reason;
+        if (Object.keys(extra).length) await this.db.document.update({ where: { id: doc.id }, data: extra });
+        docId.set(`${d.entity_id}|${d.filename}`, doc.id);
+      });
+      this.#count('documents', fresh.length);
+    }
+    const DocumentShareService = require('./document-share.service');
+    const shares = of('share').filter((s) => docId.has(s.doc));
+    if (shares.length) {
+      const svc = new DocumentShareService(this.db);
+      const linked = new Set((await this.db.documentShareLink.findMany({ where: { document_id: { in: shares.map((s) => docId.get(s.doc)) } }, select: { document_id: true } })).map((l) => l.document_id));
+      for (const s of shares) {
+        const id = docId.get(s.doc);
+        if (linked.has(id)) continue;
+        const link = await svc.createLink(id, { expiresInDays: s.expiresInDays ?? 30, allowDownload: s.allowDownload ?? true, createdBy: s.created_by ?? null });
+        for (let i = 0; i < (s.views ?? 0); i += 1) await svc.recordEvent(link, { type: i % 3 === 2 ? 'download' : 'view', durationSecs: 30 + ((i * 47) % 300) }).catch(() => {});
+        this.#count('share_links');
+      }
+    }
+    const sigs = of('signature').filter((s) => docId.has(s.doc));
+    if (sigs.length) {
+      const DocumentSignatureService = require('./document-signature.service');
+      const DocumentService = require('./document.service');
+      const svc = new DocumentSignatureService(this.db, new DocumentService(this.db));
+      const have = new Set((await this.db.documentSignatureRequest.findMany({ where: { document_id: { in: sigs.map((s) => docId.get(s.doc)) } }, select: { document_id: true } })).map((r) => r.document_id));
+      for (const s of sigs) {
+        const id = docId.get(s.doc);
+        if (have.has(id)) continue;
+        const req = await svc.createRequest(id, { title: s.title, message: s.message ?? null, ordered: false, expiresInDays: 30, signers: s.signers, createdBy: s.created_by ?? null });
+        const signatories = await this.db.documentSignatory.findMany({ where: { request_id: req.id }, orderBy: { order_index: 'asc' } });
+        for (const sg of signatories.slice(0, s.signed ?? 0)) {
+          const resolved = await svc.resolveByToken(sg.token);
+          if (resolved) { await svc.recordView(resolved.signatory, null); await svc.sign(await svc.resolveByToken(sg.token), { type: 'typed', data: sg.name }).catch(() => {}); }
+        }
+        this.#count('signature_requests');
+      }
+    }
+
+    // Wall-crossings through the segmentation service (four eyes, audited).
+    const crossings = of('crossing');
+    if (crossings.length) {
+      const SegmentationService = require('./segmentation.service');
+      const seg = new SegmentationService(this.db);
+      const zones = Object.fromEntries((await this.db.barrierZone.findMany({ select: { id: true, code: true } })).map((z) => [z.code, z.id]));
+      const have = new Set((await this.db.wallCrossing.findMany({ select: { zone_id: true, employee_id: true, reason: true } })).map((c) => `${c.zone_id}|${c.employee_id}|${c.reason}`));
+      for (const c of crossings) {
+        const zoneId = zones[c.zone];
+        if (!zoneId || have.has(`${zoneId}|${c.employee_id}|${c.reason}`)) continue;
+        const x = await seg.requestCrossing({ zoneId, employeeId: c.employee_id, reason: c.reason }, c.requested_by);
+        if (c.decision) await seg.decideCrossing(x.id, { approve: c.decision === 'approve', validDays: c.valid_days ?? 30 }, c.decided_by);
+        this.#count('wall_crossings');
+      }
+    }
+
+    // Audit-chain baseline: the access set-up the installer created directly.
+    const baseline = of('chain');
+    if (baseline.length) {
+      const AuditChainService = require('./audit-chain.service');
+      const chain = new AuditChainService(this.db);
+      const already = await this.db.auditChainEvent.count({ where: { action: 'baseline' } });
+      if (!already) {
+        for (const e of baseline) await chain.append({ entityType: e.entity_type, entityId: e.entity_id ?? null, action: 'baseline', actor: e.actor ?? null, payload: e.payload ?? null, sensitivity: e.sensitivity ?? 'sensitive', tenantId: T });
+        this.#count('audit_chain_baseline', baseline.length);
+      }
+    }
   }
 
   /** Recompute every record of each named object, in the order given. */

@@ -61,6 +61,8 @@ roughly in the order below.
 - [17. Org Chart](17-org-chart.md) — explore the whole reporting hierarchy interactively
 - [22. Business Units & Information Barriers](22-access-and-barriers.md) — segment records by legal entity and
   wall off confidential work
+- [23. My Account, Record Tools & the Client Portal](23-account-records-and-portal.md) — two-factor sign-in,
+  calendar feed, French labels, revealing protected data, merging and reassigning records, the client portal
 
 ## Related Sections
 

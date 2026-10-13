@@ -18,7 +18,7 @@ const screeningHit = {
   plural_label: 'Screening Hits',
   icon: 'ScanSearch',
   description: 'Sanctions, PEP and adverse-media hits from the screening adapter, triaged as true match, false positive or escalate (KYC-FR-03).',
-  config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY' },
+  config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY', conceal_existence: true },
   fields: [
     LK('kyc_case', 'KYC case', 'kyc_case', { required: true, config: { show_in_list: true } }),
     LK('party', 'Party', 'party', LIST),
@@ -88,7 +88,7 @@ const paDealing = {
   plural_label: 'Personal Dealing Pre-clearance',
   icon: 'UserCog',
   description: 'Staff personal-account dealing pre-clearance, checked against the restricted list (CMP-FR-05).',
-  config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY' },
+  config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY', conceal_existence: true },
   fields: [
     AUTO('request_no', 'Request No.', 'PAD-'),
     F('employee_id', 'Employee', 'text', { required: true, config: { show_in_list: true } }),
@@ -148,7 +148,14 @@ const webEvent = {
   description: 'Anonymous loan-calculator sessions kept as web events, matched to an enquiry when the visitor leaves details (LEAD-FR-10).',
   config: { title_field: 'name' },
   fields: [
-    SEL('event_type', 'Event', o([['calculator', 'Loan calculator'], ['questionnaire_started', 'Questionnaire started'], ['product_view', 'Product page view']]), { default: 'calculator', config: { show_in_list: true } }),
+    SEL('event_type', 'Event', o([['calculator', 'Loan calculator'], ['newsletter_signup', 'Newsletter sign-up'], ['callback_request', 'Call-back request'], ['questionnaire_started', 'Questionnaire started'], ['product_view', 'Product page view']]), { default: 'calculator', config: { show_in_list: true } }),
+    F('first_name', 'First name'),
+    F('last_name', 'Last name'),
+    F('email', 'Email', 'email', LIST),
+    F('mobile', 'Mobile', 'phone'),
+    SEL('topic', 'Topic', o([['weekly_highlights', 'Weekly market highlights'], ['market_statistics', 'Market statistics'], ['research', 'Research notes'], ['forex', 'Talk to our Forexpert'], ['loans', 'Loans'], ['investments', 'Investments']])),
+    F('preferred_time', 'Preferred call-back time', 'text', { placeholder: 'e.g. weekdays after 16:00' }),
+    F('consent_marketing', 'I agree to receive SWAN communications', 'checkbox'),
     SEL('product_code', 'Product', PRODUCTS, LIST),
     F('amount', 'Amount', 'currency', LIST),
     F('tenure_months', 'Tenure (months)', 'integer'),
@@ -161,11 +168,13 @@ const webEvent = {
     FX('rate', 'Indicative rate %', "LATEST('plr_rate', 'rate', 'effective_from') + LOOKUP('financial_product', 'code', product_code, 'margin')", { precision: 3 }),
     FX('emi', 'Indicative instalment', 'IF(ISBLANK(tenure_months), null, PMT(rate / 1200, tenure_months, amount))', { format: 'currency', precision: 2, list: true }),
     FX('converted', 'Converted', 'NOT(ISBLANK(enquiry))', { type: 'boolean', format: 'checkbox', list: true }),
-    FX('name', 'Session', "CONCAT(event_type, ' · ', product_code, ' · ', amount)", { type: 'string' }),
+    FX('name', 'Session', "CONCAT(event_type, ' · ', COALESCE(email, product_code), IF(ISBLANK(amount), '', CONCAT(' · ', amount)))", { type: 'string' }),
   ],
   forms: [
     { name: 'web_event_create', label: 'Web event', fields: ['event_type', 'product_code', 'amount', 'tenure_months', 'applicant_age', 'page_url', 'utm_source', 'utm_campaign', 'session_date', 'enquiry'] },
     { name: 'web_event_calculator', label: 'Loan calculator', fields: ['product_code', 'amount', 'tenure_months', 'applicant_age'] },
+    { name: 'web_event_newsletter', label: 'Newsletter sign-up', fields: ['first_name', 'last_name', 'email', 'topic', { field: 'consent_marketing', span: 2 }] },
+    { name: 'web_event_callback', label: 'Request a call-back', fields: ['first_name', 'last_name', 'mobile', 'email', 'topic', 'preferred_time', { field: 'consent_marketing', span: 2 }] },
   ],
 };
 

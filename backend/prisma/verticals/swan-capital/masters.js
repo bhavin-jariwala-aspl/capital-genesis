@@ -8,12 +8,12 @@
  */
 
 const businessUnits = [
-  { code: 'LND', name: 'Lending', legal_name: 'Swan Life Ltd (Loans business line)', regulator: 'Financial Services Commission', licence: 'FSC IS10000013', base_currency: 'MUR' },
-  { code: 'WLT', name: 'Wealth', legal_name: 'Swan Wealth Managers Ltd', regulator: 'Financial Services Commission', licence: 'FSC IX09000018 · CM12000023 · DF09000007', base_currency: 'MUR' },
-  { code: 'FND', name: 'Funds', legal_name: 'Swan Global Funds Ltd', regulator: 'Financial Services Commission', licence: 'FSC CI11000044', base_currency: 'MUR' },
-  { code: 'SEC', name: 'Securities', legal_name: 'Swan CMB Securities Ltd', regulator: 'Financial Services Commission', licence: 'FSC IP16000002', base_currency: 'MUR' },
-  { code: 'ADV', name: 'Corporate Advisory', legal_name: 'Swan Corporate Advisors Ltd', regulator: 'Financial Services Commission', licence: 'FSC IZ19000019', base_currency: 'MUR' },
-  { code: 'FX', name: 'Forex', legal_name: 'Swan Forex Ltd', regulator: 'Bank of Mauritius', licence: 'FX Dealer Licence No. 03', base_currency: 'MUR' },
+  { code: 'LND', name: 'Lending', legal_name: 'Swan Life Ltd (Loans business line)', regulator: 'Financial Services Commission', licence: 'FSC IS10000013', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
+  { code: 'WLT', name: 'Wealth', legal_name: 'Swan Wealth Managers Ltd', regulator: 'Financial Services Commission', licence: 'FSC IX09000018 · CM12000023 · DF09000007', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
+  { code: 'FND', name: 'Funds', legal_name: 'Swan Global Funds Ltd', regulator: 'Financial Services Commission', licence: 'FSC CI11000044', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
+  { code: 'SEC', name: 'Securities', legal_name: 'Swan CMB Securities Ltd', regulator: 'Financial Services Commission', licence: 'FSC IP16000002', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
+  { code: 'ADV', name: 'Corporate Advisory', legal_name: 'Swan Corporate Advisors Ltd', regulator: 'Financial Services Commission', licence: 'FSC IZ19000019', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
+  { code: 'FX', name: 'Forex', legal_name: 'Swan Forex Ltd', regulator: 'Bank of Mauritius', licence: 'FX Dealer Licence No. 03', base_currency: 'MUR', config: { address: 'Swan Centre, 10 Intendance Street, Port Louis, Mauritius' } },
 ];
 
 const barrierZones = [
@@ -56,28 +56,28 @@ const operationalPermissions = [
 
 // Demo staff. Ids are platform-unique; passwords are issued at install time.
 const staff = [
-  { employee_id: 'SWADMIN', employee_name: 'CRM Administrator', role: 'super_admin', email: 'crm.admin@swan-capital.demo' },
-  { employee_id: 'SWCOO', employee_name: 'Chief Operating Officer', role: 'coo', email: 'coo@swan-capital.demo', zones: ['VIP_CLIENTS'] },
-  { employee_id: 'SWRM1', employee_name: 'Relationship Manager', role: 'rm', email: 'rm1@swan-capital.demo', business_units: ['WLT', 'LND', 'FND'], manager: 'SWCOO' },
-  { employee_id: 'SWLMGR', employee_name: 'Manager, Loans & Fixed Income', role: 'loans_manager', email: 'loans.manager@swan-capital.demo', business_units: ['LND'], manager: 'SWCOO' },
-  { employee_id: 'SWLOAN1', employee_name: 'Loans Executive 1', role: 'loans_executive', email: 'loans1@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
-  { employee_id: 'SWLOAN2', employee_name: 'Loans Executive 2', role: 'loans_executive', email: 'loans2@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
-  { employee_id: 'SWCRED1', employee_name: 'Credit Analyst', role: 'credit_analyst', email: 'credit@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
-  { employee_id: 'SWCC1', employee_name: 'Credit Committee Member', role: 'credit_committee', email: 'cc@swan-capital.demo', business_units: ['LND'] },
-  { employee_id: 'SWOPS1', employee_name: 'Operations Checker', role: 'operations_checker', email: 'ops@swan-capital.demo', business_units: ['LND', 'FND'] },
-  { employee_id: 'SWPM1', employee_name: 'Portfolio Manager', role: 'portfolio_manager', email: 'pm@swan-capital.demo', business_units: ['WLT', 'FND'], manager: 'SWCOO' },
-  { employee_id: 'SWTRD1', employee_name: 'Trader', role: 'trader', email: 'trader@swan-capital.demo', business_units: ['SEC'] },
-  { employee_id: 'SWADV1', employee_name: 'Corporate Advisor', role: 'corporate_advisor', email: 'advisor@swan-capital.demo', business_units: ['ADV'], zones: ['ADV_PRIVATE'] },
-  { employee_id: 'SWFX1', employee_name: 'Forex Dealer', role: 'fx_dealer', email: 'fx@swan-capital.demo', business_units: ['FX'] },
-  { employee_id: 'SWCOMP1', employee_name: 'Compliance Officer', role: 'compliance_officer', email: 'compliance@swan-capital.demo', zones: ['ADV_PRIVATE', 'COMPLIANCE_ONLY'] },
-  { employee_id: 'SWMLRO', employee_name: 'MLRO', role: 'mlro', email: 'mlro@swan-capital.demo', zones: ['MLRO_STR', 'ADV_PRIVATE', 'COMPLIANCE_ONLY', 'VIP_CLIENTS'] },
-  { employee_id: 'SWRM2', employee_name: 'Senior Relationship Manager', role: 'rm', email: 'rm2@swan-capital.demo', business_units: ['WLT', 'FND', 'SEC'], manager: 'SWCOO', zones: ['VIP_CLIENTS'] },
-  { employee_id: 'SWRM3', employee_name: 'Relationship Manager (Corporate)', role: 'rm', email: 'rm3@swan-capital.demo', business_units: ['LND', 'FX'], manager: 'SWCOO' },
-  { employee_id: 'SWPM2', employee_name: 'Fund Manager', role: 'portfolio_manager', email: 'pm2@swan-capital.demo', business_units: ['FND'], manager: 'SWCOO' },
-  { employee_id: 'SWADV2', employee_name: 'Advisory Analyst', role: 'corporate_advisor', email: 'advisor2@swan-capital.demo', business_units: ['ADV'], zones: ['ADV_PRIVATE'] },
-  { employee_id: 'SWBDH', employee_name: 'Head of BD & Strategic Partnerships', role: 'bu_head', email: 'bd.head@swan-capital.demo', manager: 'SWCOO' },
-  { employee_id: 'SWMKT1', employee_name: 'Marketing Executive', role: 'marketing', email: 'marketing@swan-capital.demo', manager: 'SWBDH' },
-  { employee_id: 'SWAUD1', employee_name: 'Internal Auditor', role: 'auditor', email: 'audit@swan-capital.demo' },
+  { employee_id: 'SWADMIN', employee_name: 'Kevin Lam', title: 'CRM Administrator', role: 'super_admin', email: 'crm.admin@swan-capital.demo' },
+  { employee_id: 'SWCOO', employee_name: 'Anjali Gopee', title: 'Chief Operating Officer', role: 'coo', email: 'coo@swan-capital.demo', zones: ['VIP_CLIENTS'] },
+  { employee_id: 'SWRM1', employee_name: 'Priya Ramdin', title: 'Relationship Manager', role: 'rm', email: 'rm1@swan-capital.demo', business_units: ['WLT', 'LND', 'FND'], manager: 'SWCOO' },
+  { employee_id: 'SWLMGR', employee_name: 'Rajiv Doorgakant', title: 'Manager, Loans & Fixed Income', role: 'loans_manager', email: 'loans.manager@swan-capital.demo', business_units: ['LND'], manager: 'SWCOO' },
+  { employee_id: 'SWLOAN1', employee_name: 'Sophie Lagesse', title: 'Loans Executive 1', role: 'loans_executive', email: 'loans1@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
+  { employee_id: 'SWLOAN2', employee_name: 'Yash Bholah', title: 'Loans Executive 2', role: 'loans_executive', email: 'loans2@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
+  { employee_id: 'SWCRED1', employee_name: 'Nadia Peerbux', title: 'Credit Analyst', role: 'credit_analyst', email: 'credit@swan-capital.demo', business_units: ['LND'], manager: 'SWLMGR' },
+  { employee_id: 'SWCC1', employee_name: 'Jean-Marc Desvaux', title: 'Credit Committee Member', role: 'credit_committee', email: 'cc@swan-capital.demo', business_units: ['LND'] },
+  { employee_id: 'SWOPS1', employee_name: 'Ritesh Seewoo', title: 'Operations Checker', role: 'operations_checker', email: 'ops@swan-capital.demo', business_units: ['LND', 'FND'] },
+  { employee_id: 'SWPM1', employee_name: 'Laurent Koenig', title: 'Portfolio Manager', role: 'portfolio_manager', email: 'pm@swan-capital.demo', business_units: ['WLT', 'FND'], manager: 'SWCOO' },
+  { employee_id: 'SWTRD1', employee_name: 'Arvind Ramsurrun', title: 'Trader', role: 'trader', email: 'trader@swan-capital.demo', business_units: ['SEC'] },
+  { employee_id: 'SWADV1', employee_name: 'Camille Rivalland', title: 'Corporate Advisor', role: 'corporate_advisor', email: 'advisor@swan-capital.demo', business_units: ['ADV'], zones: ['ADV_PRIVATE'] },
+  { employee_id: 'SWFX1', employee_name: 'Deepak Mungur', title: 'Forex Dealer', role: 'fx_dealer', email: 'fx@swan-capital.demo', business_units: ['FX'] },
+  { employee_id: 'SWCOMP1', employee_name: 'Fatima Hossenbux', title: 'Compliance Officer', role: 'compliance_officer', email: 'compliance@swan-capital.demo', zones: ['ADV_PRIVATE', 'COMPLIANCE_ONLY'] },
+  { employee_id: 'SWMLRO', employee_name: 'Olivier Maurel', title: 'MLRO', role: 'mlro', email: 'mlro@swan-capital.demo', zones: ['MLRO_STR', 'ADV_PRIVATE', 'COMPLIANCE_ONLY', 'VIP_CLIENTS'] },
+  { employee_id: 'SWRM2', employee_name: 'Natasha Appadoo', title: 'Senior Relationship Manager', role: 'rm', email: 'rm2@swan-capital.demo', business_units: ['WLT', 'FND', 'SEC'], manager: 'SWCOO', zones: ['VIP_CLIENTS'] },
+  { employee_id: 'SWRM3', employee_name: 'Bruno Chan', title: 'Relationship Manager (Corporate)', role: 'rm', email: 'rm3@swan-capital.demo', business_units: ['LND', 'FX'], manager: 'SWCOO' },
+  { employee_id: 'SWPM2', employee_name: 'Vanessa Ah-Kee', title: 'Fund Manager', role: 'portfolio_manager', email: 'pm2@swan-capital.demo', business_units: ['FND'], manager: 'SWCOO' },
+  { employee_id: 'SWADV2', employee_name: 'Ryan Pillay', title: 'Advisory Analyst', role: 'corporate_advisor', email: 'advisor2@swan-capital.demo', business_units: ['ADV'], zones: ['ADV_PRIVATE'] },
+  { employee_id: 'SWBDH', employee_name: 'Shalini Ramtohul', title: 'Head of BD & Strategic Partnerships', role: 'bu_head', email: 'bd.head@swan-capital.demo', manager: 'SWCOO' },
+  { employee_id: 'SWMKT1', employee_name: 'Emilie Fanchette', title: 'Marketing Executive', role: 'marketing', email: 'marketing@swan-capital.demo', manager: 'SWBDH' },
+  { employee_id: 'SWAUD1', employee_name: 'Karim Joomun', title: 'Internal Auditor', role: 'auditor', email: 'audit@swan-capital.demo' },
 ];
 
 const masterData = require('./master-data');

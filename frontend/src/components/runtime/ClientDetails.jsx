@@ -170,7 +170,7 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
               {section.fields.map((f) => (
                 <div key={f.name} className={clsx(ft(f) === 'textarea' || ft(f) === 'rich_text' ? 'sm:col-span-2 xl:col-span-3' : '')}>
                   <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-white/30 mb-1">{f.label}</dt>
-                  <dd><FieldValue field={f} value={data[f.name]} label={record?.labels?.[f.name]} /></dd>
+                  <dd><FieldValue field={f} value={data[f.name]} label={record?.labels?.[f.name]} masked={record?.masked?.includes(f.name)} recordId={record?.id} /></dd>
                 </div>
               ))}
             </dl>

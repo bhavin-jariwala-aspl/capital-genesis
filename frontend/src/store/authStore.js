@@ -5,6 +5,7 @@ import { useEntityStore } from './entityStore';
 
 const TOKEN_KEY = 'genesis_token';
 const EMPLOYEE_KEY = 'genesis_employee';
+const REFRESH_KEY = 'genesis_refresh';
 
 /**
  * "Remember me" controls where the session is persisted:
@@ -36,22 +37,44 @@ export const useAuthStore = create(
   (set, get) => ({
     token: readPersisted(TOKEN_KEY),
     employee: readPersisted(EMPLOYEE_KEY),
+    refreshToken: readPersisted(REFRESH_KEY),
 
-    setAuth: (token, employee, remember = true) => {
-      set({ token, employee });
+    setAuth: (token, employee, remember = true, refreshToken = null) => {
+      set({ token, employee, refreshToken });
       // Persist to the chosen store and clear the other so no stale copy lingers.
       const store = remember ? storageUtils.local : storageUtils.session;
       const other = remember ? storageUtils.session : storageUtils.local;
       store.set(TOKEN_KEY, token);
       store.set(EMPLOYEE_KEY, employee);
+      if (refreshToken) store.set(REFRESH_KEY, refreshToken); else store.remove(REFRESH_KEY);
       other.remove(TOKEN_KEY);
       other.remove(EMPLOYEE_KEY);
+      other.remove(REFRESH_KEY);
+    },
+
+    /** A refreshed session: new access + refresh token, same persistence choice. */
+    setTokens: (token, refreshToken) => {
+      set({ token, refreshToken });
+      const store = storageUtils.local.get(TOKEN_KEY) != null ? storageUtils.local : storageUtils.session;
+      store.set(TOKEN_KEY, token);
+      if (refreshToken) store.set(REFRESH_KEY, refreshToken);
     },
 
     logout: () => {
-      set({ token: null, employee: null });
+      // End the server-side session too (best effort; the token may have expired).
+      const { token, refreshToken } = get();
+      if (token) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {}),
+          keepalive: true,
+        }).catch(() => {});
+      }
+      set({ token: null, employee: null, refreshToken: null });
       clearPersisted(TOKEN_KEY);
       clearPersisted(EMPLOYEE_KEY);
+      clearPersisted(REFRESH_KEY);
       // Clear cached metadata and entity data on logout
       useMetadataStore.getState().clearMetadata();
       useEntityStore.getState().clearAll();

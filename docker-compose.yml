@@ -1,0 +1,59 @@
+# Genesis CRM — full local stack (PRD E-14): MySQL, Redis, API, web.
+#
+#   cp .env.docker.example .env.docker   # set the secrets
+#   docker compose --env-file .env.docker up --build
+#
+# Web on http://localhost:8080 · API health on http://localhost:3001/health.
+# The API applies migrations on start. Load a vertical pack (for example the
+# SWAN Capital demo) once the stack is up:
+#   docker compose exec backend node scripts/install-vertical.js swan-capital --tenant swan-capital --demo
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: genesis
+      MYSQL_USER: genesis
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      retries: 12
+
+  redis:
+    image: redis:7.4-alpine
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 6
+
+  backend:
+    build: ./backend
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      DATABASE_URL: mysql://genesis:${MYSQL_PASSWORD}@mysql:3306/genesis
+      REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?set FIELD_ENCRYPTION_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes: [uploads:/app/uploads]
+    ports: ["3001:3001"]
+
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports: ["8080:80"]
+
+volumes:
+  mysql-data:
+  redis-data:
+  uploads:

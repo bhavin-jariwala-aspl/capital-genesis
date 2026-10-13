@@ -75,6 +75,9 @@ export const runtimeService = {
 
   // Bulk operations
   bulkDeleteRecords:      (ids)              => wrap(api.post('/runtime/records/bulk-delete', { ids })),
+  bulkAssignRecords:      (ids, assigned_to) => wrap(api.post('/runtime/records/bulk-assign', { ids, assigned_to })),
+  mergeRecord:            (id, into)         => wrap(api.post(`/runtime/records/${id}/merge`, { into })),
+  unmergeRecord:          (id)               => wrap(api.post(`/runtime/records/${id}/unmerge`)),
   bulkUpdateRecordStage:  (ids, stageId)     => wrap(api.post('/runtime/records/bulk-stage', { ids, stage_id: stageId })),
 
   // Export (returns blob)
@@ -89,6 +92,9 @@ export const runtimeService = {
 
   // Lookups, related lists and record actions
   getRelated:       (id)               => wrap(api.get(`/runtime/records/${id}/related`)),
+  getApprovals:     (scope = 'mine')   => wrap(api.get('/runtime/workflows/approvals', { params: { scope } })),
+  decideApproval:   (token, action, comment) => wrap(api.post(`/runtime/workflows/approval/${token}`, { action, ...(comment ? { comment } : {}) })),
+  revealField:      (id, field)        => wrap(api.post(`/runtime/records/${id}/reveal`, { field })),
   searchLookup:     (objectName, q, id) => wrap(api.get(`/runtime/lookup/${encodeURIComponent(objectName)}`, { params: id ? { id } : { q } })),
   getObjectActions: (objectId)         => wrap(api.get(`/runtime/objects/${objectId}/actions`)),
   runRecordAction:  (id, workflowId)   => wrap(api.post(`/runtime/records/${id}/actions/${workflowId}`)),

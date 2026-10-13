@@ -67,6 +67,7 @@ Each table is documented as:
 - [Multi-Tenant Platform & Administration](#multi-tenant-platform--administration)
 - [SLA Engine](#sla-engine)
 - [Access Segmentation & Audit Chain](#access-segmentation--audit-chain)
+- [Sessions & Background Jobs](#sessions--background-jobs)
 
 ---
 
@@ -158,6 +159,10 @@ platform/org-admin employee provisioning). Updated by the same admin routes and 
 - `reset_token` (sha256 hash of the active password-reset token) and `reset_token_expires` — support the forgot-password
   flow.
 - `is_active` — enable/disable login.
+- `tokens_valid_after` — revocation point: every token issued earlier is refused (set on deactivation, password
+  change and *Sign out everywhere*).
+- `mfa_enabled`, `mfa_secret` (encrypted TOTP secret), `mfa_recovery` (hashes of unused recovery codes) — two-factor
+  sign-in.
 
 **Related to:** Optionally belongs to a `branch` and a `region`. Appears on both sides of `employee_hierarchy` (as
 ancestor and descendant). Is the FK target for a large set of operational relations — activities, tasks
@@ -565,6 +570,8 @@ the Trash) or hard-deletes, depending on the object's pipeline `config.delete_mo
   assignment engine or manually.
 - `created_by` — VARCHAR(100), nullable; free-form creator id.
 - `created_at` / `updated_at` — timestamps.
+- `updated_by` — VARCHAR(100), nullable; who last edited, moved or bulk-changed the record (workflow writes leave it
+  unchanged).
 - `deleted_at` / `deleted_by` — nullable soft-delete markers (indexed). When set, the record is in the **Trash**: hidden
   from every user-facing query but retained in the DB and recoverable by an admin. Resolved via the pipeline's
   `config.delete_mode` (`soft` default / `hard`).
@@ -3157,4 +3164,27 @@ evidence a regulator asks for.
 **Why this table exists (relevance):** Tamper evidence. Each event's `hash` covers its canonical content and the previous
 event's hash, so any edit, insert or delete breaks `GET /api/access/audit-chain/verify` from that point.
 **When & how rows are written:** `AuditChainService.append` (serialised per tenant) for permission changes, unit and
-barrier membership, wall-crossings and public-form publishing. Never updated or deleted.
+barrier membership, wall-crossings, public-form publishing, PII reveals, record merges and views of objects with
+`config.audit_views`. Never updated or deleted.
+
+## Sessions & Background Jobs
+
+### `auth_refresh_tokens`  ·  Prisma model `AuthRefreshToken`
+
+**Why this table exists (relevance):** Staff sessions outlive the short access token through refresh tokens, and a
+stolen refresh token must be detectable and revocable (PRD E-01).
+**When & how rows are written:** `AuthService.issueSession` on sign-in; `refresh` retires the presented token
+(`revoked_at`, `replaced_by`) and inserts its successor in the same `family`; presenting a retired token revokes the
+family. `logout` / `revokeAll` set `revoked_at`.
+**What the data represents & notable columns:** `token_hash` (SHA-256; the token is never stored), `family`,
+`expires_at`, `revoked_at`, `user_agent`, `ip`. Global model (outside the tenant extension); `tenant_id` is informational.
+
+### `job_queue`  ·  Prisma model `JobQueue`
+
+**Why this table exists (relevance):** Outbound work that must survive failures and restarts (PRD E-03): integration
+and SMS calls a workflow could not complete are retried from here instead of being lost.
+**When & how rows are written:** `JobQueue.enqueue` (the workflow engine, on a retryable failure); `JobQueue.work`
+claims due rows atomically (`queued` → `running`), then marks them `done`, re-queues them with back-off, or parks
+them as `dead` after `max_attempts`. Administrators can re-queue a dead job (`JobQueue.retry`).
+**What the data represents & notable columns:** `type`, `payload`, `status`, `attempts`, `run_after`, `locked_at`
+(lease), `last_error`, `dedupe_key`, `tenant_id` (the job runs inside it).

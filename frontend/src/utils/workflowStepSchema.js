@@ -247,6 +247,24 @@ export const STEP_SCHEMAS = {
     example: { template: 'enquiry_ack', to_field: 'email', language_field: 'preferred_language' },
   },
 
+  send_sms: {
+    summary: 'Sends a short text message through an SMS integration.',
+    standard:
+      'The gateway is an integration (Builder ▸ Integrations), so changing provider never touches a workflow. '
+      + 'Keep messages short and free of personal data beyond what the client already knows; for marketing '
+      + 'messages set a suppression field such as do_not_contact so opted-out clients are skipped.',
+    fields: [
+      { key: 'integration', label: 'SMS integration name', type: 'text', required: true },
+      { key: 'message', label: 'Message', type: 'text', required: true, help: 'Supports {{field}} placeholders. Up to 480 characters.' },
+      { key: 'message_fr', label: 'Message (French)', type: 'text', help: 'Used when the language field is fr.' },
+      { key: 'to_field', label: 'Recipient field', type: 'field', help: 'Field holding the mobile number. Defaults to mobile.' },
+      { key: 'to', label: 'Or a fixed number', type: 'text', help: 'Supports {{field}} placeholders.' },
+      { key: 'language_field', label: 'Language field', type: 'field', help: 'e.g. preferred_language (en / fr).' },
+      { key: 'suppress_field', label: 'Skip when this field is true', type: 'field', help: 'e.g. do_not_contact.' },
+    ],
+    example: { integration: 'swan_sms', message: 'SWAN: your instalment of MUR {{instalment}} is due on {{next_due_date}}.', to_field: 'mobile' },
+  },
+
   generate_document: {
     summary: 'Renders a merge template from this record and files it in the record\'s Docs.',
     standard:

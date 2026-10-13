@@ -110,10 +110,65 @@ module.exports = async function authRoutes(fastify) {
     const accountKey = `login:acct:${String(employee_id).toLowerCase()}`;
     await enforce(`login:ip:${ip}`, AUTH_LIMITS.loginIp, 'login attempts from this network');
     await enforce(accountKey, AUTH_LIMITS.loginAccount, 'failed sign-in attempts for this account');
-    const result = await authSvc.login(employee_id, password);
+    const result = await authSvc.login(employee_id, password, sessionMeta(req));
     await limiter.reset(accountKey);
     return ok(result);
   });
+
+  const sessionMeta = (req) => ({ userAgent: req.headers['user-agent'], ip: clientIp(req) });
+
+  // POST /api/auth/refresh — exchange a refresh token for a new session (rotates it).
+  fastify.post('/refresh', {
+    schema: { body: { type: 'object', required: ['refresh_token'], properties: { refresh_token: { type: 'string', minLength: 20, maxLength: 200 } }, additionalProperties: false } },
+  }, async (req) => {
+    await enforce(`refresh:ip:${clientIp(req)}`, AUTH_LIMITS.loginIp, 'session refreshes from this network');
+    return ok(await authSvc.refresh(req.body.refresh_token, sessionMeta(req)));
+  });
+
+  // POST /api/auth/logout — end this device's session, or every session.
+  fastify.post('/logout', {
+    preHandler: [authenticate],
+    schema: { body: { type: 'object', properties: { refresh_token: { type: 'string', maxLength: 200 }, everywhere: { type: 'boolean' } }, additionalProperties: false } },
+  }, async (req) => ok(await authSvc.logout(req.body?.refresh_token, { everywhere: Boolean(req.body?.everywhere), employeeId: req.user?.employee_id })));
+
+  // ── Two-factor authentication (PRD E-02) ─────────────────────────────────
+  const mfaCode = { type: 'string', minLength: 6, maxLength: 20 };
+  const mfaToken = { type: 'string', minLength: 20, maxLength: 2000 };
+
+  // POST /api/auth/mfa/verify — second sign-in step: authenticator or recovery code.
+  fastify.post('/mfa/verify', {
+    schema: { body: { type: 'object', required: ['mfa_token', 'code'], properties: { mfa_token: mfaToken, code: mfaCode }, additionalProperties: false } },
+  }, async (req) => {
+    await enforce(`mfa:ip:${clientIp(req)}`, AUTH_LIMITS.loginIp, 'code attempts from this network');
+    return ok(await authSvc.verifyMfa(req.body.mfa_token, req.body.code, sessionMeta(req)));
+  });
+
+  // POST /api/auth/mfa/setup — start enrolment (signed in, or during a policy-required sign-in).
+  fastify.post('/mfa/setup', {
+    schema: { body: { type: ['object', 'null'], properties: { mfa_token: mfaToken }, additionalProperties: false } },
+  }, async (req) => {
+    if (req.body?.mfa_token) return ok(await authSvc.mfaSetup({ mfaToken: req.body.mfa_token }));
+    await authenticate(req);
+    return ok(await authSvc.mfaSetup({ employeeId: req.user.employee_id }));
+  });
+
+  // POST /api/auth/mfa/enable — confirm enrolment with a first code; returns recovery codes once.
+  fastify.post('/mfa/enable', {
+    schema: { body: { type: 'object', required: ['code'], properties: { code: mfaCode, mfa_token: mfaToken }, additionalProperties: false } },
+  }, async (req) => {
+    if (req.body.mfa_token) {
+      await enforce(`mfa:ip:${clientIp(req)}`, AUTH_LIMITS.loginIp, 'code attempts from this network');
+      return ok(await authSvc.mfaEnable({ mfaToken: req.body.mfa_token, code: req.body.code }, sessionMeta(req)));
+    }
+    await authenticate(req);
+    return ok(await authSvc.mfaEnable({ employeeId: req.user.employee_id, code: req.body.code }));
+  });
+
+  // POST /api/auth/mfa/disable — turn MFA off (not allowed where policy requires it).
+  fastify.post('/mfa/disable', {
+    preHandler: [authenticate],
+    schema: { body: { type: 'object', required: ['code'], properties: { code: mfaCode }, additionalProperties: false } },
+  }, async (req) => ok(await authSvc.mfaDisable(req.user.employee_id, req.body.code)));
 
   // POST /api/auth/forgot-password — public. Emails a reset link if the account
   // exists. Always responds generically so account existence isn't leaked.
@@ -280,6 +335,8 @@ module.exports = async function authRoutes(fastify) {
       where: { employee_id: req.params.id },
       data: { is_active: false },
     });
+    // Deactivation ends every session at once, not when tokens expire (E-01).
+    await authSvc.revokeAll(req.params.id);
     const { password: _p, ...safe } = employee;
     return ok(safe);
   });

@@ -11,6 +11,91 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — End-to-end demo completeness (2026-10-14)
+
+#### Platform
+
+- **Approvals inbox** (*Tools ▸ Approvals*): every workflow approval step waits here for its approvers; decisions
+  carry a comment, are recorded on the record's history and resume the workflow. Before this, approval
+  notifications linked to a raw API URL and could not be acted on in the UI.
+- **Record visibility per role** (`ui_permissions.view_scope`, *Builder ▸ Permissions ▸ Records*): "Own & team" or
+  "All" records per role and object. Managers now also see records their team owns, not only records it created.
+- **PDF documents**: merge templates render letterheaded PDFs (no dependency); `generate_document` uses picklist
+  labels, formatted amounts and the business unit's legal entity. Generated letters were previously rejected by
+  categories that accept only PDF and images.
+- **Builder defaults on every create path** (website forms, workflows, imports, API).
+- **SLA timers start immediately** on record creation and stage change; completion times for timers created after
+  the fact come from the record's stage history.
+- **Installer**: demo ownership routing, stage history, `platformDemo` (activities, tasks, reminders, documents,
+  share links, e-signatures, wall-crossings, audit-chain baseline), `--reset-passwords`, faster parallel updates,
+  encrypted-field-aware change detection.
+
+#### SWAN Capital
+
+- **Products & Services** module with full product sheets from swancapitalsolutions.com; fund master with
+  published ISINs, benchmarks, minimums and fees; FMB 2029 corrected to a USD feeder fund.
+- Realistic staff names; website enquiry form asks for tenure; conversion gate for loan enquiries; dedicated STR
+  document category.
+- About 800 sample PDF documents, 430 activities, tasks, reminders, signatures, share links and six
+  wall-crossings.
+
+#### Data
+
+- Migration `20261014110000_permission_view_scope` (additive).
+- Genesis CRM Demo tenant: 38 leftover insurance-era sample texts (cases, tasks, leads, activities, notifications)
+  reworded to neutral financial-services wording.
+
+### Added — SWAN Capital full scope and platform hardening (2026-10-14)
+
+The SWAN Capital vertical now covers all 25 PRD modules and all 22 products on swancapitalsolutions.com, with
+demo data across the application. Details: [SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md),
+[PLATFORM_BUILDER_EXTENSIONS.md §12–22](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#12-personal-data-protection).
+
+#### SWAN pack (configuration only)
+
+- **Scope.** 18 modules, 91 objects, 1,406 fields, 71 workflows, 22 assignment rules, 13 SLA policies,
+  15 dashboards, 34 EN/FR email templates, 14 merge templates, 11 checklists, 11 wizards and 6 public forms.
+- **New areas.** Commercial lending, collateral and margin calls, loan servicing and PLR campaigns, funds and
+  FMB 2029, securities, corporate advisory with insider lists, the Forex desk, cross-sell with next-best
+  actions, marketing and consent, introducers, revenue, and the compliance registers.
+- **Demo data.** About 2,300 records with 12 months of history.
+
+#### Platform
+
+- **Personal data.** Masked `pii` fields with an audited *Reveal* (`view_pii` permission); AES-256-GCM
+  `encrypt` fields; view auditing; `conceal_existence` for STR-style registers.
+- **Client & introducer portal** at `/portal/<workspace>`, driven by `config.portal` on objects. It covers
+  email one-time codes, own-records-only views, creation, uploads (content-checked) and messaging.
+- **Sessions.** Rotating refresh tokens with reuse detection; revocation on deactivation, password change and
+  *Sign out everywhere*; TOTP two-factor with recovery codes, enforced by the security policy.
+- **Records.** Record merge with re-pointing and 30-day reversal; bulk reassign; `records.updated_by`.
+- **Workflows.** New `send_sms` step; integration `field_map` write-back; actions can write through a lookup
+  (`lookup.field`).
+- **Durable job queue** (`job_queue`). Failed integration and SMS calls are retried with back-off and
+  dead-lettered; queue depth is shown on `/health`.
+- **Sandbox integrations** (type `simulator`): screening, MCIB, LMS, transfer agent, OMS, FX dealing, SMS.
+- **Public data feeds** (`GET /api/public/feeds/:workspace/:name`) from `config.public_feed`.
+- **Personal calendar feed** (iCalendar) under *My account ▸ Security*.
+- **Labels.** French labels on modules, objects, fields, stages and options, with an EN/FR switch in the
+  header.
+- **Daily formula refresh** for `TODAY` / `NOW` / `AGE` formulas.
+- **Deployment.** Dockerfiles, a docker-compose stack and a GitHub Actions CI workflow.
+- **Installer.** Diff-based and batched: an unchanged re-run writes nothing, and a full demo install
+  dropped from more than an hour of single-row writes.
+
+**Migrations** (all additive): `20261014090000_auth_hardening`, `20261014093000_module_config`,
+`20261014100000_record_updated_by`, `20261014103000_job_queue`.
+
+### Fixed (2026-10-14)
+
+- **Single-record reads.** A leftover include of the removed `quote` relation made every single-record
+  read fail.
+- **Missing routes.** The public form routes and the Builder form-publish routes were not registered.
+- **Role-level fallback.** An unresolvable role level fell back to `0` (the most powerful level) in the
+  activity, task, reminder, search and record services. It now resolves to the least privilege.
+- **Barrier override defaults.** The merged operational-permission defaults showed `barrier_override` as
+  granted to every role. It now defaults to no access.
+
 ### Added — Platform Builder extensions and the SWAN Capital vertical (2026-10-13)
 
 Generic platform capabilities, so an industry CRM can be configured in the Builder rather than coded,

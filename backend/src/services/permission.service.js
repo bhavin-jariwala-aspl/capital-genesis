@@ -140,6 +140,8 @@ class PermissionService {
   async setEntityPermissions(entityType, entityId, permissions, actorId, tenantId) {
     const results = [];
     for (const p of permissions) {
+      // Record visibility applies to objects: 'all' or own/team (null).
+      const scope = entityType === 'object' && p.view_scope !== undefined ? (p.view_scope === 'all' ? 'all' : null) : undefined;
       const result = await this.db.uiPermission.upsert({
         where: {
           entity_type_entity_id_role_name_tenant_id: {
@@ -155,12 +157,14 @@ class PermissionService {
           role_name:   p.role_name,
           can_view:    p.can_view  ?? true,
           can_edit:    p.can_edit  ?? false,
+          ...(scope !== undefined ? { view_scope: scope } : {}),
           updated_by:  actorId ?? null,
           tenant_id:   tenantId,
         },
         update: {
           can_view:   p.can_view  ?? true,
           can_edit:   p.can_edit  ?? false,
+          ...(scope !== undefined ? { view_scope: scope } : {}),
           updated_by: actorId ?? null,
         },
       });

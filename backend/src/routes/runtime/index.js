@@ -1,6 +1,6 @@
 'use strict';
 
-const { authenticate }       = require('../../middleware/authenticate');
+const { authenticate, MANAGER_THRESHOLD } = require('../../middleware/authenticate');
 const MetadataService        = require('../../services/metadata.service');
 const DashboardService       = require('../../services/dashboard.service');
 const RecordService          = require('../../services/record.service');
@@ -392,6 +392,16 @@ module.exports = async function runtimeRoutes(fastify) {
     return ok(await recSvc.getRecord(req.params.id, req.user));
   });
 
+  // POST /api/runtime/records/:id/reveal — unmask one personal-data field.
+  // Only on a record the viewer may open; every reveal goes to the audit chain.
+  fastify.post('/records/:id/reveal', {
+    preHandler: [authenticate],
+    schema: {
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
+      body: { type: 'object', required: ['field'], properties: { field: { type: 'string', maxLength: 100, pattern: '^[a-z_][a-z0-9_]*$' } }, additionalProperties: false },
+    },
+  }, async (req) => ok(await recSvc.revealField(req.params.id, req.body.field, req.user)));
+
   // GET /api/runtime/records/:id/related — records pointing here via lookups
   fastify.get('/records/:id/related', { preHandler: [authenticate] }, async (req) => {
     return ok(await recSvc.relatedRecords(req.params.id, req.user));
@@ -558,6 +568,25 @@ module.exports = async function runtimeRoutes(fastify) {
     return ok(await recSvc.bulkUpdateStage(ids, stage_id, req.user?.employee_id, req.user));
   });
 
+  const idsBody = { type: 'array', minItems: 1, maxItems: 1000, items: { type: 'integer', minimum: 1 } };
+  const idParam = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } };
+
+  // POST /api/runtime/records/bulk-assign — reassign many records (RM exit, X-09)
+  fastify.post('/records/bulk-assign', {
+    preHandler: [authenticate],
+    schema: { body: { type: 'object', required: ['ids', 'assigned_to'], properties: { ids: idsBody, assigned_to: { type: ['string', 'null'], maxLength: 20 } }, additionalProperties: false } },
+  }, async (req) => ok(await recSvc.bulkAssign(req.body.ids, req.body.assigned_to, req.user?.employee_id, req.user)));
+
+  // POST /api/runtime/records/:id/merge — merge this duplicate into another record (C360-FR-08)
+  fastify.post('/records/:id/merge', {
+    preHandler: [authenticate],
+    schema: { params: idParam, body: { type: 'object', required: ['into'], properties: { into: { type: 'integer', minimum: 1 } }, additionalProperties: false } },
+  }, async (req) => ok(await recSvc.mergeRecords(req.params.id, req.body.into, req.user)));
+
+  // POST /api/runtime/records/:id/unmerge — reverse a merge within 30 days
+  fastify.post('/records/:id/unmerge', { preHandler: [authenticate], schema: { params: idParam } },
+    async (req) => ok(await recSvc.unmergeRecord(req.params.id, req.user)));
+
   // GET /api/runtime/records/export?object_id=X
   fastify.get('/records/export', { preHandler: [authenticate] }, async (req, reply) => {
     const { object_id } = req.query;
@@ -604,15 +633,35 @@ module.exports = async function runtimeRoutes(fastify) {
   // body: { action: 'approve' | 'reject' }
   // Resolves a pending approval step. Any authenticated employee can act on a
   // token they received via the notification link.
-  fastify.post('/workflows/approval/:token', { preHandler: [authenticate] }, async (req, reply) => {
+  fastify.post('/workflows/approval/:token', {
+    preHandler: [authenticate],
+    schema: { body: { type: 'object', required: ['action'], properties: { action: { type: 'string', enum: ['approve', 'reject'] }, comment: { type: 'string', maxLength: 1000 } } } },
+  }, async (req) => {
     const { token } = req.params;
-    const { action } = req.body ?? {};
-    if (!['approve', 'reject'].includes(action)) {
-      return reply.code(400).send({ error: 'action must be "approve" or "reject"' });
-    }
+    const { action, comment } = req.body ?? {};
     const actingEmployeeId = req.user.employee_id ?? req.user.employeeId;
-    const result = await wfEngine.processApproval(token, action === 'approve', actingEmployeeId);
-    return ok(result);
+    try {
+      return ok(await wfEngine.processApproval(token, action === 'approve', actingEmployeeId, comment ?? null));
+    } catch (err) {
+      // Business outcomes, not server faults: unknown token, not an approver, already decided.
+      if (/not found|Not authorised|already resolved/i.test(err.message)) throw new ValidationError(err.message);
+      throw err;
+    }
+  });
+
+  // GET /api/runtime/workflows/approvals?scope=mine|all|decided — the Approvals inbox.
+  // `all` (every pending request in the workspace) is for managers and administrators.
+  fastify.get('/workflows/approvals', {
+    preHandler: [authenticate],
+    schema: { querystring: { type: 'object', properties: { scope: { type: 'string', enum: ['mine', 'all', 'decided'] } } } },
+  }, async (req) => {
+    const scope = req.query.scope ?? 'mine';
+    const me = req.user.employee_id ?? req.user.employeeId;
+    if (scope === 'all') {
+      const lvl = Number(req.user.role_level);
+      if (!(Number.isFinite(lvl) && lvl <= MANAGER_THRESHOLD)) throw new ValidationError('Only managers can see every pending approval');
+    }
+    return ok(await wfEngine.listApprovals(me, { scope }));
   });
 
   // ── Forecast ─────────────────────────────────────────────────────────────

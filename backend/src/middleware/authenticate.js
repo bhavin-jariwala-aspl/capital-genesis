@@ -1,5 +1,7 @@
 'use strict';
 
+const { isRevoked } = require('../services/session-revocation');
+
 const { AuthenticationError, AuthorizationError } = require('../utils/errors');
 const { tenantContext } = require('./tenant-scope');
 const { assertTenantUsable } = require('./tenant-lifecycle');
@@ -42,6 +44,9 @@ async function authenticate(request) {
   } catch {
     throw new AuthenticationError('Invalid or expired token');
   }
+  // A purpose-bound token (the MFA challenge issued between password and
+  // code) is never a session.
+  if (decoded?.purpose) throw new AuthenticationError('Invalid or expired token');
   request.user = decoded;
 
   if (decoded?.tenant_id) {
@@ -50,6 +55,11 @@ async function authenticate(request) {
     // Suspended / cancelled / deleted / expired-trial workspaces stop here,
     // so revoking access does not wait for every issued token to expire.
     await assertTenantUsable(request.server?.prisma, decoded.tenant_id);
+  }
+  // Deactivated users, changed passwords and "sign out everywhere" end every
+  // session issued before them (PRD E-01).
+  if (await isRevoked(request.server?.prisma, decoded)) {
+    throw new AuthenticationError('Your session has ended — please sign in again');
   }
 }
 

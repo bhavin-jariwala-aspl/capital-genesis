@@ -352,7 +352,9 @@ const introducerReferral = {
   fields: [
     AUTO('referral_no', 'Referral No.', 'IR-'),
     LK('introducer', 'Introducer', 'introducer', { required: true, config: { show_in_list: true } }),
-    F('prospect_name', 'Prospect', 'text', { required: true, config: { show_in_list: true } }),
+    F('prospect_first_name', 'Prospect first name', 'text', { required: true }),
+    F('prospect_last_name', 'Prospect last name', 'text', { required: true }),
+    FX('prospect_name', 'Prospect', "CONCAT(prospect_first_name, ' ', prospect_last_name)", { type: 'string', list: true }),
     F('prospect_email', 'Prospect email', 'email'),
     F('prospect_mobile', 'Prospect mobile', 'phone'),
     SEL('product_code', 'Product', PRODUCTS, { required: true, config: { show_in_list: true } }),
@@ -365,7 +367,7 @@ const introducerReferral = {
     FX('commission_due', 'Commission due (MUR)', 'COALESCE(funded_amount, 0) * COALESCE(introducer.commission_pct, 0) / 100', { format: 'currency', precision: 2 }),
     FX('name', 'Referral', "CONCAT(referral_no, ' · ', prospect_name)", { type: 'string' }),
   ],
-  forms: [{ name: 'introducer_referral_create', label: 'Submit referral', fields: ['introducer', 'prospect_name', 'prospect_email', 'prospect_mobile', 'product_code', 'estimated_amount', 'submitted_on', 'client_consented', 'funded_amount'] }],
+  forms: [{ name: 'introducer_referral_create', label: 'Submit referral', fields: ['introducer', 'prospect_first_name', 'prospect_last_name', 'prospect_email', 'prospect_mobile', 'product_code', 'estimated_amount', 'submitted_on', 'client_consented', 'funded_amount'] }],
   pipeline: {
     name: 'introducer_referral_flow', label: 'Referral',
     stages: [

@@ -15,6 +15,21 @@ October 2026. These are the generic platform capabilities added so that a comple
 | [Record SLAs](#9-record-slas) | SLA timers on any object's pipeline | `SlaService.#reconcileRecords` |
 | [Workflow additions](#10-workflow-additions) | `send_email`, `generate_document`, linked `create_record`, formula conditions, maker-checker | `services/workflow.service.js` |
 | [Vertical packs](#11-vertical-packs) | Install an industry configuration into a tenant, idempotently | `services/vertical-installer.service.js`, `scripts/install-vertical.js` |
+| [Personal data protection](#12-personal-data-protection) | Masked, encrypted and view-audited fields; audited reveal; concealed restricted counts | `services/field-protection.js`, `RecordService.revealField` |
+| [Client & introducer portal](#13-client-and-introducer-portal) | An external sign-in realm that shows clients the records `config.portal` names | `services/portal.service.js`, `/api/portal`, `/portal/:workspace` |
+| [Record merge & bulk reassign](#14-record-merge-bulk-reassign-and-updated_by) | Merge duplicates with re-pointing and a 30-day reversal; RM-exit reassignment; `updated_by` | `RecordService.mergeRecords` / `unmergeRecord` / `bulkAssign` |
+| [Sessions & MFA](#15-sessions-and-two-factor-authentication) | Rotating refresh tokens, revocation, TOTP two-factor | `services/auth.service.js`, `services/session-revocation.js`, `utils/totp.js` |
+| [SMS, retries & the job queue](#16-sms-integration-retries-and-the-job-queue) | `send_sms` step; failed integration calls retried from a durable queue | `services/job-queue.service.js`, `workflow.service.js` |
+| [Sandbox integrations](#17-sandbox-integrations) | Realistic stand-ins for external systems until credentials exist | `services/integration-simulators.js` |
+| [Public data feeds](#18-public-data-feeds) | Read-only JSON of chosen fields for a website (rates, prices) | `services/public-feed.service.js`, `/api/public/feeds/:workspace/:name` |
+| [Calendar feed](#19-calendar-feed) | Personal iCalendar subscription of meetings, tasks and reminders | `services/calendar-feed.service.js`, `/api/calendar` |
+| [French labels](#20-french-labels) | EN/FR switch for module, object, field, stage and option labels | `utils/localize.js`, `store/languageStore.js` |
+| [Daily formula refresh](#21-daily-formula-refresh) | Date-dependent formulas stay true on records nobody edits | `services/formula-refresh.service.js` |
+| [Containers & CI](#22-containers-and-ci) | Dockerfiles, compose stack, GitHub Actions | `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
+| [Approvals inbox](#23-approvals-inbox) | Every workflow approval waits in one inbox; decisions carry a comment and are audited | `WorkflowEngineService.listApprovals`, `/approvals` |
+| [Record visibility per role](#24-record-visibility-per-role) | "Own & team" or "All" records per role and object, within units and barriers | `ui_permissions.view_scope`, `RecordService.#ownerOnlyFilter` |
+| [PDF documents](#25-pdf-documents) | Merge templates render letterheaded PDFs; picklist labels and formatted amounts | `utils/pdf.js`, `DocumentTemplateService.render` |
+| [Defaults and immediate SLAs](#26-server-side-defaults-and-immediate-sla-timers) | Builder defaults on every create path; SLA timers start when the record is created | `RecordService.#withDefaults`, `SlaService.reconcileRecord` |
 
 ---
 
@@ -152,6 +167,9 @@ The reconciler builds rows from records and typed field values and runs the same
 | condition operator `expression` | a formula over the whole record |
 | context | `{{stage}}` (stage API name), `{{today}}`, `{{id}}` |
 | approval `exclude_actor` / `exclude_field` | maker-checker: the person who triggered the step (or the employee named in a field) can never approve |
+| `send_sms` step | `{ integration, message, message_<lang>?, to_field? = mobile, to?, language_field?, suppress_field? }` — see [§16](#16-sms-integration-retries-and-the-job-queue) |
+| `action` through a lookup | `{ field: 'decision_mandate.conflict_status', value }` writes to the record a lookup points at |
+| `integration` `field_map` | `{ recordField: 'path.in.response' }` writes the provider's answer back onto the record; failed calls are queued for retry |
 
 Fields written by workflow actions and `update_related` trigger formula recomputation.
 
@@ -162,13 +180,198 @@ A pack (`backend/prisma/verticals/<name>/`) is plain data: business units, barri
 ```bash
 node scripts/install-vertical.js swan-capital --create-tenant [--demo] [--password <pw>]
 node scripts/install-vertical.js swan-capital --tenant swan-capital      # re-install / upgrade
+node scripts/install-vertical.js swan-capital --tenant swan-capital --recompute[=obj1,obj2]  # also recompute formulas
 ```
 
-The installer is **idempotent**: every row is matched by its natural key and updated in place; workflows, assignment rules, SLA policies and dashboards are replaced by name; rows the pack does not mention are never touched. Staff accounts are created once and never overwritten (random passwords printed once). Custom roles must sit at level 4 or below. Records referenced as `@object:field=value`; demo/master records keyed by one field or a composite key.
+The installer is **idempotent and diff-based**: every row is matched by its natural key and only rows that differ are written; workflows, assignment rules, SLA policies and dashboards are replaced by name; rows the pack does not mention are never touched. Staff accounts are created once and never overwritten (random passwords printed once). Custom roles must sit at level 4 or below. Records referenced as `@object:field=value`; demo/master records keyed by one field or a composite key.
+
+**Speed.** Against a remote database each single-row write costs a network round trip, so the installer batches: fields, validations, stages, permissions and workflow steps go in with `createMany`; metadata reads are memoised during the records phase; demo records are written eight at a time. Records carry `ext_ref` (matched on re-runs), `_stage`, `_owner` and `_created` (back-dated history). Parent roll-ups are deferred during the bulk load and recomputed once at the end in formula-dependency order; a demo set can request an intermediate `{ recompute: ['party'] }` checkpoint when later validations depend on a roll-up. With `--demo`, three more steps run after the records:
+
+- **Ownership.** The pack's assignment rules route unowned demo records, and the rest inherit their parent's
+  owner (`pack.referenceObjects` stay unowned).
+- **History.** A stage timeline and a realistic `updated_at` are written for back-dated records.
+- **Platform demo.** `pack.platformDemo(ctx)` returns activities, tasks, reminders, PDF documents (with review
+  status, share links and e-signature requests), wall-crossings and an audit-chain baseline, which are written
+  through the platform services.
+
+`--reset-passwords --password <pw>` sets one password on every pack staff account (demo environments only).
+
+When a run adds or edits a formula field, the object's existing records are recomputed too, and a checkpoint first recomputes the objects it reads whose formulas changed. `--recompute` forces the same for named objects (or every object with formulas), to repair values left stale by earlier runs or manual edits.
 
 `tests/swan-pack.test.js` resolves every reference in a pack (fields, stages, objects, roles, templates, formulas) so a typo fails CI rather than producing an inert automation.
 
-## 12. Fixes made alongside
+## 12. Personal data protection
+
+| Field config | Effect |
+|---|---|
+| `pii: true` | Masked (`•••• 1234`) for users without the `view_pii` operational permission. *Reveal* returns the value and writes an audit-chain entry. Saving a form never overwrites the stored value with its mask. |
+| `encrypt: true` | Stored as `enc:v1:` AES-256-GCM ciphertext (key `FIELD_ENCRYPTION_KEY`); decrypted on typed reads, so formulas and the authorised UI see plain text. `scripts/encrypt-existing-fields.js` encrypts values stored before the flag was set. |
+| object `config.audit_views: true` | Opening a record is recorded on the audit chain (PEP, STR, VIP records). |
+| object `config.conceal_existence: true` | Related lists do not even count rows the viewer cannot see (no tipping-off for STRs). Otherwise hidden rows show as "N restricted — contact Compliance". |
+
+Grant `view_pii` per role in *Builder ▸ Permissions ▸ Operational*.
+
+## 13. Client and introducer portal
+
+`/portal/<workspace>` is a separate sign-in realm. A one-time code goes to the email on the person's record; the session token (`gp1.`) is signed separately and the staff middleware never accepts it. Rate limits: 30 attempts per IP and 5 codes per email per 15 minutes.
+
+What appears is object configuration:
+
+```js
+config.portal = {
+  client: {
+    title: 'Loan applications',
+    link: 'party',                        // lookup that ties a row to the signed-in client
+    fields: ['application_no', 'product_code', 'loan_amount', 'emi'],
+    order: 'created_on',                  // optional sort field
+    uploads: true,                        // documents can be uploaded to these records
+    create: {                             // optional: the user can create records
+      fields: ['request_type', 'description'],
+      defaults: { channel: 'portal', received_on: '{{today}}' },
+      stage: 'received',
+      lookups: { loan_account: 'loan_account' },  // pickers limited to the user's own records
+    },
+  },
+  introducer: {
+    title: 'My referrals', link: 'introducer', fields: [ /* … */ ],
+    consent_gate: 'consent_share_status', // show the stage only when the prospect agreed
+  },
+};
+```
+
+Clients can also download documents in categories marked `portal_visible`, upload PDF, JPEG or PNG files (10 MB) against their own records, and message their owner (the message becomes an activity and a notification). In development, when SMTP is not configured, the sign-in code is returned to the page so the flow can be demonstrated.
+
+## 14. Record merge, bulk reassign and `updated_by`
+
+- **Merge** (`POST /api/runtime/records/:id/merge { into }`, managers only): fields empty on the survivor are filled from the duplicate; every lookup pointing at the duplicate is re-pointed; the duplicate goes to Trash. The change set is stored on the audit chain, and *Trash ▸ Reverse merge* undoes it within 30 days.
+- **Bulk reassign** (`POST /api/runtime/records/bulk-assign`, managers only): moves records to an active employee; every change is audited.
+- **`records.updated_by`**: stamped by edits, stage moves and bulk operations.
+
+## 15. Sessions and two-factor authentication
+
+- Access tokens are short-lived. `POST /api/auth/refresh` exchanges a refresh token for a new pair and retires the old token; replaying a retired token revokes the whole family (theft detection). The web app refreshes once on a 401, shared by concurrent requests.
+- `employees.tokens_valid_after` revokes every token issued earlier. It is set by deactivation, password change and *Sign out everywhere*, and checked on every request (30-second cache per instance).
+- **TOTP two-factor** (RFC 6238, any authenticator app): set up and turn off under *My account ▸ Security*; ten single-use recovery codes. When the security policy requires MFA, sign-in returns `mfa_required` (or `mfa_setup_required`) and a five-minute challenge token that only `/api/auth/mfa/*` accepts.
+
+## 16. SMS, integration retries and the job queue
+
+`send_sms` sends through an integration, so the gateway is configuration:
+
+```js
+{ step_type: 'send_sms', config: {
+  integration: 'swan_sms', to_field: 'party_mobile', language_field: 'preferred_language',
+  message: 'Your instalment of MUR {{instalment}} is due on {{next_instalment_date}}.',
+  message_fr: 'Votre mensualité de MUR {{instalment}} est due le {{next_instalment_date}}.',
+  suppress_field: 'do_not_contact',
+} }
+```
+
+When an `integration` or `send_sms` call fails for a reason a retry can fix, the engine queues it. The **durable job queue** (`job_queue` table) is worked every 15 seconds by every API instance:
+
+- jobs are claimed atomically, so two instances never run the same job
+- a job held by a crashed instance is released after 10 minutes
+- failures back off exponentially: 30 s, 1 min, 2 min … up to 1 h
+- after six attempts the job is parked as `dead`
+
+When a retried call succeeds, its `field_map` is applied to the record. Configuration errors (unknown or inactive integration) are not retried. Queue depth by status is reported on `/health`.
+
+## 17. Sandbox integrations
+
+Integration type `simulator` with `config.provider` returns deterministic, realistic responses so workflows can be built and demonstrated before contracts exist: `screening` (hits by list), `mcib` (score, grade, report reference), `lms` (account number), `ta` (transfer-agent reference), `oms` (order reference, executed price), `fx_dealing` (deal reference) and `sms` (message id). Switching to the real system is a change of integration type and credentials; the workflows do not change.
+
+## 18. Public data feeds
+
+An object can publish chosen fields as a read-only feed for a website:
+
+```js
+config.public_feed = {
+  name: 'fx-rates',
+  fields: ['currency_code', 'buy_tt', 'sell_tt', 'rate_date'],
+  latest_by: { group: 'currency_code', order: 'rate_date' },  // newest row per currency
+  sort: { field: 'currency_code', dir: 'asc' },
+  limit: 100,
+};
+```
+
+`GET /api/public/feeds/<workspace>/<name>` returns `{ feed, updated_at, items }`. It is cached for a minute on the server and five minutes by browsers, open to any origin, and rate limited per IP. Fields marked `pii` or `encrypt` are never published, even when listed.
+
+## 19. Calendar feed
+
+*My account ▸ Security ▸ Calendar feed* shows a private iCalendar URL (`/api/calendar/feed/<token>.ics`) to subscribe to from Outlook, Google or Apple Calendar. It lists the user's scheduled activities, open tasks with due dates and pending reminders, from 30 days back to 180 days ahead, plus dated records the user owns on any object that opts in:
+
+```js
+config.calendar = [
+  { date_field: 'meeting_date', time_field: 'meeting_time', duration_min: 60, label: 'Meeting' }, // timed
+  { date_field: 'follow_up_date', label: 'Follow up' },                                            // all-day
+];
+```
+
+`time_field` holds a local `HH:MM` in the tenant's timezone. The token is signed over the user's revocation point, so *Sign out everywhere*, a password change or deactivation invalidates it.
+
+## 20. French labels
+
+Modules, objects, fields, pipelines and stages take `config.label_fr` (objects also `plural_label_fr`), and select options take `label_fr`. The header's **EN / FR** switch sets the user's language; runtime responses (`/api/runtime/*`) are then localised as they arrive, so every metadata-driven screen shows French where a translation exists. Builder screens read `/api/metadata/*` and always edit the English label. *Field ▸ Label (French)* edits the translation. Buttons and menus remain in English.
+
+## 21. Daily formula refresh
+
+Formulas that read the date (`TODAY`, `NOW`, `AGE`, and anything built on them) would go stale on records nobody edits. The `formula-refresh` scheduler recomputes them once a day, so flags such as "review due" or "days to maturity" stay correct and scheduled workflows see current values.
+
+## 22. Containers and CI
+
+| File | Purpose |
+|---|---|
+| `backend/Dockerfile` | Production API image: non-root, health check, runs `prisma migrate deploy` then starts |
+| `frontend/Dockerfile`, `frontend/nginx.conf` | Static build served by nginx; `/api` proxied to the API; SPA fallback |
+| `docker-compose.yml`, `.env.docker.example` | MySQL 8.4, Redis 7, API and web on `localhost:8080` |
+| `.github/workflows/ci.yml` | Backend tests, frontend lint, tests and build, then both images |
+
+## 23. Approvals inbox
+
+Every `approval` workflow step (credit decisions, KYC sign-off, maker-checker on disbursements and fund orders,
+gifts above a threshold…) creates a request that appears under **Tools ▸ Approvals** for the people it names:
+*Waiting for me*, *All pending* (managers and administrators) and *My decisions*. Each request shows the record
+(with a link), who asked and when, and the step's title and message. **Approve** resumes the workflow; **Reject**
+takes its rejection path. Both accept a comment, record who decided and when, and write an entry to the record's
+history. The approver list is fixed when the request is created, the maker is excluded (`exclude_actor`,
+`exclude_field`), and only a listed approver can decide. The sidebar shows how many requests wait for the user;
+notifications open the inbox at the request.
+
+`GET /api/runtime/workflows/approvals?scope=mine|all|decided` · `POST /api/runtime/workflows/approval/:token { action, comment? }`
+
+## 24. Record visibility per role
+
+Object permissions carry a **Records** setting per role (`ui_permissions.view_scope`):
+
+| Setting | The role sees |
+|---|---|
+| Own & team (default) | Records the user created or owns; managers also see records their team created or owns |
+| All | Every record of the object |
+
+Both are still limited by the user's business units and barrier zones, and administrators always see all records
+(barriers still apply). Back-office desks — credit, operations, compliance, fund management, dealing — need
+**All** on the objects they process; otherwise an approver cannot open the record they are asked to approve.
+Reference data (products, funds, rates) is normally **All** for every role. Set it in **Builder ▸ Permissions ▸
+object ▸ Records**, or in a pack with `{ object, roles, can_view, can_edit, view_scope: 'all' }`.
+
+## 25. PDF documents
+
+`utils/pdf.js` writes A4 PDFs without external dependencies: letterhead, headings, wrapped paragraphs, bullets,
+tables and "Page n of N" footers, in Helvetica with WinAnsi encoding (English and French). Merge templates with
+`format: 'pdf'` — or any HTML template whose document category does not accept HTML — render to PDF. The
+`generate_document` workflow step passes display values: picklist labels instead of codes, grouped amounts, ISO
+dates, `<field>_raw` for the stored value, and a letterhead built from the record's business unit (legal name,
+`config.address`, licence).
+
+## 26. Server-side defaults and immediate SLA timers
+
+- A field's Builder **default value** is applied on every create path — website forms, workflows, imports and the
+  API — not only in forms rendered in the browser. `{{today}}` resolves to the current date.
+- SLA timers start (and stop) when a record is created or changes stage, through `SlaService.reconcileRecord`;
+  the background sweep still runs every minute and now processes records concurrently.
+- When a timer is created for a record that is already complete, the completion time is taken from the record's
+  stage history (`status_events`) rather than the time the timer was created.
+
+## 27. Fixes made alongside
 
 | Defect | Effect before | Fix |
 |---|---|---|

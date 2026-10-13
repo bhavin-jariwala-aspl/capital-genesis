@@ -1,5 +1,7 @@
 'use strict';
 
+const { decrypt } = require('./field-protection');
+
 /**
  * crm-storage-map — single source of truth for "where does a record's field
  * data actually live?".
@@ -189,7 +191,8 @@ function fromTypedRow(row) {
   if (row.date_value != null) return row.date_value;
   if (row.bool_value != null) return row.bool_value;
   if (row.num_value  != null) return row.num_value;
-  return row.str_value ?? null;
+  // Encrypted personal data (field config `encrypt`) decrypts on every read.
+  return decrypt(row.str_value ?? null);
 }
 
 module.exports = {

@@ -11,7 +11,7 @@
  * snapshots the CRM services from, never books it keeps.
  */
 
-const { o, BUSINESS_UNITS, CURRENCIES, LOW_MED_HIGH } = require('./options');
+const { o, CURRENCIES } = require('./options');
 const { helpers: { F, SEL, LK, FX, H, AUTO, LIST, EXPR, stage, showWhen } } = require('./objects');
 
 const MUR = (field, label = 'Amount (MUR)') => FX(`${field}_mur`, label,
@@ -345,6 +345,7 @@ const marginCall = {
     SEL('cure', 'Cure', o([['top_up', 'Additional collateral'], ['repayment', 'Partial repayment'], ['liquidation', 'Liquidation of pledged assets'], ['none', 'None yet']]), { default: 'none' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
     FX('party_email', 'Borrower email', 'party.email', { type: 'string' }),
+    FX('party_mobile', 'Borrower mobile', 'party.mobile', { type: 'string' }),
     FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
     FX('name', 'Margin call', "CONCAT(loan_application.application_no, ' · ', call_date)", { type: 'string' }),
   ],
@@ -394,9 +395,13 @@ const loanAccount = {
     F('synced_at', 'Synced from LMS', 'date'),
     F('promise_to_pay_date', 'Promise to pay by', 'date'),
     F('margin_call_open', 'Margin call open', 'checkbox', { config: { always_disabled: true } }),
+    F('collections_opened', 'Collections follow-up open', 'checkbox', { config: { always_disabled: true } }),
+    FX('latest_plr_event', 'Latest PLR change', "LATEST('plr_change_event', 'id', 'effective_from')"),
+    F('notified_plr_event', 'PLR change notified', 'integer', { config: { always_disabled: true } }),
     F('renewal_opened', 'Maturity opportunity opened', 'checkbox', { config: { always_disabled: true } }),
     MUR('outstanding', 'Outstanding (MUR)'),
     FX('party_email', 'Borrower email', 'party.email', { type: 'string' }),
+    FX('party_mobile', 'Borrower mobile', 'party.mobile', { type: 'string' }),
     FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
   ],
@@ -487,5 +492,3 @@ module.exports = {
   loanAccount, plrChangeEvent, plrNotification, collectionAction,
   MUR,
 };
-// Silence unused-import lint for shared helpers kept for future objects.
-void BUSINESS_UNITS; void LOW_MED_HIGH;

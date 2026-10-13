@@ -116,3 +116,6 @@ Desktop.ini
 *.p12
 .npmrc
 .yarnrc
+
+# Docker stack secrets (see .env.docker.example)
+.env.docker

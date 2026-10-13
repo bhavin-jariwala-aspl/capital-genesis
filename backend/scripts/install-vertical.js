@@ -18,6 +18,11 @@
  *   --demo               also install the pack's demo records
  *   --password <pw>      password for staff accounts created now (otherwise a
  *                        random one per account, printed once)
+ *   --reset-passwords    with --password: set that password on every pack staff
+ *                        account that already exists (demo environments only)
+ *   --recompute[=a,b]    recompute every record's formulas for the named objects
+ *                        (or all objects with formulas) — repairs values left
+ *                        stale by earlier runs or manual edits
  *
  * Packs live in prisma/verticals/<name>/. The installer itself is generic
  * (src/services/vertical-installer.service.js).
@@ -51,7 +56,11 @@ async function main() {
     return;
   }
 
-  const raw = new PrismaClient();
+  // A bulk load over a remote database can wait longer than Prisma's default
+  // 10 s for a pooled connection when the database is busy; allow for that.
+  const url = new URL(process.env.DATABASE_URL);
+  if (!url.searchParams.has('pool_timeout')) url.searchParams.set('pool_timeout', '120');
+  const raw = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   const prisma = applyTenantMiddleware(raw);
   try {
     const target = arg('--tenant') ?? pack.tenant.slug;
@@ -77,6 +86,12 @@ async function main() {
         tenantId: tenant.id,
         demo: process.argv.includes('--demo'),
         password: arg('--password') ?? process.env.VERTICAL_STAFF_PASSWORD ?? null,
+        resetPasswords: process.argv.includes('--reset-passwords'),
+        recompute: (() => {
+          const flag = process.argv.find((a) => a === '--recompute' || a.startsWith('--recompute='));
+          if (!flag) return null;
+          return flag.includes('=') ? flag.split('=')[1].split(',').map((x) => x.trim()).filter(Boolean) : true;
+        })(),
         log: (m) => console.log(m),
       }).install(pack));
 

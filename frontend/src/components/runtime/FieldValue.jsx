@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import clsx from 'clsx';
-import { CheckCircle2, XCircle, Link2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Link2, Eye, Lock } from 'lucide-react';
+import { metadataService } from '../../services/metadata.service';
 import Badge from '../ui/Badge';
 import { statusVariant, optionLabel } from '../../utils/metadata-helpers';
 import { fmtDate, fmtDateTime, fmtCurrency, fmtPct } from '../../utils/formatters';
@@ -53,7 +55,37 @@ function displayType(field) {
   return type;
 }
 
-export default function FieldValue({ field, value, label = null, compact = false }) {
+/**
+ * A personal-data value the API sent masked. "Reveal" asks the server for the
+ * real value — allowed only on records the viewer may open, and audited.
+ */
+function MaskedValue({ field, value, recordId, compact }) {
+  const [revealed, setRevealed] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (revealed !== null) return <FieldValue field={field} value={revealed} compact={compact} />;
+  const reveal = async (e) => {
+    e.stopPropagation();
+    setBusy(true);
+    try {
+      const res = await metadataService.revealField(recordId, field.name);
+      setRevealed(res?.data?.value ?? res?.value ?? '');
+    } finally { setBusy(false); }
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-white/50">
+      <Lock className="h-3 w-3 shrink-0" aria-hidden />
+      <span className="font-mono">{String(value)}</span>
+      {recordId && (
+        <button type="button" onClick={reveal} disabled={busy} className="inline-flex items-center gap-0.5 text-xs text-primary-600 hover:underline disabled:opacity-50" title="Reveal (this is audited)">
+          <Eye className="h-3 w-3" /> Reveal
+        </button>
+      )}
+    </span>
+  );
+}
+
+export default function FieldValue({ field, value, label = null, compact = false, masked = false, recordId = null }) {
+  if (masked && hasValue(value)) return <MaskedValue field={field} value={value} recordId={recordId} compact={compact} />;
   const type = displayType(field);
   const options = field.options ?? [];
   const text = compact ? 'text-sm' : 'text-sm';

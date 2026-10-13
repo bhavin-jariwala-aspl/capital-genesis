@@ -35,6 +35,8 @@ function makePrisma(employee) {
     role: {
       findFirst: jest.fn().mockResolvedValue({ level: 5 }),
     },
+    securityPolicy: { findMany: jest.fn().mockResolvedValue([]) },
+    authRefreshToken: { create: jest.fn().mockResolvedValue({ id: 1 }) },
   };
 }
 
