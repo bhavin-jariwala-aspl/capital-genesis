@@ -1,0 +1,118 @@
+# ============================================================
+# Runtime Files
+# ============================================================
+uploads/
+# `make start` writes pid files and dev-server logs here
+.dev/
+
+# ============================================================
+# Dependencies
+# ============================================================
+node_modules/
+.pnp
+.pnp.js
+
+# ============================================================
+# Environment & Secrets
+# ============================================================
+# .env
+# .env.local
+# .env.development
+# .env.test
+# .env.production
+# .env.staging
+# # Keep example/template env files
+# !.env.example
+# !.env.*.example
+
+# ============================================================
+# Build Outputs
+# ============================================================
+# Vite / React
+frontend/dist/
+frontend/build/
+
+# Backend compiled output (if added later)
+backend/dist/
+backend/build/
+
+# ============================================================
+# Logs
+# ============================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================================
+# Runtime / Cache
+# ============================================================
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# ============================================================
+# Prisma
+# ============================================================
+# SQLite dev database (if used locally), NOT MySQL migration files
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================================
+# Testing & Coverage
+# ============================================================
+coverage/
+.nyc_output/
+
+# ============================================================
+# OS & Editor
+# ============================================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/*.code-snippets
+# Keep shared extensions/recommendations
+!.vscode/extensions.json
+!.vscode/recommended-extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# ============================================================
+# Package Manager Locks (keep one, ignore others)
+# ============================================================
+# Uncomment the lock file your project does NOT use:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ============================================================
+# Miscellaneous
+# ============================================================
+*.pem
+*.key
+*.cert
+*.p12
+.npmrc
+.yarnrc

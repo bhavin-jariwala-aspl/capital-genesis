@@ -1,0 +1,48 @@
+{
+  "name": "@genesis/backend",
+  "version": "1.0.0",
+  "description": "Genesis CRM — Fastify backend with Prisma + MySQL + Redis",
+  "main": "src/index.js",
+  "scripts": {
+    "predev": "node scripts/predev.js",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "jest --runInBand --forceExit",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:seed": "node prisma/seed.js",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
+    "@fastify/cors": "^10.1.0",
+    "@fastify/jwt": "^10.0.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.8.4",
+    "fastify-plugin": "^5.1.0",
+    "ioredis": "^5.3.2",
+    "mammoth": "^1.12.0",
+    "nodemailer": "^8.0.4",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "markdownlint-cli": "^0.48.0",
+    "nodemon": "^3.1.0",
+    "prisma": "^6.19.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "verbose": true
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}

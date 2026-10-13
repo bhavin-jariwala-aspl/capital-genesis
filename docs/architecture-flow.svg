@@ -1,0 +1,366 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1660" viewBox="0 0 1500 1660" font-family="Helvetica,Arial,sans-serif">
+<defs>
+  <marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0 0L10 5L0 10z" fill="#8a93a3"/>
+  </marker>
+  <filter id="sh" x="-4%" y="-4%" width="108%" height="112%">
+    <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#1f2733" flood-opacity="0.09"/>
+  </filter>
+</defs>
+<rect x="0" y="0" width="1500" height="1660" fill="#eef1f6"/>
+<text x="70" y="52" font-size="15" font-weight="700" letter-spacing="3" fill="#0f766e" font-family="ui-monospace,Menlo,monospace">GENESIS CRM</text>
+<text x="70" y="86" font-size="27" font-weight="700" fill="#1f2733">Application Architecture &amp; Data Flow</text>
+<text x="70" y="110" font-size="13.5" fill="#6b7480">Multi-tenant, metadata-driven insurance CRM · React SPA · Fastify · Prisma / MySQL · Redis · event-driven automation</text>
+<rect x="70" y="140" width="900" height="140" rx="12" fill="#ffffff" stroke="#c9cef4" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="140" width="4.5" height="140" rx="2.2" fill="#4f5bd5"/>
+<rect x="86" y="153" width="66.19999999999999" height="20" rx="5" fill="#eef0fc" stroke="#c9cef4"/>
+<text x="119.1" y="167" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#4f5bd5">CLIENTS</text>
+<text x="162.2" y="167.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Browsers &amp; external callers</text>
+<rect x="156" y="190" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c9cef4" stroke-width="1.3"/>
+<rect x="166" y="212" width="30" height="30" rx="7" fill="#eef0fc"/>
+<g transform="translate(171.5 217.5) scale(0.7916666666666666)" fill="none" stroke="#4f5bd5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 8.5h19"/><circle cx="5.5" cy="6.2" r=".5"/><circle cx="7.6" cy="6.2" r=".5"/></g>
+<text x="206" y="225" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Web Browser</text>
+<text x="206" y="240" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">React SPA client</text>
+<rect x="359" y="190" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c9cef4" stroke-width="1.3"/>
+<rect x="369" y="212" width="30" height="30" rx="7" fill="#eef0fc"/>
+<g transform="translate(374.5 217.5) scale(0.7916666666666666)" fill="none" stroke="#4f5bd5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.2" r="2.5"/><circle cx="17.5" cy="18.8" r="2.5"/><path d="M8.2 10.8l7.1-4.2M8.2 13.2l7.1 4.2"/></g>
+<text x="409" y="225" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Social platforms</text>
+<text x="409" y="240" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">webhooks · mentions</text>
+<rect x="562" y="190" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c9cef4" stroke-width="1.3"/>
+<rect x="572" y="212" width="30" height="30" rx="7" fill="#eef0fc"/>
+<g transform="translate(577.5 217.5) scale(0.7916666666666666)" fill="none" stroke="#4f5bd5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3" width="15" height="18" rx="1"/><path d="M9 21v-3.5h6V21"/><circle cx="8.5" cy="7" r=".5"/><circle cx="15.5" cy="7" r=".5"/><circle cx="8.5" cy="11" r=".5"/><circle cx="15.5" cy="11" r=".5"/></g>
+<text x="612" y="225" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Insurance carriers</text>
+<text x="612" y="240" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">rating · policy</text>
+<rect x="765" y="190" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c9cef4" stroke-width="1.3"/>
+<rect x="775" y="212" width="30" height="30" rx="7" fill="#eef0fc"/>
+<g transform="translate(780.5 217.5) scale(0.7916666666666666)" fill="none" stroke="#4f5bd5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M2.8 6.5l9.2 6.4 9.2-6.4"/></g>
+<text x="815" y="225" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Email systems</text>
+<text x="815" y="240" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">delivery · bounce</text>
+<rect x="70" y="320" width="900" height="240" rx="12" fill="#ffffff" stroke="#c4d8f6" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="320" width="4.5" height="240" rx="2.2" fill="#3f6fd8"/>
+<rect x="86" y="333" width="72.8" height="20" rx="5" fill="#eaf1fd" stroke="#c4d8f6"/>
+<text x="122.4" y="347" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3f6fd8">FRONTEND</text>
+<text x="168.8" y="347.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">React SPA — three consoles (Vite)</text>
+<rect x="156" y="372" width="256.6666666666667" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="166" y="394" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(171.5 399.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9M18 8h2M4 16h2M11 16h9"/><circle cx="15.5" cy="8" r="2.1"/><circle cx="8.5" cy="16" r="2.1"/></g>
+<text x="206" y="407" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Builder console</text>
+<text x="206" y="422" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">low-code studio</text>
+<rect x="426.6666666666667" y="372" width="256.6666666666667" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="436.6666666666667" y="394" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(442.1666666666667 399.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 8.5h19"/><circle cx="5.5" cy="6.2" r=".5"/><circle cx="7.6" cy="6.2" r=".5"/></g>
+<text x="476.6666666666667" y="407" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Runtime console</text>
+<text x="476.6666666666667" y="422" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">day-to-day ops</text>
+<rect x="697.3333333333334" y="372" width="256.6666666666667" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="707.3333333333334" y="394" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(712.8333333333334 399.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></g>
+<text x="747.3333333333334" y="407" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Platform admin</text>
+<text x="747.3333333333334" y="422" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">control plane</text>
+<rect x="156" y="468" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="166" y="490" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(171.5 495.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l9 4.7-9 4.7-9-4.7z"/><path d="M3 12l9 4.7 9-4.7"/><path d="M3 16.7l9 4.7 9-4.7"/></g>
+<text x="206" y="503" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Zustand</text>
+<text x="206" y="518" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">5 stores</text>
+<rect x="359" y="468" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="369" y="490" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(374.5 495.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2v5l3.2 2"/></g>
+<text x="409" y="503" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">TanStack Query</text>
+<text x="409" y="518" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">server cache</text>
+<rect x="562" y="468" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="572" y="490" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(577.5 495.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5M6.5 7.5h11v3a5.5 5.5 0 0 1-11 0zM12 16v5.5"/></g>
+<text x="612" y="503" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Axios</text>
+<text x="612" y="518" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">JWT · /api</text>
+<rect x="765" y="468" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#c4d8f6" stroke-width="1.3"/>
+<rect x="775" y="490" width="30" height="30" rx="7" fill="#eaf1fd"/>
+<g transform="translate(780.5 495.5) scale(0.7916666666666666)" fill="none" stroke="#3f6fd8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="5" r="2.3"/><circle cx="6.5" cy="19" r="2.3"/><circle cx="17.5" cy="8" r="2.3"/><path d="M6.5 7.3v9.4M6.5 12.5h5a4 4 0 0 0 4-4.1"/></g>
+<text x="815" y="503" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">React Router</text>
+<text x="815" y="518" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">routing</text>
+<rect x="70" y="600" width="900" height="200" rx="12" fill="#ffffff" stroke="#ddccf1" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="600" width="4.5" height="200" rx="2.2" fill="#7c4dbe"/>
+<rect x="86" y="613" width="92.6" height="20" rx="5" fill="#f2ecfb" stroke="#ddccf1"/>
+<text x="132.3" y="627" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#7c4dbe">API GATEWAY</text>
+<text x="188.6" y="627.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Fastify server — request pipeline · :3001</text>
+<rect x="156" y="652" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="166" y="666" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(171.5 671.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 4.8-3.4 8.2-8 9.5-4.6-1.3-8-4.7-8-9.5v-6z"/></g>
+<text x="206" y="685" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">CORS</text>
+<rect x="318.4" y="652" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="328.4" y="666" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(333.9 671.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></g>
+<text x="368.4" y="685" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">JWT verify</text>
+<rect x="480.8" y="652" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="490.8" y="666" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(496.3 671.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 4.8-3.4 8.2-8 9.5-4.6-1.3-8-4.7-8-9.5v-6z"/></g>
+<text x="530.8" y="685" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Authenticate</text>
+<rect x="643.2" y="652" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="653.2" y="666" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(658.7 671.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 4.8-3.4 8.2-8 9.5-4.6-1.3-8-4.7-8-9.5v-6z"/></g>
+<text x="693.2" y="685" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Tenant scope</text>
+<rect x="805.6" y="652" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="815.6" y="666" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(821.1 671.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="6.5" cy="7.5" r=".7"/><circle cx="6.5" cy="16.5" r=".7"/></g>
+<text x="855.6" y="685" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Error handler</text>
+<rect x="156" y="724" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="166" y="738" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(171.5 743.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l9 4.7-9 4.7-9-4.7z"/><path d="M3 12l9 4.7 9-4.7"/><path d="M3 16.7l9 4.7 9-4.7"/></g>
+<text x="206" y="757" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Redis plugin</text>
+<rect x="318.4" y="724" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="328.4" y="738" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(333.9 743.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/><circle cx="12" cy="17" r="1"/></g>
+<text x="368.4" y="757" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">/health</text>
+<rect x="480.8" y="724" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="490.8" y="738" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(496.3 743.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5a2 2 0 0 1 2-2h3.8l2 2H19a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g>
+<text x="530.8" y="757" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Body 50MB</text>
+<rect x="643.2" y="724" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="653.2" y="738" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(658.7 743.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.4" rx="7.6" ry="2.8"/><path d="M4.4 5.4v13.2c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8V5.4"/><path d="M4.4 12c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8"/></g>
+<text x="693.2" y="757" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Prisma pool</text>
+<rect x="805.6" y="724" width="148.4" height="58" rx="8" fill="#fbfcfe" stroke="#ddccf1" stroke-width="1.3"/>
+<rect x="815.6" y="738" width="30" height="30" rx="7" fill="#f2ecfb"/>
+<g transform="translate(821.1 743.5) scale(0.7916666666666666)" fill="none" stroke="#7c4dbe" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5M6.5 7.5h11v3a5.5 5.5 0 0 1-11 0zM12 16v5.5"/></g>
+<text x="855.6" y="757" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Graceful close</text>
+<rect x="70" y="840" width="900" height="130" rx="12" fill="#ffffff" stroke="#f0cce4" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="840" width="4.5" height="130" rx="2.2" fill="#b0489a"/>
+<rect x="86" y="853" width="59.599999999999994" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="115.8" y="867" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#b0489a">ROUTES</text>
+<text x="155.6" y="867.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">20 REST route groups</text>
+<rect x="90" y="888" width="48" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="114" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">auth</text>
+<rect x="146" y="888" width="76" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="184" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">metadata</text>
+<rect x="230" y="888" width="69" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="264.5" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">builder</text>
+<rect x="307" y="888" width="69" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="341.5" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">runtime</text>
+<rect x="384" y="888" width="90" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="429" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">activities</text>
+<rect x="482" y="888" width="55" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="509.5" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">tasks</text>
+<rect x="545" y="888" width="83" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="586.5" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">reminders</text>
+<rect x="636" y="888" width="111" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="691.5" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">notifications</text>
+<rect x="755" y="888" width="62" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="786" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">search</text>
+<rect x="825" y="888" width="104" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="877" y="902" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">integrations</text>
+<rect x="90" y="914" width="55" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="117.5" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">email</text>
+<rect x="153" y="914" width="83" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="194.5" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">documents</text>
+<rect x="244" y="914" width="76" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="282" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">platform</text>
+<rect x="328" y="914" width="104" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="380" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">social-media</text>
+<rect x="440" y="914" width="104" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="492" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">lead-scoring</text>
+<rect x="552" y="914" width="83" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="593.5" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">insurance</text>
+<rect x="643" y="914" width="76" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="681" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">settings</text>
+<rect x="727" y="914" width="41" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="747.5" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">sla</text>
+<rect x="776" y="914" width="69" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="810.5" y="928" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">reports</text>
+<rect x="90" y="940" width="153" height="20" rx="5" fill="#fbecf6" stroke="#f0cce4"/>
+<text x="166.5" y="954" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" fill="#b0489a">integration-inbound</text>
+<rect x="70" y="1010" width="900" height="280" rx="12" fill="#ffffff" stroke="#bfe3dc" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="1010" width="4.5" height="280" rx="2.2" fill="#0f766e"/>
+<rect x="86" y="1023" width="119" height="20" rx="5" fill="#e6f4f1" stroke="#bfe3dc"/>
+<text x="145.5" y="1037" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#0f766e">DOMAIN SERVICES</text>
+<text x="215" y="1037.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">~35 service modules — business logic</text>
+<rect x="156" y="1062" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="166" y="1084" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(171.5 1089.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9M18 8h2M4 16h2M11 16h9"/><circle cx="15.5" cy="8" r="2.1"/><circle cx="8.5" cy="16" r="2.1"/></g>
+<text x="206" y="1097" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Metadata core</text>
+<text x="206" y="1112" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">forms · engines</text>
+<rect x="359" y="1062" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="369" y="1084" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(374.5 1089.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.5a3 3 0 0 1 0 5.9M16.5 19.5a5.5 5.5 0 0 0-1-3.4"/></g>
+<text x="409" y="1097" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">CRM domain</text>
+<text x="409" y="1112" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">leads · deals</text>
+<rect x="562" y="1062" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="572" y="1084" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(577.5 1089.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 4.8-3.4 8.2-8 9.5-4.6-1.3-8-4.7-8-9.5v-6z"/></g>
+<text x="612" y="1097" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Insurance</text>
+<text x="612" y="1112" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">policies · claims</text>
+<rect x="765" y="1062" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="775" y="1084" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(780.5 1089.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M2.8 6.5l9.2 6.4 9.2-6.4"/></g>
+<text x="815" y="1097" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Engagement</text>
+<text x="815" y="1112" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">email · docs</text>
+<rect x="156" y="1158" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="166" y="1180" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(171.5 1185.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></g>
+<text x="206" y="1193" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Governance</text>
+<text x="206" y="1208" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">perms · reports</text>
+<rect x="359" y="1158" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="369" y="1180" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(374.5 1185.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></g>
+<text x="409" y="1193" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Platform svc</text>
+<text x="409" y="1208" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">tenants · flags</text>
+<rect x="562" y="1158" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="572" y="1180" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(577.5 1185.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.4" rx="7.6" ry="2.8"/><path d="M4.4 5.4v13.2c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8V5.4"/><path d="M4.4 12c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8"/></g>
+<text x="612" y="1193" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Data &amp; import</text>
+<text x="612" y="1208" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">bulk · cache</text>
+<rect x="765" y="1158" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#bfe3dc" stroke-width="1.3"/>
+<rect x="775" y="1180" width="30" height="30" rx="7" fill="#e6f4f1"/>
+<g transform="translate(780.5 1185.5) scale(0.7916666666666666)" fill="none" stroke="#0f766e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5a2 2 0 0 1 2-2h3.8l2 2H19a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g>
+<text x="815" y="1193" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Storage</text>
+<text x="815" y="1208" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">providers</text>
+<rect x="70" y="1330" width="900" height="160" rx="12" fill="#ffffff" stroke="#cae4ca" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="70" y="1330" width="4.5" height="160" rx="2.2" fill="#3f7d3f"/>
+<rect x="86" y="1343" width="138.8" height="20" rx="5" fill="#eaf4ea" stroke="#cae4ca"/>
+<text x="155.4" y="1357" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#3f7d3f">DATA &amp; PERSISTENCE</text>
+<text x="234.8" y="1357.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Prisma-mediated stores (tenant-scoped)</text>
+<rect x="156" y="1382" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#cae4ca" stroke-width="1.3"/>
+<rect x="166" y="1404" width="30" height="30" rx="7" fill="#eaf4ea"/>
+<g transform="translate(171.5 1409.5) scale(0.7916666666666666)" fill="none" stroke="#3f7d3f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="6.5" cy="7.5" r=".7"/><circle cx="6.5" cy="16.5" r=".7"/></g>
+<text x="206" y="1417" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Prisma ORM</text>
+<text x="206" y="1432" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">tenant filter</text>
+<rect x="359" y="1382" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#cae4ca" stroke-width="1.3"/>
+<rect x="369" y="1404" width="30" height="30" rx="7" fill="#eaf4ea"/>
+<g transform="translate(374.5 1409.5) scale(0.7916666666666666)" fill="none" stroke="#3f7d3f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.4" rx="7.6" ry="2.8"/><path d="M4.4 5.4v13.2c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8V5.4"/><path d="M4.4 12c0 1.5 3.4 2.8 7.6 2.8s7.6-1.3 7.6-2.8"/></g>
+<text x="409" y="1417" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">MySQL · RDS</text>
+<text x="409" y="1432" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">106 models</text>
+<rect x="562" y="1382" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#cae4ca" stroke-width="1.3"/>
+<rect x="572" y="1404" width="30" height="30" rx="7" fill="#eaf4ea"/>
+<g transform="translate(577.5 1409.5) scale(0.7916666666666666)" fill="none" stroke="#3f7d3f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l9 4.7-9 4.7-9-4.7z"/><path d="M3 12l9 4.7 9-4.7"/><path d="M3 16.7l9 4.7 9-4.7"/></g>
+<text x="612" y="1417" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Redis</text>
+<text x="612" y="1432" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">cache</text>
+<rect x="765" y="1382" width="189" height="74" rx="8" fill="#fbfcfe" stroke="#cae4ca" stroke-width="1.3"/>
+<rect x="775" y="1404" width="30" height="30" rx="7" fill="#eaf4ea"/>
+<g transform="translate(780.5 1409.5) scale(0.7916666666666666)" fill="none" stroke="#3f7d3f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5a2 2 0 0 1 2-2h3.8l2 2H19a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g>
+<text x="815" y="1417" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">File storage</text>
+<text x="815" y="1432" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">uploads/</text>
+<rect x="1010" y="320" width="430" height="450" rx="12" fill="#ffffff" stroke="#d7dde6" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="1010" y="320" width="4.5" height="450" rx="2.2" fill="#5b6472"/>
+<rect x="1026" y="333" width="105.8" height="20" rx="5" fill="#eef1f5" stroke="#d7dde6"/>
+<text x="1078.9" y="347" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#5b6472">CROSS-CUTTING</text>
+<text x="1141.8" y="347.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Applies to every layer</text>
+<rect x="1026" y="366" width="398" height="66" rx="8" fill="#fbfcfe" stroke="#d7dde6" stroke-width="1.3"/>
+<rect x="1036" y="384" width="30" height="30" rx="7" fill="#eef1f5"/>
+<g transform="translate(1041.5 389.5) scale(0.7916666666666666)" fill="none" stroke="#5b6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 4.8-3.4 8.2-8 9.5-4.6-1.3-8-4.7-8-9.5v-6z"/></g>
+<text x="1076" y="397" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Multi-tenancy</text>
+<text x="1076" y="412" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">AsyncLocalStorage · Prisma scope</text>
+<rect x="1026" y="444" width="398" height="66" rx="8" fill="#fbfcfe" stroke="#d7dde6" stroke-width="1.3"/>
+<rect x="1036" y="462" width="30" height="30" rx="7" fill="#eef1f5"/>
+<g transform="translate(1041.5 467.5) scale(0.7916666666666666)" fill="none" stroke="#5b6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></g>
+<text x="1076" y="475" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">AuthN / AuthZ</text>
+<text x="1076" y="490" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">JWT · role &amp; permission levels</text>
+<rect x="1026" y="522" width="398" height="66" rx="8" fill="#fbfcfe" stroke="#d7dde6" stroke-width="1.3"/>
+<rect x="1036" y="540" width="30" height="30" rx="7" fill="#eef1f5"/>
+<g transform="translate(1041.5 545.5) scale(0.7916666666666666)" fill="none" stroke="#5b6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 13.5H11l-1 8 8.5-11H12z"/></g>
+<text x="1076" y="553" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Event-driven</text>
+<text x="1076" y="568" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">one in-process DomainEventBus</text>
+<rect x="1026" y="600" width="398" height="66" rx="8" fill="#fbfcfe" stroke="#d7dde6" stroke-width="1.3"/>
+<rect x="1036" y="618" width="30" height="30" rx="7" fill="#eef1f5"/>
+<g transform="translate(1041.5 623.5) scale(0.7916666666666666)" fill="none" stroke="#5b6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8.5h6M9 12.5h6M9 16.5h4"/></g>
+<text x="1076" y="631" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Audit &amp; logging</text>
+<text x="1076" y="646" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">AuditLog durable · record + pipeline</text>
+<rect x="1026" y="678" width="398" height="66" rx="8" fill="#fbfcfe" stroke="#d7dde6" stroke-width="1.3"/>
+<rect x="1036" y="696" width="30" height="30" rx="7" fill="#eef1f5"/>
+<g transform="translate(1041.5 701.5) scale(0.7916666666666666)" fill="none" stroke="#5b6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></g>
+<text x="1076" y="709" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Notifications</text>
+<text x="1076" y="724" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">in-app · push · reminders</text>
+<rect x="1010" y="840" width="430" height="130" rx="12" fill="#ffffff" stroke="#d7dde6" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="1010" y="840" width="4.5" height="130" rx="2.2" fill="#5b6472"/>
+<rect x="1026" y="853" width="59.599999999999994" height="20" rx="5" fill="#eef1f5" stroke="#d7dde6"/>
+<text x="1055.8" y="867" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#5b6472">LEGEND</text>
+<text x="1095.6" y="867.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Tiers &amp; flow</text>
+<rect x="1030" y="881" width="12" height="12" rx="3" fill="#eef0fc" stroke="#4f5bd5"/>
+<text x="1049" y="891" font-size="11.5" fill="#4a525f">Client</text>
+<rect x="1235" y="881" width="12" height="12" rx="3" fill="#eaf1fd" stroke="#3f6fd8"/>
+<text x="1254" y="891" font-size="11.5" fill="#4a525f">Frontend</text>
+<rect x="1030" y="901" width="12" height="12" rx="3" fill="#f2ecfb" stroke="#7c4dbe"/>
+<text x="1049" y="911" font-size="11.5" fill="#4a525f">Gateway</text>
+<rect x="1235" y="901" width="12" height="12" rx="3" fill="#fbecf6" stroke="#b0489a"/>
+<text x="1254" y="911" font-size="11.5" fill="#4a525f">Routes</text>
+<rect x="1030" y="921" width="12" height="12" rx="3" fill="#e6f4f1" stroke="#0f766e"/>
+<text x="1049" y="931" font-size="11.5" fill="#4a525f">Services</text>
+<rect x="1235" y="921" width="12" height="12" rx="3" fill="#fbf1e0" stroke="#b06b12"/>
+<text x="1254" y="931" font-size="11.5" fill="#4a525f">Automation</text>
+<rect x="1030" y="941" width="12" height="12" rx="3" fill="#eaf4ea" stroke="#3f7d3f"/>
+<text x="1049" y="951" font-size="11.5" fill="#4a525f">Data</text>
+<rect x="1235" y="941" width="12" height="12" rx="3" fill="#fbecec" stroke="#c14b52"/>
+<text x="1254" y="951" font-size="11.5" fill="#4a525f">External</text>
+<rect x="1010" y="1010" width="430" height="280" rx="12" fill="#ffffff" stroke="#f0dcb4" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="1010" y="1010" width="4.5" height="280" rx="2.2" fill="#b06b12"/>
+<rect x="1026" y="1023" width="86" height="20" rx="5" fill="#fbf1e0" stroke="#f0dcb4"/>
+<text x="1069" y="1037" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#b06b12">AUTOMATION</text>
+<text x="1122" y="1037.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Event bus &amp; scheduled engines</text>
+<rect x="1026" y="1058" width="398" height="50" rx="8" fill="#fbfcfe" stroke="#f0dcb4" stroke-width="1.3"/>
+<rect x="1036" y="1068" width="30" height="30" rx="7" fill="#fbf1e0"/>
+<g transform="translate(1041.5 1073.5) scale(0.7916666666666666)" fill="none" stroke="#b06b12" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 13.5H11l-1 8 8.5-11H12z"/></g>
+<text x="1076" y="1081" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">DomainEventBus</text>
+<text x="1076" y="1096" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">in-process pub/sub</text>
+<rect x="1026" y="1120" width="191" height="64" rx="8" fill="#fbfcfe" stroke="#f0dcb4" stroke-width="1.3"/>
+<rect x="1036" y="1137" width="30" height="30" rx="7" fill="#fbf1e0"/>
+<g transform="translate(1041.5 1142.5) scale(0.7916666666666666)" fill="none" stroke="#b06b12" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M17.0 12.0L20.4 12.0"/><path d="M15.5 15.5L17.9 17.9"/><path d="M12.0 17.0L12.0 20.4"/><path d="M8.5 15.5L6.1 17.9"/><path d="M7.0 12.0L3.6 12.0"/><path d="M8.5 8.5L6.1 6.1"/><path d="M12.0 7.0L12.0 3.6"/><path d="M15.5 8.5L17.9 6.1"/></g>
+<text x="1076" y="1150" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Workflow engine</text>
+<text x="1076" y="1165" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">every 60s</text>
+<rect x="1233" y="1120" width="191" height="64" rx="8" fill="#fbfcfe" stroke="#f0dcb4" stroke-width="1.3"/>
+<rect x="1243" y="1137" width="30" height="30" rx="7" fill="#fbf1e0"/>
+<g transform="translate(1248.5 1142.5) scale(0.7916666666666666)" fill="none" stroke="#b06b12" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.2v5l3.2 2"/></g>
+<text x="1283" y="1150" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">SLA engine</text>
+<text x="1283" y="1165" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">every 60s</text>
+<rect x="1026" y="1194" width="191" height="64" rx="8" fill="#fbfcfe" stroke="#f0dcb4" stroke-width="1.3"/>
+<rect x="1036" y="1211" width="30" height="30" rx="7" fill="#fbf1e0"/>
+<g transform="translate(1041.5 1216.5) scale(0.7916666666666666)" fill="none" stroke="#b06b12" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></g>
+<text x="1076" y="1224" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Reminder sweep</text>
+<text x="1076" y="1239" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">every 60s</text>
+<rect x="1233" y="1194" width="191" height="64" rx="8" fill="#fbfcfe" stroke="#f0dcb4" stroke-width="1.3"/>
+<rect x="1243" y="1211" width="30" height="30" rx="7" fill="#fbf1e0"/>
+<g transform="translate(1248.5 1216.5) scale(0.7916666666666666)" fill="none" stroke="#b06b12" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.2" r="2.5"/><circle cx="17.5" cy="18.8" r="2.5"/><path d="M8.2 10.8l7.1-4.2M8.2 13.2l7.1 4.2"/></g>
+<text x="1283" y="1224" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Social sync</text>
+<text x="1283" y="1239" font-family="Helvetica,Arial,sans-serif" font-size="10.5" fill="#6b7480">every 5m</text>
+<rect x="1010" y="1330" width="430" height="160" rx="12" fill="#ffffff" stroke="#f2cfd1" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="1010" y="1330" width="4.5" height="160" rx="2.2" fill="#c14b52"/>
+<rect x="1026" y="1343" width="72.8" height="20" rx="5" fill="#fbecec" stroke="#f2cfd1"/>
+<text x="1062.4" y="1357" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" font-weight="700" letter-spacing="1.2" fill="#c14b52">EXTERNAL</text>
+<text x="1108.8" y="1357.5" font-family="Helvetica,Arial,sans-serif" font-size="14" font-weight="700" fill="#1f2733">Outbound integrations</text>
+<rect x="1026" y="1378" width="191" height="44" rx="8" fill="#fbfcfe" stroke="#f2cfd1" stroke-width="1.3"/>
+<rect x="1036" y="1385" width="30" height="30" rx="7" fill="#fbecec"/>
+<g transform="translate(1041.5 1390.5) scale(0.7916666666666666)" fill="none" stroke="#c14b52" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M2.8 6.5l9.2 6.4 9.2-6.4"/></g>
+<text x="1076" y="1404" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">SMTP</text>
+<rect x="1233" y="1378" width="191" height="44" rx="8" fill="#fbfcfe" stroke="#f2cfd1" stroke-width="1.3"/>
+<rect x="1243" y="1385" width="30" height="30" rx="7" fill="#fbecec"/>
+<g transform="translate(1248.5 1390.5) scale(0.7916666666666666)" fill="none" stroke="#c14b52" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="17.5" cy="5.2" r="2.5"/><circle cx="17.5" cy="18.8" r="2.5"/><path d="M8.2 10.8l7.1-4.2M8.2 13.2l7.1 4.2"/></g>
+<text x="1283" y="1404" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Social APIs</text>
+<rect x="1026" y="1430" width="191" height="44" rx="8" fill="#fbfcfe" stroke="#f2cfd1" stroke-width="1.3"/>
+<rect x="1036" y="1437" width="30" height="30" rx="7" fill="#fbecec"/>
+<g transform="translate(1041.5 1442.5) scale(0.7916666666666666)" fill="none" stroke="#c14b52" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3" width="15" height="18" rx="1"/><path d="M9 21v-3.5h6V21"/><circle cx="8.5" cy="7" r=".5"/><circle cx="15.5" cy="7" r=".5"/><circle cx="8.5" cy="11" r=".5"/><circle cx="15.5" cy="11" r=".5"/></g>
+<text x="1076" y="1456" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Carriers</text>
+<rect x="1233" y="1430" width="191" height="44" rx="8" fill="#fbfcfe" stroke="#f2cfd1" stroke-width="1.3"/>
+<rect x="1243" y="1437" width="30" height="30" rx="7" fill="#fbecec"/>
+<g transform="translate(1248.5 1442.5) scale(0.7916666666666666)" fill="none" stroke="#c14b52" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5M6.5 7.5h11v3a5.5 5.5 0 0 1-11 0zM12 16v5.5"/></g>
+<text x="1283" y="1456" font-family="Helvetica,Arial,sans-serif" font-size="12.5" font-weight="650" fill="#1f2733">Webhooks</text>
+<path d="M520 280L520 320" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="497.5" y="290" width="45" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="520" y="303" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">HTTPS</text>
+<path d="M520 560L520 600" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="478.9" y="570" width="82.2" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="520" y="583" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">REST · /api</text>
+<path d="M520 800L520 840" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="488.2" y="810" width="63.6" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="520" y="823" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">dispatch</text>
+<path d="M520 970L520 1010" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="494.4" y="980" width="51.2" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="520" y="993" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">invoke</text>
+<path d="M520 1290L520 1330" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="482" y="1300" width="76" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="520" y="1313" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">Prisma ORM</text>
+<path d="M970 1150L1010 1150" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-start="url(#ar)" marker-end="url(#ar)"/>
+<rect x="964.4" y="1140" width="51.2" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="990" y="1153" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">events</text>
+<path d="M1225 1290L1225 1330" fill="none" stroke="#8a93a3" stroke-width="1.8" marker-end="url(#ar)"/>
+<rect x="1174.6" y="1300" width="100.8" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="1225" y="1313" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">deliver / sync</text>
+<path d="M1010 1400L988 1400" fill="none" stroke="#8a93a3" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ar)"/>
+<path d="M988 1400L988 700L970 700" fill="none" stroke="#8a93a3" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ar)"/>
+<rect x="928" y="1010" width="120" height="18" rx="9" fill="#ffffff" stroke="#d7dde6"/>
+<text x="988" y="1023" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10.5" fill="#4a525f">inbound webhooks</text>
+</svg>

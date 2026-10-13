@@ -1,0 +1,52 @@
+/**
+ * Shared record-display helpers.
+ * Used by list/card/pipeline views and the 360° detail view so a record's
+ * title, initials and accent colour are derived identically everywhere.
+ */
+
+/** Derive a human display title from a record's data blob. */
+export function recordTitle(data) {
+  return (
+    data?.full_name ||
+    `${data?.first_name || ''} ${data?.last_name || ''}`.trim() ||
+    data?.applicant_name ||
+    data?.client_name ||
+    data?.policy_number ||
+    data?.application_number ||
+    data?.claim_number ||
+    data?.case_number ||
+    data?.quote_number ||
+    data?.name ||
+    data?.title ||
+    data?.label ||
+    data?.subject ||
+    null
+  );
+}
+
+/** Derive initials (up to 2 chars) from a title string. */
+export function initials(title) {
+  if (!title) return '?';
+  return title
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .slice(0, 2)
+    .join('');
+}
+
+/** Stable avatar gradients, picked deterministically from a record id. */
+const GRADIENTS = [
+  'from-primary-500 to-mid-600',
+  'from-blue-500 to-cyan-500',
+  'from-emerald-500 to-teal-600',
+  'from-orange-500 to-pink-600',
+  'from-rose-500 to-red-600',
+  'from-amber-500 to-orange-500',
+  'from-teal-500 to-emerald-600',
+  'from-violet-600 to-purple-700',
+];
+
+export function gradientFor(id) {
+  return GRADIENTS[Number(id) % GRADIENTS.length];
+}

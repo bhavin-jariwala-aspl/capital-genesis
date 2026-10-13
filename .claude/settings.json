@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n '^```' /Users/bhavin.jariwala/Documents/workspaces/genesis/docs/admin-guide/SUPER_ADMIN.md)",
+      "Bash(grep -n '^\\\\*\\\\*.*\\\\*\\\\*$' /Users/bhavin.jariwala/Documents/workspaces/genesis/docs/admin-guide/SUPER_ADMIN.md)",
+      "Bash(grep -n -B1 '^```$' /Users/bhavin.jariwala/Documents/workspaces/genesis/docs/admin-guide/SUPER_ADMIN.md)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(node -e ':*)"
+    ]
+  }
+}

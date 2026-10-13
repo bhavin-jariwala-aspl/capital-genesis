@@ -1,0 +1,3785 @@
+// Genesis CRM — Prisma Schema
+// MySQL via AWS RDS
+//
+// Naming convention:
+//   ui_*  → UI configuration tables  (modules, objects, fields, forms, dashboards, etc.)
+//   *     → Operational/org tables   (employees, roles, regions, branches, hierarchy, records)
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // fullTextIndex graduated to GA in Prisma 6 — no longer a preview feature.
+}
+
+// ============================================================
+// ORGANIZATIONAL / AUTH TABLES
+// ============================================================
+
+model Region {
+  region_id   Int      @id @default(autoincrement())
+  region_name String   @db.VarChar(100)
+  region_code String   @unique @db.VarChar(10)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  branches  Branch[]
+  employees Employee[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantRegion", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("regions")
+}
+
+model Branch {
+  branch_id   Int      @id @default(autoincrement())
+  branch_name String   @db.VarChar(100)
+  branch_code String   @unique @db.VarChar(10)
+  region_id   Int
+  address     String?  @db.Text
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  region    Region     @relation(fields: [region_id], references: [region_id])
+  employees Employee[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantBranch", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("branches")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(50) // e.g. super_admin | admin | manager | user | custom names
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  level       Int      @default(1) // hierarchy level determines access scope
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  tenant_id   Int? // NULL = system default role; set = tenant custom role
+
+  tenant Tenant? @relation("TenantRole", fields: [tenant_id], references: [id])
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@map("roles")
+}
+
+model Employee {
+  employee_id         String    @id @db.VarChar(20)
+  employee_name       String    @db.VarChar(100)
+  role                String    @db.VarChar(50) // role name (validated in app code)
+  email               String?   @unique @db.VarChar(100)
+  phone               String?   @db.VarChar(20)
+  password            String    @db.VarChar(255)
+  branch_id           Int?
+  region_id           Int?
+  is_active           Boolean   @default(true)
+  reset_token         String?   @db.VarChar(255) // sha256 hash of the active password-reset token
+  reset_token_expires DateTime? // when the reset token stops being valid
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  branch Branch? @relation(fields: [branch_id], references: [branch_id])
+  region Region? @relation(fields: [region_id], references: [region_id])
+  // role_ref removed — Role is now tenant-scoped with @@unique([tenant_id, name])
+  // Role lookup done in application code via (tenant_id, role) pair
+
+  // Closure table relations
+  as_ancestor   EmployeeHierarchy[] @relation("HierarchyAncestor")
+  as_descendant EmployeeHierarchy[] @relation("HierarchyDescendant")
+
+  activities              Activity[]
+  tasks_assigned          Task[]           @relation("TaskAssignee")
+  tasks_created           Task[]           @relation("TaskCreator")
+  reminders_assigned      Reminder[]       @relation("ReminderAssignee")
+  reminders_created       Reminder[]       @relation("ReminderCreator")
+  notifications           Notification[]
+  audit_logs              AuditLog[]
+  assigned_records        Record[]         @relation("RecordAssignee")
+  quotas                  Quota[]
+  crm_leads_owned         CrmLead[]        @relation("LeadOwner")
+  crm_lead_intakes_owned  CrmLeadIntake[]  @relation("LeadIntakeOwner")
+  crm_contacts_owned      CrmContact[]     @relation("ContactOwner")
+  crm_accounts_owned      CrmAccount[]     @relation("AccountOwner")
+  crm_opportunities_owned CrmOpportunity[] @relation("OpportunityOwner")
+  crm_cases_owned         CrmCase[]        @relation("CaseOwner")
+  quotes_owned            Quote[]
+
+  // Calendar/meeting relations  
+
+  // Territory and team management relations
+
+  // Insurance relations
+  insurance_policies     InsurancePolicy[]      @relation("PolicyAgent")
+  insurance_applications InsuranceApplication[] @relation("ApplicationAgent")
+  uw_cases               UnderwritingCase[]     @relation("UWCaseUnderwriter")
+  claim_adjustments      InsuranceClaim[]       @relation("ClaimAdjuster")
+  commissions            CommissionEntry[]      @relation("CommissionAgent")
+  commission_splits      CommissionEntry[]      @relation("CommissionSplitAgent")
+  endorsements_approved  PolicyEndorsement[]    @relation("EndorsementApprover")
+  renewal_tasks          RenewalTask[]          @relation("RenewalAgent")
+  producer_appointments  ProducerAppointment[]  @relation("AgentAppointment")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantEmployee", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("employees")
+}
+
+/// Closure table that stores ALL ancestor–descendant pairs at every depth.
+/// Self-referencing row (depth=0) is always inserted for every employee.
+model EmployeeHierarchy {
+  ancestor_id   String @db.VarChar(20)
+  descendant_id String @db.VarChar(20)
+  depth         Int    @default(0)
+
+  ancestor   Employee @relation("HierarchyAncestor", fields: [ancestor_id], references: [employee_id], onDelete: Cascade)
+  descendant Employee @relation("HierarchyDescendant", fields: [descendant_id], references: [employee_id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantEmployeeHierarchy", fields: [tenant_id], references: [id])
+
+  @@id([ancestor_id, descendant_id])
+  @@index([descendant_id])
+  @@index([depth])
+  @@index([tenant_id])
+  @@map("employee_hierarchy")
+}
+
+// ============================================================
+// UI CONFIGURATION TABLES  (all prefixed with "ui_")
+// These are cached in Redis for fast metadata access.
+// ============================================================
+
+/// Top-level navigation / functional grouping
+model UiModule {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  icon        String?  @db.VarChar(50) // Lucide icon name
+  color       String?  @db.VarChar(20) // Tailwind color e.g. "blue"
+  category    String   @default("crm") @db.VarChar(50) // Sidebar grouping: crm, insurance, tools
+  order_index Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  objects UiObject[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiModule", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_modules")
+}
+
+/// Data entity within a module (e.g. Lead, Contact, Account inside Sales)
+model UiObject {
+  id           Int      @id @default(autoincrement())
+  module_id    Int
+  name         String   @db.VarChar(100)
+  label        String   @db.VarChar(100)
+  plural_label String?  @db.VarChar(100)
+  description  String?  @db.Text
+  icon         String?  @db.VarChar(50)
+  order_index  Int      @default(0)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  module           UiModule         @relation(fields: [module_id], references: [id])
+  fields           UiField[]
+  forms            UiForm[]
+  pages            UiPage[]
+  pipelines        UiPipeline[]
+  workflows        UiWorkflow[]
+  wizards          UiWizard[]
+  records          Record[]
+  assignment_rules AssignmentRule[]
+  import_jobs      ImportJob[]
+  quotas           Quota[]
+  email_templates  EmailTemplate[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiObject", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_objects")
+}
+
+/// Field definition for an object.
+/// field_type maps to the UI component family.
+/// Supported field_type values:
+///   text | textarea | number | email | phone | url |
+///   date | datetime | time |
+///   select | multi_select | radio | checkbox |
+///   currency | percentage | rating |
+///   color | file | image | rich_text | code |
+///   lookup | formula | auto_number
+model UiField {
+  id            Int      @id @default(autoincrement())
+  object_id     Int
+  name          String   @db.VarChar(100) // API/DB column name (snake_case)
+  label         String   @db.VarChar(100)
+  field_type    String   @db.VarChar(50)
+  data_type     String   @db.VarChar(50) // string | number | boolean | date | array | object
+  is_required   Boolean  @default(false)
+  is_unique     Boolean  @default(false)
+  is_searchable Boolean  @default(true)
+  is_sortable   Boolean  @default(true)
+  is_indexed    Boolean  @default(false) // Creates a generated column + index on records table for this field
+  default_value String?  @db.Text
+  placeholder   String?  @db.VarChar(200)
+  help_text     String?  @db.Text
+  options       Json? // For select/radio/checkbox: [{value, label, color?}]
+  config        Json? // Field-type-specific config
+  order_index   Int      @default(0)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  object                 UiObject            @relation(fields: [object_id], references: [id])
+  validations            UiValidation[]
+  dependencies_as_source UiFieldDependency[] @relation("DepSourceField")
+  dependencies_as_target UiFieldDependency[] @relation("DepTargetField")
+  form_field_layouts     UiFormFieldLayout[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiField", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_fields")
+}
+
+/// Form definition for an object (create | edit | view | search)
+model UiForm {
+  id          Int      @id @default(autoincrement())
+  object_id   Int
+  name        String   @db.VarChar(100)
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  form_type   String   @db.VarChar(50) // create | edit | view | search | modal
+  columns     Int      @default(2) // Default grid columns (1–4)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  object        UiObject            @relation(fields: [object_id], references: [id])
+  field_layouts UiFormFieldLayout[]
+  wizard_steps  UiWizardStep[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiForm", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_forms")
+}
+
+/// Placement of a field within a form (row/col grid layout)
+model UiFormFieldLayout {
+  id          Int     @id @default(autoincrement())
+  form_id     Int
+  field_id    Int
+  row         Int     @default(0)
+  col         Int     @default(0)
+  col_span    Int     @default(1) // How many columns this field occupies
+  order_index Int     @default(0)
+  is_visible  Boolean @default(true)
+  config      Json? // Override label, placeholder etc.
+
+  form  UiForm  @relation(fields: [form_id], references: [id], onDelete: Cascade)
+  field UiField @relation(fields: [field_id], references: [id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiFormFieldLayout", fields: [tenant_id], references: [id])
+
+  @@unique([form_id, field_id])
+  @@index([tenant_id])
+  @@map("ui_form_field_layouts")
+}
+
+/// Validation rule attached to a field.
+/// validation_type: required | min | max | minLength | maxLength | pattern | custom
+model UiValidation {
+  id              Int     @id @default(autoincrement())
+  field_id        Int
+  validation_type String  @db.VarChar(50)
+  value           String? @db.VarChar(500) // e.g. "10" for min, "^[A-Z].*" for pattern
+  error_message   String  @db.VarChar(500)
+  order_index     Int     @default(0)
+
+  field UiField @relation(fields: [field_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiValidation", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_validations")
+}
+
+/// Inter-field dependency rule.
+/// "When source_field [condition_type] condition_value → apply action_type to target_field"
+/// condition_type: equals | not_equals | contains | not_contains | gt | lt | gte | lte | in | not_in | is_empty | is_not_empty
+/// action_type:    show | hide | enable | disable | require | unrequire | set_value | set_options | clear
+model UiFieldDependency {
+  id              Int     @id @default(autoincrement())
+  source_field_id Int
+  target_field_id Int
+  condition_type  String  @db.VarChar(50)
+  condition_value String? @db.Text
+  action_type     String  @db.VarChar(50)
+  action_value    String? @db.Text // For set_value / set_options actions
+
+  source_field UiField @relation("DepSourceField", fields: [source_field_id], references: [id], onDelete: Cascade)
+  target_field UiField @relation("DepTargetField", fields: [target_field_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiFieldDependency", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_field_dependencies")
+}
+
+/// Custom JavaScript function that auto-populates a target field.
+/// trigger_event: on_change | on_blur | on_load
+/// function_type: calculate | fetch_api | transform
+/// Page definition (list page, detail page, custom page)
+model UiPage {
+  id         Int      @id @default(autoincrement())
+  object_id  Int?
+  name       String   @db.VarChar(100)
+  label      String   @db.VarChar(100)
+  page_type  String   @db.VarChar(50) // list | detail | dashboard | custom
+  config     Json?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  object UiObject? @relation(fields: [object_id], references: [id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiPage", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_pages")
+}
+
+/// Dashboard definition
+model UiDashboard {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  min_role    String?  @db.VarChar(50) // NULL = all roles; 'manager' = manager + admin + super_admin only
+  is_default  Boolean  @default(false)
+  is_active   Boolean  @default(true)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  widgets UiDashboardWidget[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiDashboard", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_dashboards")
+}
+
+/// Widget placed on a dashboard grid.
+/// x, y, w, h in react-grid-layout units.
+/// widget_type: chart | table | list | metric | pipeline | custom_html
+model UiDashboardWidget {
+  id           Int     @id @default(autoincrement())
+  dashboard_id Int
+  widget_type  String  @db.VarChar(50)
+  title        String? @db.VarChar(200)
+  x            Int     @default(0)
+  y            Int     @default(0)
+  w            Int     @default(6) // Width in grid units (default 12-col grid)
+  h            Int     @default(4) // Height in grid units
+  chart_id     Int?
+  config       Json? // Widget-type-specific config
+  // { type: "endpoint", dataset }  → GET /api/analytics/data/<dataset> (default)
+  // { type: "api", url, method?, headers?, dataPath? } → external REST endpoint
+  // { type: "json", data } → static inline payload (back-compat)
+  data_source  Json?
+  order_index  Int     @default(0)
+  is_active    Boolean @default(true)
+
+  dashboard UiDashboard @relation(fields: [dashboard_id], references: [id], onDelete: Cascade)
+  chart     UiChart?    @relation(fields: [chart_id], references: [id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiDashboardWidget", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_dashboard_widgets")
+}
+
+/// Chart / Graph definition.
+/// chart_type: bar | bar_stacked | line | area | area_stacked | pie | donut |
+///             scatter | bubble | radar | radial_bar | treemap | funnel |
+///             heatmap | candlestick | gauge | waterfall | composed | timeline
+model UiChart {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  label       String   @db.VarChar(100)
+  chart_type  String   @db.VarChar(50)
+  config      Json? // Chart-library-specific config
+  data_source Json? // Same data_source shape as widgets
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  widgets UiDashboardWidget[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiChart", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_charts")
+}
+
+/// Workflow automation definition
+/// trigger_type: on_create | on_update | on_delete | scheduled | manual
+model UiWorkflow {
+  id             Int       @id @default(autoincrement())
+  object_id      Int?
+  name           String    @db.VarChar(100)
+  label          String    @db.VarChar(100)
+  description    String?   @db.Text
+  trigger_type   String    @db.VarChar(50)
+  trigger_config Json? // e.g. { fields: ["status"], interval_minutes: 60 }
+  is_active      Boolean   @default(true)
+  last_run_at    DateTime? // stamped by the scheduler / engine on each execution
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  object       UiObject?             @relation(fields: [object_id], references: [id])
+  steps        UiWorkflowStep[]
+  pendingSteps WorkflowPendingStep[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiWorkflow", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_workflows")
+}
+
+/// Individual step within a workflow.
+/// step_type: trigger | condition | action | notification | delay | approval | webhook | create_record | update_related
+model UiWorkflowStep {
+  id          Int    @id @default(autoincrement())
+  workflow_id Int
+  name        String @db.VarChar(100)
+  step_type   String @db.VarChar(50)
+  order_index Int    @default(0)
+  config      Json? // Step-type-specific configuration
+  on_true_id  Int? // Next step when condition is true
+  on_false_id Int? // Next step when condition is false (conditions only)
+
+  workflow UiWorkflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiWorkflowStep", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_workflow_steps")
+}
+
+/// Paused workflow execution — written by "delay" and "approval" step handlers.
+/// For delays:   resume_after is set; scheduler polls and continues from resume_step_id.
+/// For approvals: approval_token is set; continued by POST /api/runtime/workflows/approval/:token.
+model WorkflowPendingStep {
+  id              Int       @id @default(autoincrement())
+  workflow_id     Int
+  resume_step_id  Int?
+  record_id       Int?
+  actor_id        String?   @db.VarChar(100)
+  context         Json? // { record, reject_step_id } — serialized execution snapshot
+  resume_after    DateTime?
+  approval_token  String?   @unique @db.VarChar(255)
+  approval_status String?   @default("pending") @db.VarChar(20) // pending|resumed|approved|rejected
+  created_at      DateTime  @default(now())
+
+  workflow UiWorkflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantWorkflowPendingStep", fields: [tenant_id], references: [id])
+
+  @@index([resume_after])
+  @@index([tenant_id])
+  @@map("workflow_pending_steps")
+}
+
+/// Multi-step wizard (guided information capture flow)
+model UiWizard {
+  id              Int      @id @default(autoincrement())
+  object_id       Int?
+  name            String   @db.VarChar(100)
+  label           String   @db.VarChar(100)
+  description     String?  @db.Text
+  submit_label    String?  @db.VarChar(100)
+  success_message String?  @db.VarChar(255)
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  object UiObject?      @relation(fields: [object_id], references: [id])
+  steps  UiWizardStep[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiWizard", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_wizards")
+}
+
+/// One step within a wizard — each step maps to a form
+model UiWizardStep {
+  id          Int     @id @default(autoincrement())
+  wizard_id   Int
+  form_id     Int?
+  name        String  @db.VarChar(100)
+  label       String  @db.VarChar(100)
+  description String? @db.Text
+  order_index Int     @default(0)
+  config      Json?
+
+  wizard UiWizard @relation(fields: [wizard_id], references: [id], onDelete: Cascade)
+  form   UiForm?  @relation(fields: [form_id], references: [id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiWizardStep", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_wizard_steps")
+}
+
+/// Kanban/pipeline board for an object
+model UiPipeline {
+  id          Int      @id @default(autoincrement())
+  object_id   Int
+  name        String   @db.VarChar(100)
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  config      Json? // { enabled_views: ['table','cards','pipeline'] }
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  object UiObject          @relation(fields: [object_id], references: [id])
+  stages UiPipelineStage[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiPipeline", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_pipelines")
+}
+
+/// Stage within a pipeline
+model UiPipelineStage {
+  id          Int    @id @default(autoincrement())
+  pipeline_id Int
+  name        String @db.VarChar(100)
+  label       String @db.VarChar(100)
+  color       String @default("#6366f1") @db.VarChar(20) // Hex color
+  order_index Int    @default(0)
+  config      Json?
+
+  pipeline          UiPipeline       @relation(fields: [pipeline_id], references: [id], onDelete: Cascade)
+  records           Record[]
+  crm_opportunities CrmOpportunity[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiPipelineStage", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("ui_pipeline_stages")
+}
+
+/// A data record belonging to a UI Object.
+/// Acts as an anchor for activities, tasks and audit_logs.
+/// Field values are stored in the appropriate crm_* relational table (for CRM
+/// objects) rather than as a JSON blob.  Custom objects that have no relational
+/// table can still use this row as their identity / stage anchor.
+model Record {
+  id                Int      @id @default(autoincrement())
+  object_id         Int
+  pipeline_stage_id Int?
+  assigned_to       String?  @db.VarChar(20) // FK → employees.employee_id
+  created_by        String?  @db.VarChar(100)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Soft-delete / Trash: when set, the record is hidden from all users but
+  // retained in the DB and recoverable by an admin. NULL = live record.
+  deleted_at DateTime?
+  deleted_by String?   @db.VarChar(100)
+
+  object            UiObject           @relation(fields: [object_id], references: [id], onDelete: Cascade)
+  pipeline_stage    UiPipelineStage?   @relation(fields: [pipeline_stage_id], references: [id], onDelete: SetNull)
+  assigned_employee Employee?          @relation("RecordAssignee", fields: [assigned_to], references: [employee_id], onDelete: SetNull)
+  activities        Activity[]
+  tasks             Task[]
+  reminders         Reminder[]
+  audit_logs        AuditLog[]
+  status_events     StatusEvent[]
+  field_values      RecordFieldValue[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantRecord", fields: [tenant_id], references: [id])
+
+  // CRM relational bridge — populated by CrmService dual-write
+  crm_lead        CrmLead?
+  crm_lead_intake CrmLeadIntake?
+  crm_contact     CrmContact?
+  crm_account     CrmAccount?
+  crm_opportunity CrmOpportunity?
+  crm_case        CrmCase?
+
+  // New CRM features
+  product               Product?
+  quote                 Quote?
+  email_template        EmailTemplate?
+  document              Document?
+  // Insurance domain bridges
+  insurance_policy      InsurancePolicy?
+  insurance_application InsuranceApplication?
+  insurance_claim       InsuranceClaim?
+
+  @@index([assigned_to])
+  @@index([tenant_id])
+  @@index([deleted_at])
+  @@map("records")
+}
+
+// ============================================================
+// CRM OPERATIONAL TABLES
+// ============================================================
+
+/// Activity log for a CRM record (calls, emails, notes, meetings, etc.)
+model Activity {
+  id           Int       @id @default(autoincrement())
+  record_id    Int
+  employee_id  String    @db.VarChar(20)
+  type         String    @db.VarChar(50) // note | call | email | meeting | task | other
+  subject      String    @db.VarChar(200)
+  description  String?   @db.Text
+  outcome      String?   @db.VarChar(500)
+  duration_min Int?
+  scheduled_at DateTime?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  record   Record   @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employee_id], references: [employee_id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantActivity", fields: [tenant_id], references: [id])
+
+  @@index([record_id])
+  @@index([employee_id])
+  @@index([tenant_id])
+  @@map("activities")
+}
+
+/// Task / reminder attached to a CRM record
+model Task {
+  id           Int       @id @default(autoincrement())
+  record_id    Int?
+  assigned_to  String    @db.VarChar(20)
+  created_by   String    @db.VarChar(20)
+  title        String    @db.VarChar(200)
+  description  String?   @db.Text
+  status       String    @default("open") @db.VarChar(30) // open | in_progress | completed | cancelled
+  priority     String    @default("normal") @db.VarChar(20) // low | normal | high | urgent
+  due_date     DateTime?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  record   Record?  @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  assignee Employee @relation("TaskAssignee", fields: [assigned_to], references: [employee_id])
+  creator  Employee @relation("TaskCreator", fields: [created_by], references: [employee_id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantTask", fields: [tenant_id], references: [id])
+
+  @@index([record_id])
+  @@index([assigned_to])
+  @@index([tenant_id])
+  @@map("tasks")
+}
+
+/// In-app notification for an employee
+model Notification {
+  id          Int      @id @default(autoincrement())
+  employee_id String   @db.VarChar(20)
+  type        String   @db.VarChar(50) // task_due | record_assigned | mention | workflow | system
+  title       String   @db.VarChar(200)
+  body        String?  @db.Text
+  link        String?  @db.VarChar(500)
+  is_read     Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  employee Employee @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantNotification", fields: [tenant_id], references: [id])
+
+  @@index([employee_id, is_read])
+  @@index([tenant_id])
+  @@map("notifications")
+}
+
+/// A time-based reminder / follow-up attached to a CRM record (or standalone).
+/// When `remind_at` passes, the reminder scheduler creates an in-app
+/// Notification (type `reminder`) for the target employee — so reminders surface
+/// in the notification bell automatically. `snooze` reschedules `remind_at` and
+/// resets status to pending. Mirrors the reminder/follow-up primitive in
+/// Salesforce, HubSpot, Dynamics, Zoho, and Pipedrive.
+model Reminder {
+  id           Int       @id @default(autoincrement())
+  record_id    Int?
+  employee_id  String    @db.VarChar(20) // who is reminded
+  created_by   String    @db.VarChar(20)
+  title        String    @db.VarChar(200)
+  note         String?   @db.Text
+  remind_at    DateTime
+  status       String    @default("pending") @db.VarChar(20) // pending | notified | done | dismissed | cancelled
+  priority     String    @default("normal") @db.VarChar(20) // low | normal | high | urgent
+  notified_at  DateTime?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  record   Record?  @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  employee Employee @relation("ReminderAssignee", fields: [employee_id], references: [employee_id])
+  creator  Employee @relation("ReminderCreator", fields: [created_by], references: [employee_id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantReminder", fields: [tenant_id], references: [id])
+
+  @@index([remind_at, status])
+  @@index([employee_id, status])
+  @@index([record_id])
+  @@index([tenant_id])
+  @@map("reminders")
+}
+
+/// Audit trail: every create / update / delete on a Record
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  // record_id is nullable so audit entries survive a hard-delete/purge of the
+  // record (FK is SET NULL, not CASCADE) — the trail must outlive the data.
+  record_id   Int?
+  // For actions on non-record entities (e.g. pipeline config). null for record actions.
+  entity_type String?  @db.VarChar(50) // pipeline | ...
+  entity_id   Int?
+  employee_id String   @db.VarChar(20)
+  action      String   @db.VarChar(40) // create | update | delete | stage_change | restore | purge | pipeline.create | pipeline.update | pipeline.delete
+  changes     Json? // { field: { old, new } } or action-specific payload
+  created_at  DateTime @default(now())
+
+  record   Record?  @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  employee Employee @relation(fields: [employee_id], references: [employee_id])
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantAuditLog", fields: [tenant_id], references: [id])
+
+  @@index([record_id])
+  @@index([entity_type, entity_id])
+  @@index([tenant_id])
+  @@map("audit_logs")
+}
+
+/// Timeline status event for a Record — powers the `status_tracker` fieldtype
+/// (Amazon / UPS / Bluedart-style package tracking). Each row is one dated
+/// milestone or scan event with an optional location and human description.
+/// Events are appended on pipeline stage changes (auto) and can be added
+/// manually via the API. Read-only at the field level; the field renders the
+/// full chronological timeline for a record.
+model StatusEvent {
+  id          Int      @id @default(autoincrement())
+  record_id   Int
+  status      String   @db.VarChar(60) // milestone key — ideally matches a pipeline stage `name`
+  title       String?  @db.VarChar(200) // human label, e.g. "Out for delivery"
+  description String?  @db.Text // free-text detail for this event
+  location    String?  @db.VarChar(200) // optional location, e.g. "Mumbai Hub, IN"
+  event_type  String   @default("milestone") @db.VarChar(30) // milestone | scan | note | exception
+  occurred_at DateTime @default(now()) // when it happened — drives timeline ordering
+  changed_by  String?  @db.VarChar(20) // employees.employee_id (resolved to a name on read)
+  created_at  DateTime @default(now())
+
+  record Record @relation(fields: [record_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantStatusEvent", fields: [tenant_id], references: [id])
+
+  @@index([record_id, occurred_at])
+  @@index([tenant_id])
+  @@map("status_events")
+}
+
+// ============================================================
+// PERMISSION TABLES
+// ============================================================
+
+/// Role-based view/edit permission for a metadata entity.
+/// entity_type: module | object | field | form | pipeline | wizard
+/// Behaviour when no row exists for a role:
+///   super_admin / admin → can_view=true, can_edit=true  (implicit full access)
+///   other roles         → can_view=true, can_edit=false (default: view-only)
+/// Set can_view=false to fully hide an entity from a role at runtime.
+model UiPermission {
+  id          Int      @id @default(autoincrement())
+  entity_type String   @db.VarChar(50)
+  entity_id   Int
+  role_name   String   @db.VarChar(50)
+  can_view    Boolean  @default(true)
+  can_edit    Boolean  @default(false)
+  updated_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiPermission", fields: [tenant_id], references: [id])
+
+  @@unique([entity_type, entity_id, role_name, tenant_id])
+  @@index([entity_type, entity_id])
+  @@index([tenant_id])
+  @@map("ui_permissions")
+}
+
+/// Role-based operational scope permissions for tasks and activities.
+/// Scopes: none | own | team | hierarchy | all
+/// "team"      = direct reports (depth=1 in employee_hierarchy)
+/// "hierarchy" = all descendants at any depth
+/// Behaviour when no row exists for a role: hardcoded defaults apply (see PermissionService).
+model OperationalPermission {
+  id           Int      @id @default(autoincrement())
+  entity_type  String   @db.VarChar(30) // task | activity
+  role_name    String   @db.VarChar(50)
+  view_scope   String   @default("own") @db.VarChar(20)
+  create_scope String   @default("own") @db.VarChar(20)
+  edit_scope   String   @default("own") @db.VarChar(20)
+  delete_scope String   @default("own") @db.VarChar(20)
+  assign_scope String   @default("none") @db.VarChar(20)
+  updated_by   String?  @db.VarChar(20)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantOperationalPermission", fields: [tenant_id], references: [id])
+
+  @@unique([entity_type, role_name, tenant_id])
+  @@index([tenant_id])
+  @@map("operational_permissions")
+}
+
+// ============================================================
+// ASSIGNMENT ENGINE
+// ============================================================
+
+/// Configurable assignment rule for a UiObject.
+/// When a new record is created, the engine evaluates active rules in order_index order.
+/// rule_type: fixed | round_robin | rule_based | load_balanced
+/// conditions: array of { field, operator, value } — all must match for rule_based
+/// assignee_id: fixed target employee (rule_type=fixed)
+/// pool_ids: JSON array of employee_ids for round_robin / load_balanced pools
+/// fallback_id: used when no rule matches or pool is empty
+model AssignmentRule {
+  id          Int      @id @default(autoincrement())
+  object_id   Int
+  name        String   @db.VarChar(100)
+  rule_type   String   @db.VarChar(30) // fixed | round_robin | rule_based | load_balanced
+  conditions  Json? // [{ field, operator, value }] — for rule_based only
+  assignee_id String?  @db.VarChar(20) // FK → employees.employee_id (fixed rule)
+  pool_ids    Json? // ["E001","E002"] — for round_robin / load_balanced
+  fallback_id String?  @db.VarChar(20) // FK → employees.employee_id
+  order_index Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  object            UiObject         @relation(fields: [object_id], references: [id], onDelete: Cascade)
+  round_robin_state RoundRobinState?
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantAssignmentRule", fields: [tenant_id], references: [id])
+
+  @@index([object_id, is_active, order_index])
+  @@index([tenant_id])
+  @@map("assignment_rules")
+}
+
+/// Tracks who was last assigned in a round-robin pool, per assignment rule.
+/// Keyed per-rule so multiple round-robin rules on the same object do not interfere.
+model RoundRobinState {
+  rule_id    Int      @id
+  pool_ids   Json // serialised ordered pool list
+  last_index Int      @default(0) // index of last employee assigned
+  updated_at DateTime @updatedAt
+
+  rule AssignmentRule @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantRoundRobinState", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("round_robin_states")
+}
+
+/// Configurable routing for INBOUND social conversations (mentions / DMs /
+/// comments). Mirrors AssignmentRule (fixed | round_robin | rule_based |
+/// load_balanced) but is scoped by social `platform` instead of a UiObject,
+/// and carries its round-robin cursor inline (`last_index`). When no active
+/// rule matches a mention, the service falls back to its default
+/// managed-by-team, load-balanced routing.
+model SocialAssignmentRule {
+  id          Int      @id @default(autoincrement())
+  platform    String?  @db.VarChar(50) // null = all platforms; else facebook|instagram|linkedin|twitter|whatsapp|youtube|tiktok
+  name        String   @db.VarChar(100)
+  rule_type   String   @db.VarChar(30) // fixed | round_robin | rule_based | load_balanced
+  conditions  Json? // [{ field, operator, value }] over mention fields — rule_based only
+  assignee_id String?  @db.VarChar(20) // FK → employees.employee_id (fixed rule)
+  pool_ids    Json? // ["E001","E002"] — round_robin / load_balanced
+  fallback_id String?  @db.VarChar(20) // FK → employees.employee_id
+  order_index Int      @default(0)
+  is_active   Boolean  @default(true)
+  last_index  Int      @default(0) // round-robin cursor (inline; no separate state table)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialAssignmentRule", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id, platform, is_active, order_index], map: "social_assign_rules_lookup_idx")
+  @@map("social_assignment_rules")
+}
+
+/// Immutable trace of every assignment decision for auditability.
+model AssignmentLog {
+  id          Int      @id @default(autoincrement())
+  record_id   Int
+  object_id   Int
+  rule_id     Int? // null = manual assignment
+  assigned_to String   @db.VarChar(20)
+  method      String   @db.VarChar(30) // fixed | round_robin | rule_based | fallback | manual
+  created_at  DateTime @default(now())
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantAssignmentLog", fields: [tenant_id], references: [id])
+
+  @@index([record_id])
+  @@index([object_id])
+  @@index([tenant_id])
+  @@map("assignment_logs")
+}
+
+// ============================================================
+// FORECASTING / QUOTAS
+// ============================================================
+
+/// Sales quota for one employee × object × time period.
+/// period_type: monthly | quarterly | annual
+/// period_key:  "2026-03" | "2026-Q1" | "2026"
+model Quota {
+  id           Int      @id @default(autoincrement())
+  employee_id  String   @db.VarChar(20)
+  object_id    Int
+  period_type  String   @db.VarChar(20)
+  period_key   String   @db.VarChar(20)
+  target_value Decimal  @db.Decimal(18, 2)
+  currency     String   @default("USD") @db.VarChar(10)
+  created_by   String?  @db.VarChar(20)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade)
+  object   UiObject @relation(fields: [object_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantQuota", fields: [tenant_id], references: [id])
+
+  @@unique([employee_id, object_id, period_type, period_key])
+  @@index([employee_id])
+  @@index([object_id])
+  @@index([tenant_id])
+  @@map("quotas")
+}
+
+// ============================================================
+// IMPORT / DEDUPE
+// ============================================================
+
+/// Tracks a CSV import job through its lifecycle.
+/// status: pending | previewing | importing | done | failed
+/// strategy: skip | create | merge  — duplicate resolution behaviour
+model ImportJob {
+  id            Int      @id @default(autoincrement())
+  object_id     Int
+  filename      String   @db.VarChar(255)
+  status        String   @default("pending") @db.VarChar(20)
+  field_mapping Json? // { "CSV Header": "field_name" }
+  dedupe_keys   Json? // ["email"] — fields used for duplicate detection
+  strategy      String   @default("skip") @db.VarChar(20)
+  stats         Json? // { total, created, merged, skipped, errors }
+  error_rows    Json? // [{ row, errors }]
+  created_by    String   @db.VarChar(20)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  object UiObject @relation(fields: [object_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantImportJob", fields: [tenant_id], references: [id])
+
+  @@index([object_id])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("import_jobs")
+}
+
+// ============================================================
+// INTEGRATION FRAMEWORK
+// ============================================================
+
+/// Registered integration connector instance.
+/// type: outbound_webhook | email_sync | enrichment | custom
+/// config: encrypted (at rest) connector-specific settings
+model Integration {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  label       String    @db.VarChar(100)
+  type        String    @db.VarChar(50)
+  config      Json? // connector-specific settings (treat as sensitive)
+  is_active   Boolean   @default(true)
+  last_run_at DateTime?
+  created_by  String?   @db.VarChar(20)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantIntegration", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("integrations")
+}
+
+/// Log entry for an integration execution.
+model IntegrationLog {
+  id             Int      @id @default(autoincrement())
+  integration_id Int
+  status         String   @db.VarChar(20) // success | failure | skipped
+  request_body   Json?
+  response_body  Json?
+  error          String?  @db.Text
+  duration_ms    Int?
+  created_at     DateTime @default(now())
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantIntegrationLog", fields: [tenant_id], references: [id])
+
+  @@index([integration_id])
+  @@index([tenant_id])
+  @@map("integration_logs")
+}
+
+// ============================================================
+// CRM RELATIONAL LAYER
+// First-class relational tables for all core CRM entities.
+// Each row has a nullable record_id → records.id bridge so activities,
+// tasks, and audit_logs can be referenced by record_id.
+// The records table no longer stores field data in JSON;
+// all CRM field values live exclusively in the crm_* tables.
+// Custom objects (campaign, settings, …) that have no crm_* table
+// use the Record row as a minimal identity/stage anchor only.
+// ============================================================
+
+/// Relational account — company / organisation record.
+model CrmAccount {
+  id              Int      @id @default(autoincrement())
+  record_id       Int?     @unique // bridge → records.id
+  name            String   @db.VarChar(255)
+  website         String?  @db.VarChar(255)
+  phone           String?  @db.VarChar(50)
+  email           String?  @db.VarChar(100)
+  industry        String?  @db.VarChar(100)
+  account_type    String?  @db.VarChar(50) // prospect | customer | partner | competitor
+  annual_revenue  Decimal? @db.Decimal(18, 2)
+  employee_count  Int?
+  billing_street  String?  @db.VarChar(255)
+  billing_city    String?  @db.VarChar(100)
+  billing_state   String?  @db.VarChar(100)
+  billing_country String?  @db.VarChar(100)
+  billing_zip     String?  @db.VarChar(20)
+  description     String?  @db.Text
+  owner_id        String?  @db.VarChar(20)
+  external_id     String?  @db.VarChar(255) // integration dedupe key
+  created_by      String?  @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  record                 Record?                @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  owner                  Employee?              @relation("AccountOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  contacts               CrmContact[]
+  opportunities          CrmOpportunity[]
+  cases                  CrmCase[]
+  lead_conversions       CrmLeadConversion[]
+  quotes                 Quote[]
+  // Insurance relations
+  insurance_policies     InsurancePolicy[]      @relation("PolicyAccount")
+  insurance_applications InsuranceApplication[] @relation("ApplicationAccount")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmAccount", fields: [tenant_id], references: [id])
+
+  @@index([name])
+  @@index([owner_id])
+  @@index([external_id])
+  @@index([tenant_id])
+  @@map("crm_accounts")
+}
+
+/// Relational contact — person record, optionally linked to an account.
+model CrmContact {
+  id              Int       @id @default(autoincrement())
+  record_id       Int?      @unique
+  account_id      Int?
+  first_name      String    @db.VarChar(100)
+  last_name       String    @db.VarChar(100)
+  email           String?   @db.VarChar(100)
+  phone           String?   @db.VarChar(50)
+  mobile          String?   @db.VarChar(50)
+  title           String?   @db.VarChar(100)
+  department      String?   @db.VarChar(100)
+  lead_source     String?   @db.VarChar(100)
+  mailing_street  String?   @db.VarChar(255)
+  mailing_city    String?   @db.VarChar(100)
+  mailing_state   String?   @db.VarChar(100)
+  mailing_country String?   @db.VarChar(100)
+  mailing_zip     String?   @db.VarChar(20)
+  birthdate       DateTime? @db.Date
+  description     String?   @db.Text
+  do_not_contact  Boolean   @default(false)
+  owner_id        String?   @db.VarChar(20)
+  external_id     String?   @db.VarChar(255)
+  created_by      String?   @db.VarChar(20)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  record                 Record?                      @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  account                CrmAccount?                  @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  owner                  Employee?                    @relation("ContactOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  opportunities          CrmOpportunity[]             @relation("OpportunityContact")
+  cases                  CrmCase[]
+  lead_conversions       CrmLeadConversion[]
+  quotes                 Quote[]
+  // Insurance relations
+  insurance_policies     InsurancePolicy[]            @relation("PolicyContact")
+  insurance_applications InsuranceApplication[]       @relation("ApplicationContact")
+  insurance_claims       InsuranceClaim[]             @relation("ClaimContact")
+  policy_beneficiaries   InsurancePolicyBeneficiary[] @relation("BeneficiaryContact")
+  quote_scenarios        QuoteScenario[]              @relation("ScenarioContact")
+  compliance_artifacts   ComplianceArtifact[]         @relation("ComplianceContact")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmContact", fields: [tenant_id], references: [id])
+
+  @@index([email])
+  @@index([account_id])
+  @@index([owner_id])
+  @@index([external_id])
+  @@index([tenant_id])
+  @@map("crm_contacts")
+}
+
+/// Relational lead — inbound prospect before qualification / conversion.
+model CrmLead {
+  id             Int       @id @default(autoincrement())
+  record_id      Int?      @unique
+  first_name     String    @db.VarChar(100)
+  last_name      String    @db.VarChar(100)
+  company        String?   @db.VarChar(255)
+  email          String?   @db.VarChar(100)
+  phone          String?   @db.VarChar(50)
+  mobile         String?   @db.VarChar(50)
+  job_title      String?   @db.VarChar(100)
+  lead_source    String?   @db.VarChar(100)
+  lead_status    String    @default("new") @db.VarChar(50) // new | contacted | qualified | unqualified | converted
+  rating         String?   @db.VarChar(20) // hot | warm | cold
+  industry       String?   @db.VarChar(100)
+  annual_revenue Decimal?  @db.Decimal(18, 2)
+  website        String?   @db.VarChar(255)
+  description    String?   @db.Text
+  is_converted   Boolean   @default(false)
+  converted_at   DateTime?
+  owner_id       String?   @db.VarChar(20)
+  external_id    String?   @db.VarChar(255)
+  created_by     String?   @db.VarChar(20)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  record      Record?            @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  owner       Employee?          @relation("LeadOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  conversion  CrmLeadConversion?
+  lead_scores LeadScore[]        @relation("LeadScores")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmLead", fields: [tenant_id], references: [id])
+
+  @@index([email])
+  @@index([company])
+  @@index([lead_status])
+  @@index([owner_id])
+  @@index([external_id])
+  @@index([tenant_id])
+  @@map("crm_leads")
+}
+
+/// Raw, unqualified inbound lead (UI object "Lead", internal name `lead_intake`).
+/// Sits in front of Prospect: qualifying/converting a lead creates a CrmLead
+/// (Prospect). Kept separate from crm_leads so raw inbound never pollutes the
+/// working prospect pipeline. See CrmService.convertLeadToProspect.
+model CrmLeadIntake {
+  id                    Int       @id @default(autoincrement())
+  record_id             Int?      @unique
+  first_name            String    @db.VarChar(100)
+  last_name             String    @db.VarChar(100)
+  company               String?   @db.VarChar(255)
+  email                 String?   @db.VarChar(100)
+  phone                 String?   @db.VarChar(50)
+  mobile                String?   @db.VarChar(50)
+  job_title             String?   @db.VarChar(100)
+  lead_source           String?   @db.VarChar(100)
+  lead_status           String    @default("new") @db.VarChar(50) // new | contacted | qualified | converted
+  rating                String?   @db.VarChar(20) // hot | warm | cold
+  industry              String?   @db.VarChar(100)
+  annual_revenue        Decimal?  @db.Decimal(18, 2)
+  website               String?   @db.VarChar(255)
+  description           String?   @db.Text
+  is_converted          Boolean   @default(false)
+  converted_at          DateTime?
+  converted_prospect_id Int? // → crm_leads.id created on conversion
+  owner_id              String?   @db.VarChar(20)
+  external_id           String?   @db.VarChar(255)
+  created_by            String?   @db.VarChar(20)
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  record      Record?     @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  owner       Employee?   @relation("LeadIntakeOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  lead_scores LeadScore[] @relation("LeadIntakeScores")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmLeadIntake", fields: [tenant_id], references: [id])
+
+  @@index([email])
+  @@index([lead_status])
+  @@index([owner_id])
+  @@index([tenant_id])
+  @@map("crm_lead_intake")
+}
+
+/// Relational opportunity — qualified deal in the sales pipeline.
+model CrmOpportunity {
+  id                Int       @id @default(autoincrement())
+  record_id         Int?      @unique
+  account_id        Int?
+  contact_id        Int?
+  name              String    @db.VarChar(255)
+  amount            Decimal?  @db.Decimal(18, 2)
+  currency          String    @default("USD") @db.VarChar(10)
+  stage             String    @default("prospecting") @db.VarChar(50)
+  probability       Int       @default(0) // 0–100
+  close_date        DateTime? @db.Date
+  lead_source       String?   @db.VarChar(100)
+  type              String?   @db.VarChar(100) // new_business | existing_business | renewal
+  next_step         String?   @db.VarChar(255)
+  description       String?   @db.Text
+  is_closed         Boolean   @default(false)
+  is_won            Boolean   @default(false)
+  forecast_category String?   @db.VarChar(50) // pipeline | best_case | commit | closed
+  pipeline_stage_id Int? // back-compat with existing kanban board
+  owner_id          String?   @db.VarChar(20)
+  external_id       String?   @db.VarChar(255)
+  created_by        String?   @db.VarChar(20)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  record          Record?            @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  account         CrmAccount?        @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  contact         CrmContact?        @relation("OpportunityContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  pipeline_stage  UiPipelineStage?   @relation(fields: [pipeline_stage_id], references: [id], onDelete: SetNull)
+  owner           Employee?          @relation("OpportunityOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  lead_conversion CrmLeadConversion?
+  quotes          Quote[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmOpportunity", fields: [tenant_id], references: [id])
+
+  @@index([account_id])
+  @@index([stage])
+  @@index([owner_id])
+  @@index([close_date])
+  @@index([amount])
+  @@index([external_id])
+  @@index([tenant_id])
+  @@map("crm_opportunities")
+}
+
+/// Relational case — customer support ticket.
+model CrmCase {
+  id            Int      @id @default(autoincrement())
+  record_id     Int?     @unique
+  account_id    Int?
+  contact_id    Int?
+  subject       String   @db.VarChar(255)
+  description   String?  @db.Text
+  status        String   @default("new") @db.VarChar(50) // new | open | in_progress | escalated | resolved | closed
+  priority      String   @default("medium") @db.VarChar(20) // low | medium | high | critical
+  type          String?  @db.VarChar(100)
+  origin        String?  @db.VarChar(50) // web | email | phone | chat
+  contact_email String?  @db.VarChar(100)
+  contact_name  String?  @db.VarChar(200)
+  resolution    String?  @db.Text
+  owner_id      String?  @db.VarChar(20)
+  external_id   String?  @db.VarChar(255)
+  created_by    String?  @db.VarChar(20)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  record  Record?     @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  account CrmAccount? @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  contact CrmContact? @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  owner   Employee?   @relation("CaseOwner", fields: [owner_id], references: [employee_id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmCase", fields: [tenant_id], references: [id])
+
+  @@index([account_id])
+  @@index([status])
+  @@index([owner_id])
+  @@index([external_id])
+  @@index([tenant_id])
+  @@map("crm_cases")
+}
+
+/// Immutable audit record of a lead conversion event.
+/// One lead → at most one conversion.  The conversion may create a new
+/// Account, Contact, and/or Opportunity; all three links are optional.
+model CrmLeadConversion {
+  id             Int      @id @default(autoincrement())
+  lead_id        Int      @unique // one conversion per lead
+  account_id     Int?
+  contact_id     Int?
+  opportunity_id Int?     @unique // one opportunity per conversion
+  converted_by   String?  @db.VarChar(20)
+  converted_at   DateTime @default(now())
+  notes          String?  @db.Text
+  created_at     DateTime @default(now())
+
+  lead        CrmLead?        @relation(fields: [lead_id], references: [id], onDelete: Cascade)
+  account     CrmAccount?     @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  contact     CrmContact?     @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  opportunity CrmOpportunity? @relation(fields: [opportunity_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmLeadConversion", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("crm_lead_conversions")
+}
+
+/// Generic many-to-many association between any two CRM entities.
+/// Avoids a combinatorial explosion of join tables while still being queryable.
+/// assoc_type: primary_contact | decision_maker | influencer | billing_contact | ...
+model CrmAssociation {
+  id         Int      @id @default(autoincrement())
+  from_type  String   @db.VarChar(50) // lead | contact | account | opportunity | case
+  from_id    Int
+  to_type    String   @db.VarChar(50)
+  to_id      Int
+  assoc_type String   @db.VarChar(100)
+  created_by String?  @db.VarChar(20)
+  created_at DateTime @default(now())
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCrmAssociation", fields: [tenant_id], references: [id])
+
+  @@unique([from_type, from_id, to_type, to_id, assoc_type])
+  @@index([from_type, from_id])
+  @@index([to_type, to_id])
+  @@index([tenant_id])
+  @@map("crm_associations")
+}
+
+// ============================================================
+// ESSENTIAL CRM FEATURES (MUST-HAVES)
+// ============================================================
+
+/// Product/Service catalog for quotes and opportunities
+model Product {
+  id              Int      @id @default(autoincrement())
+  record_id       Int?     @unique // bridge → records.id
+  name            String   @db.VarChar(255)
+  sku             String?  @unique @db.VarChar(100)
+  category        String?  @db.VarChar(100)
+  description     String?  @db.Text
+  unit_price      Decimal  @db.Decimal(18, 2)
+  cost_price      Decimal? @db.Decimal(18, 2)
+  currency        String   @default("USD") @db.VarChar(10)
+  tax_rate        Decimal? @db.Decimal(5, 4) // 0.0825 for 8.25%
+  is_active       Boolean  @default(true)
+  is_service      Boolean  @default(false)
+  min_quantity    Int      @default(1)
+  max_quantity    Int?
+  vendor_name     String?  @db.VarChar(255)
+  vendor_sku      String?  @db.VarChar(100)
+  dimensions      String?  @db.VarChar(100) // "10x15x5 cm"
+  weight          Decimal? @db.Decimal(8, 2) // in kg
+  warranty_months Int?
+  image_url       String?  @db.VarChar(500) // product image URL
+  created_by      String?  @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  record      Record?         @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  quote_items QuoteLineItem[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantProduct", fields: [tenant_id], references: [id])
+
+  @@index([name])
+  @@index([category])
+  @@index([is_active])
+  @@index([sku])
+  @@index([tenant_id])
+  @@map("products")
+}
+
+/// Quote/Proposal generation for opportunities
+model Quote {
+  id               Int       @id @default(autoincrement())
+  record_id        Int?      @unique // bridge → records.id
+  opportunity_id   Int?
+  account_id       Int?
+  contact_id       Int?
+  quote_number     String    @unique @db.VarChar(50)
+  name             String    @db.VarChar(255)
+  status           String    @default("draft") @db.VarChar(50) // draft | sent | accepted | rejected | expired
+  valid_until      DateTime? @db.Date
+  subtotal         Decimal   @default(0) @db.Decimal(18, 2)
+  discount_amount  Decimal   @default(0) @db.Decimal(18, 2)
+  discount_percent Decimal   @default(0) @db.Decimal(5, 2) // 15.50 for 15.5%
+  tax_amount       Decimal   @default(0) @db.Decimal(18, 2)
+  total_amount     Decimal   @default(0) @db.Decimal(18, 2)
+  currency         String    @default("USD") @db.VarChar(10)
+  terms            String?   @db.Text
+  notes            String?   @db.Text
+  billing_street   String?   @db.VarChar(255)
+  billing_city     String?   @db.VarChar(100)
+  billing_state    String?   @db.VarChar(100)
+  billing_country  String?   @db.VarChar(100)
+  billing_zip      String?   @db.VarChar(20)
+  shipping_street  String?   @db.VarChar(255)
+  shipping_city    String?   @db.VarChar(100)
+  shipping_state   String?   @db.VarChar(100)
+  shipping_country String?   @db.VarChar(100)
+  shipping_zip     String?   @db.VarChar(20)
+  accepted_at      DateTime?
+  sent_at          DateTime?
+  owner_id         String?   @db.VarChar(20)
+  created_by       String?   @db.VarChar(20)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  record      Record?         @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  opportunity CrmOpportunity? @relation(fields: [opportunity_id], references: [id], onDelete: SetNull)
+  account     CrmAccount?     @relation(fields: [account_id], references: [id], onDelete: SetNull)
+  contact     CrmContact?     @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  owner       Employee?       @relation(fields: [owner_id], references: [employee_id], onDelete: SetNull)
+  line_items  QuoteLineItem[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantQuote", fields: [tenant_id], references: [id])
+
+  @@index([quote_number])
+  @@index([status])
+  @@index([opportunity_id])
+  @@index([owner_id])
+  @@index([tenant_id])
+  @@map("quotes")
+}
+
+/// Individual line item in a quote
+model QuoteLineItem {
+  id          Int     @id @default(autoincrement())
+  quote_id    Int
+  product_id  Int?
+  name        String  @db.VarChar(255) // product name (copied at quote time)
+  description String? @db.Text
+  quantity    Decimal @db.Decimal(10, 2)
+  unit_price  Decimal @db.Decimal(18, 2)
+  discount    Decimal @default(0) @db.Decimal(5, 2) // percentage
+  line_total  Decimal @db.Decimal(18, 2)
+  order_index Int     @default(0)
+
+  quote   Quote    @relation(fields: [quote_id], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantQuoteLineItem", fields: [tenant_id], references: [id])
+
+  @@index([quote_id])
+  @@index([tenant_id])
+  @@map("quote_line_items")
+}
+
+/// Email templates for marketing and communications
+model EmailTemplate {
+  id          Int      @id @default(autoincrement())
+  record_id   Int?     @unique // bridge → records.id
+  object_id   Int? // scoped to a specific UiObject (e.g. Lead, Contact)
+  name        String   @db.VarChar(255)
+  category    String?  @db.VarChar(100) // sales | marketing | support | onboarding
+  subject     String   @db.VarChar(255)
+  body_html   String?  @db.MediumText
+  body_text   String?  @db.Text
+  variables   Json? // ["first_name", "company", "amount"]
+  is_active   Boolean  @default(true)
+  usage_count Int      @default(0)
+  language    String   @default("en") @db.VarChar(10)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  record     Record?    @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  object     UiObject?  @relation(fields: [object_id], references: [id], onDelete: SetNull)
+  email_logs EmailLog[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantEmailTemplate", fields: [tenant_id], references: [id])
+
+  @@index([object_id])
+  @@index([category])
+  @@index([is_active])
+  @@index([tenant_id])
+  @@map("email_templates")
+}
+
+/// Log of email communications
+model EmailLog {
+  id                Int       @id @default(autoincrement())
+  template_id       Int?
+  related_record_id Int? // what record this email relates to
+  related_type      String?   @db.VarChar(50) // lead | contact | account | opportunity | case
+  to_email          String    @db.VarChar(255)
+  from_email        String?   @db.VarChar(255)
+  cc_emails         Json? // array of CC email addresses
+  bcc_emails        Json? // array of BCC email addresses  
+  subject           String    @db.VarChar(255)
+  body_html         String?   @db.MediumText
+  body_text         String?   @db.Text
+  status            String    @default("sent") @db.VarChar(50) // sent | bounced | delivered | opened | clicked
+  opened_at         DateTime?
+  clicked_at        DateTime?
+  bounced_at        DateTime?
+  bounce_reason     String?   @db.Text
+  sent_by           String?   @db.VarChar(20)
+  sent_at           DateTime  @default(now())
+  created_at        DateTime  @default(now())
+
+  template EmailTemplate? @relation(fields: [template_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantEmailLog", fields: [tenant_id], references: [id])
+
+  @@index([to_email])
+  @@index([status])
+  @@index([related_record_id, related_type])
+  @@index([sent_at])
+  @@index([tenant_id])
+  @@map("email_logs")
+}
+
+/// Document/file attachments for records
+/// Unified document model — the single content store for ALL document types
+/// (generic CRM attachments, insurance application documents, auto-archived
+/// reports, compliance artifacts). Bytes live in blob storage under a
+/// tenant-first relative key (`stored_key`); this row holds all metadata.
+model Document {
+  id           Int     @id @default(autoincrement())
+  record_id    Int?    @unique // bridge → runtime records.id
+  document_ref String? @db.VarChar(100) // human reference e.g. DOC-APP2026001-001
+
+  // Polymorphic owner (what this document is attached to)
+  entity_type    String? @db.VarChar(50) // lead | contact | account | opportunity | case | quote | application | policy
+  entity_id      Int? // owning record id
+  application_id Int? // typed link for insurance applications
+
+  original_filename String  @db.VarChar(255) // user's original filename
+  stored_key        String  @db.VarChar(500) // RELATIVE storage key (never an absolute path)
+  file_size         Int? // bytes
+  mime_type         String? @db.VarChar(100)
+  file_hash         String? @db.VarChar(64) // SHA-256 — integrity verification & dedup
+  category          String? @db.VarChar(100) // contract | proof_of_income | reports | photo | other
+  folder_id         Int? // optional organising folder (DocumentFolder)
+  description       String? @db.Text
+  notes             String? @db.Text
+
+  // Extracted plain-text (pdf/docx/txt) for full-text search. Best-effort,
+  // populated on upload; null when the type isn't extractable or extraction failed.
+  content_text String? @db.MediumText
+
+  version   Int     @default(1) // incremented when a new file supersedes an old one
+  status    String  @default("uploaded") @db.VarChar(30) // required | pending | uploaded | under_review | approved | rejected | waived | deleted
+  is_public Boolean @default(false)
+
+  uploaded_by      String?   @db.VarChar(20)
+  uploaded_at      DateTime? @default(now())
+  reviewed_by      String?   @db.VarChar(20)
+  reviewed_at      DateTime?
+  rejection_reason String?   @db.Text
+
+  deleted_at DateTime? // soft-delete marker for atomic GC
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  record               Record?                    @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  application          InsuranceApplication?      @relation("AppDocuments", fields: [application_id], references: [id], onDelete: Cascade)
+  compliance_artifacts ComplianceArtifact[]       @relation("ComplianceDocument")
+  checklist_items      SubmissionChecklist[]      @relation("ChecklistDocument")
+  folder               DocumentFolder?            @relation(fields: [folder_id], references: [id], onDelete: SetNull)
+  share_links          DocumentShareLink[]
+  signature_requests   DocumentSignatureRequest[] @relation("DocSignatureRequests")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocument", fields: [tenant_id], references: [id])
+
+  @@index([entity_type, entity_id])
+  @@index([application_id])
+  @@index([category])
+  @@index([status])
+  @@index([file_hash])
+  @@index([original_filename])
+  @@index([folder_id])
+  @@index([deleted_at])
+  @@index([tenant_id])
+  @@fulltext([original_filename, description, content_text], map: "documents_fulltext")
+  @@map("documents")
+}
+
+/// Hierarchical folder for organising documents in the standalone DMS.
+/// Self-referential tree with a materialised `path` for cheap breadcrumbs.
+model DocumentFolder {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(200)
+  parent_id   Int?
+  path        String   @default("/") @db.VarChar(1000) // e.g. "/Contracts/2026"
+  order_index Int      @default(0)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  parent    DocumentFolder?  @relation("FolderTree", fields: [parent_id], references: [id], onDelete: Cascade)
+  children  DocumentFolder[] @relation("FolderTree")
+  documents Document[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentFolder", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([parent_id])
+  @@map("document_folders")
+}
+
+/// A shareable, optionally-expiring public link to a document. Anchors
+/// engagement tracking (opens/downloads) for the standalone DMS.
+model DocumentShareLink {
+  id             Int       @id @default(autoincrement())
+  document_id    Int
+  token          String    @unique @db.VarChar(64) // unguessable public token
+  allow_download Boolean   @default(true)
+  expires_at     DateTime?
+  is_active      Boolean   @default(true)
+  view_count     Int       @default(0)
+  last_viewed_at DateTime?
+  created_by     String?   @db.VarChar(20)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  document Document            @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  events   DocumentViewEvent[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentShareLink", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([document_id])
+  @@map("document_share_links")
+}
+
+/// A single view or download event against a share link (engagement analytics).
+model DocumentViewEvent {
+  id            Int      @id @default(autoincrement())
+  share_link_id Int
+  document_id   Int
+  event_type    String   @default("view") @db.VarChar(20) // view | download
+  viewer_ip     String?  @db.VarChar(64)
+  user_agent    String?  @db.Text
+  referrer      String?  @db.VarChar(500)
+  duration_secs Int?
+  viewed_at     DateTime @default(now())
+
+  share_link DocumentShareLink @relation(fields: [share_link_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentViewEvent", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([share_link_id])
+  @@index([document_id])
+  @@map("document_view_events")
+}
+
+/// Tenant-configured document category (Document Management builder).
+/// Drives the category dropdown, per-category upload rules, review policy and
+/// retention in the standalone DMS. When a tenant has none configured the DMS
+/// falls back to sensible built-in defaults.
+model UiDocumentCategory {
+  id              Int      @id @default(autoincrement())
+  code            String   @db.VarChar(100) // machine key, e.g. "proof_of_income"
+  label           String   @db.VarChar(100) // display name
+  description     String?  @db.Text
+  allowed_mime    Json? // array of allowed MIME types; null → inherit global policy
+  max_file_mb     Int? // per-category size cap (MB); null → inherit global policy
+  retention_days  Int? // per-category retention; null → inherit global policy
+  review_required Boolean  @default(false) // uploads land in "under_review" not "uploaded"
+  is_required     Boolean  @default(false) // part of the default required-document set
+  color           String   @default("#6366f1") @db.VarChar(20)
+  order_index     Int      @default(0)
+  is_active       Boolean  @default(true)
+  config          Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiDocumentCategory", fields: [tenant_id], references: [id])
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@index([is_active, order_index])
+  @@map("ui_document_categories")
+}
+
+/// Required-document checklist for a given owner entity type (Document
+/// Management builder). `items` is an ordered JSON list of
+/// { category_code, required, label } referencing UiDocumentCategory codes.
+model UiDocumentChecklist {
+  id          Int      @id @default(autoincrement())
+  entity_type String   @db.VarChar(50) // lead | contact | application | policy | ...
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  items       Json? // [{ category_code, required, label }]
+  is_active   Boolean  @default(true)
+  order_index Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUiDocumentChecklist", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([entity_type])
+  @@map("ui_document_checklists")
+}
+
+/// A native e-signature request against a document. Collects one or more
+/// signatories; when all have signed a signature certificate (a Document) is
+/// generated. Public signing happens via each signatory's unguessable token.
+model DocumentSignatureRequest {
+  id                 Int       @id @default(autoincrement())
+  document_id        Int
+  title              String?   @db.VarChar(200)
+  message            String?   @db.Text
+  status             String    @default("sent") @db.VarChar(20) // sent | completed | declined | cancelled | expired
+  ordered            Boolean   @default(false) // enforce signatory order_index sequence
+  expires_at         DateTime?
+  completed_at       DateTime?
+  certificate_doc_id Int? // generated signature-certificate Document id
+  created_by         String?   @db.VarChar(20)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  document    Document            @relation("DocSignatureRequests", fields: [document_id], references: [id], onDelete: Cascade)
+  signatories DocumentSignatory[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentSignatureRequest", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([document_id])
+  @@map("document_signature_requests")
+}
+
+/// One signer within a signature request.
+model DocumentSignatory {
+  id             Int       @id @default(autoincrement())
+  request_id     Int
+  name           String    @db.VarChar(150)
+  email          String    @db.VarChar(200)
+  order_index    Int       @default(0)
+  status         String    @default("pending") @db.VarChar(20) // pending | viewed | signed | declined
+  token          String    @unique @db.VarChar(64) // unguessable public signing token
+  signature_type String?   @db.VarChar(20) // typed | drawn
+  signature_data String?   @db.MediumText // typed full-name or base64 PNG data URL
+  decline_reason String?   @db.Text
+  viewer_ip      String?   @db.VarChar(64)
+  viewed_at      DateTime?
+  signed_at      DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  request DocumentSignatureRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentSignatory", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([request_id])
+  @@map("document_signatories")
+}
+
+/// Reusable merge-template for generating documents from any entity's data.
+/// `body` is HTML/text containing {{placeholder}} tokens (dot-paths supported,
+/// e.g. {{contact.first_name}}) filled from a merge context at render time.
+model DocumentTemplate {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(150)
+  description     String?  @db.Text
+  entity_type     String?  @db.VarChar(50) // optional target entity (contact|lead|application|…)
+  body            String   @db.MediumText // template source with {{placeholders}}
+  format          String   @default("html") @db.VarChar(20) // html | text
+  output_category String?  @db.VarChar(100) // category to file rendered documents under
+  is_active       Boolean  @default(true)
+  created_by      String?  @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantDocumentTemplate", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([is_active])
+  @@map("document_templates")
+}
+
+/// Lead scoring rules for automated qualification
+model LeadScoringRule {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  field_name  String   @db.VarChar(100) // field to evaluate
+  operator    String   @db.VarChar(50) // equals | contains | greater_than | less_than | in_list
+  field_value String?  @db.Text // value to compare against
+  points      Int // points awarded when rule matches
+  rule_type   String   @db.VarChar(50) // demographic | behavioral | firmographic
+  is_active   Boolean  @default(true)
+  order_index Int      @default(0)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantLeadScoringRule", fields: [tenant_id], references: [id])
+
+  @@index([is_active, order_index])
+  @@index([tenant_id])
+  @@map("lead_scoring_rules")
+}
+
+/// Lead scoring history for auditability
+model LeadScore {
+  id              Int      @id @default(autoincrement())
+  lead_id         Int? // Prospect (crm_leads) — legacy/manual scoring
+  lead_intake_id  Int? // Lead (crm_lead_intake) — primary scoring target
+  total_score     Int      @default(0)
+  scoring_details Json? // [{ rule_id, rule_name, points, matched_value }]
+  calculated_at   DateTime @default(now())
+
+  lead        CrmLead?       @relation("LeadScores", fields: [lead_id], references: [id], onDelete: Cascade)
+  lead_intake CrmLeadIntake? @relation("LeadIntakeScores", fields: [lead_intake_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantLeadScore", fields: [tenant_id], references: [id])
+
+  @@index([lead_id])
+  @@index([lead_intake_id])
+  @@index([total_score])
+  @@index([tenant_id])
+  @@map("lead_scores")
+}
+
+/// Stores typed field values for custom objects (EAV pattern)
+model RecordFieldValue {
+  id         BigInt    @id @default(autoincrement())
+  record_id  Int
+  field_name String    @db.VarChar(100)
+  str_value  String?   @db.Text
+  num_value  Float?
+  bool_value Boolean?
+  date_value DateTime?
+  json_value Json?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  record Record @relation(fields: [record_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantRecordFieldValue", fields: [tenant_id], references: [id])
+
+  @@unique([record_id, field_name])
+  @@index([record_id])
+  @@index([tenant_id])
+  @@map("record_field_values")
+}
+
+// ============================================================
+// EMAIL MARKETING & CAMPAIGN MANAGEMENT
+// ============================================================
+
+/// Email marketing campaigns for lead nurturing  
+
+/// Campaign recipients list - who should receive the campaign
+
+/// Individual email sends within a campaign - tracks delivery
+
+/// Email list management for segmenting contacts
+
+/// Subscription status for contacts in email lists
+
+/// Assignment of campaigns to email lists  
+
+/// Track clicks on specific links within emails
+
+/// Email unsubscribe preferences
+
+// ============================================================
+// CALENDAR INTEGRATION & MEETING MANAGEMENT  
+// ============================================================
+
+/// Calendar events and meeting scheduling
+
+/// Event attendees - supports both internal employees and external contacts
+
+/// Meeting notes and outcomes
+
+/// Meeting room and resource booking
+
+/// Room booking reservations linked to calendar events
+
+/// Enhanced call logging with CRM integration
+
+// ============================================================
+// ADVANCED ANALYTICS & CUSTOM REPORTING
+// ============================================================
+
+/// Custom report definitions for advanced analytics
+model CustomReport {
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(255)
+  description       String?   @db.Text
+  report_type       String    @db.VarChar(50) // table | chart | dashboard | pivot | summary
+  category          String    @db.VarChar(100) // sales | marketing | support | performance | finance
+  data_source       Json // { objects: ["lead", "opportunity"], joins: [...] }
+  fields            Json // [{ field: "amount", alias: "Revenue", aggregation: "sum" }]
+  filters           Json? // [{ field: "stage", operator: "in", values: ["closed_won"] }]
+  grouping          Json? // [{ field: "owner_id", period: "month" }]
+  sorting           Json? // [{ field: "amount", direction: "desc" }]
+  chart_config      Json? // chart type, colors, axes configuration
+  /// Denormalised "has at least one active subscription", kept in sync by
+  /// ReportScheduleService so the report list can show a schedule badge without
+  /// joining. The schedule itself lives in ReportSubscription.
+  is_scheduled      Boolean   @default(false)
+  schedule_config   Json? // legacy single-schedule blob; superseded by ReportSubscription
+  is_shared         Boolean   @default(false)
+  shared_with       Json? // employee IDs, role names or team ids — see `visibility`
+  /// private = author only · team = the author's reporting line · shared = the
+  /// roles/employees listed in shared_with · everyone = all users in the tenant
+  visibility        String    @default("private") @db.VarChar(20)
+  folder_id         Int?
+  refresh_frequency String?   @db.VarChar(50) // legacy, unused
+  last_run_at       DateTime?
+  /// Trend history: { version, columns, snapshots:[{at,scope,row_count,grand}] },
+  /// one entry per scope per day, bounded — see report-snapshots.js. (Name is
+  /// historical; it no longer caches a result.)
+  cached_result     Json?
+  cache_expires_at  DateTime? // legacy, unused
+  created_by        String    @db.VarChar(20)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  executions    ReportExecution[]
+  subscriptions ReportSubscription[]
+  favorites     ReportFavorite[]
+  folder        ReportFolder?        @relation(fields: [folder_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCustomReport", fields: [tenant_id], references: [id])
+
+  @@index([report_type, category])
+  @@index([created_by])
+  @@index([is_shared])
+  @@index([folder_id])
+  @@index([tenant_id])
+  @@map("custom_reports")
+}
+
+/// Report execution history for performance monitoring
+model ReportExecution {
+  id             Int      @id @default(autoincrement())
+  report_id      Int
+  executed_by    String?  @db.VarChar(20) // NULL for scheduled runs
+  execution_time Int // milliseconds
+  status         String   @db.VarChar(50) // success | error | timeout | cancelled
+  result_rows    Int? // number of rows returned
+  error_message  String?  @db.Text
+  filters_used   Json? // runtime filters applied
+  cache_hit      Boolean  @default(false)
+  executed_at    DateTime @default(now())
+
+  report CustomReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantReportExecution", fields: [tenant_id], references: [id])
+
+  @@index([report_id])
+  @@index([executed_at])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("report_executions")
+}
+
+/// Folder a report can be filed in, so a growing report library stays navigable.
+/// Mirrors the report-folder concept in Salesforce, Zoho and Dynamics.
+model ReportFolder {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  color       String?  @db.VarChar(20)
+  parent_id   Int?
+  order_index Int      @default(0)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  parent   ReportFolder?  @relation("ReportFolderTree", fields: [parent_id], references: [id], onDelete: SetNull)
+  children ReportFolder[] @relation("ReportFolderTree")
+  reports  CustomReport[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantReportFolder", fields: [tenant_id], references: [id])
+
+  @@index([parent_id])
+  @@index([tenant_id])
+  @@map("report_folders")
+}
+
+/// A recurring emailed delivery of a saved report ("subscription" in Salesforce,
+/// "scheduled report" in HubSpot/Zoho). Owned by the employee who created it, so
+/// a business user can schedule their own reports with no admin involvement.
+/// `next_run_at` is what the sweeper claims on, and is recomputed after each send.
+model ReportSubscription {
+  id           Int       @id @default(autoincrement())
+  report_id    Int
+  employee_id  String    @db.VarChar(20) // subscription owner; always a recipient
+  frequency    String    @db.VarChar(20) // daily | weekdays | weekly | monthly
+  hour         Int       @default(8) // local hour of day, 0–23
+  day_of_week  Int? // 0 (Sun) – 6, for weekly
+  day_of_month Int? // 1–28, for monthly
+  format       String    @default("xlsx") @db.VarChar(10) // xlsx | csv | inline
+  recipients   Json? // additional email addresses
+  scope        String    @default("all") @db.VarChar(10) // me | team | all (clamped to the owner's role)
+  subject      String?   @db.VarChar(255)
+  message      String?   @db.Text
+  is_active    Boolean   @default(true)
+  last_sent_at DateTime?
+  last_status  String?   @db.VarChar(20) // sent | error | skipped
+  last_error   String?   @db.Text
+  next_run_at  DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  report CustomReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantReportSubscription", fields: [tenant_id], references: [id])
+
+  @@index([report_id])
+  @@index([employee_id])
+  @@index([is_active, next_run_at])
+  @@index([tenant_id])
+  @@map("report_subscriptions")
+}
+
+/// Per-user starred report, so each person gets their own shortlist.
+model ReportFavorite {
+  id          Int      @id @default(autoincrement())
+  report_id   Int
+  employee_id String   @db.VarChar(20)
+  created_at  DateTime @default(now())
+
+  report CustomReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantReportFavorite", fields: [tenant_id], references: [id])
+
+  @@unique([report_id, employee_id])
+  @@index([employee_id])
+  @@index([tenant_id])
+  @@map("report_favorites")
+}
+
+// ============================================================
+// CONTRACT & DEAL MANAGEMENT
+// ============================================================
+
+/// Contract lifecycle management with approval workflows
+
+/// Contract templates for standardization
+
+/// Multi-stage contract approval workflow
+
+/// Digital signature tracking for contracts
+
+/// Contract milestones and deliverables tracking
+
+/// Contract amendments and change tracking
+
+/// Contract renewal management
+
+/// Deal stage progression and pipeline management
+
+/// Historical tracking of deal stage changes
+
+/// Deal competition and competitive analysis
+
+// ============================================================ 
+// TERRITORY MANAGEMENT & SALES TEAMS 
+// ============================================================
+
+/// Geographic and market territory definitions
+
+/// Assignment of accounts/leads to territories
+
+/// Territory team membership and roles
+
+/// Rules for automatic territory assignment
+
+/// Territory performance tracking and analytics
+
+/// Sales team organization and management
+
+/// Sales team membership with roles and quotas
+
+/// Team meetings and collaboration tracking
+
+/// Sales team performance metrics and analytics
+
+// ============================================================
+// CUSTOMER PORTAL & SELF-SERVICE
+// ============================================================
+
+/// Customer portal user accounts and authentication  
+
+/// Portal session tracking for security and analytics
+
+/// Customer self-service case management
+
+/// Case message thread for customer-support communication  
+
+/// Case escalation tracking
+
+/// Self-service requests for common actions (password reset, access, etc.)
+
+/// Knowledge base for customer self-help
+
+/// Knowledge base category organization
+
+/// Article feedback and ratings
+
+/// File attachments for knowledge articles
+
+/// Customer satisfaction and feedback tracking
+
+/// Portal download tracking for analytics
+
+// ============================================================
+// SOCIAL MEDIA INTEGRATION
+// ============================================================
+
+/// Social media platform connections and configuration
+model SocialMediaAccount {
+  id                  Int       @id @default(autoincrement())
+  platform            String    @db.VarChar(50) // linkedin | twitter | facebook | instagram | youtube | tiktok
+  account_name        String    @db.VarChar(255) // @username or page name
+  account_id          String    @db.VarChar(255) // platform-specific account ID
+  display_name        String    @db.VarChar(255) // friendly display name
+  profile_url         String?   @db.VarChar(500) // link to profile/page
+  follower_count      Int?      @default(0)
+  following_count     Int?      @default(0)
+  post_count          Int?      @default(0)
+  account_type        String    @db.VarChar(50) // personal | business | organization
+  verification_status String?   @db.VarChar(50) // verified | unverified | pending
+  connection_status   String    @default("active") @db.VarChar(50) // active | expired | error | disabled
+  access_token        String?   @db.Text // encrypted OAuth token
+  refresh_token       String?   @db.Text // encrypted refresh token
+  token_expires_at    DateTime?
+  last_sync_at        DateTime?
+  sync_frequency      String    @default("daily") @db.VarChar(50) // hourly | daily | weekly
+  auto_monitoring     Boolean   @default(true) // automatically monitor mentions/engagement
+  managed_by          String?   @db.VarChar(20) // employee managing this account
+  is_active           Boolean   @default(true)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  posts     SocialMediaPost[]
+  mentions  SocialMediaMention[]
+  campaigns SocialMediaCampaign[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialMediaAccount", fields: [tenant_id], references: [id])
+
+  @@unique([platform, account_id])
+  @@index([platform])
+  @@index([managed_by])
+  @@index([connection_status])
+  @@index([tenant_id])
+  @@map("social_media_accounts")
+}
+
+/// Social media posts and content management
+model SocialMediaPost {
+  id                 Int       @id @default(autoincrement())
+  account_id         Int
+  platform_post_id   String    @db.VarChar(255) // platform-specific post ID
+  post_type          String    @db.VarChar(50) // post | story | reel | video | carousel | live
+  content            String?   @db.Text // post text content
+  media_urls         Json? // images, videos, documents
+  hashtags           Json? // extracted hashtags
+  mentions           Json? // user mentions in post
+  engagement_metrics Json? // likes, shares, comments, views
+  post_url           String?   @db.VarChar(500) // direct link to post
+  is_promoted        Boolean   @default(false) // paid promotion/ad
+  promotion_budget   Decimal?  @db.Decimal(10, 2) // ad spend for promoted posts
+  target_audience    Json? // targeting criteria for ads
+  reach              Int? // total people reached
+  impressions        Int? // total impressions
+  click_through_rate Decimal?  @db.Decimal(5, 4) // CTR for promoted posts
+  lead_generated     Boolean   @default(false) // did this post generate leads
+  published_at       DateTime? // when post went live
+  scheduled_for      DateTime? // scheduled posting time
+  status             String    @default("draft") @db.VarChar(50) // draft | scheduled | publishing (engine claim) | published | failed | deleted
+  created_by         String?   @db.VarChar(20) // employee who created post
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  account SocialMediaAccount @relation(fields: [account_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialMediaPost", fields: [tenant_id], references: [id])
+
+  @@unique([account_id, platform_post_id])
+  @@index([status])
+  @@index([published_at])
+  @@index([lead_generated])
+  @@index([tenant_id])
+  @@map("social_media_posts")
+}
+
+/// Social media mentions and brand monitoring
+model SocialMediaMention {
+  id                 Int       @id @default(autoincrement())
+  account_id         Int? // null for organic mentions not from our accounts
+  platform           String    @db.VarChar(50)
+  mention_type       String    @db.VarChar(50) // mention | hashtag | keyword | tag | comment | review
+  content            String    @db.Text // mention text
+  author_name        String    @db.VarChar(255) // who mentioned us
+  author_handle      String?   @db.VarChar(255) // @username
+  author_profile     String?   @db.VarChar(500) // profile URL
+  follower_count     Int? // author's follower count
+  post_url           String?   @db.VarChar(500) // link to the mention
+  sentiment          String    @db.VarChar(20) // positive | neutral | negative
+  sentiment_score    Decimal?  @db.Decimal(3, 2) // -1.0 to 1.0 sentiment score
+  influence_score    Int? // 1-100 influence rating of author
+  reach_estimate     Int? // estimated reach of mention
+  keywords_matched   Json? // which keywords triggered this mention
+  is_verified_author Boolean   @default(false) // is the author verified on platform
+  requires_response  Boolean   @default(false) // needs company response
+  response_priority  String    @default("medium") @db.VarChar(20) // low | medium | high | urgent
+  assigned_to        String?   @db.VarChar(20) // employee assigned to handle
+  response_sent      Boolean   @default(false)
+  response_content   String?   @db.Text // our response
+  response_sent_at   DateTime?
+  mentioned_at       DateTime // when the mention occurred
+  processed_at       DateTime  @default(now()) // when we detected/processed it
+  created_at         DateTime  @default(now())
+
+  account SocialMediaAccount? @relation(fields: [account_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialMediaMention", fields: [tenant_id], references: [id])
+
+  @@index([platform])
+  @@index([sentiment])
+  @@index([requires_response])
+  @@index([assigned_to])
+  @@index([mentioned_at])
+  @@index([tenant_id])
+  @@map("social_media_mentions")
+}
+
+/// Social media campaigns and promotions
+model SocialMediaCampaign {
+  id                   Int      @id @default(autoincrement())
+  name                 String   @db.VarChar(255)
+  description          String?  @db.Text
+  campaign_type        String   @db.VarChar(50) // brand_awareness | lead_generation | promotion | engagement | traffic
+  objective            String   @db.VarChar(255) // campaign goal
+  target_audience      Json // demographic and interest targeting
+  budget_total         Decimal? @db.Decimal(10, 2) // total campaign budget
+  budget_daily         Decimal? @db.Decimal(8, 2) // daily budget limit
+  currency             String   @default("USD") @db.VarChar(10)
+  start_date           DateTime @db.Date
+  end_date             DateTime @db.Date
+  platforms            Json // platforms included in campaign
+  content_themes       Json? // key messages and themes
+  hashtag_strategy     Json? // primary and secondary hashtags
+  posting_schedule     Json? // when to post content
+  success_metrics      Json? // KPIs to track
+  status               String   @default("planning") @db.VarChar(50) // planning | active | paused | completed | cancelled
+  performance_summary  Json? // aggregated results
+  lessons_learned      String?  @db.Text // campaign retrospective
+  roi                  Decimal? @db.Decimal(8, 4) // return on investment
+  lead_conversion_rate Decimal? @db.Decimal(5, 2) // % of engagements that became leads
+  created_by           String   @db.VarChar(20)
+  manager_id           String?  @db.VarChar(20) // campaign manager
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  accounts SocialMediaAccount[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialMediaCampaign", fields: [tenant_id], references: [id])
+
+  @@index([status])
+  @@index([start_date, end_date])
+  @@index([campaign_type])
+  @@index([manager_id])
+  @@index([tenant_id])
+  @@map("social_media_campaigns")
+}
+
+/// Social listening keywords and monitoring setup
+model SocialListeningKeyword {
+  id                   Int      @id @default(autoincrement())
+  keyword              String   @db.VarChar(255)
+  keyword_type         String   @db.VarChar(50) // brand | competitor | industry | product | hashtag
+  category             String?  @db.VarChar(100) // grouping for organization
+  match_type           String   @default("contains") @db.VarChar(50) // exact | contains | starts_with | ends_with
+  platforms            Json // platforms to monitor
+  is_case_sensitive    Boolean  @default(false)
+  exclude_own_mentions Boolean  @default(true) // don't count our own posts
+  alert_threshold      Int? // minimum mention volume for alerts
+  priority             String   @default("medium") @db.VarChar(20) // low | medium | high
+  is_active            Boolean  @default(true)
+  created_by           String   @db.VarChar(20)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSocialListeningKeyword", fields: [tenant_id], references: [id])
+
+  @@index([keyword_type])
+  @@index([is_active])
+  @@index([category])
+  @@index([tenant_id])
+  @@map("social_listening_keywords")
+}
+
+// ============================================================
+// PLATFORM ADMINISTRATION (Super Administrator)
+// Multi-tenancy, feature flags, subscription plans,
+// platform audit, announcements, usage metering, security
+// ============================================================
+
+/// Tenant / Organization — each customer org in the SaaS platform
+model Tenant {
+  id               Int       @id @default(autoincrement())
+  name             String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(100)
+  domain           String?   @unique @db.VarChar(255) // custom domain
+  industry         String?   @db.VarChar(50) // technology | healthcare | finance | retail | manufacturing | education | real_estate | media | hospitality | professional_services | other
+  plan             String    @default("free") @db.VarChar(50) // free | starter | professional | enterprise
+  status           String    @default("active") @db.VarChar(50) // active | suspended | trial | cancelled | deleted
+  trial_ends_at    DateTime?
+  suspended_at     DateTime?
+  suspended_reason String?   @db.Text
+  deleted_at       DateTime? // soft-delete with 30-day recovery
+  max_users        Int       @default(5)
+  max_storage_mb   Int       @default(500)
+  max_api_calls    Int       @default(10000) // per month
+  logo_url         String?   @db.VarChar(500)
+  primary_color    String?   @db.VarChar(20)
+  timezone         String    @default("UTC") @db.VarChar(50)
+  locale           String    @default("en") @db.VarChar(10)
+  billing_email    String?   @db.VarChar(255)
+  billing_address  Json?
+  metadata         Json? // flexible tenant-level settings
+  created_by       String?   @db.VarChar(20)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  configs           TenantConfig[]
+  usage_records     TenantUsage[]
+  feature_overrides TenantFeatureOverride[]
+
+  // ── Multi-tenancy reverse relations ──
+  roles                           Role[]                         @relation("TenantRole")
+  regions                         Region[]                       @relation("TenantRegion")
+  branchs                         Branch[]                       @relation("TenantBranch")
+  employees                       Employee[]                     @relation("TenantEmployee")
+  employee_hierarchys             EmployeeHierarchy[]            @relation("TenantEmployeeHierarchy")
+  ui_modules                      UiModule[]                     @relation("TenantUiModule")
+  ui_objects                      UiObject[]                     @relation("TenantUiObject")
+  ui_fields                       UiField[]                      @relation("TenantUiField")
+  ui_forms                        UiForm[]                       @relation("TenantUiForm")
+  ui_form_field_layouts           UiFormFieldLayout[]            @relation("TenantUiFormFieldLayout")
+  ui_validations                  UiValidation[]                 @relation("TenantUiValidation")
+  ui_field_dependencys            UiFieldDependency[]            @relation("TenantUiFieldDependency")
+  ui_pages                        UiPage[]                       @relation("TenantUiPage")
+  ui_dashboards                   UiDashboard[]                  @relation("TenantUiDashboard")
+  ui_dashboard_widgets            UiDashboardWidget[]            @relation("TenantUiDashboardWidget")
+  ui_charts                       UiChart[]                      @relation("TenantUiChart")
+  ui_workflows                    UiWorkflow[]                   @relation("TenantUiWorkflow")
+  ui_workflow_steps               UiWorkflowStep[]               @relation("TenantUiWorkflowStep")
+  workflow_pending_steps          WorkflowPendingStep[]          @relation("TenantWorkflowPendingStep")
+  ui_wizards                      UiWizard[]                     @relation("TenantUiWizard")
+  ui_wizard_steps                 UiWizardStep[]                 @relation("TenantUiWizardStep")
+  ui_pipelines                    UiPipeline[]                   @relation("TenantUiPipeline")
+  ui_pipeline_stages              UiPipelineStage[]              @relation("TenantUiPipelineStage")
+  records                         Record[]                       @relation("TenantRecord")
+  activitys                       Activity[]                     @relation("TenantActivity")
+  tasks                           Task[]                         @relation("TenantTask")
+  notifications                   Notification[]                 @relation("TenantNotification")
+  reminders                       Reminder[]                     @relation("TenantReminder")
+  audit_logs                      AuditLog[]                     @relation("TenantAuditLog")
+  status_events                   StatusEvent[]                  @relation("TenantStatusEvent")
+  ui_permissions                  UiPermission[]                 @relation("TenantUiPermission")
+  operational_permissions         OperationalPermission[]        @relation("TenantOperationalPermission")
+  assignment_rules                AssignmentRule[]               @relation("TenantAssignmentRule")
+  round_robin_states              RoundRobinState[]              @relation("TenantRoundRobinState")
+  assignment_logs                 AssignmentLog[]                @relation("TenantAssignmentLog")
+  quotas                          Quota[]                        @relation("TenantQuota")
+  import_jobs                     ImportJob[]                    @relation("TenantImportJob")
+  integrations                    Integration[]                  @relation("TenantIntegration")
+  integration_logs                IntegrationLog[]               @relation("TenantIntegrationLog")
+  crm_accounts                    CrmAccount[]                   @relation("TenantCrmAccount")
+  crm_contacts                    CrmContact[]                   @relation("TenantCrmContact")
+  crm_leads                       CrmLead[]                      @relation("TenantCrmLead")
+  crm_lead_intakes                CrmLeadIntake[]                @relation("TenantCrmLeadIntake")
+  crm_opportunitys                CrmOpportunity[]               @relation("TenantCrmOpportunity")
+  crm_cases                       CrmCase[]                      @relation("TenantCrmCase")
+  crm_lead_conversions            CrmLeadConversion[]            @relation("TenantCrmLeadConversion")
+  crm_associations                CrmAssociation[]               @relation("TenantCrmAssociation")
+  products                        Product[]                      @relation("TenantProduct")
+  quotes                          Quote[]                        @relation("TenantQuote")
+  quote_line_items                QuoteLineItem[]                @relation("TenantQuoteLineItem")
+  email_templates                 EmailTemplate[]                @relation("TenantEmailTemplate")
+  email_logs                      EmailLog[]                     @relation("TenantEmailLog")
+  documents                       Document[]                     @relation("TenantDocument")
+  document_folders                DocumentFolder[]               @relation("TenantDocumentFolder")
+  document_share_links            DocumentShareLink[]            @relation("TenantDocumentShareLink")
+  document_view_events            DocumentViewEvent[]            @relation("TenantDocumentViewEvent")
+  document_templates              DocumentTemplate[]             @relation("TenantDocumentTemplate")
+  document_signature_requests     DocumentSignatureRequest[]     @relation("TenantDocumentSignatureRequest")
+  document_signatories            DocumentSignatory[]            @relation("TenantDocumentSignatory")
+  ui_document_categories          UiDocumentCategory[]           @relation("TenantUiDocumentCategory")
+  ui_document_checklists          UiDocumentChecklist[]          @relation("TenantUiDocumentChecklist")
+  lead_scoring_rules              LeadScoringRule[]              @relation("TenantLeadScoringRule")
+  lead_scores                     LeadScore[]                    @relation("TenantLeadScore")
+  record_field_values             RecordFieldValue[]             @relation("TenantRecordFieldValue")
+  custom_reports                  CustomReport[]                 @relation("TenantCustomReport")
+  report_executions               ReportExecution[]              @relation("TenantReportExecution")
+  report_folders                  ReportFolder[]                 @relation("TenantReportFolder")
+  report_subscriptions            ReportSubscription[]           @relation("TenantReportSubscription")
+  report_favorites                ReportFavorite[]               @relation("TenantReportFavorite")
+  social_media_accounts           SocialMediaAccount[]           @relation("TenantSocialMediaAccount")
+  social_media_posts              SocialMediaPost[]              @relation("TenantSocialMediaPost")
+  social_media_mentions           SocialMediaMention[]           @relation("TenantSocialMediaMention")
+  social_media_campaigns          SocialMediaCampaign[]          @relation("TenantSocialMediaCampaign")
+  social_listening_keywords       SocialListeningKeyword[]       @relation("TenantSocialListeningKeyword")
+  social_assignment_rules         SocialAssignmentRule[]         @relation("TenantSocialAssignmentRule")
+  push_notification_logs          PushNotificationLog[]          @relation("TenantPushNotificationLog")
+  // Insurance domain
+  insurance_carriers              InsuranceCarrier[]             @relation("TenantInsuranceCarrier")
+  carrier_products                CarrierProduct[]               @relation("TenantCarrierProduct")
+  insurance_policies              InsurancePolicy[]              @relation("TenantInsurancePolicy")
+  insurance_policy_beneficiaries  InsurancePolicyBeneficiary[]   @relation("TenantInsurancePolicyBeneficiary")
+  insurance_policy_status_history InsurancePolicyStatusHistory[] @relation("TenantInsurancePolicyStatusHistory")
+  insurance_applications          InsuranceApplication[]         @relation("TenantInsuranceApplication")
+  underwriting_cases              UnderwritingCase[]             @relation("TenantUnderwritingCase")
+  underwriting_requirements       UnderwritingRequirement[]      @relation("TenantUnderwritingRequirement")
+  insurance_claims                InsuranceClaim[]               @relation("TenantInsuranceClaim")
+  claim_events                    ClaimEvent[]                   @relation("TenantClaimEvent")
+  commission_entries              CommissionEntry[]              @relation("TenantCommissionEntry")
+  // P0: Rating
+  quote_scenarios                 QuoteScenario[]                @relation("TenantQuoteScenario")
+  // P1: Compliance
+  compliance_artifacts            ComplianceArtifact[]           @relation("TenantComplianceArtifact")
+  submission_checklists           SubmissionChecklist[]          @relation("TenantSubmissionChecklist")
+  // P2: Policy servicing & billing
+  policy_endorsements             PolicyEndorsement[]            @relation("TenantPolicyEndorsement")
+  renewal_tasks                   RenewalTask[]                  @relation("TenantRenewalTask")
+  billing_schedules               BillingSchedule[]              @relation("TenantBillingSchedule")
+  policy_invoices                 PolicyInvoice[]                @relation("TenantPolicyInvoice")
+  policy_payments                 PolicyPayment[]                @relation("TenantPolicyPayment")
+  // P3: Claims ops
+  claim_reserves                  ClaimReserve[]                 @relation("TenantClaimReserve")
+  claim_payment_events            ClaimPaymentEvent[]            @relation("TenantClaimPaymentEvent")
+  // P4: Producer ops
+  producer_appointments           ProducerAppointment[]          @relation("TenantProducerAppointment")
+  commission_statements           CommissionStatement[]          @relation("TenantCommissionStatement")
+  sla_business_hours              SlaBusinessHours[]             @relation("TenantSlaBusinessHours")
+  sla_policies                    SlaPolicy[]                    @relation("TenantSlaPolicy")
+  sla_targets                     SlaTarget[]                    @relation("TenantSlaTarget")
+  sla_escalations                 SlaEscalation[]                @relation("TenantSlaEscalation")
+  sla_instances                   SlaInstance[]                  @relation("TenantSlaInstance")
+
+  @@index([status])
+  @@index([plan])
+  @@index([slug])
+  @@index([industry])
+  @@map("tenants")
+}
+
+/// Key-value configuration per tenant
+model TenantConfig {
+  id           Int      @id @default(autoincrement())
+  tenant_id    Int
+  config_key   String   @db.VarChar(100)
+  config_value String?  @db.Text
+  updated_by   String?  @db.VarChar(20)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, config_key])
+  @@map("tenant_configs")
+}
+
+/// Usage metrics per tenant per period
+model TenantUsage {
+  id          Int      @id @default(autoincrement())
+  tenant_id   Int
+  metric      String   @db.VarChar(50) // api_calls | storage_mb | active_users | records | emails_sent
+  value       Decimal  @db.Decimal(18, 2)
+  period      String   @db.VarChar(20) // 2026-04 | 2026-Q1 | 2026
+  period_type String   @db.VarChar(20) // daily | monthly | quarterly | annual
+  recorded_at DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, metric, period, period_type])
+  @@index([tenant_id])
+  @@index([metric])
+  @@index([period])
+  @@map("tenant_usage")
+}
+
+/// Subscription plans available in the platform
+model SubscriptionPlan {
+  id             Int      @id @default(autoincrement())
+  name           String   @unique @db.VarChar(50) // free | starter | professional | enterprise
+  label          String   @db.VarChar(100)
+  description    String?  @db.Text
+  price_monthly  Decimal  @default(0) @db.Decimal(10, 2)
+  price_annual   Decimal  @default(0) @db.Decimal(10, 2)
+  currency       String   @default("USD") @db.VarChar(10)
+  max_users      Int      @default(5)
+  max_storage_mb Int      @default(500)
+  max_api_calls  Int      @default(10000)
+  max_records    Int      @default(10000)
+  max_workflows  Int      @default(5)
+  max_dashboards Int      @default(3)
+  features       Json? // ["email_templates", "workflow_automation", "api_access"]
+  limits         Json? // additional granular limits
+  is_active      Boolean  @default(true)
+  trial_days     Int      @default(14)
+  order_index    Int      @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([is_active])
+  @@map("subscription_plans")
+}
+
+/// Global feature flags for progressive rollouts
+model FeatureFlag {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique @db.VarChar(100) // e.g. "ai_lead_scoring", "advanced_workflows"
+  label           String   @db.VarChar(200)
+  description     String?  @db.Text
+  category        String   @default("general") @db.VarChar(50) // general | beta | experimental | premium
+  is_enabled      Boolean  @default(false) // global default
+  rollout_percent Int      @default(0) // 0-100 gradual rollout
+  config          Json? // flag-specific settings
+  created_by      String?  @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant_overrides TenantFeatureOverride[]
+
+  @@index([category])
+  @@index([is_enabled])
+  @@map("feature_flags")
+}
+
+/// Per-tenant override of a feature flag
+model TenantFeatureOverride {
+  id         Int      @id @default(autoincrement())
+  tenant_id  Int
+  flag_id    Int
+  is_enabled Boolean
+  config     Json? // tenant-specific flag config
+  updated_by String?  @db.VarChar(20)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  flag   FeatureFlag @relation(fields: [flag_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, flag_id])
+  @@map("tenant_feature_overrides")
+}
+
+/// Platform-level audit log — tracks all platform admin actions
+model PlatformAuditLog {
+  id          Int      @id @default(autoincrement())
+  admin_id    String   @db.VarChar(20) // platform admin employee_id
+  action      String   @db.VarChar(100) // tenant.create | tenant.suspend | user.impersonate | flag.toggle | plan.update | ...
+  target_type String?  @db.VarChar(50) // tenant | user | feature_flag | plan | announcement | security
+  target_id   String?  @db.VarChar(100) // ID of affected entity
+  details     Json? // action-specific payload
+  ip_address  String?  @db.VarChar(45)
+  user_agent  String?  @db.Text
+  created_at  DateTime @default(now())
+
+  @@index([admin_id])
+  @@index([action])
+  @@index([target_type, target_id])
+  @@index([created_at])
+  @@map("platform_audit_logs")
+}
+
+/// System-wide announcements pushed to all tenants / users
+model SystemAnnouncement {
+  id             Int       @id @default(autoincrement())
+  title          String    @db.VarChar(255)
+  message        String    @db.Text
+  severity       String    @default("info") @db.VarChar(20) // info | warning | critical | maintenance
+  type           String    @default("banner") @db.VarChar(50) // banner | modal | toast | page
+  target         String    @default("all") @db.VarChar(50) // all | admins | specific_tenants
+  target_ids     Json? // tenant IDs if target=specific_tenants
+  action_url     String?   @db.VarChar(500)
+  action_label   String?   @db.VarChar(100)
+  is_active      Boolean   @default(true)
+  is_dismissible Boolean   @default(true)
+  active_from    DateTime  @default(now())
+  active_to      DateTime?
+  created_by     String?   @db.VarChar(20)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@index([is_active])
+  @@index([active_from, active_to])
+  @@index([severity])
+  @@map("system_announcements")
+}
+
+/// Impersonation session log — every "login as" action is tracked
+model ImpersonationLog {
+  id               Int       @id @default(autoincrement())
+  admin_id         String    @db.VarChar(20) // platform admin who initiated
+  target_user_id   String    @db.VarChar(20) // user being impersonated
+  target_tenant_id Int?
+  reason           String?   @db.Text
+  started_at       DateTime  @default(now())
+  ended_at         DateTime?
+  actions_taken    Json? // summary of actions during session
+  ip_address       String?   @db.VarChar(45)
+
+  @@index([admin_id])
+  @@index([target_user_id])
+  @@index([started_at])
+  @@map("impersonation_logs")
+}
+
+/// API rate limit configuration per tenant/plan
+model ApiRateLimit {
+  id                  Int      @id @default(autoincrement())
+  name                String   @db.VarChar(100)
+  plan_name           String?  @db.VarChar(50) // NULL = global default
+  tenant_id           Int? // NULL = plan-level default
+  endpoint_pattern    String?  @db.VarChar(255) // e.g. "/api/runtime/*" or NULL for all
+  requests_per_minute Int      @default(60)
+  requests_per_hour   Int      @default(1000)
+  requests_per_day    Int      @default(10000)
+  burst_limit         Int      @default(100)
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@index([plan_name])
+  @@index([tenant_id])
+  @@map("api_rate_limits")
+}
+
+/// Security policy enforcement per tenant
+model SecurityPolicy {
+  id                       Int      @id @default(autoincrement())
+  tenant_id                Int? // NULL = global default
+  require_mfa              Boolean  @default(false)
+  password_min_length      Int      @default(8)
+  password_require_upper   Boolean  @default(true)
+  password_require_number  Boolean  @default(true)
+  password_require_special Boolean  @default(false)
+  password_expiry_days     Int      @default(0) // 0 = never expires
+  max_login_attempts       Int      @default(5)
+  lockout_duration_min     Int      @default(30)
+  session_timeout_min      Int      @default(480) // 8 hours
+  ip_allowlist             Json? // ["192.168.1.0/24"]
+  ip_blocklist             Json?
+  allowed_domains          Json? // email domain restrictions
+  force_password_reset     Boolean  @default(false)
+  is_active                Boolean  @default(true)
+  updated_by               String?  @db.VarChar(20)
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+
+  @@index([tenant_id])
+  @@map("security_policies")
+}
+
+/// Data export / backup request tracking
+model DataExportRequest {
+  id           Int       @id @default(autoincrement())
+  tenant_id    Int?
+  requested_by String    @db.VarChar(20)
+  export_type  String    @db.VarChar(50) // full_backup | partial | gdpr_export | gdpr_delete
+  scope        Json? // { tables: [...], date_range: {...} }
+  status       String    @default("pending") @db.VarChar(50) // pending | processing | completed | failed | expired
+  file_path    String?   @db.VarChar(500)
+  file_size    BigInt?
+  error        String?   @db.Text
+  expires_at   DateTime?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([requested_by])
+  @@map("data_export_requests")
+}
+
+/// Admin-sent push notification log — history of manual notifications
+model PushNotificationLog {
+  id              Int      @id @default(autoincrement())
+  title           String   @db.VarChar(200)
+  body            String?  @db.Text
+  link            String?  @db.VarChar(500)
+  target_type     String   @db.VarChar(20) // all | role | employee
+  target_value    Json? // role names or employee IDs
+  recipient_count Int      @default(0)
+  sent_by         String   @db.VarChar(20) // admin employee_id
+  created_at      DateTime @default(now())
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantPushNotificationLog", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([sent_by])
+  @@map("push_notification_logs")
+}
+
+// ============================================================
+// INSURANCE DOMAIN TABLES
+// First-class insurance CRM / AMS domain models.
+// Each entity that hosts activities/tasks/documents gets a 
+// record_id bridge → records.id  (same pattern as CRM entities).
+// ============================================================
+
+/// Insurance carrier / insurer company
+model InsuranceCarrier {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(255)
+  code           String   @db.VarChar(50) // short identifier e.g. "PRUD"
+  naic_code      String?  @db.VarChar(10) // NAIC company code
+  am_best_rating String?  @db.VarChar(10) // A++, A+, A, A-, B++, …
+  carrier_type   String   @default("life") @db.VarChar(50) // life | health | p_and_c | multi_line
+  phone          String?  @db.VarChar(50)
+  email          String?  @db.VarChar(100)
+  website        String?  @db.VarChar(255)
+  is_active      Boolean  @default(true)
+  created_by     String?  @db.VarChar(20)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  carrier_products      CarrierProduct[]
+  policies              InsurancePolicy[]
+  applications          InsuranceApplication[]
+  commissions           CommissionEntry[]
+  producer_appointments ProducerAppointment[]
+  commission_statements CommissionStatement[]
+  adapter_config        CarrierAdapterConfig?
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsuranceCarrier", fields: [tenant_id], references: [id])
+
+  @@unique([code, tenant_id])
+  @@index([is_active])
+  @@index([tenant_id])
+  @@map("insurance_carriers")
+}
+
+/// Per-carrier adapter integration configuration.
+/// Controls how the rating engine sources quotes for this carrier:
+///   - simulated  : internal engine with carrier-specific rate adjustments (default)
+///   - api        : real carrier REST API integration (requires apiBaseUrl + env key)
+///   - disabled   : carrier excluded from interactive rating
+///
+/// Secrets (API keys) are NEVER stored here. Only the env-var name is stored, and
+/// the runtime reads process.env[api_key_env_var] at boot time.
+model CarrierAdapterConfig {
+  id                   Int       @id @default(autoincrement())
+  carrier_id           Int       @unique
+  adapter_type         String    @default("simulated") @db.VarChar(30) // simulated | api | disabled
+  api_base_url         String?   @db.VarChar(500) // HTTPS endpoint for real carrier API
+  api_key_env_var      String?   @db.VarChar(100) // env var NAME e.g. "CARRIER_GLA_API_KEY"
+  timeout_ms           Int       @default(10000)
+  is_enabled           Boolean   @default(true)
+  environment          String    @default("sandbox") @db.VarChar(20) // sandbox | production
+  supported_products   Json? // array of product_type strings this adapter handles
+  notes                String?   @db.Text // free-text admin notes
+  last_health_check_at DateTime?
+  health_status        String?   @db.VarChar(20) // ok | error | unconfigured | degraded | unknown
+  health_detail        String?   @db.Text // last error message or success detail
+  updated_at           DateTime  @updatedAt
+  created_at           DateTime  @default(now())
+
+  carrier InsuranceCarrier @relation(fields: [carrier_id], references: [id], onDelete: Cascade)
+
+  @@map("carrier_adapter_configs")
+}
+
+/// Carrier-specific product (maps to a carrier's filing / plan code)
+model CarrierProduct {
+  id           Int      @id @default(autoincrement())
+  carrier_id   Int
+  product_type String   @db.VarChar(50) // term_life | whole_life | universal_life | variable_life | iul | final_expense
+  name         String   @db.VarChar(255)
+  plan_code    String?  @db.VarChar(100) // carrier's internal plan code
+  description  String?  @db.Text
+  min_coverage Decimal? @db.Decimal(18, 2)
+  max_coverage Decimal? @db.Decimal(18, 2)
+  min_age      Int?
+  max_age      Int?
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  carrier      InsuranceCarrier       @relation(fields: [carrier_id], references: [id], onDelete: Cascade)
+  policies     InsurancePolicy[]
+  applications InsuranceApplication[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCarrierProduct", fields: [tenant_id], references: [id])
+
+  @@index([carrier_id])
+  @@index([product_type])
+  @@index([tenant_id])
+  @@map("carrier_products")
+}
+
+/// First-class insurance policy (issued, in-force or terminal)
+model InsurancePolicy {
+  id                 Int       @id @default(autoincrement())
+  record_id          Int?      @unique // bridge → records.id (activities/tasks/docs)
+  policy_number      String    @db.VarChar(100)
+  carrier_id         Int?
+  carrier_product_id Int?
+  contact_id         Int? // policyholder → crm_contacts
+  account_id         Int? // corporate owner → crm_accounts
+  agent_id           String?   @db.VarChar(20) // producer → employees
+  application_id     Int?      @unique
+  product_type       String    @db.VarChar(50) // term_life | whole_life | universal_life | variable_life | iul | final_expense
+  product_name       String?   @db.VarChar(255)
+  coverage_amount    Decimal   @db.Decimal(18, 2)
+  premium_amount     Decimal   @db.Decimal(18, 2)
+  premium_frequency  String    @default("monthly") @db.VarChar(20) // monthly | quarterly | semi_annual | annual
+  status             String    @default("active") @db.VarChar(30) // pending | active | lapsed | surrendered | matured | cancelled
+  effective_date     DateTime  @db.Date
+  expiry_date        DateTime? @db.Date
+  renewal_due_date   DateTime? @db.Date
+  is_lapsed          Boolean   @default(false)
+  lapsed_at          DateTime?
+  reinstated_at      DateTime?
+  surrender_value    Decimal?  @db.Decimal(18, 2)
+  death_benefit      Decimal?  @db.Decimal(18, 2)
+  last_payment_date  DateTime? @db.Date
+  notes              String?   @db.Text
+  created_by         String?   @db.VarChar(20)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  record               Record?                        @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  carrier              InsuranceCarrier?              @relation(fields: [carrier_id], references: [id], onDelete: SetNull)
+  carrier_product      CarrierProduct?                @relation(fields: [carrier_product_id], references: [id], onDelete: SetNull)
+  contact              CrmContact?                    @relation("PolicyContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  account              CrmAccount?                    @relation("PolicyAccount", fields: [account_id], references: [id], onDelete: SetNull)
+  agent                Employee?                      @relation("PolicyAgent", fields: [agent_id], references: [employee_id], onDelete: SetNull)
+  application          InsuranceApplication?          @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  beneficiaries        InsurancePolicyBeneficiary[]
+  status_history       InsurancePolicyStatusHistory[]
+  claims               InsuranceClaim[]
+  commissions          CommissionEntry[]
+  endorsements         PolicyEndorsement[]
+  renewal_tasks        RenewalTask[]
+  billing_schedule     BillingSchedule?
+  invoices             PolicyInvoice[]
+  compliance_artifacts ComplianceArtifact[]           @relation("PolicyCompliance")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsurancePolicy", fields: [tenant_id], references: [id])
+
+  @@unique([policy_number, tenant_id])
+  @@index([contact_id])
+  @@index([agent_id])
+  @@index([status])
+  @@index([carrier_id])
+  @@index([renewal_due_date])
+  @@index([tenant_id])
+  @@map("insurance_policies")
+}
+
+/// Beneficiaries on a policy
+model InsurancePolicyBeneficiary {
+  id               Int       @id @default(autoincrement())
+  policy_id        Int
+  name             String    @db.VarChar(255)
+  relationship     String?   @db.VarChar(100) // spouse | child | parent | sibling | trust | other
+  beneficiary_type String    @default("primary") @db.VarChar(20) // primary | contingent
+  allocation_pct   Decimal   @default(100) @db.Decimal(5, 2) // 0-100
+  contact_id       Int? // link to existing CrmContact
+  date_of_birth    DateTime? @db.Date
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  policy  InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  contact CrmContact?     @relation("BeneficiaryContact", fields: [contact_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsurancePolicyBeneficiary", fields: [tenant_id], references: [id])
+
+  @@index([policy_id])
+  @@index([tenant_id])
+  @@map("insurance_policy_beneficiaries")
+}
+
+/// Auditable status history for a policy
+model InsurancePolicyStatusHistory {
+  id          Int      @id @default(autoincrement())
+  policy_id   Int
+  from_status String?  @db.VarChar(30)
+  to_status   String   @db.VarChar(30)
+  reason      String?  @db.Text
+  changed_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+
+  policy InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsurancePolicyStatusHistory", fields: [tenant_id], references: [id])
+
+  @@index([policy_id])
+  @@index([tenant_id])
+  @@map("insurance_policy_status_history")
+}
+
+/// Insurance application — pre-policy intake and underwriting queue
+model InsuranceApplication {
+  id                 Int       @id @default(autoincrement())
+  record_id          Int?      @unique // bridge → records.id
+  app_number         String    @db.VarChar(100)
+  contact_id         Int? // applicant → crm_contacts
+  account_id         Int?
+  agent_id           String?   @db.VarChar(20) // producer → employees
+  carrier_id         Int?
+  carrier_product_id Int?
+  product_type       String    @db.VarChar(50)
+  product_name       String?   @db.VarChar(255)
+  coverage_amount    Decimal   @db.Decimal(18, 2)
+  premium_amount     Decimal?  @db.Decimal(18, 2)
+  status             String    @default("submitted") @db.VarChar(30) // submitted | under_review | pending_medical | approved | declined | withdrawn | issued
+  submitted_at       DateTime  @default(now())
+  age                Int?
+  gender             String?   @db.VarChar(20) // male | female | non_binary
+  date_of_birth      DateTime? @db.Date
+  is_smoker          Boolean   @default(false)
+  health_class       String?   @db.VarChar(30) // preferred_plus | preferred | standard_plus | standard | substandard
+  term_years         Int?
+  payment_frequency  String?   @db.VarChar(20) // monthly | quarterly | semi_annual | annual
+  height_in          Int?
+  weight_lbs         Int?
+  notes              String?   @db.Text
+  created_by         String?   @db.VarChar(20)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  record                Record?               @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  contact               CrmContact?           @relation("ApplicationContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  account               CrmAccount?           @relation("ApplicationAccount", fields: [account_id], references: [id], onDelete: SetNull)
+  agent                 Employee?             @relation("ApplicationAgent", fields: [agent_id], references: [employee_id], onDelete: SetNull)
+  carrier               InsuranceCarrier?     @relation(fields: [carrier_id], references: [id], onDelete: SetNull)
+  carrier_product       CarrierProduct?       @relation(fields: [carrier_product_id], references: [id], onDelete: SetNull)
+  underwriting_case     UnderwritingCase?
+  policy                InsurancePolicy?
+  commissions           CommissionEntry[]
+  quote_scenarios       QuoteScenario[]
+  compliance_artifacts  ComplianceArtifact[]  @relation("AppCompliance")
+  submission_checklist  SubmissionChecklist[]
+  application_documents Document[]            @relation("AppDocuments")
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsuranceApplication", fields: [tenant_id], references: [id])
+
+  @@unique([app_number, tenant_id])
+  @@index([contact_id])
+  @@index([agent_id])
+  @@index([status])
+  @@index([carrier_id])
+  @@index([tenant_id])
+  @@map("insurance_applications")
+}
+
+/// Underwriting case — created from an application, drives the UW decision
+model UnderwritingCase {
+  id                   Int       @id @default(autoincrement())
+  case_number          String    @db.VarChar(100)
+  application_id       Int       @unique // one case per application
+  assigned_underwriter String?   @db.VarChar(20) // employee_id
+  status               String    @default("pending") @db.VarChar(30) // pending | in_progress | approved | declined | referred
+  risk_class           String?   @db.VarChar(30) // preferred_plus | preferred | standard | substandard | high_risk | decline
+  bmi                  Float?
+  blood_pressure       String?   @db.VarChar(30)
+  cholesterol          Int?
+  medical_conditions   String?   @db.Text
+  medications          String?   @db.Text
+  family_history       String?   @db.Text
+  decision_notes       String?   @db.Text
+  decided_at           DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  application          InsuranceApplication      @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  underwriter_employee Employee?                 @relation("UWCaseUnderwriter", fields: [assigned_underwriter], references: [employee_id], onDelete: SetNull)
+  requirements         UnderwritingRequirement[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUnderwritingCase", fields: [tenant_id], references: [id])
+
+  @@unique([case_number, tenant_id])
+  @@index([status])
+  @@index([assigned_underwriter])
+  @@index([tenant_id])
+  @@map("underwriting_cases")
+}
+
+/// Checklist item / requirement on an underwriting case
+model UnderwritingRequirement {
+  id               Int       @id @default(autoincrement())
+  case_id          Int
+  description      String    @db.VarChar(500)
+  requirement_type String    @db.VarChar(50) // medical_exam | lab_work | records | attending_physician | inspection | other
+  status           String    @default("pending") @db.VarChar(30) // pending | received | waived | not_required
+  due_date         DateTime? @db.Date
+  received_at      DateTime?
+  notes            String?   @db.Text
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  uw_case UnderwritingCase @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantUnderwritingRequirement", fields: [tenant_id], references: [id])
+
+  @@index([case_id])
+  @@index([tenant_id])
+  @@map("underwriting_requirements")
+}
+
+/// Insurance claim filed against a policy
+model InsuranceClaim {
+  id                    Int       @id @default(autoincrement())
+  record_id             Int?      @unique // bridge → records.id
+  claim_number          String    @db.VarChar(100)
+  policy_id             Int
+  contact_id            Int? // claimant → crm_contacts
+  claim_type            String    @db.VarChar(50) // death | disability | critical_illness | accident | other
+  amount                Decimal   @db.Decimal(18, 2)
+  status                String    @default("filed") @db.VarChar(30) // fnol | filed | under_investigation | approved | denied | paid | closed
+  priority              String    @default("medium") @db.VarChar(20) // high | medium | low
+  adjuster_id           String?   @db.VarChar(20) // employee_id
+  filed_at              DateTime  @default(now())
+  description           String?   @db.Text
+  paid_at               DateTime?
+  paid_amount           Decimal?  @db.Decimal(18, 2)
+  denial_reason         String?   @db.Text
+  // FNOL (First Notice of Loss) fields
+  reporter_name         String?   @db.VarChar(255)
+  reporter_phone        String?   @db.VarChar(50)
+  reporter_relationship String?   @db.VarChar(100) // insured | beneficiary | third_party | agent
+  loss_date             DateTime? @db.Date
+  loss_location         String?   @db.VarChar(500)
+  loss_description      String?   @db.Text
+  fnol_received_at      DateTime?
+  // Reserve & fraud/litigation
+  reserve_amount        Decimal?  @db.Decimal(18, 2)
+  is_fraud_flagged      Boolean   @default(false)
+  is_litigation         Boolean   @default(false)
+  litigation_details    String?   @db.Text
+  created_by            String?   @db.VarChar(20)
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  record         Record?             @relation(fields: [record_id], references: [id], onDelete: SetNull)
+  policy         InsurancePolicy     @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  contact        CrmContact?         @relation("ClaimContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  adjuster       Employee?           @relation("ClaimAdjuster", fields: [adjuster_id], references: [employee_id], onDelete: SetNull)
+  events         ClaimEvent[]
+  reserves       ClaimReserve[]
+  payment_events ClaimPaymentEvent[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantInsuranceClaim", fields: [tenant_id], references: [id])
+
+  @@unique([claim_number, tenant_id])
+  @@index([policy_id])
+  @@index([status])
+  @@index([claim_type])
+  @@index([adjuster_id])
+  @@index([tenant_id])
+  @@map("insurance_claims")
+}
+
+/// Timeline event on a claim
+model ClaimEvent {
+  id          Int      @id @default(autoincrement())
+  claim_id    Int
+  event_type  String   @db.VarChar(50) // filed | note | document_received | decision | payment | other
+  description String   @db.VarChar(500)
+  created_by  String?  @db.VarChar(20)
+  created_at  DateTime @default(now())
+
+  claim InsuranceClaim @relation(fields: [claim_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantClaimEvent", fields: [tenant_id], references: [id])
+
+  @@index([claim_id])
+  @@index([tenant_id])
+  @@map("claim_events")
+}
+
+/// Commission entry: one per producer event (policy issued / application approved)
+model CommissionEntry {
+  id                Int       @id @default(autoincrement())
+  agent_id          String    @db.VarChar(20) // employee_id (producer)
+  policy_id         Int?
+  application_id    Int?
+  carrier_id        Int?
+  product_type      String    @db.VarChar(50)
+  commission_type   String    @default("first_year") @db.VarChar(30) // first_year | renewal | override | bonus
+  source_premium    Decimal   @db.Decimal(18, 2) // premium this commission is based on
+  commission_rate   Decimal   @db.Decimal(5, 2) // e.g. 55.00 for 55%
+  commission_amount Decimal   @db.Decimal(18, 2)
+  expected_amount   Decimal?  @db.Decimal(18, 2) // expected from rate schedule
+  variance          Decimal?  @db.Decimal(18, 2) // actual - expected
+  commission_period String    @db.VarChar(7) // "2026-03"
+  status            String    @default("pending") @db.VarChar(20) // pending | paid | clawed_back
+  paid_at           DateTime?
+  clawback_reason   String?   @db.Text
+  split_agent_id    String?   @db.VarChar(20) // co-producer (optional split)
+  split_percent     Decimal?  @db.Decimal(5, 2) // % of commission_amount to split_agent
+  statement_id      Int? // link to carrier CommissionStatement
+  notes             String?   @db.Text
+  created_by        String?   @db.VarChar(20)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  agent       Employee              @relation("CommissionAgent", fields: [agent_id], references: [employee_id])
+  split_agent Employee?             @relation("CommissionSplitAgent", fields: [split_agent_id], references: [employee_id], onDelete: SetNull)
+  policy      InsurancePolicy?      @relation(fields: [policy_id], references: [id], onDelete: SetNull)
+  application InsuranceApplication? @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  carrier     InsuranceCarrier?     @relation(fields: [carrier_id], references: [id], onDelete: SetNull)
+  statement   CommissionStatement?  @relation(fields: [statement_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCommissionEntry", fields: [tenant_id], references: [id])
+
+  @@index([agent_id])
+  @@index([policy_id])
+  @@index([application_id])
+  @@index([status])
+  @@index([commission_period])
+  @@index([statement_id])
+  @@index([tenant_id])
+  @@map("commission_entries")
+}
+
+// ============================================================
+// P0 — QUOTE SCENARIOS (rating architecture)
+// ============================================================
+
+/// Persisted rated-quote scenario with full input/output for comparison and audit
+model QuoteScenario {
+  id                Int      @id @default(autoincrement())
+  scenario_ref      String   @db.VarChar(100)
+  contact_id        Int?
+  application_id    Int?
+  product_type      String   @db.VarChar(50)
+  coverage_amount   Decimal  @db.Decimal(18, 2)
+  term_years        Int?
+  payment_frequency String   @default("monthly") @db.VarChar(20)
+  applicant_data    Json // { age, gender, smoker_status, health_class }
+  riders            Json? // ["waiver_of_premium", ...]
+  rate_source       String   @default("internal") @db.VarChar(50) // internal | carrier_api | manual
+  rate_source_meta  Json? // { adapter, version, rated_at }
+  quote_result      Json // full quote output
+  monthly_premium   Decimal  @db.Decimal(18, 2)
+  annual_premium    Decimal  @db.Decimal(18, 2)
+  status            String   @default("active") @db.VarChar(20) // active | expired | converted
+  valid_until       DateTime
+  comparison_group  String?  @db.VarChar(100)
+  created_by        String?  @db.VarChar(20)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  contact     CrmContact?           @relation("ScenarioContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  application InsuranceApplication? @relation(fields: [application_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantQuoteScenario", fields: [tenant_id], references: [id])
+
+  @@unique([scenario_ref, tenant_id])
+  @@index([contact_id])
+  @@index([application_id])
+  @@index([product_type])
+  @@index([status])
+  @@index([comparison_group])
+  @@index([tenant_id])
+  @@map("quote_scenarios")
+}
+
+// ============================================================
+// P1 — COMPLIANCE & SUBMISSION PACK
+// ============================================================
+
+/// Regulatory compliance artifact (SOA, consent, e-sign, attestation, disclosure)
+model ComplianceArtifact {
+  id              Int       @id @default(autoincrement())
+  artifact_type   String    @db.VarChar(50) // soa | consent | attestation | esign | disclosure
+  contact_id      Int?
+  application_id  Int?
+  policy_id       Int?
+  document_id     Int?
+  status          String    @default("pending") @db.VarChar(30) // pending | completed | expired | waived
+  completed_at    DateTime?
+  expires_at      DateTime?
+  signed_by       String?   @db.VarChar(255)
+  signature_ip    String?   @db.VarChar(45)
+  retention_until DateTime?
+  metadata        Json?
+  notes           String?   @db.Text
+  created_by      String?   @db.VarChar(20)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  contact     CrmContact?           @relation("ComplianceContact", fields: [contact_id], references: [id], onDelete: SetNull)
+  application InsuranceApplication? @relation("AppCompliance", fields: [application_id], references: [id], onDelete: SetNull)
+  policy      InsurancePolicy?      @relation("PolicyCompliance", fields: [policy_id], references: [id], onDelete: SetNull)
+  document    Document?             @relation("ComplianceDocument", fields: [document_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantComplianceArtifact", fields: [tenant_id], references: [id])
+
+  @@index([contact_id])
+  @@index([application_id])
+  @@index([policy_id])
+  @@index([artifact_type])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("compliance_artifacts")
+}
+
+/// Per-application submission readiness checklist
+model SubmissionChecklist {
+  id             Int       @id @default(autoincrement())
+  application_id Int
+  item_name      String    @db.VarChar(255)
+  item_type      String    @db.VarChar(50) // document | compliance | info | signature
+  is_required    Boolean   @default(true)
+  status         String    @default("pending") @db.VarChar(30) // pending | received | waived | na
+  document_id    Int?
+  received_at    DateTime?
+  waived_by      String?   @db.VarChar(20)
+  waived_reason  String?   @db.Text
+  notes          String?   @db.Text
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  application InsuranceApplication @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  document    Document?            @relation("ChecklistDocument", fields: [document_id], references: [id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSubmissionChecklist", fields: [tenant_id], references: [id])
+
+  @@index([application_id])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("submission_checklists")
+}
+
+// ============================================================
+// P2 — POLICY SERVICING & BILLING
+// ============================================================
+
+/// Policy endorsement / modification request
+model PolicyEndorsement {
+  id               Int       @id @default(autoincrement())
+  endorsement_ref  String    @db.VarChar(100)
+  policy_id        Int
+  endorsement_type String    @db.VarChar(50) // beneficiary_change | coverage_increase | coverage_decrease | rider_add | rider_remove | address_change | name_change | other
+  description      String    @db.Text
+  effective_date   DateTime  @db.Date
+  status           String    @default("pending") @db.VarChar(30) // pending | approved | applied | rejected
+  old_values       Json?
+  new_values       Json?
+  premium_impact   Decimal?  @db.Decimal(18, 2)
+  approved_by      String?   @db.VarChar(20)
+  applied_at       DateTime?
+  notes            String?   @db.Text
+  created_by       String?   @db.VarChar(20)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  policy   InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  approver Employee?       @relation("EndorsementApprover", fields: [approved_by], references: [employee_id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantPolicyEndorsement", fields: [tenant_id], references: [id])
+
+  @@unique([endorsement_ref, tenant_id])
+  @@index([policy_id])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("policy_endorsements")
+}
+
+/// Renewal task for an upcoming policy renewal
+model RenewalTask {
+  id              Int       @id @default(autoincrement())
+  policy_id       Int
+  agent_id        String?   @db.VarChar(20)
+  renewal_date    DateTime  @db.Date
+  status          String    @default("upcoming") @db.VarChar(30) // upcoming | in_progress | renewed | lapsed | not_renewing
+  outreach_count  Int       @default(0)
+  last_contacted  DateTime?
+  renewal_premium Decimal?  @db.Decimal(18, 2)
+  notes           String?   @db.Text
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  policy InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  agent  Employee?       @relation("RenewalAgent", fields: [agent_id], references: [employee_id], onDelete: SetNull)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantRenewalTask", fields: [tenant_id], references: [id])
+
+  @@index([policy_id])
+  @@index([agent_id])
+  @@index([renewal_date])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("renewal_tasks")
+}
+
+/// Billing schedule for a policy (1:1)
+model BillingSchedule {
+  id                Int      @id @default(autoincrement())
+  policy_id         Int      @unique
+  frequency         String   @db.VarChar(20)
+  amount_due        Decimal  @db.Decimal(18, 2)
+  next_due_date     DateTime @db.Date
+  auto_pay          Boolean  @default(false)
+  grace_period_days Int      @default(31)
+  status            String   @default("active") @db.VarChar(20) // active | suspended | closed
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  policy   InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  invoices PolicyInvoice[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantBillingSchedule", fields: [tenant_id], references: [id])
+
+  @@index([next_due_date])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("billing_schedules")
+}
+
+/// Invoice generated from a billing schedule
+model PolicyInvoice {
+  id                  Int       @id @default(autoincrement())
+  invoice_number      String    @db.VarChar(100)
+  billing_schedule_id Int
+  policy_id           Int
+  amount              Decimal   @db.Decimal(18, 2)
+  due_date            DateTime  @db.Date
+  status              String    @default("pending") @db.VarChar(30) // pending | paid | overdue | void | waived
+  paid_at             DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  billing_schedule BillingSchedule @relation(fields: [billing_schedule_id], references: [id], onDelete: Cascade)
+  policy           InsurancePolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  payments         PolicyPayment[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantPolicyInvoice", fields: [tenant_id], references: [id])
+
+  @@unique([invoice_number, tenant_id])
+  @@index([billing_schedule_id])
+  @@index([policy_id])
+  @@index([status])
+  @@index([due_date])
+  @@index([tenant_id])
+  @@map("policy_invoices")
+}
+
+/// Payment against a policy invoice
+model PolicyPayment {
+  id             Int      @id @default(autoincrement())
+  invoice_id     Int
+  payment_ref    String?  @db.VarChar(100)
+  amount         Decimal  @db.Decimal(18, 2)
+  payment_method String?  @db.VarChar(50) // ach | check | credit_card | wire
+  payment_date   DateTime @default(now())
+  notes          String?  @db.Text
+  created_by     String?  @db.VarChar(20)
+  created_at     DateTime @default(now())
+
+  invoice PolicyInvoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantPolicyPayment", fields: [tenant_id], references: [id])
+
+  @@index([invoice_id])
+  @@index([tenant_id])
+  @@map("policy_payments")
+}
+
+// ============================================================
+// P3 — CLAIMS OPS (reserve + payment events)
+// ============================================================
+
+/// Reserve tracking entries on a claim (initial set + adjustments)
+model ClaimReserve {
+  id            Int      @id @default(autoincrement())
+  claim_id      Int
+  reserve_type  String   @db.VarChar(50) // initial | adjustment | release
+  amount        Decimal  @db.Decimal(18, 2)
+  running_total Decimal  @db.Decimal(18, 2)
+  reason        String?  @db.Text
+  created_by    String?  @db.VarChar(20)
+  created_at    DateTime @default(now())
+
+  claim InsuranceClaim @relation(fields: [claim_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantClaimReserve", fields: [tenant_id], references: [id])
+
+  @@index([claim_id])
+  @@index([tenant_id])
+  @@map("claim_reserves")
+}
+
+/// Payment events on a claim (partial, settlement, final, recovery)
+model ClaimPaymentEvent {
+  id           Int      @id @default(autoincrement())
+  claim_id     Int
+  payment_type String   @db.VarChar(50) // partial | settlement | final | recovery
+  amount       Decimal  @db.Decimal(18, 2)
+  payee_name   String?  @db.VarChar(255)
+  payment_ref  String?  @db.VarChar(100)
+  payment_date DateTime @default(now())
+  notes        String?  @db.Text
+  created_by   String?  @db.VarChar(20)
+  created_at   DateTime @default(now())
+
+  claim InsuranceClaim @relation(fields: [claim_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantClaimPaymentEvent", fields: [tenant_id], references: [id])
+
+  @@index([claim_id])
+  @@index([tenant_id])
+  @@map("claim_payment_events")
+}
+
+// ============================================================
+// P4 — PRODUCER / CARRIER OPS
+// ============================================================
+
+/// Producer appointment / licensing per carrier per state
+model ProducerAppointment {
+  id                 Int       @id @default(autoincrement())
+  agent_id           String    @db.VarChar(20)
+  carrier_id         Int
+  state_code         String    @db.VarChar(5)
+  license_number     String?   @db.VarChar(100)
+  license_type       String?   @db.VarChar(50) // life | health | p_and_c | variable
+  appointment_status String    @default("active") @db.VarChar(30) // active | pending | terminated | suspended
+  appointed_at       DateTime? @db.Date
+  expires_at         DateTime? @db.Date
+  terminated_at      DateTime?
+  notes              String?   @db.Text
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  agent   Employee         @relation("AgentAppointment", fields: [agent_id], references: [employee_id])
+  carrier InsuranceCarrier @relation(fields: [carrier_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantProducerAppointment", fields: [tenant_id], references: [id])
+
+  @@unique([agent_id, carrier_id, state_code, tenant_id])
+  @@index([agent_id])
+  @@index([carrier_id])
+  @@index([appointment_status])
+  @@index([tenant_id])
+  @@map("producer_appointments")
+}
+
+/// Carrier commission statement for reconciliation
+model CommissionStatement {
+  id               Int       @id @default(autoincrement())
+  statement_ref    String    @db.VarChar(100)
+  carrier_id       Int
+  statement_period String    @db.VarChar(7) // "2026-03"
+  received_date    DateTime  @db.Date
+  total_expected   Decimal   @db.Decimal(18, 2)
+  total_actual     Decimal   @db.Decimal(18, 2)
+  variance         Decimal   @db.Decimal(18, 2)
+  status           String    @default("pending") @db.VarChar(30) // pending | reconciled | disputed
+  reconciled_at    DateTime?
+  reconciled_by    String?   @db.VarChar(20)
+  notes            String?   @db.Text
+  created_by       String?   @db.VarChar(20)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  carrier     InsuranceCarrier  @relation(fields: [carrier_id], references: [id], onDelete: Cascade)
+  commissions CommissionEntry[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantCommissionStatement", fields: [tenant_id], references: [id])
+
+  @@unique([statement_ref, tenant_id])
+  @@index([carrier_id])
+  @@index([statement_period])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("commission_statements")
+}
+
+// ============================================================
+// P6 — APPLICATION DOCUMENTS
+// ============================================================
+//
+// Insurance application documents are now stored in the unified `Document`
+// model (see above) via `application_id` / `entity_type = "application"`.
+// The former `ApplicationDocument` model / `application_documents` table has
+// been consolidated away — see migration `unify_document_storage`.
+
+// ============================================================
+// SLA ENGINE  (configurable service-level agreements)
+// Timers attach to cases / leads / tasks. A background reconciler
+// (60s tick, see SlaService) computes business-hours-aware due
+// dates, flags at-risk / breached instances, and runs escalations.
+// ============================================================
+
+/// A working-hours calendar. SLA clocks only tick inside these windows.
+/// Timezone is stored as a fixed UTC offset (minutes) to stay DST-free and
+/// dependency-free; `timezone_label` is for display only.
+model SlaBusinessHours {
+  id                 Int      @id @default(autoincrement())
+  name               String   @db.VarChar(100)
+  timezone_label     String   @default("UTC") @db.VarChar(50)
+  utc_offset_minutes Int      @default(0) // e.g. 330 = IST (+05:30)
+  /// { "mon": [["09:00","17:00"]], "tue": [...], ... }  omitted/empty day = non-working
+  weekly             Json
+  /// ["2026-12-25", "2026-01-01"] — full non-working days (local calendar)
+  holidays           Json?
+  is_default         Boolean  @default(false)
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  policies SlaPolicy[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSlaBusinessHours", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@map("sla_business_hours")
+}
+
+/// A configurable SLA policy. First matching active policy (by order_index)
+/// for a record wins. `conditions` is an AND-list evaluated against the record.
+model SlaPolicy {
+  id                Int      @id @default(autoincrement())
+  name              String   @db.VarChar(150)
+  description       String?  @db.Text
+  entity_type       String   @db.VarChar(20) // case | lead | task
+  is_active         Boolean  @default(true)
+  order_index       Int      @default(0)
+  /// [{ "field": "priority", "op": "equals", "value": "high" }, ...]  (AND)
+  conditions        Json?
+  /// Record statuses that PAUSE the clock (e.g. ["on_hold"] for cases)
+  pause_statuses    Json?
+  business_hours_id Int?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  business_hours SlaBusinessHours? @relation(fields: [business_hours_id], references: [id], onDelete: SetNull)
+  targets        SlaTarget[]
+  escalations    SlaEscalation[]
+  instances      SlaInstance[]
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSlaPolicy", fields: [tenant_id], references: [id])
+
+  @@index([tenant_id, entity_type, is_active, order_index])
+  @@map("sla_policies")
+}
+
+/// Target minutes for a metric at a given priority dimension.
+/// `priority` = "*" means "any / default". For cases the dimension is
+/// priority, for leads it is rating, for tasks it is priority.
+model SlaTarget {
+  id             Int    @id @default(autoincrement())
+  policy_id      Int
+  metric         String @db.VarChar(30) // first_response | resolution
+  priority       String @default("*") @db.VarChar(20)
+  target_minutes Int
+  warning_pct    Int    @default(80) // % of target elapsed → "at risk"
+
+  policy SlaPolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSlaTarget", fields: [tenant_id], references: [id])
+
+  @@unique([policy_id, metric, priority])
+  @@index([policy_id])
+  @@index([tenant_id])
+  @@map("sla_targets")
+}
+
+/// An automated action fired when a metric hits a warning or breach.
+model SlaEscalation {
+  id          Int    @id @default(autoincrement())
+  policy_id   Int
+  metric      String @db.VarChar(30) // first_response | resolution | * (any)
+  trigger     String @db.VarChar(20) // warning | breach
+  action      String @db.VarChar(40) // notify_owner | notify_manager | raise_priority | create_task
+  /// action-specific config, e.g. { "role": "manager" } or { "levels": 1 }
+  config      Json?
+  order_index Int    @default(0)
+
+  policy SlaPolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSlaEscalation", fields: [tenant_id], references: [id])
+
+  @@index([policy_id])
+  @@index([tenant_id])
+  @@map("sla_escalations")
+}
+
+/// A live SLA timer for one (record, metric). Created/updated by the reconciler.
+model SlaInstance {
+  id             Int       @id @default(autoincrement())
+  policy_id      Int
+  entity_type    String    @db.VarChar(20) // case | lead | task
+  entity_id      Int
+  metric         String    @db.VarChar(30) // first_response | resolution
+  priority       String    @db.VarChar(20) // dimension value at creation
+  owner_id       String?   @db.VarChar(20) // record owner/assignee at last sync
+  target_minutes Int
+  started_at     DateTime // record creation (clock start)
+  due_at         DateTime // business-hours-aware deadline
+  warning_at     DateTime // at-risk threshold
+  paused_at      DateTime? // set while clock is paused
+  status         String    @default("running") @db.VarChar(20) // running | paused | met | breached | canceled
+  warned         Boolean   @default(false)
+  breached       Boolean   @default(false)
+  completed_at   DateTime? // when met
+  breached_at    DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  policy SlaPolicy @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+
+  tenant_id Int
+  tenant    Tenant @relation("TenantSlaInstance", fields: [tenant_id], references: [id])
+
+  @@unique([entity_type, entity_id, metric])
+  @@index([tenant_id, status])
+  @@index([status, due_at])
+  @@index([owner_id])
+  @@index([policy_id])
+  @@map("sla_instances")
+}

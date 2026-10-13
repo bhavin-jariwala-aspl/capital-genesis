@@ -1,0 +1,600 @@
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ─── Appearance tokens ───────────────────────────────────────────────────
+     Defaults reproduce the original indigo/fuchsia brand on Tailwind's cool
+     grey with the "midnight" dark surfaces. The Appearance Studio
+     (utils/appearance.js#applyAppearance) overrides every one of these on
+     <html> at runtime, so nothing below is a colour anyone should hard-code. */
+  :root {
+    --p-50: 238 242 255;  --p-100: 224 231 255; --p-200: 199 210 254; --p-300: 165 180 252;
+    --p-400: 129 140 248; --p-500: 99 102 241;  --p-600: 79 70 229;   --p-700: 67 56 202;
+    --p-800: 55 48 163;   --p-900: 49 46 129;   --p-950: 30 27 75;
+    --a-50: 253 242 255;  --a-100: 250 232 255; --a-200: 245 208 254; --a-300: 240 171 252;
+    --a-400: 232 121 249; --a-500: 217 70 239;  --a-600: 192 38 211;  --a-700: 162 28 175;
+    --a-800: 134 25 143;  --a-900: 112 26 117;  --a-950: 74 4 78;
+    /* Dark-mode brand ramps (lifted action shades) — see buildPalette(hex, { dark: true }) */
+    --pd-50: 241 241 254; --pd-100: 241 241 254; --pd-200: 223 223 252; --pd-300: 181 183 247; --pd-400: 135 137 242; --pd-500: 129 131 242; --pd-600: 62 66 234; --pd-700: 25 30 230; --pd-800: 18 21 176; --pd-900: 12 15 131; --pd-950: 7 8 75;
+    --ad-50: 252 241 254; --ad-100: 252 241 254; --ad-200: 248 223 252; --ad-300: 239 181 247; --ad-400: 229 135 243; --ad-500: 221 100 239; --ad-600: 212 61 234; --ad-700: 204 25 230; --ad-800: 156 17 177; --ad-900: 116 12 131; --ad-950: 66 6 75;
+    /* Gradient middle stop derived from primary + accent (light / dark) */
+    --g-mid: 143 90 216; --g-mid-600: 121 57 208; --gd-mid: 166 123 224; --gd-mid-600: 143 90 216;
+    --on-primary-dark: 255 255 255; --on-accent: 255 255 255;
+    /* Neutral ramp (Tailwind gray) */
+    --n-50: 249 250 251;  --n-100: 243 244 246; --n-200: 229 231 235; --n-300: 209 213 219;
+    --n-400: 156 163 175; --n-500: 107 114 128; --n-600: 75 85 99;    --n-700: 55 65 81;
+    --n-800: 31 41 55;    --n-900: 17 24 39;    --n-950: 3 7 18;
+    /* Dark surfaces: canvas, chrome, panel, raised */
+    --s-0: 10 9 20; --s-1: 13 12 30; --s-2: 20 19 39; --s-3: 30 30 46;
+    --on-primary: 255 255 255;
+    --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 12px; --radius-2xl: 16px; --radius-3xl: 24px;
+    --base-font-size: 16px;
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+    --sidebar-w: 232px;
+    /* Motion — Apple's standard curve and a springy variant for enters */
+    --ease-ios: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --dur-fast: 150ms; --dur-base: 220ms; --dur-slow: 320ms;
+    /* Frosted-glass material */
+    --glass-blur: 20px;
+    --glass-saturate: 180%;
+    --glass-alpha: 0.72;
+    --card-alpha: 0.88;
+    --hairline: rgb(var(--n-900) / 0.08);
+  }
+  /* Mode switch: Tailwind's primary/accent/mid read --pc-*, --ac-*, --gc-*, which
+     point at the light ramps by default and the lifted dark ramps under .dark.
+     Nothing else in the codebase needs a dark: override to keep brand contrast. */
+  :root { --pc-50: var(--p-50); --ac-50: var(--a-50); --pc-100: var(--p-100); --ac-100: var(--a-100); --pc-200: var(--p-200); --ac-200: var(--a-200); --pc-300: var(--p-300); --ac-300: var(--a-300); --pc-400: var(--p-400); --ac-400: var(--a-400); --pc-500: var(--p-500); --ac-500: var(--a-500); --pc-600: var(--p-600); --ac-600: var(--a-600); --pc-700: var(--p-700); --ac-700: var(--a-700); --pc-800: var(--p-800); --ac-800: var(--a-800); --pc-900: var(--p-900); --ac-900: var(--a-900); --pc-950: var(--p-950); --ac-950: var(--a-950); --gc-mid: var(--g-mid); --gc-mid-600: var(--g-mid-600); --onpc: var(--on-primary); }
+  html.dark { --pc-50: var(--pd-50); --ac-50: var(--ad-50); --pc-100: var(--pd-100); --ac-100: var(--ad-100); --pc-200: var(--pd-200); --ac-200: var(--ad-200); --pc-300: var(--pd-300); --ac-300: var(--ad-300); --pc-400: var(--pd-400); --ac-400: var(--ad-400); --pc-500: var(--pd-500); --ac-500: var(--ad-500); --pc-600: var(--pd-600); --ac-600: var(--ad-600); --pc-700: var(--pd-700); --ac-700: var(--ad-700); --pc-800: var(--pd-800); --ac-800: var(--ad-800); --pc-900: var(--pd-900); --ac-900: var(--ad-900); --pc-950: var(--pd-950); --ac-950: var(--ad-950); --gc-mid: var(--gd-mid); --gc-mid-600: var(--gd-mid-600); --onpc: var(--on-primary-dark); }
+  .dark { --hairline: rgb(255 255 255 / 0.08); }
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  html, body, #root {
+    height: 100%;
+  }
+  html {
+    /* Density: everything is rem-based, so the root size scales the whole UI */
+    font-size: var(--base-font-size);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply text-gray-900 antialiased;
+    font-family: var(--font-sans);
+    /* Bright, airy aurora backdrop tinted with the brand colours */
+    background-color: rgb(var(--n-50));
+    background-image:
+      radial-gradient(1200px 620px at 6% -12%, rgb(var(--pc-500) / 0.16), transparent 60%),
+      radial-gradient(1000px 520px at 102% -4%, rgb(var(--ac-500) / 0.12), transparent 55%),
+      radial-gradient(1000px 640px at 50% 118%, rgb(var(--gc-mid) / 0.10), transparent 55%);
+    background-attachment: fixed;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    text-rendering: optimizeLegibility;
+  }
+  .dark body {
+    @apply text-gray-100;
+    background-color: rgb(var(--s-0));
+    background-image:
+      radial-gradient(1100px 600px at 8% -10%, rgb(var(--pc-500) / 0.22), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgb(var(--ac-500) / 0.14), transparent 55%);
+  }
+  /* Apple's SF stack wants slightly tighter tracking on display text */
+  html[data-font="cupertino"] .font-display { letter-spacing: -0.02em; }
+
+  /* Background style setting */
+  html[data-background="plain"] body { background-image: none; }
+  html[data-background="tinted"] body {
+    background-image: none;
+    background-color: rgb(var(--pc-50));
+  }
+  html[data-background="tinted"].dark body { background-color: rgb(var(--s-0)); }
+  html[data-background="mesh"] body {
+    background-image:
+      radial-gradient(at 12% 8%,  rgb(var(--pc-400) / 0.22) 0px, transparent 45%),
+      radial-gradient(at 88% 6%,  rgb(var(--ac-400) / 0.18) 0px, transparent 45%),
+      radial-gradient(at 70% 60%, rgb(var(--gc-mid) / 0.12) 0px, transparent 45%),
+      radial-gradient(at 20% 95%, rgb(var(--ac-300) / 0.14) 0px, transparent 45%),
+      radial-gradient(at 92% 92%, rgb(var(--pc-300) / 0.16) 0px, transparent 45%);
+  }
+  html[data-background="mesh"].dark body {
+    background-image:
+      radial-gradient(at 12% 8%,  rgb(var(--pc-500) / 0.28) 0px, transparent 45%),
+      radial-gradient(at 88% 6%,  rgb(var(--ac-500) / 0.18) 0px, transparent 45%),
+      radial-gradient(at 70% 60%, rgb(var(--gc-mid) / 0.10) 0px, transparent 45%),
+      radial-gradient(at 92% 92%, rgb(var(--pc-400) / 0.16) 0px, transparent 45%);
+  }
+
+  /* Refined scrollbar */
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--pc-200)); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--pc-300)); }
+  .dark ::-webkit-scrollbar-thumb { background: rgb(var(--s-3)); }
+  .dark ::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.18); }
+
+  /* Selection follows the brand */
+  ::selection { background: rgb(var(--pc-500) / 0.22); }
+
+  /* Keyboard focus — one ring everywhere, brand tinted, never on mouse click */
+  :focus-visible { outline: 2px solid rgb(var(--pc-500) / 0.6); outline-offset: 2px; }
+}
+
+@layer components {
+
+  /* ─────────────── Card ─────────────── */
+  .card {
+    @apply rounded-2xl border border-white/70 backdrop-blur-sm;
+    background-color: rgb(255 255 255 / var(--card-alpha));
+    box-shadow: 0 1px 3px 0 rgb(var(--pc-600) / 0.06), 0 8px 24px -14px rgb(var(--pc-500) / 0.20);
+    transition: box-shadow var(--dur-base) var(--ease-ios), border-color var(--dur-base) var(--ease-ios), transform var(--dur-base) var(--ease-spring);
+  }
+  .dark .card {
+    @apply border-white/[0.07];
+    background-color: rgb(var(--s-2) / 0.9);
+    box-shadow: none;
+  }
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-100/80 flex items-center justify-between;
+  }
+  .dark .card-header {
+    @apply border-white/[0.07];
+  }
+  .card-body {
+    @apply p-6;
+  }
+
+  /* ─────────────── Form ─────────────── */
+  .form-field {
+    @apply flex flex-col gap-1.5;
+  }
+  .form-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+  .dark .form-label {
+    @apply text-gray-300;
+  }
+  .form-input {
+    @apply block w-full rounded-xl border border-primary-100 bg-white/70 px-3.5 py-2.5
+           text-sm text-gray-900 placeholder-gray-400
+           hover:border-primary-300 hover:bg-white
+           focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/15
+           disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:hover:border-primary-100 disabled:hover:bg-gray-100
+           transition-all duration-200;
+  }
+  .dark .form-input {
+    @apply border-white/10 bg-white/5 text-gray-100 placeholder-gray-500
+           focus:border-primary-500 focus:bg-white/10
+           disabled:bg-white/5 disabled:text-gray-500;
+  }
+  .form-input-error {
+    @apply border-red-400 bg-red-50/40 focus:border-red-500 focus:ring-red-500/20;
+  }
+  .dark .form-input-error {
+    @apply border-red-500/50 bg-red-500/10;
+  }
+  .form-error {
+    @apply text-xs text-red-500;
+  }
+  .form-help {
+    @apply text-xs text-gray-400;
+  }
+  .dark .form-help {
+    @apply text-gray-500;
+  }
+
+  /* ─────────────── Badge ─────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide;
+  }
+
+  /* ─────────────── Glass ─────────────── */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/70 shadow-soft;
+  }
+  .dark .glass {
+    @apply bg-white/5 border-white/10 shadow-none;
+  }
+
+  /* ─────────────── Material (Apple-style frosted chrome) ───────────────
+     Used by the header and sidebar: translucent, blurred and saturated so
+     content scrolling underneath shows through as colour, not detail. */
+  .material {
+    background-color: rgb(255 255 255 / var(--glass-alpha));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border-color: var(--hairline);
+  }
+  .dark .material {
+    background-color: rgb(var(--s-1) / 0.82);
+  }
+
+  /* ─────────────── Buttons (primary follows Button Style setting) ─────────────── */
+  .btn-primary {
+    @apply text-white;
+    background-image: linear-gradient(90deg, rgb(var(--pc-600)) 0%, rgb(var(--gc-mid-600)) 55%, rgb(var(--ac-600)) 100%);
+    box-shadow: 0 8px 22px -4px rgb(var(--pc-500) / 0.42);
+    color: rgb(var(--onpc));
+  }
+  .btn-primary:hover {
+    background-image: linear-gradient(90deg, rgb(var(--pc-500)) 0%, rgb(var(--gc-mid)) 55%, rgb(var(--ac-500)) 100%);
+    box-shadow: 0 10px 26px -6px rgb(var(--pc-500) / 0.5);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:focus { --tw-ring-color: rgb(var(--pc-500)); }
+  html[data-buttons="solid"] .btn-primary,
+  html[data-buttons="solid"] .btn-primary:hover {
+    background-image: none;
+    background-color: rgb(var(--pc-600));
+    box-shadow: 0 1px 2px rgb(var(--pc-900) / 0.18), 0 6px 16px -8px rgb(var(--pc-600) / 0.5);
+  }
+  html[data-buttons="solid"] .btn-primary:hover { background-color: rgb(var(--pc-500)); transform: none; }
+  html[data-buttons="soft"] .btn-primary,
+  html[data-buttons="soft"] .btn-primary:hover {
+    background-image: none;
+    background-color: rgb(var(--pc-100));
+    color: rgb(var(--pc-700));
+    box-shadow: none;
+    transform: none;
+  }
+  html[data-buttons="soft"] .btn-primary:hover { background-color: rgb(var(--pc-200)); }
+  html[data-buttons="soft"].dark .btn-primary { background-color: rgb(var(--pc-500) / 0.18); color: rgb(var(--pc-200)); }
+  html[data-buttons="soft"].dark .btn-primary:hover { background-color: rgb(var(--pc-500) / 0.28); }
+
+  /* ─────────────── Segmented control (iOS) ─────────────── */
+  .seg {
+    @apply inline-flex items-center gap-0.5 p-1 rounded-xl bg-gray-100 dark:bg-white/[0.06];
+    box-shadow: inset 0 0 0 0.5px var(--hairline);
+  }
+  .seg-btn {
+    @apply relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+           text-gray-600 dark:text-gray-300 select-none whitespace-nowrap;
+    transition: color var(--dur-fast) var(--ease-ios), background-color var(--dur-fast) var(--ease-ios), box-shadow var(--dur-base) var(--ease-spring), transform var(--dur-fast) var(--ease-spring);
+  }
+  .seg-btn:hover { @apply text-gray-900 dark:text-white; }
+  .seg-btn:active { transform: scale(0.97); }
+  .seg-btn[aria-pressed="true"], .seg-btn[data-active="true"] {
+    @apply bg-white text-gray-900 dark:text-white;
+    box-shadow: 0 1px 2px rgb(var(--n-900) / 0.10), 0 2px 8px -2px rgb(var(--n-900) / 0.12), 0 0 0 0.5px var(--hairline);
+  }
+  .dark .seg-btn[aria-pressed="true"], .dark .seg-btn[data-active="true"] { background-color: rgb(var(--s-3)); }
+
+  /* ─────────────── Inset grouped list (iOS Settings) ─────────────── */
+  .ios-list {
+    @apply rounded-2xl overflow-hidden bg-white dark:bg-night-2;
+    box-shadow: 0 0 0 0.5px var(--hairline), 0 1px 2px rgb(var(--n-900) / 0.03);
+  }
+  .ios-row {
+    @apply flex items-center justify-between gap-4 px-4 py-3 min-h-[3rem];
+  }
+  .ios-row + .ios-row { border-top: 0.5px solid var(--hairline); }
+  .ios-row-title { @apply text-sm font-medium text-gray-900 dark:text-gray-100; }
+  .ios-row-sub { @apply text-xs text-gray-500 dark:text-gray-400 mt-0.5; }
+  .hairline { border-color: var(--hairline); }
+  .hairline-t { border-top: 0.5px solid var(--hairline); }
+  .hairline-b { border-bottom: 0.5px solid var(--hairline); }
+
+  /* Large title — Apple's navigation style for page heads */
+  .large-title {
+    @apply font-display font-bold tracking-tight text-gray-900 dark:text-white;
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 2.125rem);
+    letter-spacing: -0.022em;
+    line-height: 1.1;
+  }
+
+  /* ─────────────── Drag ─────────────── */
+  .drag-over {
+    @apply ring-2 ring-primary-400 ring-offset-2 bg-primary-50;
+  }
+  .drag-handle {
+    @apply cursor-grab active:cursor-grabbing;
+  }
+
+  /* ─────────────── Drop zone ─────────────── */
+  .drop-zone {
+    @apply border-2 border-dashed border-primary-200/70 rounded-xl min-h-[200px] transition-colors duration-150;
+  }
+  .dark .drop-zone {
+    @apply border-white/20;
+  }
+  .drop-zone.active {
+    @apply border-primary-400 bg-primary-50/50;
+  }
+  .dark .drop-zone.active {
+    @apply bg-primary-500/10;
+  }
+
+  /* ─────────────── React Grid Layout ─────────────── */
+  .react-grid-item.react-grid-placeholder {
+    @apply bg-primary-200/60 rounded-2xl;
+  }
+  .react-grid-item > .react-resizable-handle {
+    @apply opacity-0 transition-opacity duration-150;
+  }
+  .react-grid-item:hover > .react-resizable-handle {
+    @apply opacity-100;
+  }
+
+  /* ─────────────── Code editor ─────────────── */
+  .code-editor {
+    @apply rounded-xl border border-gray-800 bg-[#0d1117] font-mono text-sm text-gray-200 overflow-auto;
+  }
+  .code-editor textarea {
+    @apply outline-none;
+  }
+
+  /* ─────────────── Pipeline ─────────────── */
+  .pipeline-column {
+    @apply flex flex-col gap-2 min-w-[268px] max-w-[300px];
+  }
+  .pipeline-card {
+    @apply bg-white rounded-xl border border-primary-100/70 shadow-xs p-3.5 cursor-pointer
+           hover:shadow-card-md hover:-translate-y-0.5 hover:border-primary-200 transition-all duration-150;
+  }
+  .dark .pipeline-card {
+    @apply bg-night-2 border-white/[0.07];
+  }
+
+  /* ─────────────── Gradient text ─────────────── */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 via-mid-600 to-accent-500;
+  }
+
+  /* ─────────────── Widget system ───────────────
+     A snappy, self-contained surface used across the app. Lighter than a
+     full page section — meant to read as a crafted "widget". Compose with
+     .widget-hover for interactive tiles and .widget-accent for a top ribbon. */
+  .widget {
+    @apply relative rounded-2xl border border-white/70 backdrop-blur-sm overflow-hidden;
+    background-color: rgb(255 255 255 / var(--card-alpha));
+    box-shadow: 0 1px 3px 0 rgb(var(--pc-600) / 0.06), 0 10px 30px -18px rgb(var(--pc-500) / 0.28);
+    transition: box-shadow var(--dur-base) var(--ease-ios), border-color var(--dur-base) var(--ease-ios), transform var(--dur-base) var(--ease-spring);
+  }
+  .dark .widget {
+    @apply border-white/[0.07];
+    background-color: rgb(var(--s-2) / 0.88);
+    box-shadow: none;
+  }
+  .widget-hover {
+    @apply hover:-translate-y-0.5 hover:shadow-card-md hover:border-primary-200/80 cursor-pointer;
+  }
+  .dark .widget-hover:hover {
+    @apply border-white/[0.14] shadow-none;
+  }
+  /* Thin gradient ribbon along the widget's top edge */
+  .widget-accent::before {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary-500 via-mid to-accent-500;
+  }
+  .widget-pad   { @apply p-5; }
+  .widget-title {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-primary-500/80 dark:text-primary-300/70;
+  }
+  .widget-value {
+    @apply text-2xl font-bold tracking-tight text-gray-900 dark:text-white;
+  }
+
+  /* Reusable gradient icon square — brand mark used in headers/tiles */
+  .icon-chip {
+    @apply inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 via-mid to-accent-500 text-on-primary shadow-primary shrink-0;
+  }
+  html[data-buttons="solid"] .icon-chip { background-image: none; background-color: rgb(var(--pc-600)); }
+  html[data-buttons="soft"] .icon-chip { background-image: none; background-color: rgb(var(--pc-100)); color: rgb(var(--pc-700)); box-shadow: none; }
+  html[data-buttons="soft"].dark .icon-chip { background-color: rgb(var(--pc-500) / 0.18); color: rgb(var(--pc-200)); }
+
+  /* Soft aurora wash for widget/page headers */
+  .aurora-wash {
+    background-image:
+      radial-gradient(600px 200px at 0% 0%, rgb(var(--pc-500) / 0.10), transparent 60%),
+      radial-gradient(500px 180px at 100% 0%, rgb(var(--ac-500) / 0.08), transparent 55%);
+  }
+
+  /* ─────────────── Modal / dialog language ───────────────
+     The shared <Modal> uses these implicitly; bespoke dialogs that can't use
+     the component (full-screen viewers, tabbed composers, admin quick-forms)
+     compose `.modal-scrim` + `.modal-panel` so every dialog reads the same:
+     a blurred scrim and a rounded, elevated panel that becomes a bottom sheet
+     on small screens. Add `.modal-accent` as the panel's first child for the
+     brand ribbon. */
+  .modal-scrim {
+    @apply fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4
+           bg-gray-950/45 dark:bg-black/70 backdrop-blur-md animate-fade-in motion-reduce:animate-none;
+  }
+  .modal-panel {
+    @apply relative w-full flex flex-col max-h-[92vh] overflow-hidden bg-white dark:bg-night-2
+           border border-gray-200/70 dark:border-white/[0.08]
+           rounded-t-3xl sm:rounded-3xl shadow-elevated
+           animate-slide-up motion-reduce:animate-none;
+  }
+  .modal-accent {
+    @apply h-1 w-full shrink-0 bg-gradient-to-r from-primary-500 via-mid to-accent-500;
+  }
+
+  /* ─────────────── Popover (header menus) ─────────────── */
+  .popover {
+    @apply rounded-2xl border overflow-hidden animate-scale-in origin-top-right;
+    background-color: rgb(255 255 255 / 0.92);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border-color: var(--hairline);
+    box-shadow: 0 0 0 0.5px var(--hairline), 0 12px 40px -12px rgb(var(--n-900) / 0.25), 0 2px 8px rgb(var(--n-900) / 0.06);
+  }
+  .dark .popover { background-color: rgb(var(--s-2) / 0.92); }
+}
+
+@layer utilities {
+  /* Shake animation for validation errors */
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+  /* Press feedback — iOS-like scale on tap */
+  .pressable { transition: transform var(--dur-fast) var(--ease-spring), opacity var(--dur-fast) var(--ease-ios); }
+  .pressable:active { transform: scale(0.97); }
+}
+
+/* ─────────────── Surface style (Appearance setting) ───────────────
+   glass (default) keeps translucent, blurred cards. flat is opaque with
+   hairline borders and no shadow — quieter, better for dense data work.
+   elevated is opaque with a soft layered shadow, Apple's "raised" look. */
+html[data-surface="flat"] .card,
+html[data-surface="flat"] .widget {
+  background-color: #fff;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border-color: var(--hairline);
+  box-shadow: none;
+}
+html[data-surface="flat"].dark .card,
+html[data-surface="flat"].dark .widget { background-color: rgb(var(--s-2)); }
+html[data-surface="flat"] .widget-hover:hover { transform: none; box-shadow: none; border-color: rgb(var(--pc-300)); }
+html[data-surface="flat"] .material { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: #fff; }
+html[data-surface="flat"].dark .material { background-color: rgb(var(--s-1)); }
+
+html[data-surface="elevated"] .card,
+html[data-surface="elevated"] .widget {
+  background-color: #fff;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 0.5px var(--hairline), 0 1px 2px rgb(var(--n-900) / 0.04), 0 12px 32px -12px rgb(var(--n-900) / 0.12);
+}
+html[data-surface="elevated"].dark .card,
+html[data-surface="elevated"].dark .widget {
+  background-color: rgb(var(--s-2));
+  box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 16px 40px -16px rgb(0 0 0 / 0.7);
+}
+html[data-surface="elevated"] .widget-hover:hover {
+  box-shadow: 0 0 0 0.5px var(--hairline), 0 8px 24px -8px rgb(var(--n-900) / 0.18), 0 32px 64px -24px rgb(var(--n-900) / 0.22);
+}
+
+/* ─────────────── Motion (Appearance setting) ─────────────── */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion="subtle"] { --dur-fast: 90ms; --dur-base: 140ms; --dur-slow: 200ms; }
+html[data-motion="subtle"] .widget-hover:hover,
+html[data-motion="subtle"] .btn-primary:hover,
+html[data-motion="subtle"] .sb-item:hover { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) *, html:not([data-motion="full"]) *::before, html:not([data-motion="full"]) *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────── Sidebar style (Appearance setting) ───────────────
+   The sidebar reads html[data-sidebar]; "light" is the default gradient
+   defined in Sidebar.jsx, "dark" is the dark-mode chrome regardless of mode,
+   "brand" paints the sidebar in the primary colour with light-on-dark text,
+   "glass" is a frosted, translucent panel over the page background. */
+html[data-sidebar="dark"] aside[data-sidebar-root] {
+  background-image: none;
+  background-color: rgb(var(--s-1));
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+html[data-sidebar="brand"] aside[data-sidebar-root] {
+  background-image: linear-gradient(180deg, rgb(var(--pc-700)) 0%, rgb(var(--pc-800)) 100%);
+  color: #fff;
+  border-color: rgb(var(--pc-600) / 0.6);
+}
+html[data-sidebar="glass"] aside[data-sidebar-root] {
+  background-image: none;
+  background-color: rgb(255 255 255 / 0.55);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-color: var(--hairline);
+}
+html[data-sidebar="glass"].dark aside[data-sidebar-root] { background-color: rgb(var(--s-1) / 0.6); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-muted,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-muted { color: rgba(255, 255, 255, 0.55); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-item,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-item { color: rgba(255, 255, 255, 0.82); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-item:hover,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-item:hover { background-color: rgba(255, 255, 255, 0.08); color: #fff; }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-item-active,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-item-active { background-image: none; background-color: rgba(255, 255, 255, 0.14); color: #fff; box-shadow: none; }
+html[data-sidebar="brand"] aside[data-sidebar-root] .text-gradient,
+html[data-sidebar="dark"] aside[data-sidebar-root] .text-gradient {
+  background-image: none; -webkit-text-fill-color: #fff; color: #fff;
+}
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-user,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-user { background-color: rgba(255,255,255,0.08); border-color: transparent; }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-user p,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-user p { color: #fff; }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-user p + p,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-user p + p { color: rgba(255,255,255,0.6); }
+
+/* ─────────────── Sidebar groups (Builder / Platform) ───────────────
+   Collapsible groups paint NO background of their own — they inherit the
+   sidebar chrome exactly (light gradient, dark, brand or glass) and are set
+   apart only by a hairline outline. The inline search field is a translucent
+   well that follows the same chrome. */
+aside[data-sidebar-root] .sb-group { background-color: transparent; border-color: rgb(var(--pc-500) / 0.14); }
+.dark aside[data-sidebar-root] .sb-group { border-color: rgb(255 255 255 / 0.08); }
+aside[data-sidebar-root] .sb-group-amber { border-color: rgb(245 158 11 / 0.28); }
+aside[data-sidebar-root] .sb-field { background-color: rgb(var(--n-900) / 0.04); border-color: rgb(var(--pc-500) / 0.14); }
+.dark aside[data-sidebar-root] .sb-field { background-color: rgb(255 255 255 / 0.05); border-color: rgb(255 255 255 / 0.08); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-group,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-group { border-color: rgb(255 255 255 / 0.12); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-field,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-field { background-color: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.12); }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-field input,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-field input { color: #fff; }
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-field input::placeholder,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-field input::placeholder,
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-field svg,
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-field svg { color: rgb(255 255 255 / 0.5); }
+html[data-sidebar="brand"] aside[data-sidebar-root] .sb-group p,
+html[data-sidebar="dark"] aside[data-sidebar-root] .sb-group p { color: rgb(255 255 255 / 0.45); }
+
+/* ─────────────── Active navigation style (Appearance setting) ───────────────
+   gradient (default) is the brand gradient pill defined in Sidebar.jsx.
+   pill is iOS's tinted selection; line is a slim leading indicator. */
+html[data-nav="pill"] aside[data-sidebar-root] .sb-item-active {
+  background-image: none;
+  background-color: rgb(var(--pc-500) / 0.12);
+  color: rgb(var(--pc-700));
+  box-shadow: none;
+}
+html[data-nav="pill"].dark aside[data-sidebar-root] .sb-item-active,
+html[data-nav="pill"][data-sidebar="dark"] aside[data-sidebar-root] .sb-item-active,
+html[data-nav="pill"][data-sidebar="brand"] aside[data-sidebar-root] .sb-item-active {
+  background-color: rgb(255 255 255 / 0.14);
+  color: #fff;
+}
+html[data-nav="pill"] aside[data-sidebar-root] .sb-item-active .sb-dot { background-color: rgb(var(--pc-500)); }
+html[data-nav="pill"] aside[data-sidebar-root] .sb-item-active .sb-chip { background-color: rgb(var(--pc-500) / 0.15); color: rgb(var(--pc-700)); }
+html[data-nav="line"] aside[data-sidebar-root] .sb-item-active {
+  background-image: none;
+  background-color: transparent;
+  color: rgb(var(--pc-700));
+  box-shadow: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+html[data-nav="line"] aside[data-sidebar-root] .sb-item-active::before {
+  content: '';
+  position: absolute; left: -0.5rem; top: 20%; bottom: 20%; width: 3px;
+  border-radius: 99px;
+  background-color: rgb(var(--pc-500));
+}
+html[data-nav="line"].dark aside[data-sidebar-root] .sb-item-active,
+html[data-nav="line"][data-sidebar="dark"] aside[data-sidebar-root] .sb-item-active,
+html[data-nav="line"][data-sidebar="brand"] aside[data-sidebar-root] .sb-item-active { color: #fff; }
+html[data-nav="line"][data-sidebar="brand"] aside[data-sidebar-root] .sb-item-active::before { background-color: #fff; }
+html[data-nav="line"] aside[data-sidebar-root] .sb-item-active .sb-dot { display: none; }
+html[data-nav="line"] aside[data-sidebar-root] .sb-item-active .sb-chip { background-color: rgb(var(--pc-500) / 0.15); color: rgb(var(--pc-700)); }
