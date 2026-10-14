@@ -273,6 +273,24 @@ Enter your **Employee ID** and **Password**, then click **Sign in**.
 
 > **Employee ID is case-sensitive** — use uppercase exactly as shown.
 
+#### SWAN Capital demo accounts (workspace `swan-capital`)
+
+The SWAN Capital Solutions workspace has its own staff accounts; the accounts above open the generic demo workspace
+instead. Every SWAN account uses the demo password **`SwanDemo#2026`**.
+
+| Role | Employee ID | Name |
+| ---- | ----------- | ---- |
+| CRM Administrator | SWADMIN | Kevin Lam |
+| Chief Operating Officer | SWCOO | Anjali Gopee |
+| Relationship Manager | SWRM1 | Priya Ramdin |
+| Loans Executive | SWLOAN1 | Sophie Lagesse |
+| Manager, Loans & Fixed Income | SWLMGR | Rajiv Doorgakant |
+| Compliance Officer | SWCOMP1 | Fatima Hossenbux |
+| Corporate Advisor | SWADV1 | Camille Rivalland |
+
+All 22 SWAN accounts, what each demonstrates, and how to change the demo password:
+[SWAN-CAPITAL/IMPLEMENTATION.md §0](../SWAN-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-swan-demo).
+
 After login your session is stored in the browser. It expires after
 8 hours (configurable via `JWT_EXPIRY` in `.env`). With **Remember me** checked the
 session is kept in `localStorage` and survives a browser restart; unchecked, it is

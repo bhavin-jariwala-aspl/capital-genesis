@@ -94,13 +94,15 @@ describe('RecordService — custom object field persistence', () => {
     const db = makePrisma();
     db.record.findUnique
       .mockResolvedValueOnce(existingRecord)         // #assertAccess in updateRecord
+      .mockResolvedValueOnce({ id: 10, object_id: 99, deleted_at: null, object: { name: 'product' } }) // values before the patch
+      .mockResolvedValueOnce({ id: 10, crm_lead: null, crm_contact: null, crm_account: null, crm_opportunity: null, crm_case: null })
       .mockResolvedValueOnce({ ...existingRecord, pipeline_stage: null }) // record.update return
       .mockResolvedValueOnce({ id: 10, crm_lead: null, crm_contact: null, crm_account: null, crm_opportunity: null, crm_case: null }); // #hydrateCrm
 
     db.record.update.mockResolvedValueOnce({ ...existingRecord, pipeline_stage: null });
-    db.recordFieldValue.findMany.mockResolvedValueOnce([
-      { field_name: 'product_name', str_value: 'Gadget X' },
-    ]);
+    db.recordFieldValue.findMany
+      .mockResolvedValueOnce([{ field_name: 'product_name', str_value: 'Gadget' }]) // before
+      .mockResolvedValueOnce([{ field_name: 'product_name', str_value: 'Gadget X' }]);
 
     const svc = new RecordService(db);
     const result = await svc.updateRecord(10, 'EMP1', adminViewer(), undefined, { product_name: 'Gadget X' });
@@ -336,5 +338,26 @@ describe('ImportService — custom object import writes EAV field values', () =>
     await svc.executeImport(1, csv);
 
     expect(db.crmLead.create).not.toHaveBeenCalled();
+  });
+
+  it('updateRecord publishes record.field_changed with only the fields that changed', async () => {
+    const existingRecord = { id: 10, object_id: 99, created_by: 'EMP1', assigned_to: null, created_at: new Date(), updated_at: new Date() };
+    const db = makePrisma();
+    db.record.findUnique
+      .mockResolvedValueOnce(existingRecord)
+      .mockResolvedValueOnce({ id: 10, object_id: 99, deleted_at: null, object: { name: 'conflict_check' } })
+      .mockResolvedValueOnce({ id: 10, crm_lead: null, crm_contact: null, crm_account: null, crm_opportunity: null, crm_case: null })
+      .mockResolvedValue({ id: 10, crm_lead: null, crm_contact: null, crm_account: null, crm_opportunity: null, crm_case: null });
+    db.record.update.mockResolvedValueOnce({ ...existingRecord, pipeline_stage: null });
+    db.recordFieldValue.findMany
+      .mockResolvedValueOnce([{ field_name: 'decision', str_value: 'pending' }, { field_name: 'controls', str_value: 'None' }])
+      .mockResolvedValue([]);
+    const eventBus = { publish: jest.fn().mockResolvedValue() };
+    const svc = new RecordService(db, eventBus);
+    await svc.updateRecord(10, 'EMP1', adminViewer(), undefined, { decision: 'cleared', controls: 'None' });
+    const call = eventBus.publish.mock.calls.find((c) => c[0] === 'record.field_changed');
+    expect(call).toBeDefined();
+    expect(Object.keys(call[1].changed)).toEqual(['decision']);
+    expect(call[1].changed.decision).toEqual({ old: 'pending', new: 'cleared' });
   });
 });

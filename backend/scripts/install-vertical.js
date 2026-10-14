@@ -18,6 +18,9 @@
  *   --demo               also install the pack's demo records
  *   --password <pw>      password for staff accounts created now (otherwise a
  *                        random one per account, printed once)
+ *   --skip-records       with --demo: skip master data and demo records (already
+ *                        loaded) and run only the ownership, history and
+ *                        demo-activity steps
  *   --reset-passwords    with --password: set that password on every pack staff
  *                        account that already exists (demo environments only)
  *   --recompute[=a,b]    recompute every record's formulas for the named objects
@@ -61,7 +64,24 @@ async function main() {
   const url = new URL(process.env.DATABASE_URL);
   if (!url.searchParams.has('pool_timeout')) url.searchParams.set('pool_timeout', '120');
   const raw = new PrismaClient({ datasources: { db: { url: url.toString() } } });
-  const prisma = applyTenantMiddleware(raw);
+  // A long install over a remote database can outlive a network blip: retry
+  // connection-level errors (unreachable, closed, pool timeout) with back-off.
+  const TRANSIENT = new Set(['P1001', 'P1002', 'P1017', 'P2024']);
+  const resilient = raw.$extends({
+    query: {
+      $allOperations: async ({ args, query, operation, model }) => {
+        for (let attempt = 0; ; attempt += 1) {
+          try { return await query(args); } catch (err) {
+            if (!TRANSIENT.has(err?.code) || attempt >= 6) throw err;
+            const wait = Math.min(60000, 2000 * 2 ** attempt);
+            console.warn(`   ↻ ${model ?? ''}.${operation}: ${err.code}, retrying in ${wait / 1000}s`);
+            await new Promise((ok) => setTimeout(ok, wait));
+          }
+        }
+      },
+    },
+  });
+  const prisma = applyTenantMiddleware(resilient);
   try {
     const target = arg('--tenant') ?? pack.tenant.slug;
     let tenant = /^\d+$/.test(target)
@@ -87,6 +107,7 @@ async function main() {
         demo: process.argv.includes('--demo'),
         password: arg('--password') ?? process.env.VERTICAL_STAFF_PASSWORD ?? null,
         resetPasswords: process.argv.includes('--reset-passwords'),
+        skipRecords: process.argv.includes('--skip-records'),
         recompute: (() => {
           const flag = process.argv.find((a) => a === '--recompute' || a.startsWith('--recompute='));
           if (!flag) return null;

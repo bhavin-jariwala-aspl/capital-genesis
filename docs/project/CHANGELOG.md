@@ -24,6 +24,8 @@ and this project adheres to
   labels, formatted amounts and the business unit's legal entity. Generated letters were previously rejected by
   categories that accept only PDF and images.
 - **Builder defaults on every create path** (website forms, workflows, imports, API).
+- **Field-change workflows fire on Builder objects.** Editing a record now publishes `record.field_changed` with the
+  fields that changed; before, only stage changes did, so workflows such as "conflict decision recorded" never ran.
 - **SLA timers start immediately** on record creation and stage change; completion times for timers created after
   the fact come from the record's stage history.
 - **Installer**: demo ownership routing, stage history, `platformDemo` (activities, tasks, reminders, documents,

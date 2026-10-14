@@ -93,7 +93,7 @@ class VerticalInstaller {
    * @param {import('@prisma/client').PrismaClient} prisma tenant-scoped client
    * @param {{ tenantId: number, log?: Function, demo?: boolean, password?: string }} opts
    */
-  constructor(prisma, { tenantId, log = () => {}, demo = false, password = null, recompute = null, resetPasswords = false } = {}) {
+  constructor(prisma, { tenantId, log = () => {}, demo = false, password = null, recompute = null, resetPasswords = false, skipRecords = false } = {}) {
     this.db = prisma;
     this.tenantId = tenantId;
     this.log = log;
@@ -101,6 +101,7 @@ class VerticalInstaller {
     this.password = password;
     this.recompute = recompute;
     this.resetPasswords = resetPasswords;
+    this.skipRecords = skipRecords;
     // Records are written after all metadata, so metadata reads made by the
     // record service (field lists, object config, stages) can be memoised for
     // the run — each one is a remote round trip, several per record.
@@ -158,10 +159,11 @@ class VerticalInstaller {
       const withFormulas = Object.values(this.objectDefs).filter((o) => (o.fields ?? []).some((f) => (f.field_type ?? f.type) === 'formula')).map((o) => o.name);
       for (const n of this.recompute === true ? withFormulas : this.recompute) this.formulaChanged.add(n);
     }
-    await step('master data', () => this.#recordSets(pack.masterData ?? []));
-    if (this.demo) await step('demo records', () => this.#recordSets(pack.demo ?? []));
+    if (!this.skipRecords) await step('master data', () => this.#recordSets(pack.masterData ?? []));
+    if (this.demo && !this.skipRecords) await step('demo records', () => this.#recordSets(pack.demo ?? []));
     if (this.demo) await step('demo ownership', () => this.#ownership(pack));
-    if (this.demo) await step('demo history', () => this.#history(pack.demo ?? []));
+    if (this.demo) await step('demo history', () => this.#history(pack.demo ?? [], new Set((pack.slaPolicies ?? []).map((p) => p.object))));
+    if (this.demo) await step('demo approvals', () => this.#pendingApprovals());
     if (this.demo && typeof pack.platformDemo === 'function') await step('demo activity, documents & access', () => this.#platformDemo(pack.platformDemo));
     await step('recompute roll-ups', () => this.#recomputePass(pack.modules ?? []));
     return { summary: this.summary, unchanged: this.unchanged, credentials, publicForms };
@@ -866,9 +868,10 @@ class VerticalInstaller {
    * record's timeline, stage-ageing reports and SLA outcomes look like a year
    * of real use. Records that already have history are left alone.
    */
-  async #history(sets) {
+  async #history(sets, slaObjects = new Set()) {
     const EXIT = new Set(['declined', 'withdrawn', 'lapsed', 'rejected', 'disqualified', 'abandoned', 'cancelled', 'canceled', 'lost', 'dismissed', 'refused', 'nurture', 'on_hold', 'exited', 'dormant', 'closed_no_filing']);
     const DAY = 86400000;
+    const HOUR = 3600000;
     const hash = (str) => { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
     let written = 0;
     for (const set of sets) {
@@ -888,10 +891,10 @@ class VerticalInstaller {
       const have = new Set((await this.db.statusEvent.findMany({ where: { record_id: { in: rows.map((r) => r.id) } }, select: { record_id: true }, distinct: ['record_id'] })).map((e) => e.record_id));
       const events = [];
       const stamps = [];
+      const moved = [];
       for (const { id, raw, stageId } of rows) {
         if (have.has(id)) continue;
-        const created = new Date(`${raw._created}T09:00:00.000Z`).getTime();
-        const age = Math.max(Date.now() - created, DAY);
+        let created = new Date(`${raw._created}T09:00:00.000Z`).getTime();
         const current = stages.find((st) => st.id === stageId);
         const normal = stages.filter((st) => !EXIT.has(st.name));
         let path = [];
@@ -902,16 +905,26 @@ class VerticalInstaller {
         }
         const terminal = current && (EXIT.has(current.name) || current.id === normal[normal.length - 1]?.id);
         const h = hash(`${set.object}|${raw.ext_ref ?? id}`);
-        const span = terminal ? Math.min(age * (0.35 + 0.4 * h), 40 * DAY) : age * (0.4 + 0.5 * h);
-        const step = path.length > 1 ? span / (path.length - 1) : 0;
+        const h2 = hash(`${raw.ext_ref ?? id}|2`);
+        // Open work on an SLA-tracked object is recent; a months-old open enquiry is not a believable demo.
+        if (!terminal && slaObjects.has(set.object) && Date.now() - created > 21 * DAY) {
+          created = Date.now() - Math.floor((1 + 12 * h) * DAY);
+          moved.push({ id, created });
+        }
+        const age = Math.max(Date.now() - created, HOUR);
+        // First response within hours for most records; closing within days.
+        const firstGap = Math.min(age * 0.5, (h2 < 0.85 ? 0.5 + 2.5 * h : 5 + 25 * h) * HOUR);
+        const span = terminal ? Math.min(age * 0.9, (h2 < 0.85 ? 2 + 6 * h : 10 + 15 * h) * DAY) : Math.min(age * 0.8, Math.max(firstGap, age * (0.3 + 0.5 * h)));
+        const times = path.map((_, i) => (i === 0 ? created : i === 1 ? created + firstGap : created + firstGap + ((span - firstGap) * (i - 1)) / Math.max(1, path.length - 2)));
         path.forEach((st, i) => events.push({
           record_id: id, status: st.name, title: st.label, event_type: 'milestone',
-          occurred_at: new Date(created + i * step + (i ? Math.floor(h * 3600000) : 0)), changed_by: raw._owner ?? null, tenant_id: this.tenantId,
+          occurred_at: new Date(Math.min(times[i], Date.now() - 60000)), changed_by: raw._owner ?? null, tenant_id: this.tenantId,
         }));
-        stamps.push({ id, at: new Date(created + (path.length > 1 ? span : Math.min(age, 2 * DAY) * h) + Math.floor(h * 3600000)) });
+        stamps.push({ id, at: new Date(Math.min(times[times.length - 1] ?? created, Date.now() - 60000)) });
       }
       if (events.length) { await this.db.statusEvent.createMany({ data: events }); written += events.length; }
-      await pool(stamps, RECORD_CONCURRENCY, ({ id, at }) => this.db.record.update({ where: { id }, data: { updated_at: at } }));
+      const createdAt = new Map(moved.map((m) => [m.id, new Date(m.created)]));
+      await pool(stamps, RECORD_CONCURRENCY, ({ id, at }) => this.db.record.update({ where: { id }, data: { updated_at: at, ...(createdAt.has(id) ? { created_at: createdAt.get(id) } : {}) } }));
       if (stamps.length) this.#count(`history.${set.object}`, stamps.length);
     }
     if (written) this.log(`      ${written} status events written`);
@@ -1096,6 +1109,33 @@ class VerticalInstaller {
         this.#count('audit_chain_baseline', baseline.length);
       }
     }
+  }
+
+  /**
+   * Demo records were loaded straight into their stages, so stage-triggered
+   * approval workflows never ran for them. Run each one for the records
+   * already in its stage, so approvers find real requests in their inbox.
+   */
+  async #pendingApprovals() {
+    const WorkflowEngineService = require('./workflow.service');
+    const engine = new WorkflowEngineService(this.db);
+    engine.setRecordService?.(this.records);
+    const wfs = await this.db.uiWorkflow.findMany({ where: { trigger_type: 'field_changed', is_active: true }, include: { steps: { orderBy: { order_index: 'asc' } } } });
+    let n = 0;
+    for (const wf of wfs) {
+      if (wf.trigger_config?.field !== 'pipeline_stage_id' || !wf.steps.some((st) => st.step_type === 'approval')) continue;
+      const gate = wf.steps.find((st) => st.step_type === 'condition');
+      if (gate?.config?.field !== 'stage' || gate.config.operator !== 'eq') continue;
+      const recs = await this.db.record.findMany({ where: { object_id: wf.object_id, deleted_at: null, pipeline_stage: { name: String(gate.config.value) } }, select: { id: true, object_id: true, assigned_to: true, created_by: true, tenant_id: true } });
+      if (!recs.length) continue;
+      const done = new Set((await this.db.workflowPendingStep.findMany({ where: { workflow_id: wf.id, record_id: { in: recs.map((r) => r.id) } }, select: { record_id: true } })).map((p) => p.record_id));
+      for (const r of recs) {
+        if (done.has(r.id)) continue;
+        await engine.manualRun(wf.id, r, r.assigned_to ?? r.created_by ?? null).catch(() => {});
+        n += 1;
+      }
+    }
+    if (n) this.#count('approval_requests', n);
   }
 
   /** Recompute every record of each named object, in the order given. */

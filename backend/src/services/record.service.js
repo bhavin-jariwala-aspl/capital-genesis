@@ -1265,12 +1265,12 @@ class RecordService {
 
     // Only the submitted fields are validated on update (a partial patch must
     // not fail because an untouched required field is missing from the body).
+    // The stored values before this patch: field-change workflows need to know
+    // what actually changed, and formulas read the record overlaid with the patch.
+    const before = crmData ? ((await this.#loadData(id)) ?? {}) : {};
     if (crmData) {
-      // Formulas and formula rules see the stored record overlaid with this
-      // patch. Loaded only when the object actually has either, so a plain
-      // update costs no extra read.
       let merged = null;
-      const getMerged = async () => (merged ??= { ...(await this.#loadData(id)), ...crmData });
+      const getMerged = async () => (merged ??= { ...before, ...crmData });
       const formulas = await this.compute.formulaFields(existing.object_id).catch(() => []);
       if (formulas?.length) {
         const values = await getMerged();
@@ -1292,6 +1292,15 @@ class RecordService {
     // Audit + workflow fire-and-forget (don't block the response)
     this.#audit(id, updatedBy, 'update', null, tenantId);
     this.#emit('record.updated', { objectId: updated.object_id, record: updated, actorId: updatedBy });
+    // Field-change workflows (e.g. "decision changed") fire for the fields this patch changed.
+    if (crmData) {
+      const norm = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+      const changed = {};
+      for (const [k, v] of Object.entries(crmData)) {
+        if (norm(before[k]) !== norm(v)) changed[k] = { old: before[k] ?? null, new: v ?? null };
+      }
+      if (Object.keys(changed).length) this.#emit('record.field_changed', { objectId: updated.object_id, record: updated, changed, actorId: updatedBy });
+    }
     // ── Re-score leads/prospects when their CRM data changes ──────────────
     if (crmData) this.#maybeScoreLead(Number(id), existing.object_id, tenantId);
     if (crmData) await this.#refreshParents(existing.object_id, crmData);

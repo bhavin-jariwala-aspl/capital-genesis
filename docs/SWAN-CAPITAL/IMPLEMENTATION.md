@@ -1,6 +1,6 @@
 # SWAN Capital CRM — Implementation
 
-Implementation record for [SWAN_Capital_CRM_PRD.md](SWAN_Capital_CRM_PRD.md), October 2026. It covers all 25 PRD modules (M01–M25), the cross-cutting requirements (§9), the platform enhancements (§14) and the integrations (§12), with demo data across the whole application.
+Implementation record for [SWAN_Capital_CRM_PRD.md](SWAN_Capital_CRM_PRD.md), October 2026. For staff: the [SWAN Capital user guide](swan-capital-user-guide.md) explains how to use the CRM and what every term means. It covers all 25 PRD modules (M01–M25), the cross-cutting requirements (§9), the platform enhancements (§14) and the integrations (§12), with demo data across the whole application.
 
 **Approach.** SWAN is a **vertical pack**: Builder metadata installed into its own tenant (`swan-capital`). There are no SWAN-specific pages, routes or tables.
 
@@ -27,22 +27,52 @@ Pack source: `backend/prisma/verticals/swan-capital/`.
 ## 0. Signing in to the SWAN demo
 
 SWAN Capital is its **own workspace** (tenant `swan-capital`). Signing in as `ADMIN001` or `USR001` opens the
-generic *Genesis CRM Demo* workspace, which contains none of SWAN's data. Use the SWAN staff accounts (§10), for
-example:
+generic *Genesis CRM Demo* workspace, which contains none of SWAN's data. Use the SWAN staff accounts below.
 
-| Sign in as | To see |
-|---|---|
-| `SWADMIN` (Kevin Lam, administrator) | Everything except barrier-protected records; Builder |
-| `SWCOO` (Anjali Gopee, COO) | Group Executive dashboard (default), all business units |
-| `SWRM1` (Priya Ramdin, relationship manager) | *My Workbench*, own clients, enquiries, tasks, calendar |
-| `SWLOAN1` (Sophie Lagesse, loans executive) | Lending pipeline, applications, documents |
-| `SWLMGR` (Rajiv Doorgakant, loans manager) | Credit approvals in **Tools ▸ Approvals** |
-| `SWCOMP1` (Fatima Hossenbux, compliance) | KYC approvals, registers, Access & Barriers |
-| `SWADV1` (Camille Rivalland, corporate advisor) | Advisory mandates behind the `ADV_PRIVATE` wall |
+- **Password for every account:** `SwanDemo#2026` (demo environment only).
+- **Employee IDs are case-sensitive:** type them in capitals.
+- Each user can change their password and turn on two-factor authentication under *My account ▸ Security* (click
+  the avatar).
 
-Demo passwords are set by the installer: `node scripts/install-vertical.js swan-capital --tenant swan-capital
---reset-passwords --password '<demo password>'` (demo environments only). Your administrator holds the current demo
-password.
+| Employee ID | Name | Job title | Email | Use it to demonstrate |
+|---|---|---|---|---|
+| `SWADMIN` | Kevin Lam | CRM Administrator | `crm.admin@swan-capital.demo` | Builder, configuration, all units (not barrier-protected records) |
+| `SWCOO` | Anjali Gopee | Chief Operating Officer | `coo@swan-capital.demo` | Group Executive dashboard, VIP clients |
+| `SWBDH` | Shalini Ramtohul | Head of BD & Strategic Partnerships | `bd.head@swan-capital.demo` | Introducers, service approvals, cross-sell |
+| `SWRM1` | Priya Ramdin | Relationship Manager | `rm1@swan-capital.demo` | *My Workbench*, own clients, enquiries, tasks, calendar feed |
+| `SWRM2` | Natasha Appadoo | Senior Relationship Manager | `rm2@swan-capital.demo` | Wealth / funds / securities clients, VIP book, a wall-crossing |
+| `SWRM3` | Bruno Chan | Relationship Manager (Corporate) | `rm3@swan-capital.demo` | Corporate clients, commercial lending, FX |
+| `SWLMGR` | Rajiv Doorgakant | Manager, Loans & Fixed Income | `loans.manager@swan-capital.demo` | Credit approvals (**Tools ▸ Approvals**), lending dashboards |
+| `SWLOAN1` | Sophie Lagesse | Loans Executive | `loans1@swan-capital.demo` | Enquiry to disbursement, document checklists |
+| `SWLOAN2` | Yash Bholah | Loans Executive | `loans2@swan-capital.demo` | Second loans desk (round-robin routing) |
+| `SWCRED1` | Nadia Peerbux | Credit Analyst | `credit@swan-capital.demo` | Credit appraisal, all lending records, view personal data |
+| `SWCC1` | Jean-Marc Desvaux | Credit Committee Member | `cc@swan-capital.demo` | Credit Committee approvals |
+| `SWOPS1` | Ritesh Seewoo | Operations Checker | `ops@swan-capital.demo` | Maker-checker: disbursements and fund orders |
+| `SWPM1` | Laurent Koenig | Portfolio Manager | `pm@swan-capital.demo` | Wealth mandates, reviews, SAAC |
+| `SWPM2` | Vanessa Ah-Kee | Fund Manager | `pm2@swan-capital.demo` | Fund orders, holdings, FMB 2029 campaign |
+| `SWTRD1` | Arvind Ramsurrun | Trader | `trader@swan-capital.demo` | Securities accounts and orders; advisory is invisible (wall) |
+| `SWADV1` | Camille Rivalland | Corporate Advisor | `advisor@swan-capital.demo` | Advisory mandates behind `ADV_PRIVATE`, conflict checks, insider lists |
+| `SWADV2` | Ryan Pillay | Advisory Analyst | `advisor2@swan-capital.demo` | Deal team, deliverables, time, investor book |
+| `SWFX1` | Deepak Mungur | Forex Dealer | `fx@swan-capital.demo` | FX quotes, deals, rate alerts; a pending wall-crossing |
+| `SWMKT1` | Emilie Fanchette | Marketing Executive | `marketing@swan-capital.demo` | Campaigns, segments, events, consent |
+| `SWCOMP1` | Fatima Hossenbux | Compliance Officer | `compliance@swan-capital.demo` | KYC approvals, registers, Access & Barriers, view personal data |
+| `SWMLRO` | Olivier Maurel | MLRO | `mlro@swan-capital.demo` | STR register, barrier override, audit-chain verification |
+| `SWAUD1` | Karim Joomun | Internal Auditor | `audit@swan-capital.demo` | Read-only access across the workspace |
+
+Business units, barrier zones and record visibility per account are in §10.
+
+**Client portal.** At `/portal/swan-capital`, sign in with a demo client's email, for example
+`vikash.ramdhony@example.mu`. Outside production, while email is not configured, the one-time code is shown on
+screen. Introducers sign in the same way with their portal email (see the *Introducers* list).
+
+**Changing the demo password.** To set a new password on every SWAN account, run:
+
+```bash
+cd backend
+node scripts/install-vertical.js swan-capital --tenant swan-capital --reset-passwords --password '<new password>'
+```
+
+Use this only in demo environments; in production each user sets their own password.
 
 ## 1. At a glance
 
@@ -538,7 +568,7 @@ Clients can also download documents in categories marked portal-visible (offer l
 
 ## 10. Roles and sign-ins
 
-All roles sit at levels 4–5 on the Genesis ladder; no custom role can reach the admin band. Passwords are printed once by the installer.
+All roles sit at levels 4–5 on the Genesis ladder; no custom role can reach the admin band. Demo password and emails: §0.
 
 | Employee ID | Name | Role | Business units | Barrier zones |
 |---|---|---|---|---|
@@ -644,7 +674,7 @@ Every sample document is marked SPECIMEN; no real client data is used.
 
 ## 14. Verification
 
-- `backend`: `npx jest`. 76 suites, including `swan-pack.test.js` (every reference in the pack resolves), plus tests for portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
+- `backend`: `npx jest`. 75 suites, including `swan-pack.test.js` (every reference in the pack resolves), plus tests for portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
 - **Live business flows**, driven through the API against the installed workspace, with each step performed by the
   role that owns it:
   - *Lending, 14 steps:* website enquiry (French), routing, French acknowledgement, speed-to-lead SLA, conversion

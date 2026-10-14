@@ -194,7 +194,7 @@ The installer is **idempotent and diff-based**: every row is matched by its natu
   status, share links and e-signature requests), wall-crossings and an audit-chain baseline, which are written
   through the platform services.
 
-`--reset-passwords --password <pw>` sets one password on every pack staff account (demo environments only).
+`--reset-passwords --password <pw>` sets one password on every pack staff account (demo environments only). `--skip-records` (with `--demo`) skips master data and demo records that are already loaded and runs only the ownership, history and platform-demo steps. Connection-level database errors (unreachable, closed, pool timeout) are retried with back-off, so a long install survives a network blip.
 
 When a run adds or edits a formula field, the object's existing records are recomputed too, and a checkpoint first recomputes the objects it reads whose formulas changed. `--recompute` forces the same for named objects (or every object with formulas), to repair values left stale by earlier runs or manual edits.
 
@@ -364,6 +364,8 @@ dates, `<field>_raw` for the stored value, and a letterhead built from the recor
 
 ## 26. Server-side defaults and immediate SLA timers
 
+- Editing a record publishes `record.field_changed` with exactly the fields that changed (old and new values), so
+  `field_changed` workflows on any field — not only the stage — run for Builder objects.
 - A field's Builder **default value** is applied on every create path — website forms, workflows, imports and the
   API — not only in forms rendered in the browser. `{{today}}` resolves to the current date.
 - SLA timers start (and stop) when a record is created or changes stage, through `SlaService.reconcileRecord`;
