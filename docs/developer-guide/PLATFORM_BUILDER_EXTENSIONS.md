@@ -129,10 +129,12 @@ Appended for: business-unit and barrier membership changes, wall-crossing reques
 
 Any Builder form can be published (Form Builder ▸ Public web form):
 
-- `POST /api/builder/forms/:id/publish` — `{ success_message, consent_field, consent_text_version, capture_fields, result_fields, stage, captcha, channel, rotate }`. The key is always random (48 hex chars); `config` and `public_key` are not writable through the ordinary form update.
+- `POST /api/builder/forms/:id/publish` — `{ success_message, consent_field, consent_text_version, capture_fields, result_fields, field_options, stage, captcha, channel, rotate }`. The key is always random (48 hex chars); `config` and `public_key` are not writable through the ordinary form update.
 - `GET /api/public/forms/:key` — the renderable field list; `POST` — a submission. Hosted page: `/f/:key` (iframe-able).
 
-A submission becomes a record **through the normal record path**, in the form's tenant — formulas, validation, unit stamping, assignment, SLA timers and `on_create` workflows all run. Guard rails: only laid-out fields (plus UTM/`page_url`/`referrer`/`language` where the object has fields of those names) are accepted; consent is enforced and time-stamped; honeypot `_hp`; per-IP and per-form rate limits; optional reCAPTCHA (`RECAPTCHA_SECRET`, `RECAPTCHA_SITE_KEY`); JSON schema and a 64 KB body limit. `result_fields` lets the website show computed values (a calculator's EMI, a questionnaire's model portfolio).
+A submission becomes a record **through the normal record path**, in the form's tenant — formulas, validation, unit stamping, assignment, SLA timers and `on_create` workflows all run. Guard rails: only laid-out fields (plus UTM/`page_url`/`referrer`/`language` where the object has fields of those names) are accepted; consent is enforced and time-stamped; honeypot `_hp`; per-IP and per-form rate limits; optional reCAPTCHA (`RECAPTCHA_SECRET`, `RECAPTCHA_SITE_KEY`); JSON schema and a 64 KB body limit. `result_fields` lets the website show computed values (a calculator's EMI, a questionnaire's model portfolio); the response carries each result's label and format (`result_fields: [{ name, label, format, precision }]`). `field_options: { field: [values] }` narrows a picklist on one form only — the Genesis Capital loan calculators offer just the four loan products — and a submitted value outside it is rejected.
+
+**The hosted page** wears the workspace's theme and logo, and its name (`workspace` in the describe response). It puts a brand panel beside the form; splits forms of seven or more fields into two steps (the request, then the person's details and consent) with a progress bar; shows picklists of up to six options as option cards; starts from the fields' Builder defaults and `?prod=`; and ends on a confirmation showing the reference and the computed results.
 
 ## 8. Object analytics
 

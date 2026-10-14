@@ -24,25 +24,34 @@ Keep coming back to three ideas:
 
 ## 2. Before the meeting
 
+All links below assume the app runs on this laptop (`make start`). On another server, replace
+`http://localhost:5173` with its address. Record numbers (`record=…`) belong to the current demo install;
+after a re-install, open the same screen from the sidebar and use the record named in the scene.
+
 ### The day before
 
-- [ ] Restart the application (`make restart`) and sign in once with each account in §4.
-- [ ] Open the **Group Executive** dashboard as `GCCOO` and check that every chart shows data.
-- [ ] Open **Tools ▸ Approvals** as `GCLMGR` and check that there is at least one approval waiting.
-- [ ] Check the client portal at `/portal/genesis-capital` with `vikash.ramdhony@example.mu`. Leave email
+- [ ] Restart the application (`make restart`) and sign in once with each account in §4 at
+  <http://localhost:5173/login>.
+- [ ] As `GCCOO`, open the **Group Executive** dashboard — <http://localhost:5173/?dashboard=28> — and check that every chart
+  shows data.
+- [ ] As `GCLMGR`, open the **Approvals** inbox — <http://localhost:5173/approvals> — and check that the credit approval for
+  **Karine Ruhee · LND-IBL** is waiting (Scene 3).
+- [ ] Open the client portal — <http://localhost:5173/portal/genesis-capital> — and sign in as `karine.ruhee@example.mu`. Leave email
   unconfigured in the demo environment, so the one-time code appears on screen.
-- [ ] Note the website form links that the installer printed (`/f/<key>`). You need the *Real Estate Loan* one.
+- [ ] Open the website loan form once — <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE> — but do not submit it during rehearsal.
 - [ ] Take screenshots of each scene in §5 as a backup if the network fails.
+
+> **Rehearse without using up the demo.** Approving Karine Ruhee's loan (Scene 3) can only be done once. To
+> rehearse the Approvals step, sign in as `GCCC1` and use one of the two *Credit Committee* items in
+> <http://localhost:5173/approvals> instead, and keep Karine's for the meeting.
 
 ### On the day
 
 - Use one browser with a separate **profile or private window per persona**, so you can switch user without
-  signing out. Name the windows "RM", "Loans manager", "Compliance", "Trader", "COO".
+  signing out. Name the windows "Loans", "RM", "Loans manager", "Compliance", "Trader", "COO".
 - Set browser zoom to 110–125% so the room can read the screen.
 - Close email, chat and notifications.
 - Have one person present and one person take notes of every question and request.
-
----
 
 ## 3. Agenda
 
@@ -74,89 +83,140 @@ Ask: *"Is this still right? What would you add?"* Let them talk. Use their words
 
 ## 4. Demo accounts
 
-Password for every staff account: `GenesisDemo#2026`. Employee IDs are in capitals.
+Sign in at <http://localhost:5173/login>. Password for every staff account: `GenesisDemo#2026`. Employee IDs are in capitals.
 
 | Persona | Employee ID | Use for |
 | --- | --- | --- |
-| Relationship Manager | `GCRM1` | My Workbench, client view, enquiries, tasks |
-| Loans Executive | `GCLOAN1` | Moving a loan through its stages, document checklist |
-| Credit Analyst | `GCCRED1` | Credit appraisal, sending for approval |
-| Loans Manager | `GCLMGR` | Approving in the Approvals inbox |
-| Operations Checker | `GCOPS1` | Second pair of eyes on disbursements and fund orders |
-| Compliance Officer | `GCCOMP1` | KYC sign-off, revealing masked data, barriers |
+| Loans Executive | `GCLOAN1` (or `GCLOAN2`) | New website enquiries, loan applications, document checklist |
+| Relationship Manager | `GCRM1` | My Workbench, client view, fund orders |
+| Relationship Manager | `GCRM2` | Karine Ruhee's RM — receives her portal message |
+| Loans Manager | `GCLMGR` | Approving a loan in the Approvals inbox |
+| Operations Checker | `GCOPS1` | Second pair of eyes on fund orders and disbursements |
+| Compliance Officer | `GCCOMP1` | Revealing masked data, KYC, barriers |
 | Corporate Advisor | `GCADV1` | Confidential advisory mandates |
 | Trader | `GCTRD1` | Showing that advisory work is invisible to trading |
 | Forex Dealer | `GCFX1` | FX quote to deal |
 | Chief Operating Officer | `GCCOO` | Group Executive dashboard |
 | CRM Administrator | `GCADMIN` | Builder: changing a field or a stage live |
+| Platform Administrator | `PLATFORM01` (password `Platform@123`) | Only if asked about the platform console |
 
 All 22 accounts: [IMPLEMENTATION.md §0](IMPLEMENTATION.md#0-signing-in-to-the-genesis-demo).
+
+### Links at a glance
+
+| Screen | Link |
+| --- | --- |
+| Sign in | <http://localhost:5173/login> |
+| Website loan enquiry form (Real Estate Loan preselected) | <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE> |
+| Enquiries list | <http://localhost:5173/module/87/object/163> |
+| My Workbench dashboard | <http://localhost:5173/?dashboard=42> |
+| Group Executive dashboard | <http://localhost:5173/?dashboard=28> |
+| Client: Annabelle Ramful | <http://localhost:5173/module/86/object/157?record=3093> |
+| Client: Mascarene Capital Partners Ltd | <http://localhost:5173/module/86/object/157?record=3115> |
+| Client: Karine Ruhee | <http://localhost:5173/module/86/object/157?record=3091> |
+| Loan application: Karine Ruhee · LND-IBL | <http://localhost:5173/module/89/object/170?record=3744> |
+| Loan application already disbursed | <http://localhost:5173/module/89/object/170?record=3721> |
+| Approvals inbox | <http://localhost:5173/approvals> |
+| New fund order | <http://localhost:5173/module/94/object/196/new> |
+| Advisory mandate: Project Dodo | <http://localhost:5173/module/96/object/204?record=4327> |
+| Insider list | <http://localhost:5173/module/96/object/207> |
+| FX quotes | <http://localhost:5173/module/97/object/214> |
+| Reports | <http://localhost:5173/reports> |
+| Builder: pipelines (rename a stage) | <http://localhost:5173/builder/pipeline> |
+| Builder: forms (add a field) | <http://localhost:5173/builder/form> |
+| Client portal | <http://localhost:5173/portal/genesis-capital> |
 
 ---
 
 ## 5. The demo, scene by scene
 
-Each scene has: **who** to sign in as, **what** to do, **what to say**, and the **moment** to pause on.
+Each scene has: **who** signs in, **where** to go, **what** to do, **what to say**, and the **moment** to pause on.
+The story follows one client, **Karine Ruhee**, wherever it can.
 
 ### Scene 1 — A new client arrives from the website (5 min)
 
-- **Who:** open the website form, then `GCLOAN1`.
-- **Do:** fill the *Real Estate Loan* form (`/f/<key>`) as a member of the public, in French. Switch to `GCLOAN1`:
-  the enquiry is already there, routed to Lending, with a French acknowledgement sent and a response-time clock
-  running. Convert it: the client, their KYC case and the loan application are created in one step.
+- **Who:** nobody (a member of the public), then `GCLOAN1`.
+- **Where:** the website form <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE>, then the Enquiries list <http://localhost:5173/module/87/object/163>.
+- **Do:** step 1 shows *Real Estate Loan* already chosen — enter an amount and tenure and click **Continue**. In
+  step 2 enter a new name and email, choose **Français**, tick consent and click **Send request**: the confirmation
+  shows the enquiry reference. Sign in as `GCLOAN1` and open the Enquiries list: the enquiry is at the top, routed to Lending, with a
+  French acknowledgement sent and a response-time clock running. Open it and convert it: the client, their KYC
+  case and the loan application are created in one step.
+- **Note:** lending enquiries go to `GCLOAN1` and `GCLOAN2` in turn. If it is not in `GCLOAN1`'s list, sign in
+  as `GCLOAN2`.
 - **Say:** "No re-typing. The website, the CRM and the client's language are joined up."
 - **Moment:** the response-time (SLA) clock on the enquiry.
 
 ### Scene 2 — The whole client on one screen (4 min)
 
 - **Who:** `GCRM1`.
-- **Do:** open **My Workbench**: today's meetings, tasks, reviews due and next-best actions. Open a high-value
-  client: total relationship value, products held across business lines, documents, history.
+- **Where:** My Workbench <http://localhost:5173/?dashboard=42>, then Annabelle Ramful
+  <http://localhost:5173/module/86/object/157?record=3093>, then Mascarene Capital Partners Ltd
+  <http://localhost:5173/module/86/object/157?record=3115>.
+- **Do:** on My Workbench show today's meetings, tasks, reviews due and next-best actions. Open Annabelle Ramful
+  (relationship value about MUR 301 million): products held across business lines, documents, history. Then open
+  Mascarene Capital Partners: its advisory work shows as "restricted — contact Compliance".
 - **Say:** "Every desk works on the same client record. The RM sees the full relationship, not just their part."
-- **Moment:** the ID number is **masked**. Advisory rows say "restricted — contact Compliance".
+- **Moment:** Annabelle's ID number is **masked** (`••••••••6519`). Click **Reveal**: it shows, and the reveal is
+  recorded in the audit trail with the RM's name — Compliance will see it in Scene 4.
 
-### Scene 3 — A loan from application to money paid out (7 min)
+### Scene 3 — A loan from application to approval (7 min)
 
-- **Who:** `GCLOAN1` → `GCCRED1` → `GCLMGR` → `GCOPS1`.
-- **Do:** open a loan application. Show the stage bar, the document checklist and the credit-bureau report. As
-  `GCCRED1`, send it to credit approval. As `GCLMGR`, open **Tools ▸ Approvals** and approve with a comment: the
-  application moves to *Offer issued* and a PDF offer letter appears, ready for e-signature. As `GCOPS1`, approve
-  the disbursement; the loan system returns an account number.
-- **Say:** "Every stage, document and decision is recorded. The person who prepares a disbursement can never be
-  the person who approves it."
-- **Moment:** the maker cannot approve their own request.
+- **Who:** `GCLOAN1` → `GCLMGR` → `GCOPS1`.
+- **Where:** Karine Ruhee's application <http://localhost:5173/module/89/object/170?record=3744>, then the Approvals inbox
+  <http://localhost:5173/approvals>, then a disbursed loan <http://localhost:5173/module/89/object/170?record=3721>.
+- **Do:** as `GCLOAN1`, open Karine Ruhee's investment-backed loan: the stage bar (it is at *Credit approval*), the
+  document checklist and the credit-bureau report. As `GCLMGR`, open Approvals: **Credit approval: Karine Ruhee ·
+  LND-IBL** is waiting. Approve it with a comment. Back on the application, it has moved to *Offer issued* and a
+  PDF offer letter is in its documents, ready for e-signature. As `GCOPS1`, open Approvals: a fund order waits for
+  the operations check — the second pair of eyes. Finally open the disbursed loan to show its disbursement and the
+  account number returned by the loan system.
+- **Say:** "Every stage, document and decision is recorded. The person who prepares a payment or an order can
+  never be the person who approves it."
+- **Moment:** the application moving to *Offer issued* with the offer letter attached.
 
 ### Scene 4 — Compliance built into the work (4 min)
 
 - **Who:** `GCRM1`, then `GCCOMP1`.
-- **Do:** try to place a Global Private Equity fund order for a conservative client: it is **refused** until an
-  override and the client's acknowledgement are recorded. As `GCCOMP1`, approve a KYC case and reveal a masked ID
-  number: the reveal is written to the audit trail.
+- **Where:** New fund order <http://localhost:5173/module/94/object/196/new>, then Annabelle Ramful
+  <http://localhost:5173/module/86/object/157?record=3093>, then Access & Barriers <http://localhost:5173/access>.
+- **Do:** as `GCRM1`, create a fund order for **Sophie Martin** (a conservative client), share class **Genesis
+  Global Private Equity Fund — USD class**, order type *Subscription*, amount 100,000: it is **refused** because
+  the fund's risk is above her profile, until an override reason and her acknowledgement are recorded. As
+  `GCCOMP1`, open Annabelle Ramful: Compliance has the "view personal data" permission, so her ID number is shown in
+  full. Then open **Access & Barriers ▸ Audit chain**: the RM's reveal from Scene 2 is there, with who and when.
 - **Say:** "The rules run inside the process. Nobody has to remember them."
 - **Moment:** the refused order.
 
 ### Scene 5 — Chinese walls (3 min)
 
 - **Who:** `GCADV1`, then `GCTRD1`.
-- **Do:** as `GCADV1`, open a confidential advisory mandate and add a deal-team member: they appear on the insider
-  list. As `GCTRD1`, search for the same mandate: it does not exist for them.
+- **Where:** Project Dodo <http://localhost:5173/module/96/object/204?record=4327>, the Insider list
+  <http://localhost:5173/module/96/object/207>, then the search box at the top of any page.
+- **Do:** as `GCADV1`, open **Project Dodo** and add a deal-team member: they appear on the insider list. As
+  `GCTRD1`, type **Dodo** in the search box at the top of the page: nothing is found. (As `GCADV1`, the same search
+  finds the mandate and its deal team.)
 - **Say:** "Confidential work is invisible outside the wall — not hidden behind a button, simply not there."
 - **Moment:** the trader's empty search.
 
 ### Scene 6 — The client portal (3 min)
 
-- **Who:** `/portal/genesis-capital` as `vikash.ramdhony@example.mu`.
-- **Do:** sign in with the one-time code. Show loan status, fund holdings (each with a **Redeem** button), fund
-  orders (**+ Invest** for a new subscription) and consents. Upload a document and send a
-  message to the RM. Switch back to `GCRM1`: the message is on the client's record.
+- **Who:** the client, Karine Ruhee, then her RM `GCRM2`.
+- **Where:** <http://localhost:5173/portal/genesis-capital>, then Karine Ruhee's record
+  <http://localhost:5173/module/86/object/157?record=3091>.
+- **Do:** sign in as `karine.ruhee@example.mu` with the one-time code shown on screen. Show the loan application
+  approved in Scene 3, her loans, her fund holdings (each with a **Redeem** button), fund orders (**+ Invest** for a
+  new subscription) and consents. Upload a document and send a message to her RM. Sign in as `GCRM2` and open her
+  record: the message is in her activity timeline.
 - **Say:** "Clients follow their own business and send documents securely. Fewer phone calls and emails."
 
 ### Scene 7 — French and forex (2 min)
 
 - **Who:** `GCFX1`.
-- **Do:** open **Forex Desk ▸ FX quotes**, then switch the header to **FR**: module names, record tabs, field and
-  column names, stages and picklists turn French. Switch back to **EN**, then create an FX quote, accept it, and see
-  the deal booked with a dealing reference.
+- **Where:** FX quotes <http://localhost:5173/module/97/object/214>.
+- **Do:** switch the header to **FR**: module names, record tabs, field and column names, stages and picklists turn
+  French. Switch back to **EN**, then click **New** to create an FX quote, accept it, and see the deal booked with a
+  dealing reference.
 - **Say:** "Your business vocabulary — modules, fields, stages, picklists — and every client letter and email are
   bilingual. Translating the remaining interface text (buttons, menus, dashboards) is on the roadmap."
 - **Careful:** show French on a **record screen**, not on the dashboard. Buttons, sidebar headings and dashboard
@@ -165,9 +225,12 @@ Each scene has: **who** to sign in as, **what** to do, **what to say**, and the 
 ### Scene 8 — Management view, and changing it live (4 min)
 
 - **Who:** `GCCOO`, then `GCADMIN`.
-- **Do:** open the **Group Executive** dashboard: relationship value, AUM, loan book, revenue by entity, cross-sell.
-  Open **Reports**, run one of the saved reports and drill down to the records behind a total. As `GCADMIN`, open the **Builder**, add a field to a form or
-  rename a stage, and show it appear immediately.
+- **Where:** Group Executive <http://localhost:5173/?dashboard=28>, Reports <http://localhost:5173/reports>, then the Builder's pipelines
+  <http://localhost:5173/builder/pipeline>.
+- **Do:** as `GCCOO`, open the **Group Executive** dashboard: relationship value, AUM, loan book, revenue by entity,
+  cross-sell. Open **Reports**, run one of the saved reports and drill down to the records behind a total. As
+  `GCADMIN`, open the Builder's pipelines, rename a stage of the *Enquiry* pipeline, and show the new name on
+  the Enquiries list <http://localhost:5173/module/87/object/163>. Rename it back afterwards.
 - **Say:** "Your monthly pack is live, every day. When you need a change, your own administrator makes it in
   minutes — no release, no developer."
 - **Moment:** the live change.

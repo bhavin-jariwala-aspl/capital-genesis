@@ -386,9 +386,11 @@ const dashboards = [
 ];
 
 // ── Public web forms (I-01) ──────────────────────────────────────────────────
+// The calculators price loans only, so they offer only the loan products.
+const LOAN_CODES = ['LND-RE', 'LND-PL', 'LND-IBL', 'LND-COM'];
 const publicForms = [
   ...base.publicForms,
-  { form: 'web_event_calculator', settings: { success_message: 'Your indicative instalment is below. Leave your details on the enquiry form for a personalised offer.', channel: 'calculator', result_fields: ['rate', 'emi'] } },
+  { form: 'web_event_calculator', settings: { field_options: { product_code: LOAN_CODES }, success_message: 'Your indicative instalment is below. Leave your details on the enquiry form for a personalised offer.', channel: 'calculator', result_fields: ['rate', 'emi'] } },
   { form: 'web_event_newsletter', settings: { success_message: 'You are subscribed — thank you.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', channel: 'web_form' } },
   { form: 'web_event_callback', settings: { success_message: 'Thank you — a specialist will call you back.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', channel: 'web_form' } },
 ];

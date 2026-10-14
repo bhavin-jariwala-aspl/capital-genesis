@@ -11,6 +11,41 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed — Kanban board; Cards view made optional (2026-10-14)
+
+- The **Cards** view is now **opt-in**: it appears only on objects whose pipeline ticks *Card view* in the Pipeline
+  Builder (off for new pipelines and for pipelines that never chose their views). Records without an image show a
+  coloured panel with their initials instead of a random photo loaded from an outside website.
+- **A refused Kanban move crashed the board.** The API's error object was rendered as-is; the card now goes back to
+  its column and a message names what is missing, by field label ("Complete LMS booking reference, Value date before
+  moving to Booked"), with **Open record to complete**. A successful move shows a short "… moved to …" notice.
+- The whole column — header and padding included — accepts a dropped card; before, only the card list did.
+  Drops on the *Unsorted* lane are ignored.
+- New pipeline setting `config.status_field: { field, map }` keeps a status picklist in step with the stage on
+  every stage change. The Genesis Capital *Disbursement* pipeline mirrors its stage into *Status*.
+
+### Changed — Website forms redesigned (2026-10-14)
+
+- The hosted web form (`/f/<key>`) has a brand panel with the workspace's logo, name and theme; two steps with a
+  progress bar for longer forms; option cards for short picklists; one consistent label style; Builder defaults
+  pre-filled; and a confirmation that shows the reference and the calculator or questionnaire results, labelled
+  and formatted. It works on phones and in dark mode.
+- New public-form setting `field_options` narrows a picklist on one form. Both Genesis Capital loan calculators
+  now offer only the four loan products (they listed all 22, including funds and forex).
+- Fixed: a picklist's disabled "Choose…" placeholder made the browser pick the first option silently, so an
+  untouched product field could submit "Real Estate Loan".
+- Currency fields on public forms show a plain amount: the page has no currency profile, so they showed "$"
+  whatever currency was chosen.
+
+### Fixed — Record links on a fresh page load (2026-10-14)
+
+- A `?record=<id>` link (Approvals inbox, notifications, guides) opened the list instead of the record when the
+  page loaded cold — the record arrived before the object's metadata and the "object changed" effect closed it.
+  A record of the object being opened now stays open.
+- The home page accepts `?dashboard=<id>`, and choosing a dashboard updates the address, so a dashboard can be
+  linked or bookmarked. A dashboard the viewer cannot see falls back to their first one.
+- `docs/GENESIS-CAPITAL/DEMO_PITCH.md` gives the exact link, account and demo record for every scene.
+
 ### Fixed — Theme reaches every screen (2026-10-14)
 
 - The client portal, published web forms, shared-document and e-signature pages now wear their workspace's theme.

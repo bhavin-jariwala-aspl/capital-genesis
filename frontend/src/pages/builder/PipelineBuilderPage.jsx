@@ -21,13 +21,16 @@ import { COLORS } from '../../utils/constants';
 const selectCls = 'block w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-gray-900 dark:text-white/80 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 dark:disabled:bg-white/[0.02] disabled:text-gray-400 dark:disabled:text-white/20';
 
 // Views the admin can enable for the object's module page. The runtime
-// View toggle shows only the views ticked here.
+// View toggle shows only the views ticked here. Card view is opt-in: it is not
+// ticked on a new pipeline, and a pipeline that never chose its views gets
+// Table + Pipeline only.
 const VIEW_OPTIONS = [
   { key: 'table',    label: 'Table view',    hint: 'Flat, sortable spreadsheet of records' },
-  { key: 'cards',    label: 'Card view',     hint: 'Visual grid of record cards' },
+  { key: 'cards',    label: 'Card view',     hint: 'Visual grid of record cards (optional)' },
   { key: 'pipeline', label: 'Pipeline view', hint: 'Kanban board, one column per stage' },
 ];
-const DEFAULT_VIEWS = ['table', 'cards', 'pipeline'];
+const ALL_VIEWS = VIEW_OPTIONS.map((v) => v.key);
+const DEFAULT_VIEWS = ['table', 'pipeline'];
 
 // ── Stage row used inside the pipeline editor ──────────────────────────────
 function StageRow({ stage, index, onChange, onRemove }) {
@@ -211,7 +214,7 @@ function PipelineModal({ isOpen, onClose, editing, onSaved }) {
       if (enabledViews.length === 0) throw new Error('Enable at least one view (Table, Card, or Pipeline).');
 
       // Keep a stable, known order so the runtime toggle is predictable.
-      const orderedViews = DEFAULT_VIEWS.filter(v => enabledViews.includes(v));
+      const orderedViews = ALL_VIEWS.filter(v => enabledViews.includes(v));
 
       const payload = {
         label:       formData.label,

@@ -45,3 +45,12 @@ const GRADIENTS = [
 export function gradientFor(id) {
   return GRADIENTS[Number(id) % GRADIENTS.length];
 }
+
+/**
+ * A readable message from a failed API call. The API's `error` is an object
+ * ({ code, message, details }) — rendering it as-is crashed React.
+ */
+export function apiErrorText(err, fallback = 'Something went wrong.') {
+  const e = err?.response?.data?.error;
+  return (typeof e === 'string' ? e : e?.message) || err?.response?.data?.message || err?.message || fallback;
+}

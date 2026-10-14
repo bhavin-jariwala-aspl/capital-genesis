@@ -55,3 +55,47 @@ describe('stage gates', () => {
     expect(db.record.updateMany).not.toHaveBeenCalled();
   });
 });
+
+describe('stage moves in the user\'s words, and mirrored status fields', () => {
+  function svc2({ stageConfig = {}, pipelineConfig = null, data = {}, labels = [] }) {
+    const record = { id: 1, object_id: 2, pipeline_stage_id: 10, created_by: 'U', assigned_to: null, tenant_id: 5, deleted_at: null };
+    const db = {
+      record: {
+        findUnique: jest.fn(async ({ select }) => (select?.object ? { ...record, object: { name: 'disbursement' } } : record)),
+        update: jest.fn(async ({ data: d }) => ({ ...record, ...d, pipeline_stage: { id: 20, name: 'sent_to_lms', label: 'Sent to LMS', config: stageConfig } })),
+      },
+      uiPipelineStage: { findUnique: jest.fn(async ({ select }) => (select?.pipeline ? { pipeline: { config: pipelineConfig } } : { label: 'Booked', config: stageConfig })) },
+      uiField: { findMany: jest.fn(async () => labels) },
+      recordFieldValue: {
+        findMany: jest.fn(async () => Object.entries(data).map(([field_name, v]) => ({ field_name, str_value: String(v) }))),
+        createMany: jest.fn(async () => ({ count: 1 })),
+        upsert: jest.fn(async () => ({})),
+      },
+      auditLog: { create: jest.fn(async () => ({})), createMany: jest.fn(async () => ({})) },
+      statusEvent: { create: jest.fn(async () => ({})) },
+    };
+    return { s: new RecordService(db), db };
+  }
+
+  it('names missing fields by their label, keeping the field names in the details', async () => {
+    const { s } = svc2({ stageConfig: { required_fields: ['lms_reference'] }, labels: [{ name: 'lms_reference', label: 'LMS reference' }] });
+    const err = await s.updateRecordStage(1, 20, 'U', null).catch((e) => e);
+    expect(err.message).toBe('Complete LMS reference before moving to Booked');
+    expect(err.details).toEqual([{ field: 'lms_reference', label: 'LMS reference', message: 'Required for Booked' }]);
+  });
+
+  it('updates the status picklist the pipeline mirrors', async () => {
+    const { s, db } = svc2({ pipelineConfig: { status_field: { field: 'status', map: { sent_to_lms: 'authorised' } } }, data: { status: 'requested' } });
+    await s.updateRecordStage(1, 20, 'U', null);
+    expect(db.recordFieldValue.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { record_id_field_name: { record_id: 1, field_name: 'status' } },
+    }));
+  });
+
+  it('leaves fields alone when the pipeline mirrors nothing', async () => {
+    const { s, db } = svc2({ data: { status: 'requested' } });
+    await s.updateRecordStage(1, 20, 'U', null);
+    expect(db.recordFieldValue.upsert).not.toHaveBeenCalled();
+    expect(db.recordFieldValue.createMany).not.toHaveBeenCalled();
+  });
+});

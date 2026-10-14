@@ -125,6 +125,8 @@ const disbursement = {
   forms: [{ name: 'disbursement_create', label: 'Request disbursement', fields: ['loan_application', 'credit_facility', 'tranche_no', 'amount', 'value_date', 'stage_certificate', 'conditions_met'] }],
   pipeline: {
     name: 'disbursement_flow', label: 'Disbursement',
+    // The Status picklist follows the stage, however the stage is changed.
+    config: { status_field: { field: 'status', map: { requested: 'requested', checking: 'requested', sent_to_lms: 'authorised', booked: 'booked', rejected: 'rejected' } } },
     stages: [
       stage('requested', 'Requested', '#6366f1'),
       stage('checking', 'Checker review', '#f59e0b', { entry_rule: { expression: 'conditions_met', message: 'All conditions precedent must be met before a disbursement is checked.' } }),

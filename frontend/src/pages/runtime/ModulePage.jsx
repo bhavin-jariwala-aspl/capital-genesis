@@ -22,7 +22,7 @@ import RecordActions from '../../components/runtime/RecordActions';
 import RecordMerge from '../../components/runtime/RecordMerge';
 import { EmployeePicker } from '../../components/ui/EmployeePicker';
 import { useAuthStore } from '../../store/authStore';
-import { recordTitle, initials, gradientFor } from '../../utils/record';
+import { recordTitle, initials, gradientFor, apiErrorText } from '../../utils/record';
 import clsx from 'clsx';
 import { fmtCurrency } from '../../utils/formatters';
 import {
@@ -32,11 +32,6 @@ import {
 } from 'lucide-react';
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
-
-/** Return a stable placeholder image URL seeded by record id */
-function placeholderImg(id) {
-  return `https://picsum.photos/seed/record-${id}/480/240`;
-}
 
 /** Detect an image field from the object's field list */
 function findImageField(fields) {
@@ -57,7 +52,8 @@ function RecordCard({ record, fields, imageField, moduleId, objectId, onActivity
 
   const title    = recordTitle(record.data) || `Record #${record.id}`;
   const imgSrc   = imageField ? record.data?.[imageField.name] : null;
-  const heroSrc  = (imgSrc && !imgError) ? imgSrc : placeholderImg(record.id);
+  // A record without its own image gets a coloured panel, not an outside stock photo.
+  const heroSrc  = (imgSrc && !imgError) ? imgSrc : null;
   const stage    = record.pipeline_stage;
 
   // Pick up to 3 fields (excluding name/title/image fields) for the card body
@@ -75,12 +71,18 @@ function RecordCard({ record, fields, imageField, moduleId, objectId, onActivity
     >
       {/* ── Hero image ── */}
       <div className="relative h-36 overflow-hidden shrink-0 bg-gray-100 dark:bg-white/10">
-        <img
-          src={heroSrc}
-          alt={title}
-          className="w-full h-full object-cover"
-          onError={() => setImgError(true)}
-        />
+        {heroSrc ? (
+          <img
+            src={heroSrc}
+            alt={title}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(record.id)}`}>
+            <span className="text-3xl font-semibold text-white/90">{initials(title)}</span>
+          </div>
+        )}
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
@@ -256,7 +258,14 @@ export default function ModulePage() {
   const [sideTab, setSideTab]           = useState('activity');
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showConvertToProspectModal, setShowConvertToProspectModal] = useState(false);
-  const [stageError, setStageError] = useState(null);
+  // Outcome of the last Kanban move: success fades out; an error says what is
+  // missing and offers to open the record. { tone, text, recordId? }
+  const [moveNotice, setMoveNotice] = useState(null);
+  useEffect(() => {
+    if (moveNotice?.tone !== 'success') return undefined;
+    const t = setTimeout(() => setMoveNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [moveNotice]);
 
   // ── 1. Module + objects (MetadataStore → fallback to API) ─────────────────
   const cachedModule = useMetadataStore((s) => s.getModule(moduleId));
@@ -303,10 +312,12 @@ export default function ModulePage() {
   // Which views the module page offers, honoring the pipeline's enabled_views
   // config (set in Pipeline Builder). Pipeline view is only possible when a
   // pipeline exists. Falls back to all available views when unconfigured, and
-  // never resolves to an empty set.
+  // never resolves to an empty set. The card grid is opt-in: it appears only
+  // when the pipeline's enabled_views includes 'cards'.
   const availableViews = useMemo(() => {
-    const base = ['table', 'cards', ...(activePipeline ? ['pipeline'] : [])];
     const enabled = (pipeline ?? activePipeline)?.config?.enabled_views;
+    const optIn = Array.isArray(enabled) && enabled.includes('cards') ? ['cards'] : [];
+    const base = ['table', ...optIn, ...(activePipeline ? ['pipeline'] : [])];
     if (Array.isArray(enabled) && enabled.length) {
       const filtered = base.filter(v => enabled.includes(v));
       return filtered.length ? filtered : base;
@@ -348,10 +359,13 @@ export default function ModulePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableViews]);
 
-  // Clear selection + side panel when object changes
+  // Clear selection + side panel when object changes. A record of the new
+  // object stays open: a `?record=` deep link can resolve before the object's
+  // metadata on a cold load, and used to be closed again by this effect.
   useEffect(() => {
     setSelectedIds(new Set());
-    setActiveRecord(null);
+    setActiveRecord((r) => (r && activeObject && Number(r.object_id) === Number(activeObject.id) ? r : null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeObject?.id]);
 
   // ── 4. Records (sync EntityStore with React Query) ────────────────────────
@@ -390,8 +404,10 @@ export default function ModulePage() {
       });
       return { snapshot };
     },
-    onSuccess: (result) => {
-      setStageError(null);
+    onSuccess: (result, { id, stageId }) => {
+      const stage = pipelineStages.find((s) => Number(s.id) === Number(stageId));
+      const rec = records.find((r) => r.id === id);
+      setMoveNotice({ tone: 'success', text: `${(rec && recordTitle(rec.data ?? {})) || 'Record'} moved to ${stage?.label ?? 'the new stage'}` });
       const action = result?.data?.automation?.action;
       if (action === 'lead_converted') {
         // Lead was auto-converted — navigate to Clients module
@@ -401,9 +417,11 @@ export default function ModulePage() {
         if (clientModule) navigate(`/module/${clientModule.id}`);
       }
     },
-    onError: (err, _vars, ctx) => {
+    onError: (err, { id }, ctx) => {
+      // The card goes back to its lane; say why, in words (the API's error is
+      // an object — rendering it as-is used to crash the board).
       if (ctx?.snapshot) queryClient.setQueryData(['runtime-records', activeObject?.id], ctx.snapshot);
-      setStageError(err?.response?.data?.error || 'Could not move this record.');
+      setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: id });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] }),
   });
@@ -786,9 +804,22 @@ export default function ModulePage() {
           )}
 
           {/* Stage-move / conversion blocked (e.g. required fields incomplete) */}
-          {stageError && (
+          {moveNotice?.tone === 'error' && (
             <div className="mb-4">
-              <Alert variant="error" onClose={() => setStageError(null)}>{stageError}</Alert>
+              <Alert variant="error" onClose={() => setMoveNotice(null)}>
+                <span>{moveNotice.text}</span>
+                {canEdit && moveNotice.recordId && (
+                  <button type="button" className="ml-3 font-semibold underline underline-offset-2"
+                    onClick={() => { setMoveNotice(null); navigate(`/module/${moduleId}/object/${activeObject?.id}/edit/${moveNotice.recordId}`); }}>
+                    Open record to complete
+                  </button>
+                )}
+              </Alert>
+            </div>
+          )}
+          {moveNotice?.tone === 'success' && (
+            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-fade-in rounded-full bg-gray-900/90 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white/90 dark:text-gray-900">
+              <CheckSquare className="mr-1.5 inline h-4 w-4 align-text-bottom" />{moveNotice.text}
             </div>
           )}
 

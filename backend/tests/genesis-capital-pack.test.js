@@ -66,6 +66,16 @@ describe('Genesis pack — objects', () => {
         if (st.config?.entry_rule) checkExpr(`${o.name} stage ${st.name}`, o.name, st.config.entry_rule.expression);
         for (const rf of st.config?.required_fields ?? []) if (!fieldsOf(o.name).has(rf)) problems.push(`${o.name} stage ${st.name}: unknown required field ${rf}`);
       }
+      const sync = o.pipeline?.config?.status_field;
+      if (sync) {
+        const field = o.fields.find((f) => f.name === sync.field);
+        const values = new Set((field?.options ?? []).map((x) => x.value));
+        if (!field) problems.push(`${o.name} status_field: unknown field ${sync.field}`);
+        for (const [stageName, value] of Object.entries(sync.map ?? {})) {
+          if (!stagesOf(o.name).has(stageName)) problems.push(`${o.name} status_field: unknown stage ${stageName}`);
+          if (field && !values.has(value)) problems.push(`${o.name} status_field: ${sync.field} has no option ${value}`);
+        }
+      }
     }
     expect(problems).toEqual([]);
   });
@@ -200,6 +210,12 @@ describe('Genesis pack — content', () => {
       if (!forms.has(pf.form)) { problems.push(`public form ${pf.form}`); continue; }
       const own = fieldsOf(forms.get(pf.form));
       for (const f of [pf.settings.consent_field, ...(pf.settings.result_fields ?? [])].filter(Boolean)) if (!own.has(f)) problems.push(`${pf.form}: ${f}`);
+      for (const [f, allowed] of Object.entries(pf.settings.field_options ?? {})) {
+        const def = objects[forms.get(pf.form)]?.fields.find((x) => x.name === f);
+        const values = new Set((def?.options ?? []).map((o) => o.value));
+        if (!def) problems.push(`${pf.form}: field_options ${f}`);
+        else for (const v of allowed) if (!values.has(v)) problems.push(`${pf.form}: ${f} has no option ${v}`);
+      }
     }
     expect(problems).toEqual([]);
   });

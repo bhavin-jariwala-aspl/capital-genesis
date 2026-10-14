@@ -1326,8 +1326,14 @@ class RecordService {
     const blank = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);
     const missing = required.filter((f) => blank(data[f]));
     if (missing.length) {
-      const err = new ValidationError(`Complete ${missing.join(', ')} before moving to ${stage.label}`);
-      err.details = missing.map((f) => ({ field: f, message: `Required for ${stage.label}` }));
+      // Say it in the user's words: field labels, not column names.
+      const rec = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { object_id: true } }).catch(() => null);
+      const rows = rec && typeof this.db.uiField?.findMany === 'function'
+        ? await this.db.uiField.findMany({ where: { object_id: rec.object_id, name: { in: missing } }, select: { name: true, label: true } }).catch(() => [])
+        : [];
+      const label = (f) => rows.find((r) => r.name === f)?.label ?? f;
+      const err = new ValidationError(`Complete ${missing.map(label).join(', ')} before moving to ${stage.label}`);
+      err.details = missing.map((f) => ({ field: f, label: label(f), message: `Required for ${stage.label}` }));
       throw err;
     }
     if (cfg.entry_rule?.expression) {
@@ -1357,6 +1363,10 @@ class RecordService {
       // instead of matching hardcoded stage names.
       include: { pipeline_stage: { select: { id: true, label: true, color: true, name: true, config: true } } },
     });
+    // A pipeline may mirror its stage into a status picklist
+    // (`config.status_field: { field, map: { stage_name: value } }`), so a move —
+    // a Kanban drag, a bulk change or the API — never leaves the two disagreeing.
+    const statusSync = await this.#syncStatusField(updated, tenantId);
     // Audit + workflow fire-and-forget
     this.#audit(id, updatedBy, 'stage_change', {
       old_stage: existing.pipeline_stage_id,
@@ -1376,10 +1386,24 @@ class RecordService {
     this.#emit('record.field_changed', {
       objectId: updated.object_id,
       record:   updated,
-      changed:  { pipeline_stage_id: { old: existing.pipeline_stage_id, new: stageId ?? null } },
+      changed:  { pipeline_stage_id: { old: existing.pipeline_stage_id, new: stageId ?? null }, ...(statusSync ?? {}) },
       actorId:  updatedBy,
     });
     return updated;
+  }
+
+  /** Write the pipeline's mirrored status field for the record's new stage. Returns the change, or null. */
+  async #syncStatusField(record, tenantId) {
+    const stage = record.pipeline_stage;
+    if (!stage?.name || typeof this.db.uiPipelineStage?.findUnique !== 'function') return null;
+    const row = await this.db.uiPipelineStage.findUnique({ where: { id: stage.id }, select: { pipeline: { select: { config: true } } } }).catch(() => null);
+    const sync = row?.pipeline?.config?.status_field;
+    const value = sync?.field ? sync.map?.[stage.name] : undefined;
+    if (value === undefined) return null;
+    const before = (await this.#loadData(record.id))?.[sync.field];
+    if (String(before ?? '') === String(value ?? '')) return null;
+    await this.#upsertCustomFieldValues(record.id, { [sync.field]: value }, record.object_id, tenantId);
+    return { [sync.field]: { old: before ?? null, new: value } };
   }
 
   // ── Status timeline events (status_tracker fieldtype) ──────────────────────

@@ -95,11 +95,14 @@ for most objects, sits at a **stage** of a pipeline.
 
 ### Lists and views
 
-Open a module and pick an object (tabs at the top of the module). Three views are available:
+Open a module and pick an object (tabs at the top of the module). Two views are available (an administrator can
+also switch on a **Cards** grid per pipeline in *Builder ▸ Pipelines*):
 
-- **Pipeline** — a Kanban board with one column per stage. Drag a card to move the record to another stage.
+- **Pipeline** — a Kanban board with one column per stage. Drag a card anywhere onto another column (its title
+  included) to move the record: the new stage is saved at once and a short "moved to …" notice confirms it. If the
+  stage needs information first (for example an LMS reference before *Booked*), the card returns to its column and a
+  message names what is missing, with **Open record to complete**.
 - **Table** — rows and columns; sort by clicking a column header, select rows for bulk actions.
-- **Cards** — compact cards, useful on a tablet.
 
 Toolbar actions: **New** (create a record), **search and filters**, **Export** (CSV of what you see), **Import** (CSV,
 administrators and managers).

@@ -78,3 +78,45 @@ describe('PublicFormService — intake', () => {
     expect(d.title).toBe('Get in touch');
   });
 });
+
+describe('PublicFormService — narrowed picklists and calculator results', () => {
+  const PRODUCTS = [{ value: 'LND-RE', label: 'Real Estate Loan' }, { value: 'LND-PL', label: 'Personal Loan' }, { value: 'FX-SWAP', label: 'Forex Swap' }];
+  function calc() {
+    const layouts = [
+      { row: 0, col: 0, col_span: 1, field: { id: 1, name: 'product_code', label: 'Product', field_type: 'select', is_required: true, is_active: true, options: PRODUCTS } },
+      { row: 0, col: 1, col_span: 1, field: { id: 2, name: 'amount', label: 'Amount', field_type: 'currency', is_required: true, is_active: true } },
+    ];
+    const db = {
+      tenant: { findUnique: jest.fn(async () => ({ name: 'Genesis Capital' })) },
+      uiForm: { findUnique: jest.fn(async () => ({
+        id: 4, label: 'Loan calculator', columns: 2, is_active: true, tenant_id: 7,
+        config: { public: { enabled: true, field_options: { product_code: ['LND-RE', 'LND-PL'] }, result_fields: ['emi'] } },
+        object: { id: 9, name: 'enquiry', label: 'Enquiry', is_active: true }, field_layouts: layouts,
+      })) },
+      uiField: { findMany: jest.fn(async ({ where }) => (where.name
+        ? [{ name: 'emi', label: 'Indicative instalment', field_type: 'formula', config: { format: 'currency', precision: 0 } }]
+        : ['product_code', 'amount', 'emi'].map((name) => ({ name })))) },
+      uiPipelineStage: { findFirst: jest.fn(async () => null) },
+    };
+    const records = { createRecord: jest.fn(async () => ({ id: 1, data: { emi: 23456 } })) };
+    return { svc: new PublicFormService(db, records), records };
+  }
+
+  it('offers only the allowed options and names the workspace', async () => {
+    const d = await calc().svc.describe(KEY);
+    expect(d.workspace).toBe('Genesis Capital');
+    expect(d.fields[0].options.map((o) => o.value)).toEqual(['LND-RE', 'LND-PL']);
+  });
+
+  it('rejects a value the form never offered', async () => {
+    const { svc, records } = calc();
+    await expect(svc.submit(KEY, { data: { product_code: 'FX-SWAP', amount: 1 } })).rejects.toThrow(/valid Product/);
+    expect(records.createRecord).not.toHaveBeenCalled();
+  });
+
+  it('returns calculator results with their labels and formats', async () => {
+    const res = await calc().svc.submit(KEY, { data: { product_code: 'LND-RE', amount: 5000000 } });
+    expect(res.results).toEqual({ emi: 23456 });
+    expect(res.result_fields).toEqual([{ name: 'emi', label: 'Indicative instalment', format: 'currency', precision: 0 }]);
+  });
+});

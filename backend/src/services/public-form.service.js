@@ -25,8 +25,17 @@ const { NotFoundError, ValidationError } = require('../utils/errors');
  *
  * `ui_forms.config.public`:
  *   { enabled, success_message, consent_field, consent_text_version,
- *     capture_fields: [...], result_fields: [...], stage, captcha, channel }
+ *     capture_fields: [...], result_fields: [...], stage, captcha, channel,
+ *     field_options: { field: [allowed values] } }   // narrow a picklist on this form only
  */
+
+/** A field's options, narrowed by the form's `field_options` (a calculator offers only loans). */
+function optionsFor(field, cfg) {
+  const allow = cfg.field_options?.[field.name];
+  if (!Array.isArray(field.options) || !Array.isArray(allow)) return field.options ?? null;
+  const set = new Set(allow.map(String));
+  return field.options.filter((o) => set.has(String(o?.value ?? o)));
+}
 
 const CAPTURE_DEFAULTS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'page_url', 'referrer', 'language'];
 
@@ -86,9 +95,11 @@ class PublicFormService {
   async describe(key) {
     const form = await this.#resolve(key);
     const cfg = form.config.public;
+    const tenant = await Promise.resolve(this.db.tenant?.findUnique?.({ where: { id: form.tenant_id }, select: { name: true } })).catch(() => null);
     return {
       // Which workspace's public branding (theme, logo) the page should wear.
       tenant_id:   form.tenant_id,
+      workspace:   tenant?.name ?? null,
       title:       form.label,
       description: form.description ?? null,
       columns:     form.columns,
@@ -99,7 +110,7 @@ class PublicFormService {
         .filter((l) => l.field?.is_active && !['formula', 'auto_number', 'lookup', 'status_tracker'].includes(l.field.field_type))
         .map((l) => ({
           name: l.field.name, label: l.field.label, type: l.field.field_type, required: l.field.is_required,
-          options: l.field.options ?? null, placeholder: l.field.placeholder ?? null, help: l.field.help_text ?? null,
+          options: optionsFor(l.field, cfg), placeholder: l.field.placeholder ?? null, help: l.field.help_text ?? null,
           default: l.field.default_value ?? null, row: l.row, col: l.col, col_span: l.col_span,
         })),
     };
@@ -129,6 +140,13 @@ class PublicFormService {
 
     const values = {};
     for (const [k, v] of Object.entries(data)) if (allowed.has(k)) values[k] = typeof v === 'string' ? v.slice(0, 5000) : v;
+    // A value outside a narrowed picklist was never offered on this form.
+    for (const f of formFields) {
+      const opts = cfg.field_options?.[f.name] ? optionsFor(f, cfg) : null;
+      if (opts && values[f.name] != null && values[f.name] !== '' && !opts.some((o) => String(o?.value ?? o) === String(values[f.name]))) {
+        throw new ValidationError(`Choose a valid ${f.label ?? f.name}`);
+      }
+    }
     // Attribution and context the website passes alongside the answers,
     // kept only where the object has a field to hold it.
     for (const [k, v] of Object.entries({ ...(body.utm ?? {}), page_url: body.page_url, referrer: body.referrer, language: body.language })) {
@@ -157,7 +175,15 @@ class PublicFormService {
     // `result_fields` lets the website show what the CRM computed — a loan
     // calculator's indicative EMI, a questionnaire's model portfolio.
     const results = Object.fromEntries((cfg.result_fields ?? []).map((f) => [f, record?.data?.[f] ?? null]));
-    return { message: cfg.success_message || 'Thank you — we will be in touch shortly.', reference, ...(Object.keys(results).length ? { results } : {}) };
+    // Labels and formats so the page can present the results, not bare numbers.
+    const resultMeta = (cfg.result_fields ?? []).length
+      ? (await this.db.uiField.findMany({ where: { object_id: form.object.id, name: { in: cfg.result_fields } }, select: { name: true, label: true, field_type: true, config: true } }).catch(() => []))
+        .map((f) => ({ name: f.name, label: f.label, format: f.config?.format ?? f.field_type ?? null, precision: f.config?.precision ?? null }))
+      : [];
+    return {
+      message: cfg.success_message || 'Thank you — we will be in touch shortly.', reference,
+      ...(Object.keys(results).length ? { results, result_fields: resultMeta } : {}),
+    };
   }
 }
 

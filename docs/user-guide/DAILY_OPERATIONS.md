@@ -647,10 +647,12 @@ Switch to Pipeline view to see records organized by stage/status.
 
 **Using Pipeline View:**
 
-- **Drag & Drop**: Move records between stages by dragging cards
+- **Drag & Drop**: Drag a card onto any part of another column. The new stage is saved immediately — and any status
+  field the pipeline mirrors is updated with it — and a short "moved to …" notice confirms it.
+- **Refused moves**: If the stage requires fields or a condition first, the card returns to its column and a message
+  names what is missing (by field label), with a link to open the record and complete it.
 - **Stage Columns**: Each column represents a different stage
-- **Card Details**: Quick summary of key record information
-- **Stage Actions**: Update record stage with automatic logging
+- **Stage history**: Every move is logged on the record's timeline and audit trail
 
 ### Record Side Panel
 

@@ -59,7 +59,8 @@ export default function Pipeline({
     setOverStageId(null);
     if (!over) return;
     const targetStageId = over.data?.current?.stageId;
-    if (targetStageId == null) return;
+    // "Unsorted" is a holding lane for records without a stage, not a stage.
+    if (targetStageId == null || targetStageId === '__unsorted') return;
     const card = cards.find((c) => c.id === active.id);
     if (card && Number(targetStageId) !== Number(card.stage_id)) {
       onCardMove?.(card.id, targetStageId);
@@ -112,8 +113,11 @@ function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCa
     data: { stageId: stage.id },
   });
 
+  // The whole column is the drop target (header and padding included) — a card
+  // released on the stage name used to be ignored.
   return (
-    <div className="flex flex-col rounded-2xl p-3 min-w-[260px] w-[270px] flex-shrink-0 transition-all duration-150 bg-gray-50/80 dark:bg-white/[0.03] border border-gray-100/80 dark:border-white/[0.07]">
+    <div ref={setNodeRef} className={clsx('flex flex-col rounded-2xl p-3 min-w-[260px] w-[270px] flex-shrink-0 transition-all duration-150 border',
+      isOver ? 'bg-primary-50/60 border-primary-200 dark:bg-primary-950/30 dark:border-primary-700' : 'bg-gray-50/80 dark:bg-white/[0.03] border-gray-100/80 dark:border-white/[0.07]')}>
       {/* Stage header */}
       <div className="flex items-center justify-between px-1.5 mb-2.5">
         <div className="flex items-center gap-2">
@@ -137,9 +141,8 @@ function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCa
         )}
       </div>
 
-      {/* Drop zone */}
+      {/* Cards */}
       <div
-        ref={setNodeRef}
         className={clsx(
           'flex flex-col gap-2 flex-1 min-h-[100px] rounded-xl p-1.5 transition-all duration-150',
           isOver

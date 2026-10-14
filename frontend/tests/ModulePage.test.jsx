@@ -191,4 +191,26 @@ describe('ModulePage', () => {
       expect(screen.queryByTestId('spinner')).not.toBeInTheDocument();
     });
   });
+
+  describe('view toggle — Card view is opt-in per pipeline', () => {
+    const withPipeline = (config) => {
+      const pipe = { id: 9, name: 'p', label: 'P', config, stages: [{ id: 91, name: 'new', label: 'New' }] };
+      runtimeService.getObject.mockImplementation(() => Promise.resolve({ data: { ...mockObjectData.data, pipelines: [pipe] } }));
+      runtimeService.getPipeline.mockImplementation(() => Promise.resolve({ data: pipe }));
+    };
+
+    it('offers Table and Pipeline, not Cards, when the pipeline never chose its views', async () => {
+      withPipeline(null);
+      renderModulePage();
+      await waitFor(() => expect(screen.getByTitle('Pipeline')).toBeInTheDocument());
+      expect(screen.getByTitle('Table')).toBeInTheDocument();
+      expect(screen.queryByTitle('Cards')).not.toBeInTheDocument();
+    });
+
+    it('offers Cards when the admin enabled it in the Pipeline Builder', async () => {
+      withPipeline({ enabled_views: ['table', 'cards', 'pipeline'] });
+      renderModulePage();
+      await waitFor(() => expect(screen.getByTitle('Cards')).toBeInTheDocument());
+    });
+  });
 });

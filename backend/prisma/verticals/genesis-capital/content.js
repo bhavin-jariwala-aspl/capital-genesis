@@ -268,9 +268,11 @@ const dashboards = [
 ];
 
 // ── Public web forms (PRD I-01, LEAD-FR-01/10/11) ────────────────────────────
+// The calculators price loans only, so they offer only the loan products.
+const LOAN_CODES = ['LND-RE', 'LND-PL', 'LND-IBL', 'LND-COM'];
 const publicForms = [
   { form: 'enquiry_web', settings: { success_message: 'Thank you — a Genesis specialist will contact you within four business hours.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'web_form' } },
-  { form: 'enquiry_calculator', settings: { success_message: 'Here is your indicative monthly instalment. A loans specialist will be in touch.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'calculator', result_fields: ['indicative_rate', 'indicative_emi'] } },
+  { form: 'enquiry_calculator', settings: { field_options: { product_code: LOAN_CODES }, success_message: 'Here is your indicative monthly instalment. A loans specialist will be in touch.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'calculator', result_fields: ['indicative_rate', 'indicative_emi'] } },
   { form: 'risk_profile_web', settings: { success_message: 'Thank you — your investor profile is below. A wealth adviser will contact you.', result_fields: ['model_portfolio', 'risk_profile_label'] } },
 ];
 

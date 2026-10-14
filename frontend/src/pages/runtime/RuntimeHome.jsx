@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { runtimeService } from '../../services/metadata.service';
 import DashboardRenderer from '../../components/runtime/DashboardRenderer';
@@ -19,7 +18,11 @@ function greeting(name) {
 }
 
 export default function RuntimeHome() {
-  const [selectedDashId, setSelectedDashId] = useState(null);
+  // `?dashboard=<id>` opens a given board (links in guides, bookmarks); picking
+  // one from the list updates it, so the address always matches the screen.
+  const [params, setParams] = useSearchParams();
+  const selectedDashId = Number(params.get('dashboard')) || null;
+  const setSelectedDashId = (id) => setParams((p) => { const next = new URLSearchParams(p); next.set('dashboard', String(id)); return next; }, { replace: true });
   const isAdmin = useAuthStore(s => s.isAdmin());
   const employee = useAuthStore(s => s.employee);
 
@@ -29,7 +32,8 @@ export default function RuntimeHome() {
   });
   const dashboards = dashListData?.data || [];
 
-  const defaultDashId = selectedDashId || dashboards[0]?.id;
+  // A board the viewer cannot see falls back to their first one.
+  const defaultDashId = (selectedDashId && dashboards.some((d) => Number(d.id) === selectedDashId) ? selectedDashId : null) || dashboards[0]?.id;
 
   const { data: dashData, isLoading: dashLoading } = useQuery({
     queryKey: ['runtime-dashboard', defaultDashId],

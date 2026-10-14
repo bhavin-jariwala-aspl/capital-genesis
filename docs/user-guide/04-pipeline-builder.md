@@ -8,7 +8,16 @@
 A pipeline links a set of ordered, colored stages to an **Object** (for example Lead or Deal). Once a pipeline is
 linked to an object, a **Table / Pipeline toggle** automatically appears on that object's module page, letting
 users switch between the flat table and a Kanban board. Each stage becomes a column on the board, and dragging a
-record between columns changes its stage.
+record between columns changes its stage — saved immediately.
+
+**Views.** Tick which views the object's page offers: **Table view** and **Pipeline view** are on by default;
+**Card view** (a grid of record cards) is optional — tick it to offer it. A pipeline that never chose its views gets
+Table and Pipeline.
+
+**Mirroring a status field.** When an object also has a status picklist that should follow its stage, set the
+pipeline's `config.status_field` to `{ "field": "status", "map": { "<stage name>": "<status value>" } }`. Every
+stage change (drag, bulk change, API or workflow) then sets that field too. Genesis Capital uses this on
+*Disbursement*.
 
 ## Where to find it
 
