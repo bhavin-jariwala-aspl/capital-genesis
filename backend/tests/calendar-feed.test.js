@@ -5,7 +5,7 @@
 const CalendarFeedService = require('../src/services/calendar-feed.service');
 const { feedToken, parseToken, fold } = CalendarFeedService;
 
-const emp = (extra = {}) => ({ employee_id: 'SWRM1', employee_name: 'Priya Ramdin', tenant_id: 6, tokens_valid_after: null, is_active: true, ...extra });
+const emp = (extra = {}) => ({ employee_id: 'GCRM1', employee_name: 'Priya Ramdin', tenant_id: 6, tokens_valid_after: null, is_active: true, ...extra });
 const db = (row, data = {}) => ({
   employee: { findUnique: jest.fn().mockResolvedValue(row) },
   activity: { findMany: jest.fn().mockResolvedValue(data.activities ?? []) },
@@ -18,7 +18,7 @@ describe('calendar feed token', () => {
   it('round-trips for the same employee and tenant', async () => {
     const e = emp();
     const svc = new CalendarFeedService(db(e));
-    expect(await svc.resolve(parseToken(feedToken(e)))).toMatchObject({ employee_id: 'SWRM1' });
+    expect(await svc.resolve(parseToken(feedToken(e)))).toMatchObject({ employee_id: 'GCRM1' });
   });
   it('stops working after sign-out-everywhere or deactivation', async () => {
     const token = parseToken(feedToken(emp()));
@@ -86,6 +86,6 @@ describe('records on the calendar (config.calendar)', () => {
     expect(body).toContain('SUMMARY:Follow up: Review · Ramdin');
     expect(body).toContain('DTSTART;VALUE=DATE:20261027');
     // Only the employee's own records are asked for.
-    expect(d.recordFieldValue.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ record: expect.objectContaining({ assigned_to: 'SWRM1' }) }) }));
+    expect(d.recordFieldValue.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ record: expect.objectContaining({ assigned_to: 'GCRM1' }) }) }));
   });
 });

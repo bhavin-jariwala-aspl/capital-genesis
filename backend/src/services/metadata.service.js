@@ -44,11 +44,9 @@ function _assertFieldConfig(fieldType, config) {
 }
 
 /**
- * A field's `name` is a SQL identifier: it is interpolated into generated-column
- * and index DDL against the shared `records` table when `is_indexed` is toggled,
- * and into JSON_EXTRACT paths. Restrict it to a safe identifier grammar so a
- * crafted name can never break out into arbitrary DDL/SQL. Enforced on create so
- * every stored name is safe; also re-checked before any DDL for defence in depth.
+ * A field's `name` is interpolated into JSON_EXTRACT paths and used as a record
+ * data key. Restrict it to a safe identifier grammar so a crafted name can never
+ * break out into SQL. Enforced on create so every stored name is safe.
  */
 const SAFE_FIELD_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 function _assertSafeFieldName(name) {
@@ -56,20 +54,6 @@ function _assertSafeFieldName(name) {
     throw new ValidationError(
       `Invalid field name "${name}". Names must start with a letter or underscore and contain only letters, numbers, and underscores (max 64 chars).`,
     );
-  }
-}
-
-/**
- * Map a UiField data_type to the MySQL column type used for stored generated columns.
- * Used when is_indexed is toggled ON for a field.
- */
-function _dataTypeToMysqlType(dataType) {
-  switch (dataType) {
-    case 'number':   return 'DECIMAL(15,4)';
-    case 'date':     return 'DATE';
-    case 'datetime': return 'DATETIME';
-    case 'boolean':  return 'TINYINT(1)';
-    default:         return 'VARCHAR(500)';
   }
 }
 
@@ -348,22 +332,9 @@ class MetadataService {
       if (data[key] !== undefined) data = { ...data, [key]: data[key] === 'true' || data[key] === true };
     }
 
-    // When is_indexed is being turned ON for the first time, create a STORED
-    // generated column (+ index) so the value can be used in WHERE / ORDER BY.
-    if (data.is_indexed && !existing.is_indexed) {
-      // Defence in depth: existing rows may predate name validation. Never build
-      // DDL from an unsafe identifier.
-      _assertSafeFieldName(existing.name);
-      const colName = `_idx_${existing.name}`;
-      const mysqlType = _dataTypeToMysqlType(existing.data_type);
-      // IF NOT EXISTS guards make this idempotent if run more than once.
-      await this.db.$executeRawUnsafe(`
-        ALTER TABLE records
-          ADD COLUMN IF NOT EXISTS \`${colName}\` ${mysqlType}
-            AS (JSON_UNQUOTE(JSON_EXTRACT(\`data\`, '$.${existing.name}'))) STORED,
-          ADD INDEX IF NOT EXISTS \`idx_rec_${existing.name}\` (\`${colName}\`)
-      `);
-    }
+    // `is_indexed` is stored as a flag only. It used to run ALTER TABLE on the
+    // shared `records` table from a Builder request: DDL any tenant admin could
+    // trigger, in MariaDB-only syntax MySQL rejects, adding columns nothing read.
 
     const { validations, col_span, position, is_readonly, show_in_list,
             id: _fid, created_at, updated_at,

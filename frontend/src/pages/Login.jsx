@@ -155,7 +155,7 @@ export default function Login() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <Input
         label="Employee ID"
-        placeholder="e.g. ADMIN001"
+        placeholder="e.g. GCADMIN"
         autoComplete="username"
         autoFocus
         error={errors.employee_id?.message}

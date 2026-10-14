@@ -373,7 +373,7 @@ Email sending requires SMTP configuration. Set these environment variables in th
 #### Pre-built Templates
 
 Genesis CRM ships with default templates, created
-automatically when the database is seeded (`npm run db:seed`):
+automatically when a tenant is onboarded from the platform console:
 
 - **Lead Follow-up** (Sales > Lead) — Subject:
   "Thank you for your interest, `{{first_name}}`"

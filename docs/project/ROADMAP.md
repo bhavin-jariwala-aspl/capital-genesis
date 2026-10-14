@@ -74,8 +74,7 @@ scaffolding:
 
 - **Metadata engine** (`metadata.service.js`) — full builder-hierarchy CRUD,
   Redis-cached with precise invalidation, transaction-wrapped cascade deletes,
-  and genuine schema-level dynamic indexing (`ALTER TABLE … generated column`)
-  guarded by a `SAFE_FIELD_NAME` grammar against DDL injection.
+  and a `SAFE_FIELD_NAME` grammar on every field name. Field changes never run DDL.
 - **Record engine** (`record.service.js`, ~1.4K LOC) — hybrid relational +
   typed-EAV storage with field aliasing, overflow capture, auto-number mutex,
   RBAC-scoped queries, soft-delete/trash/restore/purge, and domain-event

@@ -1,6 +1,6 @@
 # Platform Builder Extensions
 
-October 2026. These are the generic platform capabilities added so that a complete industry vertical — the SWAN Capital financial-services CRM ([SWAN implementation](../SWAN-CAPITAL/IMPLEMENTATION.md)) — could be built **entirely as Builder metadata**, with no per-object pages or code. Every feature below works for any tenant and any object.
+October 2026. These are the generic platform capabilities added so that a complete industry vertical — the Genesis Capital financial-services CRM ([Genesis implementation](../GENESIS-CAPITAL/IMPLEMENTATION.md)) — could be built **entirely as Builder metadata**, with no per-object pages or code. Every feature below works for any tenant and any object.
 
 | Capability | What it gives an admin | Code |
 |---|---|---|
@@ -178,9 +178,9 @@ Fields written by workflow actions and `update_related` trigger formula recomput
 A pack (`backend/prisma/verticals/<name>/`) is plain data: business units, barrier zones, roles, staff, modules/objects/fields/forms/pipelines, dependencies, wizards, document categories/checklists/templates, email templates, workflows, assignment rules, business hours, SLA policies, object permissions, master data, dashboards, public forms and optional demo records.
 
 ```bash
-node scripts/install-vertical.js swan-capital --create-tenant [--demo] [--password <pw>]
-node scripts/install-vertical.js swan-capital --tenant swan-capital      # re-install / upgrade
-node scripts/install-vertical.js swan-capital --tenant swan-capital --recompute[=obj1,obj2]  # also recompute formulas
+node scripts/install-vertical.js genesis-capital --create-tenant [--demo] [--password <pw>]
+node scripts/install-vertical.js genesis-capital --tenant genesis-capital      # re-install / upgrade
+node scripts/install-vertical.js genesis-capital --tenant genesis-capital --recompute[=obj1,obj2]  # also recompute formulas
 ```
 
 The installer is **idempotent and diff-based**: every row is matched by its natural key and only rows that differ are written; workflows, assignment rules, SLA policies and dashboards are replaced by name; rows the pack does not mention are never touched. Staff accounts are created once and never overwritten (random passwords printed once). Custom roles must sit at level 4 or below. Records referenced as `@object:field=value`; demo/master records keyed by one field or a composite key.
@@ -198,7 +198,7 @@ The installer is **idempotent and diff-based**: every row is matched by its natu
 
 When a run adds or edits a formula field, the object's existing records are recomputed too, and a checkpoint first recomputes the objects it reads whose formulas changed. `--recompute` forces the same for named objects (or every object with formulas), to repair values left stale by earlier runs or manual edits.
 
-`tests/swan-pack.test.js` resolves every reference in a pack (fields, stages, objects, roles, templates, formulas) so a typo fails CI rather than producing an inert automation.
+`tests/genesis-capital-pack.test.js` resolves every reference in a pack (fields, stages, objects, roles, templates, formulas) so a typo fails CI rather than producing an inert automation.
 
 ## 12. Personal data protection
 
@@ -259,7 +259,7 @@ Clients can also download documents in categories marked `portal_visible`, uploa
 
 ```js
 { step_type: 'send_sms', config: {
-  integration: 'swan_sms', to_field: 'party_mobile', language_field: 'preferred_language',
+  integration: 'genesis_sms', to_field: 'party_mobile', language_field: 'preferred_language',
   message: 'Your instalment of MUR {{instalment}} is due on {{next_instalment_date}}.',
   message_fr: 'Votre mensualité de MUR {{instalment}} est due le {{next_instalment_date}}.',
   suppress_field: 'do_not_contact',

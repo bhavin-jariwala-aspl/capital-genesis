@@ -11,6 +11,47 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed — One demo workspace: Genesis Capital (2026-10-14)
+
+- The financial-services vertical pack is now **Genesis Capital** (`prisma/verticals/genesis-capital`, tenant
+  `genesis-capital`). Staff IDs use the `GC` prefix (`GCADMIN`, `GCRM1`, …) and `@genesis-capital.demo` emails;
+  the demo password is `GenesisDemo#2026`. Docs moved to `docs/GENESIS-CAPITAL/`; the pack test is
+  `tests/genesis-capital-pack.test.js`.
+- The generic *Genesis CRM Demo* workspace (`genesis-life-demo`) is retired. `TEMPLATE_TENANT_SLUG` now
+  defaults to `genesis-capital`.
+- **`prisma/seed.js` rewritten.** It seeds the platform layer, installs the Genesis Capital pack through the
+  same installer as `scripts/install-vertical.js` (now also a module exporting `installVertical`), then creates
+  `PLATFORM01`. `--no-demo` skips demo records.
+
+### Fixed — dangerous behaviour
+
+- **The seed ran on `require`** and emptied the database. A syntax check (`node -e "require('./prisma/seed.js')"`)
+  once truncated the shared database. It now runs only when executed directly, and it refuses a non-local
+  `DATABASE_URL` without `--allow-remote` / `SEED_ALLOW_REMOTE=1`.
+- **The seed cleared a hand-kept table list** that had fallen behind the schema, leaving rows that broke the
+  platform-wide unique employee and office codes on re-seed. It now clears every Prisma model.
+- **Field "indexed" flag ran DDL.** Turning on `is_indexed` executed `ALTER TABLE records ADD COLUMN …` on the
+  shared table from a Builder request. The syntax was MariaDB-only, so MySQL rejected it. Nothing read the
+  columns, and each one drifted the schema from Prisma. It is now a stored flag only.
+- **Employee deactivate / reactivate / update** (`/api/auth/employees/:id…`): a workspace admin could deactivate
+  the platform administrator, deactivate themselves, or deactivate or reset the password of an account with more
+  authority. All three routes now share one guard (`findManageableEmployee`).
+- Removed `frontend/public/_seed.html`, a development helper shipped in the production bundle that planted a
+  fake session in `localStorage`.
+
+### Removed
+
+- Scripts for the retired demo workspace: `scripts/setup-sla-demo.js`, `scripts/setup-report-samples.js`,
+  `prisma/seed-status-tracker.js`; and the one-off `scripts/remove-insurance-domain.js` (already applied; a fresh
+  database never holds insurance data).
+- Unused frontend modules: `PDFViewer.jsx` (insurance quote viewer), `TabbedWorkspace.jsx`, `ui/Card.jsx`,
+  `hooks/useResolvedObject.js`; and `linkedin-posts.md`.
+
+### Performance
+
+- `HierarchyService.getTree` loads every direct-manager edge in one query instead of one query per descendant.
+- The client portal resolves the subject's records across exposed objects in parallel.
+
 ### Added — End-to-end demo completeness (2026-10-14)
 
 #### Platform
@@ -32,9 +73,9 @@ and this project adheres to
   share links, e-signatures, wall-crossings, audit-chain baseline), `--reset-passwords`, faster parallel updates,
   encrypted-field-aware change detection.
 
-#### SWAN Capital
+#### Genesis Capital
 
-- **Products & Services** module with full product sheets from swancapitalsolutions.com; fund master with
+- **Products & Services** module with full product sheets from genesis-capital.demo; fund master with
   published ISINs, benchmarks, minimums and fees; FMB 2029 corrected to a USD feeder fund.
 - Realistic staff names; website enquiry form asks for tenure; conversion gate for loan enquiries; dedicated STR
   document category.
@@ -47,13 +88,13 @@ and this project adheres to
 - Genesis CRM Demo tenant: 38 leftover insurance-era sample texts (cases, tasks, leads, activities, notifications)
   reworded to neutral financial-services wording.
 
-### Added — SWAN Capital full scope and platform hardening (2026-10-14)
+### Added — Genesis Capital full scope and platform hardening (2026-10-14)
 
-The SWAN Capital vertical now covers all 25 PRD modules and all 22 products on swancapitalsolutions.com, with
-demo data across the application. Details: [SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md),
+The Genesis Capital vertical now covers all 25 PRD modules and all 22 products on genesis-capital.demo, with
+demo data across the application. Details: [GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md),
 [PLATFORM_BUILDER_EXTENSIONS.md §12–22](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#12-personal-data-protection).
 
-#### SWAN pack (configuration only)
+#### Genesis pack (configuration only)
 
 - **Scope.** 18 modules, 91 objects, 1,406 fields, 71 workflows, 22 assignment rules, 13 SLA policies,
   15 dashboards, 34 EN/FR email templates, 14 merge templates, 11 checklists, 11 wizards and 6 public forms.
@@ -98,13 +139,13 @@ demo data across the application. Details: [SWAN-CAPITAL/IMPLEMENTATION.md](../S
 - **Barrier override defaults.** The merged operational-permission defaults showed `barrier_override` as
   granted to every role. It now defaults to no access.
 
-### Added — Platform Builder extensions and the SWAN Capital vertical (2026-10-13)
+### Added — Platform Builder extensions and the Genesis Capital vertical (2026-10-13)
 
 Generic platform capabilities, so an industry CRM can be configured in the Builder rather than coded,
-and the first vertical built on them: SWAN Capital Solutions (Phase 0 + Phase 1 MVP of
-`docs/SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md`). Details:
+and the first vertical built on them: Genesis Capital (Phase 0 + Phase 1 MVP of
+`docs/GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md`). Details:
 [PLATFORM_BUILDER_EXTENSIONS.md](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md),
-[SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md).
+[GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md).
 
 - **Formula language** (`services/formula.js`): a safe parser/evaluator, with no `eval`. It powers formula
   fields, `expression` validation rules, workflow `expression` conditions and stage entry rules. Includes
@@ -127,7 +168,7 @@ and the first vertical built on them: SWAN Capital Solutions (Phase 0 + Phase 1 
   `link_field`/`store_as`/`stage`; stage moves by name; maker-checker approvals
   (`exclude_actor`/`exclude_field`).
 - **Vertical packs**: `scripts/install-vertical.js` installs a pack of Builder metadata idempotently.
-  `prisma/verticals/swan-capital` provides 8 modules, 26 objects, 15 workflows, 12 assignment rules,
+  `prisma/verticals/genesis-capital` provides 8 modules, 26 objects, 15 workflows, 12 assignment rules,
   6 SLA policies, 14 EN/FR email templates, 5 merge templates, 5 wizards, 3 dashboards and 3 public forms.
 - **Database** (additive migration `20261013180000_platform_builder_extensions`): `business_units`,
   `employee_business_units`, `barrier_zones`, `barrier_members`, `wall_crossings`, `audit_chain_events`;

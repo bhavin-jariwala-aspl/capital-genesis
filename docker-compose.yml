@@ -4,9 +4,9 @@
 #   docker compose --env-file .env.docker up --build
 #
 # Web on http://localhost:8080 · API health on http://localhost:3001/health.
-# The API applies migrations on start. Load a vertical pack (for example the
-# SWAN Capital demo) once the stack is up:
-#   docker compose exec backend node scripts/install-vertical.js swan-capital --tenant swan-capital --demo
+# The API applies migrations on start. Seed the platform and the Genesis Capital
+# demo workspace once the stack is up (empties the database first):
+#   docker compose exec backend node prisma/seed.js
 services:
   mysql:
     image: mysql:8.4

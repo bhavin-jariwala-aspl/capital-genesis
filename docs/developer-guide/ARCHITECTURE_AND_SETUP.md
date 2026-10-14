@@ -89,12 +89,12 @@ cd backend
 # Apply all migrations
 npx prisma migrate deploy
 
-# Seed demo data (creates users, modules, CRM data)
+# Seed demo data (platform layer + Genesis Capital workspace + PLATFORM01)
 node prisma/seed.js
 ```
 
-> **Warning:** `seed.js` wipes all existing data. Only run on
-> development databases.
+> **Warning:** `seed.js` wipes all existing data. It refuses a non-local
+> `DATABASE_URL` unless `--allow-remote` is passed.
 
 ### Step 6 — Start Development Servers
 
@@ -125,13 +125,14 @@ server proxies all `/api/*` requests to the backend at port
 
 Use one of the seeded accounts:
 
-| Role | Email | Password |
+| Role | Employee ID | Password |
 |---|---|---|
-| Agency Owner (full access) | `owner@genesislife.local` | `Admin@123` |
-| Agent | `agent@genesislife.local` | `User@123` |
+| CRM Administrator (full access + Builder) | `GCADMIN` | `GenesisDemo#2026` |
+| Relationship Manager | `GCRM1` | `GenesisDemo#2026` |
+| Platform Administrator | `PLATFORM01` | `Platform@123` |
 
-See [`backend/prisma/seed.js`](../../backend/prisma/seed.js) for the complete
-list of seeded accounts.
+All 22 staff accounts are listed in
+[GENESIS-CAPITAL/IMPLEMENTATION.md §0](../GENESIS-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-genesis-demo).
 
 ### VS Code Workspace Settings (Optional)
 
@@ -1098,10 +1099,13 @@ cd backend
 node prisma/seed.js
 ```
 
-> **Warning:** The seed script deletes ALL data before inserting. Only run on development or test databases.
+> **Warning:** The seed script deletes ALL data before inserting. It refuses a non-local `DATABASE_URL` unless
+> `--allow-remote` is passed, and it does nothing when `require`d — only `node prisma/seed.js` runs it.
 
-The seed creates: 5 modules, 6 objects, 15-9 fields per object, a wizard, a dashboard, a pipeline, and 4 demo
-employees with roles `super_admin`, `admin`, `manager`, `user`.
+The seed creates the platform layer (system role, plans, feature flags, security policy, rate limits), installs
+the Genesis Capital vertical pack (`prisma/verticals/genesis-capital`) into a new tenant through
+`scripts/install-vertical.js`, and adds the platform administrator `PLATFORM01`. `--no-demo` skips the demo
+records.
 
 ---
 
@@ -1115,9 +1119,9 @@ employees with roles `super_admin`, `admin`, `manager`, `user`.
 | Tailwind classes missing in production | Dynamic class names | Use complete static class strings |
 | DB connection refused | `.env` not configured | Check `DATABASE_URL` in `backend/.env` |
 | Redis connection error | Redis not running | App degrades gracefully — check `REDIS_HOST` or disable |
-| Seed fails with FK constraint | Old data in DB | Run `npx prisma migrate reset` then seed |
+| Seed refuses to run | `DATABASE_URL` is not a local host | Pass `--allow-remote` only if wiping that database is intended |
 | JWT invalid after restart | Secret changed | Clear browser storage, re-login |
-| Builder routes return 403 | Non-admin user | Use SADMIN001/ADMIN001 accounts for builder access |
+| Builder routes return 403 | Non-admin user | Use `GCADMIN` (or another admin-level account) for Builder access |
 
 ---
 

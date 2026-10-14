@@ -109,25 +109,6 @@ current status is derived from the most recent event.
 
 ---
 
-## Fast path: the demo seeder
-
-A ready-made seeder wires the tracker onto the objects listed in its `TARGETS`
-array and seeds a realistic timeline on every record (scaled to each record's
-current pipeline stage). It ships with one target, the Prospect pipeline (its
-original Claim and Application targets were removed with the insurance domain on
-2026-10-13):
-
-```bash
-cd backend
-node prisma/seed-status-tracker.js
-```
-
-To target another object, add an entry to the `TARGETS` array in
-`backend/prisma/seed-status-tracker.js` (object name, field name, title,
-milestones, and a sample timeline) and re-run it. The script is idempotent.
-
----
-
 ## API reference
 
 ```text
@@ -161,7 +142,7 @@ The `StatusEvent` row shape:
 - **Stepper shows but no dates / empty log.** The record has no status events
   yet. The stepper draws from static `config.stages`, but the banner, dated log,
   and per-step dates all need events. Move the record through a pipeline stage
-  (auto-capture) or `POST` an event — or run the demo seeder.
+  (auto-capture) or `POST` an event.
 - **Tracker not showing at all.** It only renders in **edit** mode. In create
   mode it shows the "saved record required" placeholder.
 - **Field renders as a text box.** The form metadata predates the field — clear

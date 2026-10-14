@@ -486,11 +486,11 @@ RUNTIME (Available to all authenticated users)
 ## Setup After Fresh Deploy
 
 ```bash
-# 1. Run migration to create platform tables
+# 1. Apply migrations
 cd backend
-npx prisma migrate dev --name add-platform-admin
+npx prisma migrate deploy
 
-# 2. Seed the database (includes platform admin, plans, flags, tenant)
+# 2. Seed an empty database (platform admin, plans, flags, Genesis Capital workspace)
 node prisma/seed.js
 
 # 3. Restart the backend
@@ -628,7 +628,7 @@ Changing the org chart never touches `roles`.
 backend/
   prisma/
     schema.prisma              # +12 platform tables, tenant_id on all scoped tables
-    seed.js                    # +platform_admin role, plans, flags, tenant, policy
+    seed.js                    # platform_admin role, plans, flags, policy, Genesis Capital tenant, PLATFORM01
   src/
     middleware/
       authenticate.js          # +requirePlatformAdmin, impersonation middleware

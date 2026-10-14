@@ -140,10 +140,10 @@ The board uses its own palette, money is shown compactly (`$2.8M` rather than
 of it: open the dashboard in the Builder, click a widget, and edit the
 **Chart appearance** block described above.
 
-> This board is managed as code (`backend/prisma/crm-dashboards.js`) and
-> reinstalled by `npm run db:seed` or `node scripts/seed-dashboards.js`. Edits you
-> make to it in the Builder are replaced the next time either runs — copy a
-> board first if you want to keep your own version.
+> This board is managed as code (`backend/prisma/crm-dashboards.js`), installed
+> when a tenant is onboarded and reinstalled by `node scripts/seed-dashboards.js`.
+> Edits you make to it in the Builder are replaced the next time the script runs —
+> copy a board first if you want to keep your own version.
 
 ### Live datasets
 

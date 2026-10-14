@@ -18,7 +18,7 @@ const { logger } = require('./logging.service');
  * `config.portal.<realm>` is set is exposed, filtered to the user's own
  * records through its `link` lookup field, showing the listed `fields`, and —
  * where `create` is configured — accepting new records (service requests,
- * consents, fund orders, referrals). Nothing here names a SWAN object.
+ * consents, fund orders, referrals). Nothing here names a Genesis object.
  *
  *   config.portal.client = {
  *     title, link: 'party', fields: [...], order?: 'field',
@@ -304,12 +304,11 @@ class PortalService {
   async #ownRecordIds(session) {
     const views = await this.views(session.realm_kind);
     const ids = new Set([Number(session.subject_id)]);
-    for (const v of views) {
-      const rows = await this.db.recordFieldValue.findMany({
-        where: { field_name: v.link, str_value: String(session.subject_id), record: { object_id: v.object_id, deleted_at: null } }, select: { record_id: true }, take: 500,
-      });
-      rows.forEach((r) => ids.add(r.record_id));
-    }
+    // Independent lookups — one round trip per view, in parallel.
+    const perView = await Promise.all(views.map((v) => this.db.recordFieldValue.findMany({
+      where: { field_name: v.link, str_value: String(session.subject_id), record: { object_id: v.object_id, deleted_at: null } }, select: { record_id: true }, take: 500,
+    })));
+    for (const rows of perView) rows.forEach((r) => ids.add(r.record_id));
     return [...ids];
   }
 

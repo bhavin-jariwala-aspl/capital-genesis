@@ -237,7 +237,7 @@ model UiField {
   is_unique     Boolean  @default(false)
   is_searchable Boolean  @default(true)
   is_sortable   Boolean  @default(true)
-  is_indexed    Boolean  @default(false) // Creates a generated column + index on records table for this field
+  is_indexed    Boolean  @default(false) // Flag only — no DDL is run for it
   default_value String?  @db.Text
   placeholder   String?  @db.VarChar(200)
   help_text     String?  @db.Text

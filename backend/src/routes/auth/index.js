@@ -1,7 +1,7 @@
 'use strict';
 
 const bcrypt           = require('bcryptjs');
-const { authenticate, requireAdmin, PLATFORM_ADMIN_ROLE, BUILTIN_ROLE_LEVEL } = require('../../middleware/authenticate');
+const { authenticate, requireAdmin, PLATFORM_ADMIN_ROLE, BUILTIN_ROLE_LEVEL, levelOf, resolveRoleLevel } = require('../../middleware/authenticate');
 const { routeSchemas, schemas } = require('../../utils/schemas');
 const AuthService      = require('../../services/auth.service');
 const HierarchyService = require('../../services/hierarchy.service');
@@ -49,6 +49,31 @@ function pick(body, allowed) {
     if (body?.[key] !== undefined) out[key] = body[key];
   }
   return out;
+}
+
+/**
+ * The employee an admin may edit, deactivate or reactivate. These used to check
+ * only part of this: any workspace admin could lock out the platform
+ * administrator (who signs in through a workspace), reset the password of an
+ * account that outranks them, or deactivate themselves. Tenant-scoped lookup.
+ */
+async function findManageableEmployee(prisma, req, { self = false } = {}) {
+  const target = await prisma.employee.findFirst({
+    where:  { employee_id: req.params.id },
+    select: { employee_id: true, role: true },
+  });
+  if (!target) throw new NotFoundError('Employee');
+  if (target.role === PLATFORM_ADMIN_ROLE) {
+    throw new ValidationError('Platform administrators are managed from the platform console');
+  }
+  if (!self && target.employee_id === req.user.employeeId) {
+    throw new ValidationError('You cannot deactivate your own account');
+  }
+  const role = await prisma.role.findFirst({ where: { name: target.role }, select: { level: true } });
+  if (resolveRoleLevel(target.role, role?.level) < levelOf(req.user)) {
+    throw new ValidationError('You cannot change an account with more authority than your own');
+  }
+  return target;
 }
 
 /**
@@ -307,16 +332,9 @@ module.exports = async function authRoutes(fastify) {
     if (password) {
       updateData.password = await bcrypt.hash(password, 12);
     }
-    // Tenant-scoped: the extension ANDs `tenant_id` into the WHERE, so this
-    // 404s rather than touching another workspace's employee.
-    const target = await fastify.prisma.employee.findFirst({
-      where:  { employee_id: req.params.id },
-      select: { employee_id: true, role: true },
-    });
-    if (!target) throw new NotFoundError('Employee');
-    if (target.role === PLATFORM_ADMIN_ROLE) {
-      throw new ValidationError('Platform administrators are managed from the platform console');
-    }
+    // Tenant-scoped, never the platform administrator, never an account that
+    // outranks the caller (this route can set a password).
+    await findManageableEmployee(fastify.prisma, req, { self: true });
     const employee = await fastify.prisma.employee.update({
       where: { employee_id: req.params.id },
       data: updateData,
@@ -331,6 +349,7 @@ module.exports = async function authRoutes(fastify) {
 
   // PATCH /api/auth/employees/:id/deactivate — deactivate employee (admin only)
   fastify.patch('/employees/:id/deactivate', { preHandler: [requireAdmin] }, async (req) => {
+    await findManageableEmployee(fastify.prisma, req);
     const employee = await fastify.prisma.employee.update({
       where: { employee_id: req.params.id },
       data: { is_active: false },
@@ -343,6 +362,7 @@ module.exports = async function authRoutes(fastify) {
 
   // PATCH /api/auth/employees/:id/reactivate — reactivate employee (admin only)
   fastify.patch('/employees/:id/reactivate', { preHandler: [requireAdmin] }, async (req) => {
+    await findManageableEmployee(fastify.prisma, req, { self: true });
     const employee = await fastify.prisma.employee.update({
       where: { employee_id: req.params.id },
       data: { is_active: true },
@@ -581,3 +601,5 @@ module.exports = async function authRoutes(fastify) {
     return ok(safeEmployee);
   });
 };
+
+module.exports.findManageableEmployee = findManageableEmployee;

@@ -81,11 +81,14 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...add formula fields, lookups, record actions, stage gates, business units, information barriers, public web forms or a vertical pack"**
 → [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md)
 
-**"...learn to use the SWAN Capital CRM, or look up a term"**
-→ [SWAN-CAPITAL/swan-capital-user-guide.md](SWAN-CAPITAL/swan-capital-user-guide.md)
+**"...learn to use the Genesis Capital CRM, or look up a term"**
+→ [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md)
 
-**"...see how the SWAN Capital financial-services CRM was built and install it"**
-→ [SWAN-CAPITAL/IMPLEMENTATION.md](SWAN-CAPITAL/IMPLEMENTATION.md) (requirements: [SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md](SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md))
+**"...present the Genesis Capital CRM to a client, and prepare for their questions"**
+→ [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md)
+
+**"...see how the Genesis Capital financial-services CRM was built and install it"**
+→ [GENESIS-CAPITAL/IMPLEMENTATION.md](GENESIS-CAPITAL/IMPLEMENTATION.md) (requirements: [GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md](GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md))
 
 **"...understand the security implementation"**
 → [developer-guide/SECURITY.md](developer-guide/SECURITY.md)
@@ -255,12 +258,12 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 
 ### Verticals
 
-- [SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md](SWAN-CAPITAL/SWAN_Capital_CRM_PRD.md) —
-  Product requirements for the SWAN Capital Solutions financial-services CRM
-- [SWAN-CAPITAL/swan-capital-user-guide.md](SWAN-CAPITAL/swan-capital-user-guide.md) —
-  How SWAN staff use the CRM: navigation, records, approvals, documents, every module and journey, and a glossary of
+- [GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md](GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md) —
+  Product requirements for the Genesis Capital financial-services CRM
+- [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md) —
+  How Genesis staff use the CRM: navigation, records, approvals, documents, every module and journey, and a glossary of
   every business and CRM term
-- [SWAN-CAPITAL/IMPLEMENTATION.md](SWAN-CAPITAL/IMPLEMENTATION.md) —
+- [GENESIS-CAPITAL/IMPLEMENTATION.md](GENESIS-CAPITAL/IMPLEMENTATION.md) —
   All 25 modules and 22 products: PRD traceability, product catalogue, dashboards, portal, install
   steps, roles and logins, demo data and walk-through, and what needs the client's accounts
 - [developer-guide/CONTRIBUTING.md](developer-guide/CONTRIBUTING.md) —
@@ -277,31 +280,21 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 
 ### Demo Accounts (after seeding)
 
-| Role | Employee ID | Password |
-| ---- | ----------- | -------- |
-| Platform Admin | PLATFORM01 | Platform@123 |
-| Agency Owner (admin) | ADMIN001 | Admin@123 |
-| Sales Manager | MGR001 | Manager@123 |
-| Senior Agent | USR001 | User@123 |
-| Agent | USR002 | User@123 |
-
-### SWAN Capital demo accounts (workspace `swan-capital`)
-
-The SWAN Capital Solutions workspace has its own staff accounts; the accounts above open the generic demo workspace
-instead. Every SWAN account uses the demo password **`SwanDemo#2026`**.
+The seed builds one workspace, **Genesis Capital** (`genesis-capital`). Staff accounts use the demo password
+**`GenesisDemo#2026`**; the platform administrator `PLATFORM01` uses `Platform@123`.
 
 | Role | Employee ID | Name |
 | ---- | ----------- | ---- |
-| CRM Administrator | SWADMIN | Kevin Lam |
-| Chief Operating Officer | SWCOO | Anjali Gopee |
-| Relationship Manager | SWRM1 | Priya Ramdin |
-| Loans Executive | SWLOAN1 | Sophie Lagesse |
-| Manager, Loans & Fixed Income | SWLMGR | Rajiv Doorgakant |
-| Compliance Officer | SWCOMP1 | Fatima Hossenbux |
-| Corporate Advisor | SWADV1 | Camille Rivalland |
+| CRM Administrator | GCADMIN | Kevin Lam |
+| Chief Operating Officer | GCCOO | Anjali Gopee |
+| Relationship Manager | GCRM1 | Priya Ramdin |
+| Loans Executive | GCLOAN1 | Sophie Lagesse |
+| Manager, Loans & Fixed Income | GCLMGR | Rajiv Doorgakant |
+| Compliance Officer | GCCOMP1 | Fatima Hossenbux |
+| Corporate Advisor | GCADV1 | Camille Rivalland |
 
-All 22 SWAN accounts, what each demonstrates, and how to change the demo password:
-[SWAN-CAPITAL/IMPLEMENTATION.md §0](SWAN-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-swan-demo).
+All 22 Genesis accounts, what each demonstrates, and how to change the demo password:
+[GENESIS-CAPITAL/IMPLEMENTATION.md §0](GENESIS-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-genesis-demo).
 
 ### Key URLs (local development)
 

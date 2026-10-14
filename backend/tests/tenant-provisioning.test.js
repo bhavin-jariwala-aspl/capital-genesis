@@ -124,7 +124,7 @@ const NEW = 2;
 function templateSeed() {
   return {
     tenant: [
-      { id: TEMPLATE, name: 'Template Co', slug: 'genesis-life-demo', industry: 'technology', status: 'active' },
+      { id: TEMPLATE, name: 'Template Co', slug: 'genesis-capital', industry: 'technology', status: 'active' },
       { id: NEW, name: 'Acme Corp', slug: 'acme-corp', industry: 'technology', status: 'active' },
     ],
     uiModule: [
@@ -616,7 +616,7 @@ describe('template resolution', () => {
 
   it('never nominates the tenant being provisioned', async () => {
     const seed = templateSeed();
-    seed.tenant = [{ id: NEW, name: 'Acme', slug: 'genesis-life-demo', status: 'active' }];
+    seed.tenant = [{ id: NEW, name: 'Acme', slug: 'genesis-capital', status: 'active' }];
     for (const spec of CLONE_PLAN) seed[spec.model] = [];
     const { svc } = svcFor(seed);
     expect(await svc.resolveTemplateTenantId(undefined, NEW)).toBeNull();

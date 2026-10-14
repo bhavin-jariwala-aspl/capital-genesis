@@ -1,4 +1,4 @@
--- Session hardening (SWAN PRD E-01 refresh tokens + revocation, E-02 MFA).
+-- Session hardening (Genesis PRD E-01 refresh tokens + revocation, E-02 MFA).
 -- Additive only.
 
 -- AlterTable

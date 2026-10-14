@@ -159,7 +159,7 @@ class TenantProvisioningService {
       return row.id;
     }
 
-    const slug = process.env.TEMPLATE_TENANT_SLUG || 'genesis-life-demo';
+    const slug = process.env.TEMPLATE_TENANT_SLUG || 'genesis-capital';
     const bySlug = await this.db.tenant.findUnique({ where: { slug }, select: { id: true } });
     if (bySlug && bySlug.id !== excludeTenantId) return bySlug.id;
 

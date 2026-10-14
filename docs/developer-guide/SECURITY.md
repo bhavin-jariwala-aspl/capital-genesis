@@ -645,7 +645,7 @@ Full design: [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md).
 
 ## Sessions, two-factor and personal data (October 2026)
 
-Delivered for the SWAN Capital PRD (E-01, E-02, E-16, X-08), for every tenant.
+Delivered for the Genesis Capital PRD (E-01, E-02, E-16, X-08), for every tenant.
 
 ### Refresh tokens (`auth_refresh_tokens`)
 
@@ -658,6 +658,13 @@ Delivered for the SWAN Capital PRD (E-01, E-02, E-16, X-08), for every tenant.
 - `authenticate` rejects any token issued before this time, and any token of an inactive employee. The check is cached for 30 seconds per instance, and the instance that revokes applies it immediately.
 - It is set on deactivation (tenant and platform consoles), password change, password reset and *Sign out everywhere*.
 - Tokens with a `purpose` claim (the five-minute MFA challenge) are never accepted as sessions.
+
+### Who a workspace admin may manage (`findManageableEmployee`, `routes/auth`)
+
+`PUT /api/auth/employees/:id`, `PATCH …/deactivate` and `PATCH …/reactivate` share one guard: a tenant-scoped
+lookup (another workspace's employee is a 404); never the platform administrator, who signs in through a workspace
+but is managed only from the platform console; never an account with more authority than the caller (that would
+let an admin reset a super-admin's password); and no self-deactivation.
 
 ### Two-factor (TOTP) (`utils/totp.js`)
 

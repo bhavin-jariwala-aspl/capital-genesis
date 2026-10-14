@@ -47,8 +47,9 @@ Two sources, on purpose:
   in the Builder, and it exists only in the database. Cloning one nominated workspace means the
   platform team curates a single template and every new tenant inherits it. The template is chosen
   as: an explicit `template_tenant_id` on the request → the tenant whose slug matches
-  `TEMPLATE_TENANT_SLUG` (default `genesis-life-demo`) → the lowest-numbered tenant that has any
-  metadata at all.
+  `TEMPLATE_TENANT_SLUG` (default `genesis-capital`, the workspace the seed builds) → the
+  lowest-numbered tenant that has any metadata at all. Set `TEMPLATE_TENANT_SLUG` to a dedicated,
+  curated workspace when new tenants should not start from the Genesis Capital configuration.
 - **The code catalogues** supply workflows and dashboards. Those already live in
   `prisma/crm-workflows.js` and `prisma/crm-dashboards.js` with installers that take a
   tenant-scoped Prisma client, so provisioning calls them and a new tenant gets the *current*
@@ -220,9 +221,9 @@ business units, barrier zones, roles, staff, master data and public forms).
 
 ```bash
 cd backend
-node scripts/install-vertical.js swan-capital --create-tenant          # create the tenant and install
-node scripts/install-vertical.js swan-capital --tenant swan-capital    # re-install or upgrade in place
-node scripts/install-vertical.js swan-capital --tenant swan-capital --demo   # add demo records
+node scripts/install-vertical.js genesis-capital --create-tenant          # create the tenant and install
+node scripts/install-vertical.js genesis-capital --tenant genesis-capital    # re-install or upgrade in place
+node scripts/install-vertical.js genesis-capital --tenant genesis-capital --demo   # add demo records
 ```
 
 - `--create-tenant` creates the tenant from the pack's definition and runs only the **roles** and **org**
@@ -232,10 +233,10 @@ node scripts/install-vertical.js swan-capital --tenant swan-capital --demo   # a
 - New staff accounts get random passwords, printed once. Pass `--password` to set one, and change them at first
   sign-in.
 - The pack's public forms are published and their `/f/<key>` paths printed.
-- Staff IDs must still be platform-wide unique (see below), so packs prefix them (SWAN uses `SW…`).
+- Staff IDs must still be platform-wide unique (see below), so packs prefix them (Genesis Capital uses `GC…`).
 
-Shipped packs: **swan-capital**, a financial-services CRM. See
-[SWAN-CAPITAL/IMPLEMENTATION.md](../SWAN-CAPITAL/IMPLEMENTATION.md). How packs and the installer work:
+Shipped packs: **genesis-capital**, a financial-services CRM. See
+[GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md). How packs and the installer work:
 [PLATFORM_BUILDER_EXTENSIONS.md](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#11-vertical-packs).
 
 ---

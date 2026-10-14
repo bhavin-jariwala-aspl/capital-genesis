@@ -262,7 +262,7 @@ export const STEP_SCHEMAS = {
       { key: 'language_field', label: 'Language field', type: 'field', help: 'e.g. preferred_language (en / fr).' },
       { key: 'suppress_field', label: 'Skip when this field is true', type: 'field', help: 'e.g. do_not_contact.' },
     ],
-    example: { integration: 'swan_sms', message: 'SWAN: your instalment of MUR {{instalment}} is due on {{next_due_date}}.', to_field: 'mobile' },
+    example: { integration: 'genesis_sms', message: 'Genesis: your instalment of MUR {{instalment}} is due on {{next_due_date}}.', to_field: 'mobile' },
   },
 
   generate_document: {

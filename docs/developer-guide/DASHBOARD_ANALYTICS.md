@@ -48,7 +48,7 @@ per-request under the caller's tenant scope.
 | Builder canvas | `frontend/src/components/builder/DashboardCanvas.jsx` | Same renderers, live previews on the editing grid |
 | Builder palette | `frontend/src/components/builder/WidgetPalette.jsx` | **Live** section — one click adds a wired widget |
 | Builder config panel | `frontend/src/components/builder/WidgetConfigPanel.jsx` | Dataset picker + endpoint display + response preview |
-| Seed | `backend/prisma/seed.js` | Demo dashboards; imports `DATASETS` so seeded configs cannot drift |
+| Catalogue | `backend/prisma/crm-dashboards.js` | Onboarding dashboards; built from `DATASETS` so configs cannot drift |
 | Tests | `backend/tests/analytics.test.js` | Runs every catalog entry against a Prisma double |
 
 ---
@@ -229,9 +229,9 @@ Row shapes a few of the less obvious types expect:
 
 ## Seeded dashboards
 
-`seed.js` imports `DATASETS` from the service and derives each widget's chart type
-and axis keys from it, so a change to a dataset's suggested keys propagates to the
-seed automatically. The seeded dashboards cover the CRM pipeline datasets — open
+The dashboard catalogue imports `DATASETS` from the service and derives each widget's
+chart type and axis keys from it, so a change to a dataset's suggested keys propagates
+to every newly onboarded tenant automatically. The seeded dashboards cover the CRM pipeline datasets — open
 pipeline, lead sources and status, opportunity stages and won-vs-lost by month.
 
 Some widgets render through saved `ui_charts` records (`chart_id`) rather than
@@ -268,9 +268,10 @@ double whose delegates return empty results by default, so no database is needed
 
 The demo boards are a catalogue in
 [`backend/prisma/crm-dashboards.js`](../../backend/prisma/crm-dashboards.js), installed by
-[`backend/scripts/seed-dashboards.js`](../../backend/scripts/seed-dashboards.js). `prisma/seed.js` calls
-the same installer, so `npm run db:seed` and the standalone script cannot produce different boards —
-the arrangement `crm-workflows.js` already uses for workflows.
+[`backend/scripts/seed-dashboards.js`](../../backend/scripts/seed-dashboards.js). Tenant onboarding calls
+the same installer, so a new tenant and the standalone script cannot produce different boards — the
+arrangement `crm-workflows.js` already uses for workflows. (The Genesis Capital workspace has its own
+15 dashboards, defined in its vertical pack.)
 
 ```bash
 node scripts/seed-dashboards.js --dry-run    # show what would change

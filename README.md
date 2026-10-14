@@ -2,26 +2,12 @@
 
 ## A Complete, Fully Configurable Enterprise-Grade CRM Platform
 
-> **Latest Update (July 2026):** New standalone **Document Management System
-> (DMS)** — pluggable multi-cloud storage (local · S3 · Azure Blob · Google Cloud
-> Storage), an admin builder (categories, upload policies, checklists), folders,
-> in-document full-text search, merge templates, tracked public sharing with
-> engagement analytics, and native e-signature. See
-> [DOCUMENT_MANAGEMENT.md](docs/developer-guide/DOCUMENT_MANAGEMENT.md). Also a new
-> **Reminders** feature — set time-based
-> reminders on any record, get a notification when due, and see a "My Reminders"
-> agenda. Plus a platform hardening pass: fixed the field-builder validation
-> bug, closed SSRF/DDL-injection gaps, hardened tenant isolation to
-> AsyncLocalStorage-only (removing a racy shared-state fallback), bounded the
-> record-list query, and repaired list search/sort. Removed ~65 orphaned,
-> never-implemented database models (schema trimmed 170 → 106) so the data model
-> reflects what actually ships. See
-> [docs/project/CHANGELOG.md](docs/project/CHANGELOG.md).
->
-> **October 2026:** the insurance domain (quotes, applications, underwriting,
-> policies, claims, commissions, declarations, document collection) and the CRM
-> Quotes object were removed. Genesis CRM is a general-purpose CRM; the
-> standalone Document Management module and the Product catalog remain.
+> **Genesis Capital** — the shipped demo workspace is a complete financial-services CRM (lending, wealth,
+> funds, securities, advisory, forex, compliance) built entirely as Builder metadata: 19 modules, 91 objects,
+> 71 workflows, 15 dashboards, a client and introducer portal, French labels and about 2,300 demo records. See
+> [docs/GENESIS-CAPITAL/IMPLEMENTATION.md](docs/GENESIS-CAPITAL/IMPLEMENTATION.md) and the
+> [user guide](docs/GENESIS-CAPITAL/genesis-capital-user-guide.md). Presenting it? See the
+> [demo pitch and Q&A guide](docs/GENESIS-CAPITAL/DEMO_PITCH.md).
 
 Genesis CRM is a comprehensive, metadata-driven Customer Relationship Management platform that
 combines powerful customization capabilities with enterprise-grade features. Built for organizations
@@ -86,12 +72,14 @@ Shipped and wired end-to-end:
 5. **Workflow Automation & Assignment** — Visual multi-step workflows, and a
    fixed/round-robin/rule-based/load-balanced assignment engine
 
-> **Roadmap (not yet implemented).** The following were previously scaffolded in
-> the database only and have been removed from the active schema until they are
-> built with real services and UI: **Email Marketing Campaigns**, **Calendar &
-> Meeting Management**, **Contract & Deal Management**, **Territory Management &
-> Sales Teams**, **Customer Portal & Knowledge Base**, and **Partner/Channel
-> Management**. See [docs/project/ROADMAP.md](docs/project/ROADMAP.md).
+6. **Client portal and calendar feeds** — A one-time-code portal for clients and introducers, and a
+   signed per-user iCalendar feed of meetings and dated records
+7. **Business units and information barriers** — Legal entities, Chinese walls, wall-crossings and a
+   tamper-evident audit chain
+
+> **Roadmap (not yet implemented):** email marketing campaigns, contract management, territory
+> management, a knowledge base, SSO and two-way calendar sync. See
+> [docs/project/ROADMAP.md](docs/project/ROADMAP.md).
 
 ### **📈 Essential CRM Capabilities**
 
@@ -156,7 +144,7 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
    cp .env.example .env
    # Set DATABASE_URL (and Redis, if you use it) in .env
    npx prisma migrate deploy
-   npx prisma db seed
+   node prisma/seed.js      # empties the database; add --allow-remote for a non-local DATABASE_URL
    cd ..
    ```
 
@@ -183,6 +171,8 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
 
    - Frontend: <http://localhost:5173>
    - Backend API: <http://localhost:3001> (health check at `/health`)
+   - Sign in as `GCADMIN` / `GenesisDemo#2026` (workspace admin) or `PLATFORM01` / `Platform@123`
+     (platform console). All demo accounts: [INSTALLATION.md](docs/getting-started/INSTALLATION.md#demo-accounts-created-by-the-seed-script)
 
 ## 🎯 Use Cases
 
@@ -214,5 +204,3 @@ For support and questions:
 ---
 
 **Genesis CRM** - Empowering organizations with complete CRM control and enterprise-grade capabilities.
-# pbtb-genesis
-# swan-genesis

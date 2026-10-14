@@ -34,7 +34,7 @@ that count (the STR register).
 ### A workspace that does not use them
 
 The page is empty until units and zones are created. A workspace with one legal entity and no confidential desks
-(for example the generic *Genesis CRM Demo*) needs neither. Record visibility and permissions still apply.
+needs neither. Record visibility and permissions still apply.
 
 ## Where to find it
 
@@ -84,20 +84,20 @@ Every change to units, zones, members, crossings, permissions and public forms i
 Each entry is sealed with the previous one, so editing or deleting any entry breaks the chain. **Verify
 integrity** recomputes the chain and reports either "intact" or the first broken entry.
 
-## Worked example: SWAN Capital Solutions
+## Worked example: Genesis Capital
 
-The SWAN Capital workspace (`swan-capital`, sign in as `SWADMIN`) uses all three layers.
+The Genesis Capital workspace (`genesis-capital`, sign in as `GCADMIN`) uses all three layers.
 
 ### Business units: the six licensed entities
 
 | Code | Name | Legal entity and licence | Members |
 | --- | --- | --- | --- |
-| LND | Lending | Swan Life Ltd (Loans business line) — FSC IS10000013 | Loans manager, loans executives, credit analyst, credit committee, operations checker, RMs |
-| WLT | Wealth | Swan Wealth Managers Ltd — FSC IX09000018 · CM12000023 · DF09000007 | Portfolio manager, RMs |
-| FND | Funds | Swan Global Funds Ltd — FSC CI11000044 | Portfolio managers, operations checker, RMs |
-| SEC | Securities | Swan CMB Securities Ltd — FSC IP16000002 | Trader, senior RM |
-| ADV | Corporate Advisory | Swan Corporate Advisors Ltd — FSC IZ19000019 | Corporate advisors |
-| FX | Forex | Swan Forex Ltd — Bank of Mauritius FX Dealer Licence No. 03 | FX dealer, corporate RM |
+| LND | Lending | Genesis Life Ltd (Loans business line) — FSC IS10000013 | Loans manager, loans executives, credit analyst, credit committee, operations checker, RMs |
+| WLT | Wealth | Genesis Wealth Managers Ltd — FSC IX09000018 · CM12000023 · DF09000007 | Portfolio manager, RMs |
+| FND | Funds | Genesis Global Funds Ltd — FSC CI11000044 | Portfolio managers, operations checker, RMs |
+| SEC | Securities | Genesis CMB Securities Ltd — FSC IP16000002 | Trader, senior RM |
+| ADV | Corporate Advisory | Genesis Corporate Advisors Ltd — FSC IZ19000019 | Corporate advisors |
+| FX | Forex | Genesis Forex Ltd — Bank of Mauritius FX Dealer Licence No. 03 | FX dealer, corporate RM |
 
 Group functions (COO, Compliance, MLRO, audit, marketing, BD) have no unit membership, so they see every unit. A
 loan application is tagged `LND`, so a trader (`SEC` only) never sees it, while a client's party record has no
@@ -112,7 +112,7 @@ unit and is shared by every entity.
 | `COMPLIANCE_ONLY` | Watch-list entries (restricted-list entries stay public) | Compliance officer, MLRO |
 | `VIP_CLIENTS` | Clients flagged VIP / sensitive; every view is recorded on the audit chain | COO, senior RM, MLRO |
 
-Only the MLRO holds **Barrier Override**. The tenant administrator (`SWADMIN`) is in no zone, so cannot open advisory
+Only the MLRO holds **Barrier Override**. The tenant administrator (`GCADMIN`) is in no zone, so cannot open advisory
 mandates or STRs, which is deliberate.
 
 ### Wall-crossings in the demo
@@ -131,17 +131,17 @@ integrity** reports "intact".
 
 ### Try it
 
-1. Sign in as the trader (`SWTRD1`): Corporate Advisory shows no mandates, and a client's Related tab reads
+1. Sign in as the trader (`GCTRD1`): Corporate Advisory shows no mandates, and a client's Related tab reads
    "restricted — contact Compliance".
-2. Sign in as the FX dealer (`SWFX1`) and look at the pending crossing; then sign in as the Compliance officer
-   (`SWCOMP1`) and approve it. The FX dealer now sees that mandate and appears on its insider list.
-3. As the MLRO (`SWMLRO`), open **Audit chain** and choose **Verify integrity**.
+2. Sign in as the FX dealer (`GCFX1`) and look at the pending crossing; then sign in as the Compliance officer
+   (`GCCOMP1`) and approve it. The FX dealer now sees that mandate and appears on its insider list.
+3. As the MLRO (`GCMLRO`), open **Audit chain** and choose **Verify integrity**.
 
 ## Tips
 
 - Leave group-level records, such as a client party shared by every entity, without a unit so everyone can see
   them. Tag the entity-specific records instead (the loan application, the mandate).
-- Give the *barrier override* permission to as few roles as possible. In the SWAN Capital configuration only the
+- Give the *barrier override* permission to as few roles as possible. In the Genesis Capital configuration only the
   MLRO holds it.
 - Use crossings rather than standing membership for one-off work: they expire and leave an approval record.
 

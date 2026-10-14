@@ -18,7 +18,7 @@ import { runtimeService } from '../src/services/metadata.service';
 const ITEM = {
   id: 7, token: 'abc123', status: 'pending', title: 'Credit approval: Amélie Dupré · LND-RE', message: 'MUR 4,500,000 · grade B',
   workflow: 'Loan — approval matrix', requested_at: '2026-10-13T09:00:00Z', requested_by_name: 'Nadia Peerbux',
-  approvers: [{ id: 'SWLMGR', name: 'Rajiv Doorgakant' }],
+  approvers: [{ id: 'GCLMGR', name: 'Rajiv Doorgakant' }],
   record: { id: 2883, title: 'LA-2026-000032', object: 'Loan Application', link: '/module/1/object/2?record=2883' },
 };
 

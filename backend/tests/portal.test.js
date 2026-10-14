@@ -25,7 +25,7 @@ describe('portal tokens', () => {
 });
 
 describe('portal sign-in codes', () => {
-  const tenant = { id: 6, name: 'SWAN Capital' };
+  const tenant = { id: 6, name: 'Genesis Capital' };
   const db = (known) => ({
     uiObject: { findFirst: jest.fn().mockResolvedValue({ id: 1 }) },
     recordFieldValue: { findFirst: jest.fn().mockResolvedValue(known ? { record_id: 42 } : null) },

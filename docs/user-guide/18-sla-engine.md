@@ -20,8 +20,8 @@ Everything is surfaced where people already work:
 > ⚙️ **First-time setup (admins):** the SLA tables ship in migration
 > `20260703120000_add_sla_engine`. Run `npm run db:migrate` (or `prisma migrate deploy`) once.
 >
-> - **Fresh demo data?** `npm run db:seed` now creates **4 sample policies, a business-hours calendar, sample
->   support cases, and live timers** — the SLA board is populated the moment you log in.
+> - **Fresh demo data?** `npm run db:seed` installs the Genesis Capital workspace with **13 SLA policies, a
+>   business-hours calendar and live timers** on its demo records.
 > - **Existing database?** Open **Builder → SLA Engine** and click **Seed starter policies** to add a working set.
 
 ## Concepts

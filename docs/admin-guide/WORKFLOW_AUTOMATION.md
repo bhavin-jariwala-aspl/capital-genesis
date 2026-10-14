@@ -333,7 +333,7 @@ lifecycle, from lead capture through to client data hygiene. Each one implements
 an automation pattern that Salesforce, HubSpot, Zoho CRM, Dynamics 365, and
 Pipedrive all provide out of the box, adapted to the Genesis CRM object model.
 
-They are installed by the seed script and are fully editable in
+They are installed when a tenant is onboarded and are fully editable in
 **Builder > Workflows** — treat them as working templates and adjust the
 thresholds, roles, and wait times to match how your team operates. Every
 workflow's description in the Builder names the industry pattern it implements.

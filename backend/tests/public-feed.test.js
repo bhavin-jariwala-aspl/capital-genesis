@@ -26,7 +26,7 @@ function db() {
 describe('PublicFeedService', () => {
   it('returns the newest row per group, sorted, without personal fields', async () => {
     const svc = new PublicFeedService(db());
-    const out = await svc.feed('swan-capital', 'fx-rates');
+    const out = await svc.feed('genesis-capital', 'fx-rates');
     expect(out.items).toEqual([
       { currency_code: 'EUR', buy_tt: 49.9, rate_date: '2026-10-13' },
       { currency_code: 'USD', buy_tt: 45.4, rate_date: '2026-10-13' },
@@ -36,14 +36,14 @@ describe('PublicFeedService', () => {
     const d = db();
     let now = 0;
     const svc = new PublicFeedService(d, { now: () => now });
-    await svc.feed('swan-capital', 'fx-rates');
-    await svc.feed('swan-capital', 'fx-rates');
+    await svc.feed('genesis-capital', 'fx-rates');
+    await svc.feed('genesis-capital', 'fx-rates');
     expect(d.recordFieldValue.findMany).toHaveBeenCalledTimes(1);
     now = 61_000;
-    await svc.feed('swan-capital', 'fx-rates');
+    await svc.feed('genesis-capital', 'fx-rates');
     expect(d.recordFieldValue.findMany).toHaveBeenCalledTimes(2);
-    await expect(svc.feed('swan-capital', 'nope')).rejects.toThrow(/Feed/);
-    await expect(svc.feed('swan-capital', '../x')).rejects.toThrow(/Feed/);
+    await expect(svc.feed('genesis-capital', 'nope')).rejects.toThrow(/Feed/);
+    await expect(svc.feed('genesis-capital', '../x')).rejects.toThrow(/Feed/);
     d.tenant.findUnique.mockResolvedValue(null);
     await expect(new PublicFeedService(d).feed('other', 'fx-rates')).rejects.toThrow(/Feed/);
   });

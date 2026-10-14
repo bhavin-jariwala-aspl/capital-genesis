@@ -5,10 +5,10 @@
  * Install a vertical pack (an industry configuration made of Builder metadata)
  * into one tenant.
  *
- *   node scripts/install-vertical.js swan-capital --create-tenant           # create + install
- *   node scripts/install-vertical.js swan-capital --tenant swan-capital     # re-install (idempotent)
- *   node scripts/install-vertical.js swan-capital --tenant 12 --demo        # include demo records
- *   node scripts/install-vertical.js swan-capital --dry-run                 # validate the pack only
+ *   node scripts/install-vertical.js genesis-capital --create-tenant           # create + install
+ *   node scripts/install-vertical.js genesis-capital --tenant genesis-capital     # re-install (idempotent)
+ *   node scripts/install-vertical.js genesis-capital --tenant 12 --demo        # include demo records
+ *   node scripts/install-vertical.js genesis-capital --dry-run                 # validate the pack only
  *
  * Options
  *   --tenant <id|slug>   target tenant (default: the pack's own slug)
@@ -40,23 +40,18 @@ const VerticalInstaller = require('../src/services/vertical-installer.service');
 const TenantService = require('../src/services/platform/tenant.service');
 const TenantProvisioningService = require('../src/services/platform/tenant-provisioning.service');
 
-function arg(name) {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
-
-async function main() {
-  const packName = process.argv[2];
-  if (!packName || packName.startsWith('--')) {
-    console.error('Usage: node scripts/install-vertical.js <pack> [--tenant <id|slug>] [--create-tenant] [--demo] [--password <pw>] [--dry-run]');
-    process.exit(1);
-  }
+/**
+ * Install `packName` into a tenant. Used by the CLI below and by prisma/seed.js.
+ * Returns the installer result plus the tenant it ran against.
+ */
+async function installVertical(packName, opts = {}) {
   const pack = require(path.join(__dirname, '..', 'prisma', 'verticals', packName));
+  const log = opts.log ?? ((m) => console.log(m));
   const counts = Object.fromEntries(Object.entries(pack).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, v.length]));
-  console.log(`📦 ${pack.key}:`, counts);
-  if (process.argv.includes('--dry-run')) {
-    console.log('Dry run — pack loaded; run `npx jest tests/swan-pack.test.js` for the full consistency check.');
-    return;
+  log(`📦 ${pack.key}: ${JSON.stringify(counts)}`);
+  if (opts.dryRun) {
+    log(`Dry run — pack loaded; run \`npx jest tests/${packName}-pack.test.js\` for the full consistency check.`);
+    return null;
   }
 
   // A bulk load over a remote database can wait longer than Prisma's default
@@ -83,55 +78,77 @@ async function main() {
   });
   const prisma = applyTenantMiddleware(resilient);
   try {
-    const target = arg('--tenant') ?? pack.tenant.slug;
-    let tenant = /^\d+$/.test(target)
+    const target = opts.tenant ?? pack.tenant.slug;
+    let tenant = /^\d+$/.test(String(target))
       ? await raw.tenant.findUnique({ where: { id: Number(target) } })
       : await raw.tenant.findUnique({ where: { slug: target } });
 
     if (!tenant) {
-      if (!process.argv.includes('--create-tenant')) throw new Error(`Tenant ${target} not found — pass --create-tenant to create it`);
+      if (!opts.createTenant) throw new Error(`Tenant ${target} not found — pass --create-tenant to create it`);
       tenant = await new TenantService(raw).create({ ...pack.tenant, status: 'active' });
       await raw.tenant.update({ where: { id: tenant.id }, data: { status: 'active', trial_ends_at: null, metadata: pack.tenant.metadata ?? null, timezone: pack.tenant.timezone ?? 'UTC' } });
-      console.log(`🏢 created tenant #${tenant.id} ${tenant.slug}`);
+      log(`🏢 created tenant #${tenant.id} ${tenant.slug}`);
       // The vertical replaces the generic CRM catalogue, so only the
       // structural onboarding steps run here.
       const prov = await new TenantProvisioningService(prisma).provision(tenant.id, { only: ['roles', 'org'] });
-      for (const s of prov.steps ?? []) console.log(`   · ${s.title ?? s.key}: ${s.status ?? ''} ${s.detail ?? ''}`);
+      for (const s of prov.steps ?? []) log(`   · ${s.title ?? s.key}: ${s.status ?? ''} ${s.detail ?? ''}`);
     }
-    console.log(`▶ installing ${pack.key} into tenant #${tenant.id} (${tenant.slug})${process.argv.includes('--demo') ? ' with demo data' : ''}`);
+    log(`▶ installing ${pack.key} into tenant #${tenant.id} (${tenant.slug})${opts.demo ? ' with demo data' : ''}`);
 
     const started = Date.now();
     const result = await tenantContext.run({ tenantId: tenant.id }, () =>
       new VerticalInstaller(prisma, {
         tenantId: tenant.id,
-        demo: process.argv.includes('--demo'),
-        password: arg('--password') ?? process.env.VERTICAL_STAFF_PASSWORD ?? null,
-        resetPasswords: process.argv.includes('--reset-passwords'),
-        skipRecords: process.argv.includes('--skip-records'),
-        recompute: (() => {
-          const flag = process.argv.find((a) => a === '--recompute' || a.startsWith('--recompute='));
-          if (!flag) return null;
-          return flag.includes('=') ? flag.split('=')[1].split(',').map((x) => x.trim()).filter(Boolean) : true;
-        })(),
-        log: (m) => console.log(m),
+        demo: Boolean(opts.demo),
+        password: opts.password ?? process.env.VERTICAL_STAFF_PASSWORD ?? null,
+        resetPasswords: Boolean(opts.resetPasswords),
+        skipRecords: Boolean(opts.skipRecords),
+        recompute: opts.recompute ?? null,
+        log,
       }).install(pack));
 
-    console.log(`✅ installed in ${((Date.now() - started) / 1000).toFixed(0)}s — written:`, result.summary);
-    if (Object.keys(result.unchanged ?? {}).length) console.log('   unchanged (skipped):', result.unchanged);
+    log(`✅ installed in ${((Date.now() - started) / 1000).toFixed(0)}s — written: ${JSON.stringify(result.summary)}`);
+    if (Object.keys(result.unchanged ?? {}).length) log(`   unchanged (skipped): ${JSON.stringify(result.unchanged)}`);
     if (result.publicForms.length) {
-      console.log('🌐 public forms:');
-      for (const f of result.publicForms) console.log(`   ${f.form}: ${f.path}`);
+      log('🌐 public forms:');
+      for (const f of result.publicForms) log(`   ${f.form}: ${f.path}`);
     }
     if (result.credentials.length) {
-      console.log('🔑 staff accounts created (passwords shown once — change them on first login):');
-      for (const c of result.credentials) console.log(`   ${c.employee_id.padEnd(10)} ${c.role.padEnd(24)} ${c.password}`);
+      log('🔑 staff accounts created (passwords shown once — change them on first login):');
+      for (const c of result.credentials) log(`   ${c.employee_id.padEnd(10)} ${c.role.padEnd(24)} ${c.password}`);
     }
+    return { ...result, tenant };
   } finally {
     await raw.$disconnect();
   }
 }
 
-main().catch((err) => {
-  console.error('❌', err.message);
-  process.exit(1);
-});
+function cliOptions(argv) {
+  const value = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined; };
+  const recompute = argv.find((a) => a === '--recompute' || a.startsWith('--recompute='));
+  return {
+    tenant: value('--tenant'),
+    createTenant: argv.includes('--create-tenant'),
+    demo: argv.includes('--demo'),
+    password: value('--password'),
+    resetPasswords: argv.includes('--reset-passwords'),
+    skipRecords: argv.includes('--skip-records'),
+    dryRun: argv.includes('--dry-run'),
+    recompute: !recompute ? null
+      : recompute.includes('=') ? recompute.split('=')[1].split(',').map((x) => x.trim()).filter(Boolean) : true,
+  };
+}
+
+module.exports = { installVertical };
+
+if (require.main === module) {
+  const packName = process.argv[2];
+  if (!packName || packName.startsWith('--')) {
+    console.error('Usage: node scripts/install-vertical.js <pack> [--tenant <id|slug>] [--create-tenant] [--demo] [--password <pw>] [--dry-run]');
+    process.exit(1);
+  }
+  installVertical(packName, cliOptions(process.argv)).catch((err) => {
+    console.error('❌', err.message);
+    process.exit(1);
+  });
+}

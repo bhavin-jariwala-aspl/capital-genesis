@@ -75,7 +75,7 @@ this wrong and nothing else in the file makes sense.
 | | **Lead** (raw inbound) | **Prospect** (qualified) |
 | --- | --- | --- |
 | Table | `crm_lead_intake` | `crm_leads` |
-| UI object name | `lead_intake` (label "Lead", plural "Leads" — [`seed.js:377`](../../backend/prisma/seed.js#L377)) | `lead` |
+| UI object name | `lead_intake` (label "Lead", plural "Leads" — in the generic CRM template) | `lead` |
 | Score FK | `lead_scores.lead_intake_id` | `lead_scores.lead_id` |
 | Service method | [`scoreLeadIntake:188`](../../backend/src/services/lead-scoring.service.js#L188) | [`scoreLead:109`](../../backend/src/services/lead-scoring.service.js#L109) |
 | Scored automatically? | **yes** — on every create/update | no |
@@ -322,7 +322,7 @@ rows.
 
 ## How a score reaches the UI
 
-Three separate surfaces, all read-only — the UI never writes a score.
+Two separate surfaces, both read-only — the UI never writes a score.
 
 **1. Inline on the Leads list and detail.**
 [`RecordService.#attachLeadScores:956`](../../backend/src/services/record.service.js#L956) merges
@@ -332,9 +332,8 @@ the latest score into `record.data` when the object is `lead_intake`:
 return { ...r, data: { ...r.data, score: total, grade: leadScoreGrade(total) } };
 ```
 
-The matching `score` and `grade` fields are seeded on the Lead object with
-`config: { always_disabled: true, show_in_list: true }`
-([`seed.js:404-413`](../../backend/prisma/seed.js#L404-L413)) — they are engine-owned columns
+The matching `score` and `grade` fields belong on the Lead object with
+`config: { always_disabled: true, show_in_list: true }` — they are engine-owned columns
 rendered like any other field but never editable. Called from
 [`getRecords:900`](../../backend/src/services/record.service.js#L900) and
 [`getRecord:916`](../../backend/src/services/record.service.js#L916).
@@ -345,12 +344,6 @@ renders grade distribution, headline KPIs and the top 5 leads from
 Leads module ([`ModulePage.jsx:803`](../../frontend/src/pages/runtime/ModulePage.jsx#L803)) and
 returns `null` until at least one lead has been scored.
 
-**3. Legacy `lead_score` object.** Tenants seeded before scoring moved inline may still have a
-standalone object; `getRecords` detects `obj.name === 'lead_score'` and serves synthetic read-only
-records straight from `lead_scores`, bucketed into `grade_a`…`grade_f` pipeline stages
-([`#getLeadScoreRecords:978`](../../backend/src/services/record.service.js#L978)). New seeds do not
-create it ([`seed.js:1018-1020`](../../backend/prisma/seed.js#L1018-L1020)). Keep the branch until
-you are certain no tenant has the object.
 
 ---
 

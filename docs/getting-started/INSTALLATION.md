@@ -162,35 +162,38 @@ npx prisma migrate dev
 
 ### Step 4: Seed Demo Data
 
-The seed script wipes the database and fills it with a complete CRM
-dataset — modules, objects, fields, forms, wizards, dashboards,
-pipelines, workflows, and demo users with realistic sample data.
+The seed script empties the database, creates the platform layer (plans, feature flags, security policy,
+rate limits) and installs the **Genesis Capital** workspace from its vertical pack — 19 modules, 91 objects,
+71 workflows, 15 dashboards, 22 staff accounts and about 2,300 demo records. It finishes by creating the
+platform administrator `PLATFORM01`.
 
 ```bash
 # From the backend directory
 cd backend
-node prisma/seed.js
+node prisma/seed.js                 # with demo records
+node prisma/seed.js --no-demo       # metadata and staff accounts only
 ```
 
 Expected output (abbreviated):
 
 ```text
-Seeding Genesis CRM database...
-Database cleared
-Modules created (Leads · Prospects · Clients · Settings · Products · …)
-Lead: 14 fields · 4 validations · form
-Prospect: 19 fields · 9 validations · 1 custom fn · 1 dep · form
-Client: 23 fields · 10 validations · 1 custom fn · form
-…
-Dashboard: Agency Dashboard · 4 KPIs + 3 charts
-Pipelines: Prospect (5) · …
-CRM Leads: 5 prospects · Contacts: 5 · Accounts: 3 · Opportunities: 3
-Platform: Plans · Feature Flags · Tenant Config · Security Policy
-Seed complete!
+🌱 Seeding Genesis CRM database...
+✅ Database cleared (99 tables)
+✅ Platform: role · 4 plans · … feature flags · security policy · rate limits · announcement
+🏢 created tenant #1 genesis-capital
+▶ installing genesis-capital into tenant #1 (genesis-capital) with demo data
+   · business units (0.4s)
+   …
+✅ Platform administrator PLATFORM01 created
+🎉  Seed complete — workspace #1 genesis-capital with demo data
 ```
 
-> **Warning:** `node prisma/seed.js` deletes ALL existing data before
-> inserting. Only run it when you want a clean reset.
+> **Warning:** the seed deletes ALL existing data before inserting. It refuses to run when `DATABASE_URL` is
+> not a local host (`localhost`, `127.0.0.1`, `mysql`, `db`) unless you pass `--allow-remote` or set
+> `SEED_ALLOW_REMOTE=1`. A demo install takes a few minutes locally and 40–60 minutes over a remote database.
+
+Passwords can be set before seeding with `SEED_PLATFORM_PASSWORD` (default `Platform@123`) and
+`SEED_STAFF_PASSWORD` (default `GenesisDemo#2026`).
 
 ### Step 5: Start the Servers
 
@@ -263,33 +266,24 @@ Enter your **Employee ID** and **Password**, then click **Sign in**.
 
 ### Demo Accounts (created by the seed script)
 
-| Role | Employee ID | Password | Access |
-| ---- | ----------- | -------- | ------ |
-| Platform Admin | PLATFORM01 | Platform@123 | Platform management (tenants, plans, flags) |
-| Agency Owner | ADMIN001 | Admin@123 | Full system access + Builder tools |
-| Sales Manager | MGR001 | Manager@123 | Team management + records |
-| Senior Agent | USR001 | User@123 | CRM access |
-| Agent | USR002 | User@123 | CRM access |
+Every workspace account uses the demo password **`GenesisDemo#2026`**; the platform administrator uses
+`Platform@123`.
+
+| Role | Employee ID | Name | Access |
+| ---- | ----------- | ---- | ------ |
+| Platform Admin | PLATFORM01 | Platform Super Admin | Platform console (tenants, plans, flags) |
+| CRM Administrator | GCADMIN | Kevin Lam | Full workspace access + Builder |
+| Chief Operating Officer | GCCOO | Anjali Gopee | Management dashboards, approvals |
+| Relationship Manager | GCRM1 | Priya Ramdin | Own client book |
+| Loans Executive | GCLOAN1 | Sophie Lagesse | Retail lending |
+| Manager, Loans & Fixed Income | GCLMGR | Rajiv Doorgakant | Lending approvals |
+| Compliance Officer | GCCOMP1 | Fatima Hossenbux | KYC, screening, barriers |
+| Corporate Advisor | GCADV1 | Camille Rivalland | Advisory mandates behind a barrier |
 
 > **Employee ID is case-sensitive** — use uppercase exactly as shown.
 
-#### SWAN Capital demo accounts (workspace `swan-capital`)
-
-The SWAN Capital Solutions workspace has its own staff accounts; the accounts above open the generic demo workspace
-instead. Every SWAN account uses the demo password **`SwanDemo#2026`**.
-
-| Role | Employee ID | Name |
-| ---- | ----------- | ---- |
-| CRM Administrator | SWADMIN | Kevin Lam |
-| Chief Operating Officer | SWCOO | Anjali Gopee |
-| Relationship Manager | SWRM1 | Priya Ramdin |
-| Loans Executive | SWLOAN1 | Sophie Lagesse |
-| Manager, Loans & Fixed Income | SWLMGR | Rajiv Doorgakant |
-| Compliance Officer | SWCOMP1 | Fatima Hossenbux |
-| Corporate Advisor | SWADV1 | Camille Rivalland |
-
-All 22 SWAN accounts, what each demonstrates, and how to change the demo password:
-[SWAN-CAPITAL/IMPLEMENTATION.md §0](../SWAN-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-swan-demo).
+All 22 accounts, what each demonstrates, and how to change the demo password:
+[GENESIS-CAPITAL/IMPLEMENTATION.md §0](../GENESIS-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-genesis-demo).
 
 After login your session is stored in the browser. It expires after
 8 hours (configurable via `JWT_EXPIRY` in `.env`). With **Remember me** checked the
@@ -314,12 +308,11 @@ kept in `sessionStorage` and is discarded when the tab or browser closes.
 
 ### Test Your Installation
 
-1. **Login** with any demo account (try `ADMIN001` / `Admin@123`)
-2. **Dashboard** should load with Agency KPI metrics and charts
-3. **Prospects** module should show 5 demo lead records
-4. **Clients** module should show 5 demo client records
-5. **Admin Access** (ADMIN001) should see Builder section in sidebar
-6. **Platform Admin** (PLATFORM01) should see Platform section
+1. **Login** as `GCADMIN` / `GenesisDemo#2026`
+2. **Dashboard** should load the Genesis Capital management dashboards
+3. **Parties**, **Loan applications** and **Fund orders** should list demo records
+4. **Builder** should appear in the sidebar for `GCADMIN`
+5. **Platform Admin** (`PLATFORM01`) should see the Platform section
 
 ---
 

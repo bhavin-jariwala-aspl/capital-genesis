@@ -1,4 +1,4 @@
--- Platform builder extensions (SWAN Capital PRD, Phase 0):
+-- Platform builder extensions (Genesis Capital PRD, Phase 0):
 --   business units + employee membership, information barriers + wall-crossings,
 --   tamper-evident audit chain, object/form/SLA config, record BU + barrier stamps,
 --   public web-form keys. Additive only.

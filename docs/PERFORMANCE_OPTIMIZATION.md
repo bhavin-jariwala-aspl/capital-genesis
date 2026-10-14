@@ -61,7 +61,6 @@ optimistic record mutations via a separate entity store.
 | File | Purpose |
 |------|---------|
 | `frontend/src/hooks/useBootstrap.js` | Triggers metadata bootstrap on login/app start, handles background refresh |
-| `frontend/src/hooks/useResolvedObject.js` | Reusable hook replacing the common `resolveObject → getObject` pattern with MetadataStore-first lookup |
 
 ---
 

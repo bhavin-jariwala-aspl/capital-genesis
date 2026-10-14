@@ -238,12 +238,11 @@ Object Builder. Delete runs in a transaction that also removes dependent metadat
 ### `ui_fields`  ·  Prisma model `UiField`
 
 **Why this table exists (relevance):** Defines a single field (column) on an object — its type, UI component,
-constraints and options. This is the heart of the low-code engine: it drives form rendering, validation, search/sort,
-and even physical schema changes on the `records` table. Without it objects have no attributes.
+constraints and options. This is the heart of the low-code engine: it drives form rendering, validation
+and search/sort. Without it objects have no attributes.
 **When & how rows are written:** Created/updated/deleted by `MetadataService` (`uiField.create/update/delete`) in the
-Field Builder. **Notable side effect:** when `is_indexed` is toggled ON for the first time, `MetadataService` runs an
-`ALTER TABLE records ADD COLUMN … <generated>` to create a STORED generated column plus an index so the field can be
-used in `WHERE`/`ORDER BY`.
+Field Builder. No DDL is ever run from a field change — every field lives in the `records.data` JSON and the
+`record_field_values` table.
 **What the data represents & notable columns:**
 
 - `object_id` — FK to owning object; `name` is the API/DB column name in snake_case, `label` the display name.
@@ -254,7 +253,7 @@ used in `WHERE`/`ORDER BY`.
   `image` | `rich_text` | `code` | `lookup` | `formula` | `auto_number`.
 - `data_type` — storage/value type: `string | number | boolean | date | array | object`.
 - Behaviour flags: `is_required`, `is_unique`, `is_searchable` (default true), `is_sortable` (default true),
-  `is_indexed` (creates the generated column + index described above).
+  `is_indexed` (a stored flag; it does not change the schema).
 - `default_value`, `placeholder`, `help_text`.
 - `options` (JSON) — for select/radio/checkbox: array of `{ value, label, color? }`.
 - `config` (JSON) — field-type-specific configuration.
@@ -3126,7 +3125,7 @@ from the object's `config`.
 
 ### `business_units`  ·  Prisma model `BusinessUnit`
 
-**Why this table exists (relevance):** A tenant may be a group of legal entities (SWAN: lending, wealth, funds,
+**Why this table exists (relevance):** A tenant may be a group of legal entities (Genesis: lending, wealth, funds,
 securities, advisory, FX). A record tagged with a unit is visible only to that unit's members.
 **When & how rows are written:** `SegmentationService` (`/api/access/business-units`, admin) or a vertical pack install.
 **What the data represents & notable columns:** `code` (unique per tenant; what formulas and object config refer to),

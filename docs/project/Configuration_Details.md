@@ -63,10 +63,8 @@ The seven remaining screens split into two groups, and the distinction matters:
 | `ModulePage` (renders any module) | 1 screen serving 7+ modules |
 | `FormRenderer` (dynamic forms) | RecordFormPage, WizardPage |
 | `DashboardRenderer` | RuntimeHome |
-| `useResolvedObject()` | No screen currently — the hook is kept for Tier 2 hybrid screens |
 | `useMetadataStore()` | 3 screens (ModulePage, RecordFormPage, WizardPage) |
 | `StatusStepper` (from metadata) | `StatusTracker` (the `status_tracker` fieldtype) |
-| `TabbedWorkspace` | No screen currently — available for multi-section pages |
 
 ---
 
@@ -99,15 +97,14 @@ which renders from the object's field definitions. Create and edit route to
 ### Tier 2 — Hybrid Metadata-Driven (1 screen, 568 lines)
 
 These read field options, labels and status choices from metadata via
-`useResolvedObject()` (or `useMetadataStore` / the metadata API), but keep
+`useMetadataStore` (or the metadata API), but keep
 custom logic for domain workflows and calculations.
 
 | Screen | File | Lines | Metadata used | Custom logic retained |
 |---|---|---|---|---|
 | Import | `ImportPage.jsx` | 568 | Object + field metadata for column mapping | Upload, parse, map, preview, execute |
 
-**Pattern:** call `useResolvedObject('objectName')` to pull field definitions
-from the MetadataStore. Status options, select choices and labels come from
+**Pattern:** read field definitions for the object from `useMetadataStore`. Status options, select choices and labels come from
 metadata, so admins can change them in the Builder without a code change.
 
 ### Tier 3 — Domain-Specific & Registry-Driven (7 screens, 3,744 lines)
@@ -233,88 +230,16 @@ and can be added manually via `POST /api/runtime/records/:id/status-events`.
 
 **Wired via metadata:** dropped onto a form like any other field. `FormRenderer`
 threads `recordId` to `FieldRenderer`, which renders `StatusTracker` for the
-`status_tracker` type. Demo data: `backend/prisma/seed-status-tracker.js`.
-
-### TabbedWorkspace (`TabbedWorkspace.jsx`)
-
-Metadata-driven tabbed container for multi-section pages.
-
-**Variants:**
-
-- `underline` — standard tab underline (default)
-- `pills` — rounded pill tabs
-- `boxed` — contained box tabs
-
-**Props:** `tabs` (array of `{key, label, icon?, badge?, disabled?}`),
-`activeTab`, `onTabChange`, `children`, `variant`, `size`,
-`tabBarExtra`, `className`
-
-**Integrated in:** no screen currently; available for multi-section pages.
-
----
+`status_tracker` type.
 
 ## Seed Data Structure
 
-### Existing Modules (3 — original seed)
-
-```text
-CRM Category:
-  Prospects  → prospect object (19 fields, form, pipeline, wizard)
-  Clients    → client object (14 fields, form, pipeline)
-
-Settings Category:
-  Settings → settings object (6 fields, form, wizard)
-```
-
-### New Modules (3 — added in v4.0.9)
-
-```text
-Products Module (category: crm, order_index: 12)
-  └─ product object
-      ├─ name (text, required)
-      ├─ sku (text)
-      ├─ unit_price (currency)
-      ├─ cost_price (currency)
-      ├─ category (select: electronics/software/services/hardware/other)
-      ├─ description (textarea)
-      ├─ is_active (select: active/inactive, with colors)
-      └─ margin (auto_calculate: calc_margin)
-      └─ Form: product_form (2-column grid)
-      └─ Validations: name required, name maxLength 200
-
-(The standalone "Call Logs" module was removed; call tracking is handled via the
-Activity Timeline (type: call).)
-
-(There is no separate "Lead Scoring" module — scoring is surfaced on the Leads
-module itself; see below. Scoring rules are configured in the Builder.)
-```
-
-### New Module (1 — Lead/Prospect separation + inline scoring)
-
-```text
-Leads Module (category: crm, order_index: 0 — appears before Prospects)
-  └─ lead_intake object  (UI label "Lead"; table crm_lead_intake)
-      ├─ first_name (text, required)   ├─ last_name (text, required)
-      ├─ email (email)                 ├─ phone / mobile (phone)
-      ├─ company (text)                ├─ job_title (text)
-      ├─ industry (text)               ├─ annual_income (currency)
-      ├─ website (text)                ├─ lead_source (select)
-      ├─ lead_status (select: new/contacted/qualified/converted)
-      ├─ rating (select: hot/warm/cold) ├─ notes (textarea)
-      ├─ score (number, read-only)     └─ grade (select A–F, read-only)
-      └─ Form: lead_create (2-column grid) · 4 validations
-      └─ Pipeline: New → Contacted → Qualified → Converted
-      └─ Action: "Convert to Prospect" → creates a crm_leads (Prospect) row
-```
-
-Raw inbound leads live here (Salesforce/Zoho-style separation); qualifying a lead
-converts it into a Prospect. The `score` + `grade` fields are **read-only and
-engine-populated** — their values are injected from the `lead_scores` table at
-read time (see `RecordService.#attachLeadScores`), so the lead's score shows
-inline instead of in a separate module. See the Lead-vs-Prospect note in
-[DATA_DICTIONARY](../developer-guide/DATA_DICTIONARY.md).
-
----
+`node prisma/seed.js` installs one workspace from the **Genesis Capital** vertical pack
+(`backend/prisma/verticals/genesis-capital/`): 19 modules, 91 objects, 71 workflows, 15 dashboards and
+22 staff accounts, plus demo records. The module and object inventory is in
+[GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md). Tenants onboarded from the
+platform console instead clone the template tenant's metadata (see
+[TENANT_ONBOARDING.md](../admin-guide/TENANT_ONBOARDING.md)).
 
 ## Computed Field Registry
 
@@ -472,15 +397,14 @@ badges, it should be metadata-driven.
 
 - Status workflows → `StatusStepper` component
 - Logistics-style tracking timelines → `StatusTracker` (the `status_tracker` fieldtype)
-- Multi-tab pages → `TabbedWorkspace` component
 
 ### DO: Use the hybrid approach for complex domain screens
 
 New domain-specific screens should follow the Tier 2
 pattern:
 
-1. Define the object and fields in metadata (via seed or Builder).
-2. Use `useResolvedObject('objectName')` to load field options.
+1. Define the object and fields in metadata (in the Builder, or in a vertical pack).
+2. Load field options from `useMetadataStore`.
 3. Render select options, labels, and colors from metadata.
 4. Keep business logic (calculations, workflows, API calls) in code.
 

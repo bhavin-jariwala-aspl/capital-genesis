@@ -181,39 +181,30 @@ class HierarchyService {
       orderBy: { depth: 'asc' },
     });
 
-    const root = await this.prisma.employee.findUnique({
-      where: { employee_id: rootId },
-      select: { employee_id: true, employee_name: true, role: true, email: true },
-    });
+    // Every descendant's direct manager in one query (this used to be one
+    // query per descendant).
+    const ids = descendants.map((r) => r.descendant_id);
+    const [root, edges] = await Promise.all([
+      this.prisma.employee.findUnique({
+        where: { employee_id: rootId },
+        select: { employee_id: true, employee_name: true, role: true, email: true },
+      }),
+      ids.length
+        ? this.prisma.employeeHierarchy.findMany({
+          where: { descendant_id: { in: ids }, depth: 1 },
+          select: { ancestor_id: true, descendant_id: true },
+        })
+        : [],
+    ]);
 
     if (!root) throw new NotFoundError('Employee');
 
-    // Build adjacency list first
+    const parentOf = new Map(edges.map((e) => [e.descendant_id, e.ancestor_id]));
     const directMap = {};
     for (const row of descendants) {
-      if (row.depth === 1) {
-        const parentRow = await this.prisma.employeeHierarchy.findFirst({
-          where: { descendant_id: row.descendant_id, depth: 1 },
-        });
-        const parentId = parentRow?.ancestor_id || rootId;
-        if (!directMap[parentId]) directMap[parentId] = [];
-        directMap[parentId].push(row.descendant);
-      }
-    }
-
-    // For deeper nodes, get their direct parent
-    for (const row of descendants) {
-      if (row.depth > 1) {
-        const directParent = await this.prisma.employeeHierarchy.findFirst({
-          where: { descendant_id: row.descendant_id, depth: 1 },
-        });
-        if (directParent) {
-          const parentId = directParent.ancestor_id;
-          if (!directMap[parentId]) directMap[parentId] = [];
-          const exists = directMap[parentId].find(e => e.employee_id === row.descendant.employee_id);
-          if (!exists) directMap[parentId].push(row.descendant);
-        }
-      }
+      const parentId = parentOf.get(row.descendant_id) ?? (row.depth === 1 ? rootId : null);
+      if (!parentId) continue;
+      (directMap[parentId] ??= []).push(row.descendant);
     }
 
     const buildNode = (emp) => ({

@@ -75,7 +75,7 @@ export default function ForgotPassword() {
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
               <Input
                 label="Employee ID or email"
-                placeholder="e.g. ADMIN001"
+                placeholder="e.g. GCADMIN"
                 autoComplete="username"
                 autoFocus
                 error={errors.identifier?.message}
