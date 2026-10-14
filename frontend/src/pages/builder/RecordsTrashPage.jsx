@@ -125,7 +125,7 @@ export default function RecordsTrashPage() {
         ? (
           <span
             className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
-            style={{ background: v.color || '#6366f1' }}
+            style={{ background: v.color || 'rgb(var(--pc-500))' }}
           >
             {v.label}
           </span>

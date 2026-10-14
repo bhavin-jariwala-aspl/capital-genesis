@@ -14,6 +14,8 @@ import { useAuthStore } from './authStore';
  *   preview(patch)  apply an unsaved patch (the Appearance Studio's live preview)
  *   commit(values)  apply saved values (after PUT /settings)
  *   reset()         drop the preview, re-apply the last saved values
+ *   wearWorkspace(id)  a public page (portal, web form, shared document,
+ *                      signing page) wears its workspace's published theme
  *
  * Dark mode: the tenant's default `appearance.mode` wins the first time a user
  * signs in on a device; after that the user's own choice (persisted by
@@ -28,6 +30,8 @@ export const useAppearanceStore = create((set, get) => ({
   previewing: false,
   /** Set while signed out: the remembered workspace whose brand the sign-in page wears. */
   preLogin: null,
+  /** Set by a public page: the workspace whose brand it wears (wins over the remembered one). */
+  publicTenant: null,
 
   /**
    * Signed out: wear the last remembered workspace brand (so the sign-in page
@@ -51,6 +55,8 @@ export const useAppearanceStore = create((set, get) => ({
       try {
         const res = await settingsService.getPublicBranding(snap.tenant_id);
         const fresh = res?.data ?? res;
+        // A public page may have claimed another workspace's brand meanwhile.
+        if (get().publicTenant) return get().current;
         if (fresh && typeof fresh === 'object') {
           const next = applyAppearance({ ...snap.values, ...fresh });
           set({ current: next, saved: next });
@@ -60,6 +66,28 @@ export const useAppearanceStore = create((set, get) => ({
       } catch { /* offline or workspace gone — keep the remembered brand */ }
     }
     return get().current;
+  },
+
+  /**
+   * Public pages are opened by clients who have never signed in on this device,
+   * so the remembered brand is not theirs: fetch the workspace's published
+   * appearance and apply it. Not saved as the sign-in snapshot.
+   */
+  async wearWorkspace(tenantId) {
+    if (!tenantId) return null;
+    set({ publicTenant: tenantId });
+    try {
+      const res = await settingsService.getPublicBranding(tenantId);
+      const values = res?.data ?? res;
+      if (!values || typeof values !== 'object' || get().publicTenant !== tenantId) return get().current;
+      const resolved = applyAppearance(values);
+      set({ current: resolved, saved: resolved });
+      get().applyMode(resolved);
+      applyDocumentChrome(resolved);
+      return resolved;
+    } catch {
+      return get().current; // keep whatever is applied — the page must still render
+    }
   },
 
   async load() {

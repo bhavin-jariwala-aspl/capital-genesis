@@ -87,6 +87,8 @@ class PublicFormService {
     const form = await this.#resolve(key);
     const cfg = form.config.public;
     return {
+      // Which workspace's public branding (theme, logo) the page should wear.
+      tenant_id:   form.tenant_id,
       title:       form.label,
       description: form.description ?? null,
       columns:     form.columns,

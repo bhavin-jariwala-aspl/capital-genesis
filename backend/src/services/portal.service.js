@@ -24,6 +24,12 @@ const { logger } = require('./logging.service');
  *     title, link: 'party', fields: [...], order?: 'field',
  *     create?: { fields: [...], defaults: {...}, stage?, lookups?: { field: object } },
  *     uploads?: true,                // documents can be uploaded to these records
+ *     row_actions?: [{               // a button on each row that creates a record in another
+ *       key, label, object,          //   exposed section (e.g. Redeem on a holding → a fund order)
+ *       fields: [...],               //   what the user fills in
+ *       prefill?: { targetField: sourceField },  // copied from the row, not from the request
+ *       defaults?: {...}, stage?,
+ *     }],
  *     consent_gate?: 'field',        // introducer realm: show the stage only when true
  *   }
  */
@@ -180,19 +186,28 @@ class PortalService {
       select: { id: true, name: true, label: true, plural_label: true, icon: true, config: true, order_index: true, fields: { where: { is_active: true }, select: { name: true, label: true, field_type: true, data_type: true, options: true, config: true } } },
     });
     const objects = all.filter((o) => o.config?.portal?.[realm]);
+    const metaFor = (o) => {
+      const byName = Object.fromEntries(o.fields.map((f) => [f.name, f]));
+      return (n) => {
+        const f = byName[n];
+        return f ? { name: f.name, label: f.label, field_type: f.field_type, data_type: f.data_type, options: f.options ?? null, config: { format: f.config?.format ?? null, target_object: f.config?.target_object ?? null } } : null;
+      };
+    };
     return objects
       .map((o) => {
         const cfg = o.config.portal[realm];
-        const byName = Object.fromEntries(o.fields.map((f) => [f.name, f]));
-        const meta = (n) => {
-          const f = byName[n];
-          return f ? { name: f.name, label: f.label, field_type: f.field_type, data_type: f.data_type, options: f.options ?? null, config: { format: f.config?.format ?? null, target_object: f.config?.target_object ?? null } } : null;
-        };
+        const meta = metaFor(o);
+        // A row action may only create records in another section of the same realm.
+        const rowActions = (cfg.row_actions ?? []).map((a) => {
+          const target = objects.find((t) => t.name === a.object && t.config.portal[realm]?.link);
+          if (!target || !a.key) return null;
+          return { key: a.key, label: a.label ?? a.key, object: a.object, fields: (a.fields ?? []).map(metaFor(target)).filter(Boolean) };
+        }).filter(Boolean);
         return {
           object: o.name, object_id: o.id, title: cfg.title ?? o.plural_label ?? o.label, icon: o.icon, order: cfg.order_index ?? o.order_index,
           link: cfg.link, fields: (cfg.fields ?? []).map(meta).filter(Boolean),
           create: cfg.create ? { label: cfg.create.label ?? `New ${o.label}`, fields: (cfg.create.fields ?? []).map(meta).filter(Boolean), lookups: cfg.create.lookups ?? {} } : null,
-          uploads: Boolean(cfg.uploads), consent_gate: cfg.consent_gate ?? null,
+          row_actions: rowActions, uploads: Boolean(cfg.uploads), consent_gate: cfg.consent_gate ?? null,
         };
       })
       .filter((v) => v.link)
@@ -254,6 +269,46 @@ class PortalService {
     const oid = await this.#objectId(target);
     const rows = await this.db.recordFieldValue.findMany({ where: { field_name: 'name', record: { object_id: oid, deleted_at: null } }, select: { record_id: true, str_value: true }, take: 200 });
     return rows.map((r) => ({ value: r.record_id, label: r.str_value })).sort((a, b) => String(a.label).localeCompare(String(b.label)));
+  }
+
+  /**
+   * Run a row action: create a record in another section from one of the
+   * subject's own rows (Redeem on a fund holding → a redemption order). Values
+   * named in `prefill` come from the row and `defaults` from the config, never
+   * from the request, so a client cannot redeem someone else's holding or turn
+   * the action into a different order type.
+   */
+  async act(session, objectName, recordId, actionKey, body) {
+    const v = await this.#view(session.realm_kind, objectName);
+    const action = v.row_actions.find((a) => a.key === actionKey);
+    if (!action) throw new NotFoundError('Action');
+    const own = await this.db.recordFieldValue.findFirst({
+      where: { record_id: Number(recordId), field_name: v.link, str_value: String(session.subject_id), record: { object_id: v.object_id, deleted_at: null } },
+      select: { record_id: true },
+    });
+    if (!own) throw new NotFoundError('Record');
+    const obj = await this.db.uiObject.findUnique({ where: { id: v.object_id }, select: { config: true } });
+    const cfg = obj.config.portal[session.realm_kind].row_actions.find((a) => a.key === actionKey);
+    const target = await this.#view(session.realm_kind, action.object);
+
+    const values = {};
+    for (const f of action.fields) if (body?.[f.name] !== undefined && body[f.name] !== '') values[f.name] = body[f.name];
+    const prefill = Object.entries(cfg.prefill ?? {});
+    if (prefill.length) {
+      const rows = await this.db.recordFieldValue.findMany({ where: { record_id: own.record_id, field_name: { in: prefill.map(([, src]) => src) } } });
+      const src = Object.fromEntries(rows.map((r) => [r.field_name, fromTypedRow(r)]));
+      for (const [to, from] of prefill) if (src[from] != null) values[to] = src[from];
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    for (const [k, val] of Object.entries(cfg.defaults ?? {})) values[k] = val === '{{today}}' ? today : val;
+    values[target.link] = session.subject_id;
+    let stageId = null;
+    if (cfg.stage) {
+      const st = await this.db.uiPipelineStage.findFirst({ where: { name: cfg.stage, pipeline: { object_id: target.object_id } }, select: { id: true } });
+      stageId = st?.id ?? null;
+    }
+    const created = await this.records.createRecord(target.object_id, stageId, PortalService.actor(session), null, null, values);
+    return { id: created.id, object: target.object };
   }
 
   /** Create a record from the portal (a request, a consent, an order, a referral). */

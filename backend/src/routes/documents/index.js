@@ -306,6 +306,7 @@ module.exports = async function documentRoutes(fastify) {
     await sigSvc.recordView(resolved.signatory, req.ip).catch(() => {});
     const { signatory, request, document } = resolved;
     return ok({
+      tenant_id: request.tenant_id ?? document.tenant_id, // the page wears this workspace's branding
       signatory: { name: signatory.name, email: signatory.email, status: signatory.status },
       request:   { title: request.title, message: request.message, ordered: request.ordered },
       document:  { filename: document.original_filename, mime_type: document.mime_type, file_size: document.file_size },
@@ -417,6 +418,7 @@ module.exports = async function documentRoutes(fastify) {
     }).catch(() => { /* never fail the view on a tracking hiccup */ });
     const d = resolved.document;
     return ok({
+      tenant_id: resolved.link.tenant_id, // the page wears this workspace's branding
       filename: d.original_filename,
       mime_type: d.mime_type,
       file_size: d.file_size,

@@ -231,6 +231,13 @@ config.portal = {
       stage: 'received',
       lookups: { loan_account: 'loan_account' },  // pickers limited to the user's own records
     },
+    row_actions: [{                       // optional: a button on each row
+      key: 'redeem', label: 'Redeem',
+      object: 'fund_order',               // creates a record in another section of the same realm
+      fields: ['units', 'amount'],        // what the user fills in
+      prefill: { share_class: 'share_class' },  // target field ← this row's field (never from the request)
+      defaults: { order_type: 'redemption' }, stage: 'captured',
+    }],
   },
   introducer: {
     title: 'My referrals', link: 'introducer', fields: [ /* … */ ],
@@ -238,6 +245,8 @@ config.portal = {
   },
 };
 ```
+
+A row action (`POST /api/portal/records/:object/:id/actions/:key`) runs only on a row the signed-in user owns, and the values in `prefill` and `defaults` are set by the server, so a client cannot redeem another client's holding or change the order type.
 
 Clients can also download documents in categories marked `portal_visible`, upload PDF, JPEG or PNG files (10 MB) against their own records, and message their owner (the message becomes an activity and a notification). In development, when SMTP is not configured, the sign-in code is returned to the page so the flow can be demonstrated.
 

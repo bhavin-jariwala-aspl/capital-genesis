@@ -62,9 +62,9 @@ export default function WizardStepper({
                   className="transition-all duration-700 ease-out" />
                 <defs>
                   <linearGradient id="wiz-ring-grad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="55%" stopColor="#a855f7" />
-                    <stop offset="100%" stopColor="#d946ef" />
+                    <stop offset="0%" style={{ stopColor: 'rgb(var(--pc-500))' }} />
+                    <stop offset="55%" style={{ stopColor: 'rgb(var(--gc-mid))' }} />
+                    <stop offset="100%" style={{ stopColor: 'rgb(var(--ac-500))' }} />
                   </linearGradient>
                 </defs>
               </svg>

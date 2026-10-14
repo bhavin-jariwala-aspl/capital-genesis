@@ -146,15 +146,21 @@ Each scene has: **who** to sign in as, **what** to do, **what to say**, and the 
 ### Scene 6 — The client portal (3 min)
 
 - **Who:** `/portal/genesis-capital` as `vikash.ramdhony@example.mu`.
-- **Do:** sign in with the one-time code. Show loan status, fund holdings, consents. Upload a document and send a
+- **Do:** sign in with the one-time code. Show loan status, fund holdings (each with a **Redeem** button), fund
+  orders (**+ Invest** for a new subscription) and consents. Upload a document and send a
   message to the RM. Switch back to `GCRM1`: the message is on the client's record.
 - **Say:** "Clients follow their own business and send documents securely. Fewer phone calls and emails."
 
 ### Scene 7 — French and forex (2 min)
 
 - **Who:** `GCFX1`.
-- **Do:** switch the header to **FR**: menus, fields, stages and options are in French. Create an FX quote, accept
-  it, and see the deal booked with a dealing reference.
+- **Do:** open **Forex Desk ▸ FX quotes**, then switch the header to **FR**: module names, record tabs, field and
+  column names, stages and picklists turn French. Switch back to **EN**, then create an FX quote, accept it, and see
+  the deal booked with a dealing reference.
+- **Say:** "Your business vocabulary — modules, fields, stages, picklists — and every client letter and email are
+  bilingual. Translating the remaining interface text (buttons, menus, dashboards) is on the roadmap."
+- **Careful:** show French on a **record screen**, not on the dashboard. Buttons, sidebar headings and dashboard
+  titles stay English, so the dashboard looks mixed in French.
 
 ### Scene 8 — Management view, and changing it live (4 min)
 
@@ -249,7 +255,7 @@ Short, honest answers. If you do not know, write the question down and promise a
 
 | Question | Answer |
 | --- | --- |
-| Is it in French? | Field, stage and option labels and all client letters and emails are in English and French. Some buttons and menus are still English only. |
+| Is it in French? | Module, field, stage and option names and all client letters and emails are in English and French. Buttons, menus and dashboard titles are English today; translating them is on the roadmap. |
 | Does it work with Outlook? | Each user gets a calendar link that shows their CRM meetings in Outlook or Google Calendar. Two-way sync needs your Microsoft 365 connection. |
 | Does it work on a phone? | It runs in a mobile browser. There is no separate mobile app or offline mode today. |
 | Will it remind me what to do? | Yes. My Workbench, tasks, reminders, notifications and next-best actions. |
@@ -291,7 +297,7 @@ Say what is not there yet before they find it. It builds trust.
 | Two-way Outlook / Google calendar sync | Microsoft 365 or Google connection |
 | WhatsApp | A WhatsApp Business account |
 | Full-text search inside every field | Not needed at current volumes; can be added |
-| French for every button and menu | Labels and letters are bilingual; the remaining interface text is a translation task |
+| French for buttons, menus and dashboards | Business labels and letters are bilingual; the remaining interface text is a translation task on the roadmap |
 | Screen comparing old and new values before approval | Approvals already stop the maker approving their own change |
 | e-KYC, OCR, telephony, offline mobile | Vendor selection |
 

@@ -327,6 +327,13 @@ describe('Genesis pack — deep references', () => {
         for (const [f, target] of Object.entries(cfg.create?.lookups ?? {})) if (fieldDef(o.name, f)?.config?.target_object !== target) problems.push(`${at}: lookup ${f}`);
         if (cfg.create?.stage && !stagesOf(o.name).has(cfg.create.stage)) problems.push(`${at}: stage ${cfg.create.stage}`);
         if (cfg.consent_gate && !fieldDef(o.name, cfg.consent_gate)) problems.push(`${at}: consent_gate`);
+        for (const a of cfg.row_actions ?? []) {
+          const t = objects[a.object];
+          if (!t?.config?.portal?.[realm]?.link) { problems.push(`${at}: action ${a.key} targets ${a.object}, not a ${realm} section`); continue; }
+          for (const f of [...(a.fields ?? []), ...Object.keys(a.defaults ?? {}), ...Object.keys(a.prefill ?? {})]) if (!fieldDef(a.object, f)) problems.push(`${at}: action ${a.key} field ${f}`);
+          for (const f of Object.values(a.prefill ?? {})) if (!fieldDef(o.name, f)) problems.push(`${at}: action ${a.key} prefill from ${f}`);
+          if (a.stage && !stagesOf(a.object).has(a.stage)) problems.push(`${at}: action ${a.key} stage ${a.stage}`);
+        }
       }
     }
     expect(problems).toEqual([]);

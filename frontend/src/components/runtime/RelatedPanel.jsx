@@ -65,7 +65,7 @@ export default function RelatedPanel({ recordId }) {
                   >
                     <span className="flex-1 min-w-0 truncate text-sm font-medium text-gray-800 dark:text-white/90">{r.label}</span>
                     {r.stage && (
-                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || '#6b7280' }}>
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || 'rgb(var(--n-500))' }}>
                         {r.stage.label}
                       </span>
                     )}

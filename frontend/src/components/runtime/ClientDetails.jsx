@@ -101,7 +101,7 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
                 {stage?.label ? (
                   <span
                     className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white shadow-sm"
-                    style={{ background: stage.color || '#6366f1' }}
+                    style={{ background: stage.color || 'rgb(var(--pc-500))' }}
                   >
                     {stage.label}
                   </span>

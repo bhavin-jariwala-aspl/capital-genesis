@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useWorkspaceBranding } from '../hooks/useWorkspaceBranding';
 import { useParams } from 'react-router-dom';
 import { FileText, Download, AlertCircle, ShieldCheck, FileSearch } from 'lucide-react';
 import { documentService } from '../services/document.service';
@@ -17,6 +18,7 @@ export default function SharedDocumentPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  useWorkspaceBranding(meta?.tenant_id);
 
   useEffect(() => {
     let alive = true;

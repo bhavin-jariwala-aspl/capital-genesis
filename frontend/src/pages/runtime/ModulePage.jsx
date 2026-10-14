@@ -88,7 +88,7 @@ function RecordCard({ record, fields, imageField, moduleId, objectId, onActivity
         {stage && (
           <span
             className="absolute bottom-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
-            style={{ background: stage.color || '#6366f1' }}
+            style={{ background: stage.color || 'rgb(var(--pc-500))' }}
           >
             {stage.label}
           </span>
@@ -552,7 +552,7 @@ export default function ModulePage() {
           return (
             <span
               className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
-              style={{ background: stage.color || '#6b7280' }}
+              style={{ background: stage.color || 'rgb(var(--n-500))' }}
             >
               {stage.label}
             </span>
@@ -585,7 +585,7 @@ export default function ModulePage() {
 
   // ── 6. Pipeline stages + cards ────────────────────────────────────────────
   const pipelineStages = useMemo(() =>
-    (pipeline?.stages || []).map(s => ({ id: s.id, label: s.label, color: s.color || '#6366f1' })),
+    (pipeline?.stages || []).map(s => ({ id: s.id, label: s.label, color: s.color || 'rgb(var(--pc-500))' })),
     [pipeline],
   );
 
@@ -861,7 +861,7 @@ export default function ModulePage() {
                     {activeStage?.label ? (
                       <span
                         className="inline-block h-2 w-2 rounded-full shrink-0"
-                        style={{ background: activeStage.color || '#6366f1' }}
+                        style={{ background: activeStage.color || 'rgb(var(--pc-500))' }}
                       />
                     ) : null}
                     {activeStage?.label || activeObject.label}

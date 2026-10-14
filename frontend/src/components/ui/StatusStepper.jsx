@@ -56,7 +56,7 @@ export default function StatusStepper({
                 onChange && 'cursor-pointer hover:shadow-sm',
                 !onChange && 'cursor-default',
               )}
-              style={isActive ? { backgroundColor: stage.color || '#6366f1' } : undefined}
+              style={isActive ? { backgroundColor: stage.color || 'rgb(var(--pc-500))' } : undefined}
             >
               {isPast && <CheckCircle2 className="h-3 w-3" />}
               {isActive && <Circle className="h-3 w-3 fill-current" />}
@@ -105,7 +105,7 @@ export default function StatusStepper({
                         ? 'border-transparent bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400'
                         : 'border-gray-200 dark:border-white/15 bg-white dark:bg-white/5 text-gray-400 dark:text-white/30',
                   )}
-                  style={isActive ? { backgroundColor: stage.color || '#6366f1', borderColor: stage.color || '#6366f1' } : undefined}
+                  style={isActive ? { backgroundColor: stage.color || 'rgb(var(--pc-500))', borderColor: stage.color || 'rgb(var(--pc-500))' } : undefined}
                 >
                   {isPast ? <CheckCircle2 className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} /> : i + 1}
                 </div>
@@ -152,7 +152,7 @@ export default function StatusStepper({
               className="transition-all duration-300"
               style={{
                 width: `${pct}%`,
-                backgroundColor: stage.color || '#6366f1',
+                backgroundColor: stage.color || 'rgb(var(--pc-500))',
                 opacity: stage.value === currentValue ? 1 : 0.4,
               }}
             />
@@ -177,7 +177,7 @@ export default function StatusStepper({
             >
               <div
                 className="h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: stage.color || '#6366f1', opacity: isActive ? 1 : 0.4 }}
+                style={{ backgroundColor: stage.color || 'rgb(var(--pc-500))', opacity: isActive ? 1 : 0.4 }}
               />
               <span className={clsx(
                 'text-xs font-medium',

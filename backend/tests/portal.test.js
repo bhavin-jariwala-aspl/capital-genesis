@@ -84,3 +84,47 @@ describe('portal uploads', () => {
     expect(docs.upload).not.toHaveBeenCalled();
   });
 });
+
+describe('portal row actions (Redeem on a fund holding)', () => {
+  const session = { tenant_id: 7, realm_kind: 'client', subject_id: 42 };
+  const redeem = { key: 'redeem', label: 'Redeem', object: 'fund_order', fields: ['units', 'amount'], prefill: { share_class: 'share_class' }, defaults: { order_type: 'redemption' }, stage: 'captured' };
+  const objects = [
+    { id: 1, name: 'fund_holding', label: 'Holding', config: { portal: { client: { title: 'Fund holdings', link: 'party', fields: ['share_class'], row_actions: [redeem] } } },
+      fields: [{ name: 'share_class', label: 'Share class', field_type: 'lookup', config: {} }] },
+    { id: 2, name: 'fund_order', label: 'Order', config: { portal: { client: { title: 'Fund orders', link: 'party', fields: ['order_type'] } } },
+      fields: ['units', 'amount', 'order_type', 'share_class'].map((n) => ({ name: n, label: n, field_type: n === 'order_type' ? 'select' : 'decimal', config: {} })) },
+  ];
+  const make = (owns = true) => {
+    const records = { createRecord: jest.fn().mockResolvedValue({ id: 900 }) };
+    const db = {
+      uiObject: {
+        findMany: jest.fn().mockResolvedValue(objects),
+        findUnique: jest.fn(async ({ where }) => objects.find((o) => o.id === where.id)),
+      },
+      uiPipelineStage: { findFirst: jest.fn().mockResolvedValue({ id: 55 }) },
+      recordFieldValue: {
+        findFirst: jest.fn().mockResolvedValue(owns ? { record_id: 300 } : null),
+        findMany: jest.fn().mockResolvedValue([{ record_id: 300, field_name: 'share_class', str_value: '17', num_value: null }]),
+      },
+    };
+    return { svc: new PortalService(db, { recordService: records }), records, db };
+  };
+
+  it('lists the action on the holding section with the target object\'s fields', async () => {
+    const views = await make().svc.views('client');
+    expect(views.find((v) => v.object === 'fund_holding').row_actions).toEqual([
+      expect.objectContaining({ key: 'redeem', label: 'Redeem', object: 'fund_order', fields: [expect.objectContaining({ name: 'units' }), expect.objectContaining({ name: 'amount' })] }),
+    ]);
+  });
+
+  it('creates a redemption for the row\'s share class, ignoring an order type or share class in the request', async () => {
+    const { svc, records } = make();
+    await expect(svc.act(session, 'fund_holding', 300, 'redeem', { units: 10, order_type: 'subscription', share_class: 99 })).resolves.toEqual({ id: 900, object: 'fund_order' });
+    expect(records.createRecord).toHaveBeenCalledWith(2, 55, expect.any(String), null, null, { units: 10, share_class: '17', order_type: 'redemption', party: 42 });
+  });
+
+  it('refuses someone else\'s holding and unknown actions', async () => {
+    await expect(make(false).svc.act(session, 'fund_holding', 300, 'redeem', { units: 1 })).rejects.toThrow(/Record/);
+    await expect(make().svc.act(session, 'fund_holding', 300, 'switch', {})).rejects.toThrow(/Action/);
+  });
+});

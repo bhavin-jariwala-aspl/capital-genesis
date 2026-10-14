@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useWorkspaceBranding } from '../hooks/useWorkspaceBranding';
 import { useParams } from 'react-router-dom';
 import { FileText, PenLine, Type, Check, AlertCircle, X, RotateCcw } from 'lucide-react';
 import { documentService } from '../services/document.service';
@@ -58,6 +59,7 @@ function SignaturePad({ onChange }) {
 export default function SignDocumentPage() {
   const { token } = useParams();
   const [info, setInfo] = useState(null);
+  useWorkspaceBranding(info?.tenant_id);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('drawn'); // drawn | typed

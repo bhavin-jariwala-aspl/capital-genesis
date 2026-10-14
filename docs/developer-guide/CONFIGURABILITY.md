@@ -129,6 +129,11 @@ Studio shows them as saved, not as a draft).
   snapshot** to `localStorage` (`genesis-branding`, keyed by tenant), and layers the user's personal overrides.
   Signed out, `applyPreLoginBranding()` wears the snapshot and refreshes it from the public branding route, so the
   sign-in page shows the client's logo, colours, tagline and layout — not the vendor's.
+- **Public pages wear their own workspace's theme.** The client portal, published web forms, shared-document links
+  and e-signature pages are opened by people who never signed in on that device, so the snapshot is not theirs.
+  Their API responses carry `tenant_id`, and `useWorkspaceBranding(tenantId)` calls `wearWorkspace()`, which loads
+  the public branding route and applies it (not saved as the sign-in snapshot). A slower `applyPreLoginBranding()`
+  never overwrites it.
 - `components/ui/BrandLogo.jsx` is the one place identity renders (sidebar, sign-in, Studio previews): uploaded
   logo, dark variant on dark/brand surfaces, app icon, display mode, generated monogram.
 - Charts read `useAppearanceStore(s => s.current)` for the tenant palette and the `--n-*` / `--s-*` tokens for
@@ -309,7 +314,12 @@ When adding a validation type: add it to `RULE_TYPES` and `evaluateRule` on the 
    `night-*`; a literal `indigo-*`, `via-violet-600` or `bg-[#141327]` breaks theming for every tenant. Text on a
    brand surface is `text-on-primary`, never `text-white`. Primary buttons use the `Button` component (or
    `.btn-primary`) so the button-style setting reaches them. Brand-tinted CSS reads `var(--pc-N)` (mode-aware),
-   not `var(--p-N)`.
+   not `var(--p-N)`. Inline styles and SVG gradients do the same: `style={{ stopColor: 'rgb(var(--pc-500))' }}`
+   (an SVG `stopColor="…"` attribute does not resolve `var()`), and a stage or badge with no colour of its own
+   falls back to `rgb(var(--pc-500))` or `rgb(var(--n-500))`, never a literal hex.
+   **Deliberately fixed:** success / warning / danger / info colours (green, amber, red, blue) and *categorical*
+   colours that tell things apart — workflow step types, audit actions, Builder section tiles, the AI panels'
+   violet. Mapping those to the brand colour would make different things look the same.
 2. **The server is the source of truth for validation.** A rule that the browser enforces but the server
    does not is a bug; keep `evaluateRule` and `buildValidationRules` in step.
 3. **Custom JS never runs on the server.** Do not "fix" that with `vm` — it is not a security boundary.

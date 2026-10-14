@@ -557,7 +557,8 @@ URL: `/portal/genesis-capital`.
 |---|---|
 | Loan applications | Follow status and figures; upload requested documents (PRT-FR-02) |
 | My loans | See outstanding balance, rate, instalment and next due date |
-| Fund holdings, Fund orders | See units and value; place subscription or redemption requests, subject to the cut-off, KYC and suitability rules (PRT-FR-06) |
+| Fund holdings | See units and value; **Redeem** on a holding places a redemption for that share class (units or amount) |
+| Fund orders | See every order and its status; **+ Invest** places a subscription. Cut-off, KYC, minimum-investment and suitability rules apply to both (PRT-FR-06). A switch between funds is requested from the RM. |
 | Wealth mandates, Trading accounts, FX deals | See their holdings (PRT-FR-03) |
 | Requests & complaints | Raise and follow requests and complaints; attach documents (PRT-FR-04) |
 | My consents | Grant or withdraw consent per purpose (PRT-FR-05) |
@@ -654,7 +655,8 @@ the short technical version.
 4. **Barriers.** As GCADV1, open an advisory mandate; as GCTRD1 it does not exist. Add a deal-team member and they appear on the insider list.
 5. **FX.** Create a quote, accept it, and see the deal booked with a dealing reference. Rate alerts trigger hourly from the board.
 6. **Portal.** Open `/portal/genesis-capital`, sign in as a demo client's email (the code is shown on screen outside production when SMTP is not configured), view applications and holdings, upload a document, send a message.
-7. **French.** Switch the header to **FR**: modules, fields, stages and picklists show in French.
+7. **French.** On a record screen, switch the header to **FR**: modules, fields, stages and picklists show in French.
+   Buttons, menus and dashboard titles stay English (§13).
 8. **Executive view.** Sign in as GCCOO: the Group Executive dashboard.
 9. **Approvals.** Move an application to *Credit approval* as GCCRED1; sign in as GCLMGR, open **Tools ▸ Approvals**,
    approve with a comment; the application moves to *Offer issued* and the PDF offer letter appears in its documents.
@@ -672,7 +674,7 @@ the short technical version.
 | Full-text search engine | E-10 | Not required at current volumes |
 | Per-tenant uniqueness of staff ID and email | E-11 | A planned constraint migration on the shared database |
 | Pending-change diff screen for maker-checker | E-17 | Approvals already exclude the maker |
-| Shell UI text in French | X-02 | Builder labels are bilingual; buttons and menus are English |
+| Interface text in French (buttons, menus, dashboard and report titles) | X-02 | Builder labels and correspondence are bilingual; the rest is a translation task |
 | e-KYC, OCR, CTI, offline PWA | KYC-FR-12, DOC-FR-07, RM-FR-04, RM-FR-05 | "Could" priority; vendor selection |
 | Infrastructure-as-code (AWS) | E-14 | Docker and CI are delivered; Terraform/CDK is a deployment decision |
 

@@ -29,6 +29,7 @@ export function portalClient(slug) {
     list: (object) => data(http.get(`/records/${object}`)),
     options: (object, field) => data(http.get(`/records/${object}/options/${field}`)),
     create: (object, body) => data(http.post(`/records/${object}`, body)),
+    act: (object, id, action, body) => data(http.post(`/records/${object}/${id}/actions/${action}`, body)),
     documents: () => data(http.get('/documents')),
     download: (id) => http.get(`/documents/${id}/download`, { responseType: 'blob' }),
     upload: (recordId, body) => data(http.post(`/records/${recordId}/documents`, body)),

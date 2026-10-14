@@ -63,7 +63,7 @@ module.exports = async function portalRoutes(fastify) {
   // ── Public ────────────────────────────────────────────────────────────────
   fastify.get('/:slug', { schema: { params: slugParams } }, async (req) => {
     const t = await svc.tenantBySlug(req.params.slug);
-    return ok({ name: t.name, slug: t.slug, logo_url: t.logo_url, primary_color: t.primary_color });
+    return ok({ tenant_id: t.id, name: t.name, slug: t.slug, logo_url: t.logo_url, primary_color: t.primary_color });
   });
 
   fastify.post('/:slug/login/request', {
@@ -94,6 +94,13 @@ module.exports = async function portalRoutes(fastify) {
   fastify.post('/records/:object', {
     schema: { params: { type: 'object', properties: { object: objectParam } }, body: { type: 'object', maxProperties: 30, additionalProperties: { type: ['string', 'number', 'boolean', 'null'], maxLength: 5000 } } },
   }, session(async (req, reply, s) => { reply.code(201); return created(await svc.create(s, req.params.object, req.body)); }));
+
+  fastify.post('/records/:object/:id/actions/:action', {
+    schema: {
+      params: { type: 'object', properties: { object: objectParam, id: { type: 'integer', minimum: 1 }, action: objectParam } },
+      body: { type: 'object', maxProperties: 30, additionalProperties: { type: ['string', 'number', 'boolean', 'null'], maxLength: 5000 } },
+    },
+  }, session(async (req, reply, s) => { reply.code(201); return created(await svc.act(s, req.params.object, req.params.id, req.params.action, req.body)); }));
 
   fastify.get('/documents', session(async (_req, _reply, s) => ok(await svc.documents(s))));
 

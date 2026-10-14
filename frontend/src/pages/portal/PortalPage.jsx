@@ -10,6 +10,7 @@ import Spinner from '../../components/ui/Spinner';
 import FieldValue from '../../components/runtime/FieldValue';
 import { portalClient, portalToken } from '../../services/portal.service';
 import { fmtDate, fmtCurrency } from '../../utils/formatters';
+import { useWorkspaceBranding } from '../../hooks/useWorkspaceBranding';
 
 /**
  * Client & introducer portal (/portal/:slug) — PRD M23 / M19.
@@ -85,17 +86,22 @@ function SignIn({ slug, api, workspace, onSignedIn }) {
   );
 }
 
-function CreateForm({ api, view, onDone }) {
+/**
+ * A section's create form, or a row action's form. `submit` sends the values;
+ * lookup options are only offered on create forms (a row action takes its
+ * lookups from the row).
+ */
+function CreateForm({ api, view, fields = view.create.fields, submit = (values) => api.create(view.object, values), onDone }) {
   const [values, setValues] = useState({});
   const [error, setError] = useState(null);
-  const lookupFields = view.create.fields.filter((f) => f.field_type === 'lookup');
+  const lookupFields = fields.filter((f) => f.field_type === 'lookup');
   const options = useQuery({
     queryKey: ['portal-options', view.object],
     queryFn: async () => Object.fromEntries(await Promise.all(lookupFields.map(async (f) => [f.name, await api.options(view.object, f.name)]))),
     enabled: lookupFields.length > 0,
   });
   const save = useMutation({
-    mutationFn: () => api.create(view.object, values),
+    mutationFn: () => submit(values),
     onSuccess: onDone,
     onError: (e) => setError(errText(e)),
   });
@@ -103,7 +109,7 @@ function CreateForm({ api, view, onDone }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); setError(null); save.mutate(); }} className="space-y-3">
-      {view.create.fields.map((f) => {
+      {fields.map((f) => {
         if (f.field_type === 'lookup') {
           return <Select key={f.name} label={f.label} value={values[f.name] ?? ''} onChange={(e) => set(f.name, Number(e.target.value) || '')} options={[{ value: '', label: 'Select…' }, ...(options.data?.[f.name] ?? [])]} />;
         }
@@ -165,8 +171,14 @@ function UploadButton({ api, recordId, onDone }) {
 function Section({ api, view, onChanged }) {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [acting, setActing] = useState(null); // { action, row }
   const { data, isLoading, error } = useQuery({ queryKey: ['portal-list', view.object], queryFn: () => api.list(view.object) });
   const rows = data?.records ?? [];
+  const actions = view.row_actions ?? [];
+  const rowTitle = (r) => {
+    const first = view.fields[0];
+    return first ? (r.labels?.[first.name] ?? r.data?.[first.name] ?? '') : '';
+  };
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-night-2">
@@ -183,15 +195,24 @@ function Section({ api, view, onChanged }) {
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
                 {view.fields.map((f) => <th key={f.name} className="px-2 py-1.5 font-medium">{f.label}</th>)}
                 <th className="px-2 py-1.5 font-medium">Status</th>
-                {view.uploads && <th className="px-2 py-1.5" />}
+                {(view.uploads || actions.length > 0) && <th className="px-2 py-1.5" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {rows.map((r) => (
                 <tr key={r.id}>
                   {view.fields.map((f) => <td key={f.name} className="whitespace-nowrap px-2 py-2"><FieldValue field={f} value={r.data?.[f.name]} label={r.labels?.[f.name]} compact /></td>)}
-                  <td className="px-2 py-2">{r.stage ? <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || '#6b7280' }}>{r.stage.label}</span> : '—'}</td>
-                  {view.uploads && <td className="px-2 py-2 text-right"><UploadButton api={api} recordId={r.id} onDone={onChanged} /></td>}
+                  <td className="px-2 py-2">{r.stage ? <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || 'rgb(var(--n-500))' }}>{r.stage.label}</span> : '—'}</td>
+                  {(view.uploads || actions.length > 0) && (
+                    <td className="whitespace-nowrap px-2 py-2 text-right">
+                      <div className="inline-flex items-center gap-3">
+                        {actions.map((a) => (
+                          <Button key={a.key} size="xs" variant="secondary" onClick={() => setActing({ action: a, row: r })}>{a.label}</Button>
+                        ))}
+                        {view.uploads && <UploadButton api={api} recordId={r.id} onDone={onChanged} />}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -200,6 +221,23 @@ function Section({ api, view, onChanged }) {
       )}
       <Modal open={creating} onClose={() => setCreating(false)} title={view.create?.label ?? ''}>
         {creating && <CreateForm api={api} view={view} onDone={() => { setCreating(false); qc.invalidateQueries({ queryKey: ['portal-list', view.object] }); onChanged?.(); }} />}
+      </Modal>
+      <Modal open={Boolean(acting)} onClose={() => setActing(null)} title={acting ? [acting.action.label, rowTitle(acting.row)].filter(Boolean).join(' — ') : ''}>
+        {acting && (
+          <CreateForm
+            api={api}
+            view={view}
+            fields={acting.action.fields}
+            submit={(values) => api.act(view.object, acting.row.id, acting.action.key, values)}
+            onDone={() => {
+              const target = acting.action.object;
+              setActing(null);
+              qc.invalidateQueries({ queryKey: ['portal-list', target] });
+              qc.invalidateQueries({ queryKey: ['portal-list', view.object] });
+              onChanged?.();
+            }}
+          />
+        )}
       </Modal>
     </section>
   );
@@ -257,6 +295,7 @@ export default function PortalPage() {
   const qc = useQueryClient();
   const [signedIn, setSignedIn] = useState(() => Boolean(portalToken.get(slug)));
   const workspace = useQuery({ queryKey: ['portal-ws', slug], queryFn: api.workspace, retry: false });
+  useWorkspaceBranding(workspace.data?.tenant_id);
   const me = useQuery({ queryKey: ['portal-me', slug], queryFn: api.me, enabled: signedIn, retry: false });
   const views = useQuery({ queryKey: ['portal-views', slug], queryFn: api.views, enabled: signedIn, retry: false });
 

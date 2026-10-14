@@ -19,8 +19,8 @@ export default function Spinner({ size = 'md', className }) {
         />
         <defs>
           <linearGradient id="spin-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#7c3aed" />
+            <stop offset="0%" style={{ stopColor: 'rgb(var(--pc-500))' }} />
+            <stop offset="100%" style={{ stopColor: 'rgb(var(--gc-mid-600))' }} />
           </linearGradient>
         </defs>
       </svg>

@@ -11,6 +11,22 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed — Theme reaches every screen (2026-10-14)
+
+- The client portal, published web forms, shared-document and e-signature pages now wear their workspace's theme.
+  Before, they showed the remembered sign-in brand or the product's default indigo to anyone who had not signed in
+  on that device.
+- The loading spinner, wizard progress ring and stage colours without their own value used fixed indigo / violet
+  hex codes; they now follow the primary, mid and accent theme colours (and the neutral palette for grey).
+
+### Changed — Portal fund orders (2026-10-14)
+
+- **Redeem** now sits on each row of *Fund holdings* and places a redemption for that holding's share class. The
+  *Fund orders* button is **+ Invest** and places subscriptions only (it was "Invest or redeem" with an order-type
+  picker). Switches are requested from the RM.
+- New generic portal option `row_actions` (`config.portal.<realm>.row_actions`): a per-row button that creates a record
+  in another section. The server checks the row belongs to the user and sets `prefill` / `defaults` itself.
+
 ### Changed — One demo workspace: Genesis Capital (2026-10-14)
 
 - The financial-services vertical pack is now **Genesis Capital** (`prisma/verticals/genesis-capital`, tenant

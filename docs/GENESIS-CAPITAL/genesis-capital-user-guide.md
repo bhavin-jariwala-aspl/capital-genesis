@@ -527,7 +527,8 @@ PLR) takes effect without any release.
 `/portal/<workspace>` — for Genesis, `/portal/genesis-capital`.
 
 - **Clients** sign in with the email Genesis holds and a one-time code. They see their loan applications (and upload
-  requested documents), loans, fund holdings and orders (and can place orders), mandates, trading accounts, FX deals,
+  requested documents), loans, fund holdings (with a **Redeem** button on each holding) and fund orders (with
+  **+ Invest** for a new subscription), mandates, trading accounts, FX deals,
   requests and complaints (and can raise new ones), consents (and can change them) and their KYC case (to upload a
   renewed ID). They can download letters and reports shared with them and message their RM.
 - **Introducers** submit referrals, follow them (when the prospect agreed to share) and see their commissions.

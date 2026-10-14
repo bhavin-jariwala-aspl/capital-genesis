@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useWorkspaceBranding } from '../hooks/useWorkspaceBranding';
 import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
@@ -20,6 +21,7 @@ export default function PublicFormPage() {
   const { key } = useParams();
   const [form, setForm] = useState(null);
   const [state, setState] = useState({ loading: true, error: null, done: null });
+  useWorkspaceBranding(form?.tenant_id);
   const { register, control, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm();
 
   useEffect(() => {

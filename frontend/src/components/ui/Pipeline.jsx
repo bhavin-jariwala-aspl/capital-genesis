@@ -119,7 +119,7 @@ function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCa
         <div className="flex items-center gap-2">
           <span
             className="h-2 w-2 rounded-full flex-shrink-0"
-            style={{ background: stage.color || '#6366f1' }}
+            style={{ background: stage.color || 'rgb(var(--pc-500))' }}
           />
           <span className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{stage.label}</span>
           <span className="text-[11px] text-gray-400 dark:text-gray-400 bg-white dark:bg-white/10 border border-gray-200/80 dark:border-white/[0.07] px-1.5 py-0.5 rounded-full font-medium">
@@ -255,7 +255,7 @@ function DefaultCardContent({ card }) {
         {card.badge && (
           <span
             className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white leading-none"
-            style={{ background: card.badge.color || '#6b7280' }}
+            style={{ background: card.badge.color || 'rgb(var(--n-500))' }}
             title={card.badge.title || undefined}
           >
             {card.badge.label}
