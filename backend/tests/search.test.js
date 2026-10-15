@@ -157,13 +157,56 @@ describe('SearchService — custom object search', () => {
       id: 600,
       record_id: 600,
       title: 'Server Rack A1',
-      subtitle: 'Asset · asset_name',
+      subtitle: 'Asset',
       crm_type: null,
       object_id: 8,
       object_label: 'Asset',
       module_id: 3,
       module_label: 'Inventory',
     });
+  });
+
+  it('titles a hit with the record name, labels the matched field and ranks the closest title first', async () => {
+    const party = { id: 9, name: 'party', label: 'Party', config: { title_field: 'display_name' }, module: { id: 2, label: 'Clients' } };
+    const rel = { id: 10, name: 'party_relationship', label: 'Party Relationship', config: { title_field: 'name' }, module: { id: 2, label: 'Clients' } };
+    const db = makeSearchDb({
+      searchableFields: [
+        { id: 1, name: 'email', label: 'Email', object: party },
+        { id: 2, name: 'display_name', label: 'Name', object: party },
+        { id: 3, name: 'name', label: 'Relationship', object: rel },
+      ],
+    });
+    const hits = {
+      9: [{ record_id: 70, field_name: 'email', str_value: 'vikash@example.mu' }],
+      10: [{ record_id: 71, field_name: 'name', str_value: 'Vikash Ramdhony — Power of attorney of — Patricia Jhurry' }],
+    };
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => {
+      if (where.record?.object_id) return hits[where.record.object_id] ?? [];
+      return [
+        { record_id: 70, field_name: 'display_name', str_value: 'Vikash Ramdhony' },
+        { record_id: 71, field_name: 'name', str_value: 'Vikash Ramdhony — Power of attorney of — Patricia Jhurry' },
+      ];
+    });
+    const results = await new SearchService(db).search('vikash', { viewer: adminViewer });
+    expect(results.map((r) => r.title)).toEqual(['Vikash Ramdhony', 'Vikash Ramdhony — Power of attorney of — Patricia Jhurry']);
+    expect(results[0].subtitle).toBe('Party · Email: vikash@example.mu');
+  });
+
+  it('uses the record service visibility rule and hides objects the role may not view', async () => {
+    const db = makeSearchDb({
+      searchableFields: [
+        { id: 1, name: 'name', label: 'Name', object: { id: 5, name: 'product', label: 'Product', config: {}, module: { id: 1, label: 'Products' } } },
+        { id: 2, name: 'name', label: 'Name', object: { id: 6, name: 'str_report', label: 'STR', config: {}, module: { id: 1, label: 'Compliance' } } },
+      ],
+      fieldValues: [{ record_id: 1, field_name: 'name', str_value: 'Real Estate Loan' }],
+    });
+    const access = { accessWhere: jest.fn().mockResolvedValue({ OR: [{ object_id: { in: [5] } }] }) };
+    const perms = { getEffectiveUiPermission: jest.fn(async (_t, id) => ({ can_view: id === 5 })) };
+    await new SearchService(db, null, access, perms).search('real', { viewer: userViewer });
+    expect(access.accessWhere).toHaveBeenCalledWith(userViewer);
+    const queried = db.recordFieldValue.findMany.mock.calls.filter(([a]) => a.where.record?.object_id).map(([a]) => a.where.record.object_id);
+    expect(queried).toEqual([5]);
+    expect(db.recordFieldValue.findMany.mock.calls[0][0].where.record.OR).toEqual([{ object_id: { in: [5] } }]);
   });
 
   it('skips custom search when no searchable fields exist', async () => {

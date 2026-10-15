@@ -66,3 +66,18 @@ describe('RateLimiter', () => {
     expect(clientIp({ headers: {}, ip: '9.9.9.9' })).toBe('9.9.9.9');
   });
 });
+
+describe('RateLimiter.peek — failure-only counters', () => {
+  it('reports the state without recording an attempt', async () => {
+    const rl = new RateLimiter({ log: silent });
+    const rule = { max: 2, windowSec: 60 };
+    expect(await rl.peek('f', rule)).toMatchObject({ limited: false, retryAfterSec: 0 });
+    expect(await rl.peek('f', rule)).toMatchObject({ limited: false });
+    await rl.hit('f', rule);
+    expect(await rl.peek('f', rule)).toMatchObject({ limited: false });
+    await rl.hit('f', rule);
+    const s = await rl.peek('f', rule);
+    expect(s.limited).toBe(true);
+    expect(s.retryAfterSec).toBeGreaterThan(0);
+  });
+});

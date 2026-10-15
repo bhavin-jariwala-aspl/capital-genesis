@@ -22,10 +22,11 @@ const {
 const F = (name, label, type = 'text', extra = {}) => ({ name, label, type, ...extra });
 const SEL = (name, label, options, extra = {}) => F(name, label, 'select', { options, ...extra });
 const LK = (name, label, target, extra = {}) => F(name, label, 'lookup', { ...extra, config: { target_object: target, ...(extra.config ?? {}) } });
-const FX = (name, label, expression, { type = 'number', format, precision, list, help } = {}) =>
+// `detail: false` keeps a working value (e.g. a raw record id used by automation) off the record panel.
+const FX = (name, label, expression, { type = 'number', format, precision, list, help, currency, detail } = {}) =>
   F(name, label, 'formula', {
     data_type: type, help,
-    config: { expression, always_disabled: true, ...(format ? { format } : {}), ...(precision != null ? { precision } : {}), ...(list ? { show_in_list: true } : {}) },
+    config: { expression, always_disabled: true, ...(format ? { format } : {}), ...(precision != null ? { precision } : {}), ...(list ? { show_in_list: true } : {}), ...(currency ? { currency_field: currency } : {}), ...(detail === false ? { hide_in_detail: true } : {}) },
   });
 const H = (name, label) => F(name, label, 'heading');
 const AUTO = (name, label, prefix) => F(name, label, 'text', { config: { auto_number: { prefix, format: 'YYYY-NNNNNN' }, always_disabled: true, show_in_list: true } });
@@ -36,12 +37,15 @@ const showWhen = (source, value, targets) => targets.map((target) => ({ source, 
 
 // ── Clients (Client 360 & party master) ───────────────────────────────────────
 
+// Values of the calculated KYC status (a KYC case outcome, or progress before one).
+const KYC_STATUS = o([['not_started', 'Not started', '#94a3b8'], ['in_progress', 'In progress', '#6366f1'], ['approved', 'Approved', '#10b981'], ['rejected', 'Rejected', '#ef4444'], ['on_hold', 'On hold', '#f59e0b']]);
+
 const party = {
   name: 'party',
   label: 'Party',
   plural_label: 'Parties',
   icon: 'Users',
-  description: 'One golden record per person or organisation across all Genesis entities (PRD M02).',
+  description: 'One golden record per person or organisation across all Genesis entities.',
   config: { title_field: 'display_name', barrier_zone_field: 'visibility_zone', audit_views: true },
   fields: [
     AUTO('party_no', 'Party No.', 'PTY-'),
@@ -57,7 +61,7 @@ const party = {
     SEL('gender', 'Gender', o([['male', 'Male'], ['female', 'Female'], ['other', 'Other']])),
     SEL('nationality', 'Nationality', COUNTRIES),
     SEL('id_type', 'ID type', o([['nic', 'National ID'], ['passport', 'Passport']])),
-    F('id_number', 'ID number', 'text', { help: 'Masked unless the viewer holds the "view PII" permission; every reveal is audited (PRD X-08).', config: { pii: true, encrypt: true } }),
+    F('id_number', 'ID number', 'text', { help: 'Shown masked; roles holding the "view PII" permission can reveal it, and every reveal is audited.', config: { pii: true, encrypt: true } }),
     F('id_expiry_date', 'ID expiry date', 'date'),
     F('occupation', 'Occupation'),
     F('employer', 'Employer'),
@@ -96,10 +100,10 @@ const party = {
     FX('next_birthday', 'Next birthday', "IF(ISBLANK(date_of_birth), null, ADD_YEARS(date_of_birth, AGE(date_of_birth) + 1))", { type: 'date', format: 'date' }),
 
     H('h_compliance', 'Compliance & value (calculated)'),
-    FX('kyc_status', 'KYC status',
+    { ...FX('kyc_status', 'KYC status',
       "COALESCE(LOOKUP('kyc_case', 'party', id, 'kyc_outcome', 'decision_date'), IF(COUNT_RELATED('kyc_case', 'party') > 0, 'in_progress', 'not_started'))",
-      { type: 'string', list: true }),
-    FX('risk_rating', 'AML risk rating', "LOOKUP('kyc_case', 'party', id, 'risk_rating', 'decision_date')", { type: 'string' }),
+      { type: 'string', list: true }), options: KYC_STATUS },
+    { ...FX('risk_rating', 'AML risk rating', "LOOKUP('kyc_case', 'party', id, 'risk_rating', 'decision_date')", { type: 'string' }), options: LOW_MED_HIGH },
     FX('kyc_next_review', 'Next KYC review', "LOOKUP('kyc_case', 'party', id, 'next_review_date', 'decision_date')", { type: 'date', format: 'date' }),
     FX('relationships', 'Entity relationships', "COUNT_RELATED('client_relationship', 'party')"),
     FX('investment_client', 'Existing investment client',
@@ -153,7 +157,7 @@ const partyRelationship = {
     F('ownership_pct', 'Ownership %', 'percent', { validations: [{ type: 'min', value: 0, message: 'Cannot be negative' }, { type: 'max', value: 100, message: 'Cannot exceed 100%' }] }),
     F('valid_from', 'Valid from', 'date'),
     F('valid_to', 'Valid to', 'date'),
-    FX('name', 'Relationship', "CONCAT(from_party.display_name, ' — ', role, ' of — ', to_party.display_name)", { type: 'string' }),
+    FX('name', 'Relationship', "CONCAT(from_party.display_name, ' — ', LABEL(role), ' of — ', to_party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'party_relationship_create', label: 'New relationship', fields: ['from_party', 'role', 'to_party', 'ownership_pct', 'valid_from', 'valid_to'] }],
 };
@@ -163,7 +167,7 @@ const clientRelationship = {
   label: 'Client Relationship',
   plural_label: 'Client Relationships',
   icon: 'Handshake',
-  description: 'A party\'s relationship with one Genesis legal entity — the per-BU client record.',
+  description: 'A client\'s relationship with one Genesis entity, from prospect to exit.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Party', 'party', { required: true, config: { show_in_list: true } }),
@@ -172,8 +176,8 @@ const clientRelationship = {
     F('onboarded_on', 'Onboarded on', 'date'),
     F('closed_on', 'Closed on', 'date'),
     F('notes', 'Notes', 'textarea'),
-    FX('name', 'Relationship', "CONCAT(party.display_name, ' · ', business_unit)", { type: 'string' }),
-    FX('kyc_status', 'KYC status', 'party.kyc_status', { type: 'string', list: true }),
+    FX('name', 'Relationship', "CONCAT(party.display_name, ' · ', LABEL(business_unit))", { type: 'string' }),
+    { ...FX('kyc_status', 'KYC status', 'party.kyc_status', { type: 'string', list: true }), options: KYC_STATUS },
   ],
   forms: [{ name: 'client_relationship_create', label: 'New client relationship', fields: ['party', 'business_unit', 'segment', 'onboarded_on', { field: 'notes', span: 2 }] }],
   pipeline: {
@@ -181,7 +185,7 @@ const clientRelationship = {
     stages: [
       stage('prospect', 'Prospect', '#94a3b8'),
       stage('onboarding', 'Onboarding', '#6366f1'),
-      stage('active', 'Active', '#10b981', { entry_rule: { expression: "kyc_status = 'approved'", message: 'A relationship becomes active only once the client\'s KYC is approved (KYC-FR-11).' } }),
+      stage('active', 'Active', '#10b981', { entry_rule: { expression: "kyc_status = 'approved'", message: 'A relationship becomes active only once the client\'s KYC is approved. Complete and approve the KYC case in KYC & Compliance first.' } }),
       stage('dormant', 'Dormant', '#f59e0b'),
       stage('closed', 'Closed', '#64748b', { required_fields: ['closed_on'] }),
       stage('exited', 'Exited', '#ef4444', { required_fields: ['closed_on', 'notes'] }),
@@ -194,7 +198,7 @@ const consentRecord = {
   label: 'Consent',
   plural_label: 'Consents',
   icon: 'ShieldCheck',
-  description: 'Consent per purpose and channel (Mauritius DPA 2017, PRD MKT-FR-01).',
+  description: 'Consent per purpose and channel, with withdrawal (Data Protection Act 2017).',
   config: { title_field: 'name' },
   fields: [
     LK('party', 'Party', 'party', { required: true, config: { show_in_list: true } }),
@@ -205,7 +209,7 @@ const consentRecord = {
     F('text_version', 'Consent text version'),
     F('captured_on', 'Captured on', 'date', { required: true }),
     F('withdrawn_on', 'Withdrawn on', 'date', { validations: [EXPR("status = 'withdrawn'", 'Only a withdrawn consent has a withdrawal date')] }),
-    FX('name', 'Consent', "CONCAT(purpose, ' / ', channel, ' — ', status)", { type: 'string' }),
+    FX('name', 'Consent', "CONCAT(LABEL(purpose), ' / ', LABEL(channel), ' — ', LABEL(status))", { type: 'string' }),
     FX('purpose_status', 'Purpose · status', "CONCAT(purpose, '|', status)", { type: 'string' }),
     FX('party_purpose', 'Party · purpose', "CONCAT(party, '|', purpose)", { type: 'string', help: 'Lets the party read its latest consent per purpose.' }),
   ],
@@ -264,7 +268,7 @@ const enquiry = {
     LK('party', 'Converted to party', 'party', { config: { always_disabled: true } }),
     LK('risk_profile', 'Risk profile', 'risk_profile', { config: { always_disabled: true } }),
     FX('mobile_e164', 'Mobile (E.164)', "IF(ISBLANK(mobile), null, IF(CONTAINS(mobile, '+'), mobile, CONCAT('+230', mobile)))", { type: 'string', help: 'Normalised for duplicate detection.' }),
-    FX('existing_party_by_mobile', 'Existing client by mobile', "LOOKUP('party', 'mobile', mobile_e164, 'id')"),
+    FX('existing_party_by_mobile', 'Existing client by mobile', "LOOKUP('party', 'mobile', mobile_e164, 'id')", { detail: false }),
 
     H('h_routing', 'Routing & scoring (calculated)'),
     FX('display_name', 'Name', "CONCAT(first_name, ' ', last_name, IF(ISBLANK(company), '', CONCAT(' (', company, ')')))", { type: 'string', list: true }),
@@ -273,7 +277,8 @@ const enquiry = {
     FX('amount_mur', 'Amount (MUR)',
       "IF(ISBLANK(currency_code) OR currency_code = 'MUR', estimated_amount, estimated_amount * LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date'))",
       { format: 'currency', precision: 2 }),
-    FX('existing_party', 'Existing client (party id)', "COALESCE(LOOKUP('party', 'email', email, 'id'), existing_party_by_mobile, IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'id')))", { help: 'Duplicate detection on email, then mobile (E.164), then company name (LEAD-FR-03).' }),
+    FX('existing_party', 'Existing client (party id)', "COALESCE(LOOKUP('party', 'email', email, 'id'), existing_party_by_mobile, IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'id')))", { help: 'Duplicate detection on email, then mobile (E.164), then company name (LEAD-FR-03).', detail: false }),
+    FX('existing_client', 'Existing client', "COALESCE(LOOKUP('party', 'email', email, 'display_name'), LOOKUP('party', 'mobile', mobile_e164, 'display_name'), IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'display_name')))", { type: 'string', help: 'The client this enquiry matched, so no duplicate is created on conversion.' }),
     FX('existing_rm', "Existing client's RM", "LOOKUP('party', 'email', email, 'primary_rm')", { type: 'string', help: 'Existing-client enquiries go to the primary RM (LEAD-FR-04).' }),
     FX('indicative_rate', 'Indicative rate %',
       "LATEST('plr_rate', 'rate', 'effective_from') + LOOKUP('financial_product', 'code', product_code, 'margin')",
@@ -336,7 +341,7 @@ const referral = {
     F('receiving_rm', 'Receiving RM (employee id)'),
     F('estimated_value', 'Estimated value (MUR)', 'currency'),
     SEL('outcome', 'Outcome', o([['won', 'Won', '#10b981'], ['lost', 'Lost', '#ef4444']])),
-    FX('name', 'Referral', "CONCAT(party.display_name, ' → ', to_business_unit)", { type: 'string' }),
+    FX('name', 'Referral', "CONCAT(party.display_name, ' → ', LABEL(to_business_unit))", { type: 'string' }),
   ],
   forms: [{ name: 'referral_create', label: 'Refer a client', fields: ['party', 'from_business_unit', 'to_business_unit', 'product_code', 'estimated_value', 'receiving_rm', { field: 'reason', span: 2 }] }],
   pipeline: {
@@ -365,9 +370,9 @@ const kycCase = {
     SEL('review_type', 'Review type', o([['onboarding', 'Onboarding'], ['periodic', 'Periodic review'], ['event', 'Trigger event']]), { default: 'onboarding' }),
 
     H('h_risk', 'Risk factors'),
-    FX('party_type', 'Party type', 'party.party_type', { type: 'string' }),
+    { ...FX('party_type', 'Party type', 'party.party_type', { type: 'string' }), options: o([['individual', 'Individual'], ['organisation', 'Organisation']]) },
     FX('party_name', 'Party name', 'party.display_name', { type: 'string' }),
-    FX('party_country', 'Country of residence', 'party.country_of_residence', { type: 'string' }),
+    { ...FX('party_country', 'Country of residence', 'party.country_of_residence', { type: 'string' }), options: COUNTRIES }, // Mauritius, not MU
     FX('pep_flag', 'PEP', 'party.pep', { type: 'boolean', format: 'checkbox' }),
     FX('country_risk', 'Country risk (0–40)', "COALESCE(LOOKUP('country', 'iso_code', party.country_of_residence, 'risk_score'), 10)"),
     SEL('product_risk', 'Product risk', LOW_MED_HIGH, { default: 'low' }),
@@ -380,10 +385,10 @@ const kycCase = {
         .replace(/W\(([^()]*(?:\([^()]*\))?[^()]*)\)/g, "COALESCE(LOOKUP('kyc_risk_factor', 'code', $1, 'score'), 0)"),
       { list: true, help: 'Weighted factors read from the KYC risk-factor master (versioned weights, KYC-FR-04).' }),
     FX('screening_hits_open', 'Open screening hits', "COUNT_RELATED('screening_hit', 'kyc_case', 'disposition', 'pending')"),
-    FX('calculated_rating', 'Calculated rating', "IF(pep_flag OR risk_score >= 60, 'high', IF(risk_score >= 30, 'medium', 'low'))", { type: 'string' }),
+    { ...FX('calculated_rating', 'Calculated rating', "IF(pep_flag OR risk_score >= 60, 'high', IF(risk_score >= 30, 'medium', 'low'))", { type: 'string' }), options: LOW_MED_HIGH },
     SEL('rating_override', 'Rating override', LOW_MED_HIGH, { validations: [EXPR('NOT(ISBLANK(override_reason))', 'An override needs a documented reason')] }),
     F('override_reason', 'Override reason', 'textarea'),
-    FX('risk_rating', 'Risk rating', 'COALESCE(rating_override, calculated_rating)', { type: 'string', list: true }),
+    { ...FX('risk_rating', 'Risk rating', 'COALESCE(rating_override, calculated_rating)', { type: 'string', list: true }), options: LOW_MED_HIGH },
     FX('edd_required', 'Enhanced due diligence required', "risk_rating = 'high'", { type: 'boolean', format: 'checkbox' }),
 
     H('h_checks', 'Checks'),
@@ -393,6 +398,8 @@ const kycCase = {
     F('screening_date', 'Screening date', 'date'),
     F('screening_reference', 'Screening reference'),
     F('screening_requested', 'Screening requested', 'checkbox', { config: { always_disabled: true } }),
+    SEL('screening_top_list', 'Strongest hit — list', o([['sanctions', 'Sanctions'], ['pep', 'PEP'], ['adverse_media', 'Adverse media'], ['enforcement', 'Enforcement']]), { config: { always_disabled: true } }),
+    F('screening_top_score', 'Strongest hit — match %', 'percent', { config: { always_disabled: true } }),
     SEL('fatca_status', 'FATCA status', o([['non_us', 'Non-US person'], ['us_person', 'US person'], ['pending', 'Self-certification pending']])),
     F('crs_tax_residencies', 'CRS tax residencies'),
     F('tin', 'Tax identification number(s)'),
@@ -443,12 +450,12 @@ const strReport = {
   config: { title_field: 'name', barrier_zone: 'MLRO_STR', conceal_existence: true, audit_views: true },
   fields: [
     AUTO('str_no', 'STR No.', 'STR-'),
-    LK('party', 'Subject party', 'party', { required: true }),
-    SEL('suspicion_type', 'Suspicion', o([['structuring', 'Structuring'], ['source_of_funds', 'Unexplained source of funds'], ['third_party', 'Third-party payments'], ['sanctions', 'Sanctions concern'], ['fraud', 'Fraud'], ['other', 'Other']]), { required: true }),
+    LK('party', 'Subject party', 'party', { required: true, config: { show_in_list: true } }),
+    SEL('suspicion_type', 'Suspicion', o([['structuring', 'Structuring'], ['source_of_funds', 'Unexplained source of funds'], ['third_party', 'Third-party payments'], ['sanctions', 'Sanctions concern'], ['fraud', 'Fraud'], ['other', 'Other']]), { required: true, config: { show_in_list: true } }),
     F('narrative', 'Narrative', 'textarea', { required: true }),
     F('transaction_details', 'Transactions concerned', 'textarea'),
     F('fiu_reference', 'FIU reference'),
-    F('filed_on', 'Filed with FIU on', 'date'),
+    F('filed_on', 'Filed with FIU on', 'date', LIST),
     FX('name', 'Report', "CONCAT('STR · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'str_report_create', label: 'Raise an internal STR', fields: ['party', 'suspicion_type', { field: 'narrative', span: 2 }, { field: 'transaction_details', span: 2 }] }],
@@ -567,7 +574,7 @@ const suitabilityRecord = {
     FX('product_risk', 'Product risk (1–5)', "LOOKUP('financial_product', 'code', product_code, 'risk_rating')"),
     FX('profile_max_risk', 'Profile ceiling (1–5)', 'risk_profile.max_product_risk'),
     FX('mismatch', 'Mismatch', 'product_risk > profile_max_risk', { type: 'boolean', format: 'checkbox', list: true }),
-    FX('name', 'Recommendation', "CONCAT(party.display_name, ' · ', product_code)", { type: 'string' }),
+    FX('name', 'Recommendation', "CONCAT(party.display_name, ' · ', LABEL(product_code))", { type: 'string' }),
   ],
   forms: [{ name: 'suitability_record_create', label: 'Record a recommendation', fields: ['party', 'risk_profile', 'business_unit', 'product_code', { field: 'rationale', span: 2 }, { field: 'risks_disclosed', span: 2 }, { field: 'override_reason', span: 2 }, 'client_acknowledged'] }],
 };
@@ -649,7 +656,7 @@ const loanApplication = {
     FX('kyc_status', 'Applicant KYC', 'party.kyc_status', { type: 'string' }),
     FX('party_name', 'Applicant name', 'party.display_name', { type: 'string' }),
     FX('party_email', 'Applicant email', 'party.email', { type: 'string' }),
-    FX('preferred_language', 'Correspondence language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
+    { ...FX('preferred_language', 'Correspondence language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }), options: LANGUAGES }, // shows English / French, not en / fr
     FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', CONCAT('LND|', IF(loan_amount_mur <= 5000000, '5M', IF(loan_amount_mur <= 20000000, '20M', 'MAX'))), 'approver_label'), IF(loan_amount_mur <= 5000000, 'Loans Manager', IF(loan_amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
     FX('security_value', 'Security lending value (MUR)', "SUM_RELATED('collateral', 'loan_application', 'lending_value')", { format: 'currency', precision: 2, help: 'Sum of collateral lending values (after haircut).' }),
     FX('ibl_max_loan', 'Investment-backed maximum (MUR)', "IF(product_code = 'LND-IBL', security_value, null)", { format: 'currency', precision: 2, help: 'Pledged holdings after haircut per asset class (LOAN-FR-16).' }),
@@ -688,7 +695,7 @@ const loanApplication = {
     F('maker', 'Disbursement requested by', 'text', { config: { always_disabled: true } }),
     F('lms_reference', 'LMS account number'),
     SEL('outcome', 'Outcome', o([['disbursed', 'Disbursed', '#10b981'], ['declined', 'Declined', '#ef4444'], ['withdrawn', 'Withdrawn', '#64748b'], ['lapsed', 'Lapsed', '#f59e0b']]), { config: { always_disabled: true } }),
-    FX('name', 'Application', "CONCAT(party.display_name, ' · ', product_code)", { type: 'string' }),
+    FX('name', 'Application', "CONCAT(party.display_name, ' · ', LABEL(product_code))", { type: 'string' }),
   ],
   dependencies: [
     { source: 'repayment_type', target: 'moratorium_months', condition: 'equals', value: 'moratorium', action: 'show' },
@@ -779,13 +786,14 @@ const serviceRequest = {
   label: 'Service Request',
   plural_label: 'Service Requests & Complaints',
   icon: 'LifeBuoy',
-  description: 'Service catalogue per entity and an FSC-aligned complaints register (PRD M16).',
+  description: 'Client service requests from the service catalogue, and the complaints register kept to FSC standards.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('request_no', 'Request No.', 'SR-'),
+    FX('name', 'Request', "CONCAT(LABEL(request_type), ' · ', party.display_name)", { type: 'string' }),
     LK('party', 'Client', 'party', { required: true, config: { show_in_list: true } }),
     SEL('business_unit', 'Business unit', BUSINESS_UNITS, { required: true, config: { show_in_list: true } }),
-    SEL('request_type', 'Request', o([
+    SEL('request_type', 'Request type', o([
       ['address_change', 'Address change'], ['statement_request', 'Statement request'], ['early_settlement_quote', 'Early settlement quote'],
       ['partial_prepayment', 'Partial prepayment'], ['tenure_change', 'Tenure change'], ['moratorium_request', 'Moratorium request'],
       ['redemption', 'Fund redemption'], ['top_up', 'Top-up'], ['fx_settlement_query', 'FX settlement query'],
@@ -801,22 +809,22 @@ const serviceRequest = {
     LK('loan_account', 'Loan account', 'loan_account'),
     LK('wealth_mandate', 'Mandate', 'wealth_mandate'),
     FX('party_email', 'Client email', 'party.email', { type: 'string' }),
-    FX('preferred_language', 'Correspondence language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
+    { ...FX('preferred_language', 'Correspondence language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }), options: LANGUAGES }, // shows English / French, not en / fr
 
+    H('h_handling', 'Handling'),
+    F('created_on', 'Received on', 'date'),
+    F('acknowledged_on', 'Acknowledged on', 'date', { config: { always_disabled: true } }),
+    F('resolved_on', 'Resolved on', 'date'),
+    FX('age_days', 'Age (days)', 'DAYS_BETWEEN(created_on, COALESCE(resolved_on, TODAY()))'),
     H('h_complaint', 'Complaint handling'),
     SEL('complaint_category', 'Category', o([['service', 'Service quality'], ['product', 'Product'], ['pricing', 'Pricing / fees'], ['conduct', 'Staff conduct'], ['fraud', 'Fraud'], ['other', 'Other']])),
     SEL('root_cause', 'Root cause', o([['process', 'Process'], ['people', 'People'], ['system', 'System'], ['third_party', 'Third party'], ['no_fault', 'No fault found']])),
     F('final_response', 'Final response', 'textarea'),
     F('redress_amount', 'Redress (MUR)', 'currency'),
     F('ombudsperson_referred', 'Referred to the Ombudsperson for Financial Services', 'checkbox'),
-    F('acknowledged_on', 'Acknowledged on', 'date', { config: { always_disabled: true } }),
-    F('resolved_on', 'Resolved on', 'date'),
-    FX('age_days', 'Age (days)', 'DAYS_BETWEEN(created_on, COALESCE(resolved_on, TODAY()))'),
-    F('created_on', 'Received on', 'date'),
     H('h_csat', 'Client satisfaction'),
     F('csat_score', 'CSAT (1–5)', 'rating', { validations: [{ type: 'min', value: 1, message: '1–5' }, { type: 'max', value: 5, message: '1–5' }] }),
     F('nps_score', 'Likelihood to recommend (0–10)', 'integer', { validations: [{ type: 'min', value: 0, message: '0–10' }, { type: 'max', value: 10, message: '0–10' }] }),
-    FX('name', 'Request', "CONCAT(request_type, ' · ', party.display_name)", { type: 'string' }),
   ],
   dependencies: showWhen('request_type', 'complaint', ['h_complaint', 'complaint_category', 'root_cause', 'final_response', 'redress_amount', 'ombudsperson_referred']),
   forms: [{ name: 'service_request_create', label: 'New request or complaint', fields: ['party', 'business_unit', 'request_type', 'priority', 'channel', 'created_on', 'loan_account', 'wealth_mandate', { field: 'description', span: 2 }, 'complaint_category', 'root_cause', { field: 'final_response', span: 2 }, 'redress_amount', 'ombudsperson_referred', 'resolved_on', 'csat_score', 'nps_score'] }],
@@ -844,7 +852,8 @@ const financialProduct = {
   plural_label: 'Products & Services',
   icon: 'Package',
   description: 'Genesis\'s product and service catalogue as published on genesis-capital.demo: terms, eligibility, security, documents, fees and how to apply — and the PLR margin and limits every pricing and eligibility formula reads.',
-  config: { title_field: 'name' },
+  // The Docs tab shows the checklist named in `document_checklist` — what an application for this product needs.
+  config: { title_field: 'name', checklist_field: 'document_checklist' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     F('name', 'Name (EN)', 'text', { required: true, config: { show_in_list: true } }),
@@ -1010,7 +1019,7 @@ const wealthMandate = {
     FX('aum_mur', 'AUM (MUR)', "IF(base_currency = 'MUR', aum, aum * LOOKUP('fx_rate', 'currency_code', base_currency, 'rate_to_mur', 'rate_date'))", { format: 'currency', precision: 2, list: true }),
     F('next_review', 'Next review', 'date'),
     FX('business_unit', 'Business unit', "'WLT'", { type: 'string' }),
-    FX('name', 'Mandate', "CONCAT(party.display_name, ' · ', mandate_type)", { type: 'string' }),
+    FX('name', 'Mandate', "CONCAT(party.display_name, ' · ', LABEL(mandate_type))", { type: 'string' }),
   ],
   forms: [{ name: 'wealth_mandate_create', label: 'Mandate', fields: ['party', 'risk_profile', 'mandate_type', 'base_currency', 'benchmark', 'custodian', 'portfolio_manager', 'review_frequency', 'management_fee_pct', 'performance_fee_pct', 'minimum_fee', 'aum', 'aum_as_of', 'next_review', { field: 'esg_restrictions', span: 2 }] }],
   pipeline: {
@@ -1040,7 +1049,8 @@ const fundOrder = {
     LK('fund_campaign', 'Campaign', 'fund_campaign'),
     SEL('order_type', 'Order', o([['subscription', 'Subscription'], ['redemption', 'Redemption'], ['switch', 'Switch']]), { required: true, config: { show_in_list: true } }),
     F('amount', 'Amount', 'currency', {
-      config: { show_in_list: true },
+      help: 'In the share class currency.',
+      config: { show_in_list: true, currency_field: 'currency_code' },
       validations: [
         EXPR("party.kyc_status = 'approved'", 'Orders are accepted only for clients with approved KYC (KYC-FR-11)'),
         EXPR("order_type != 'subscription' OR amount >= COALESCE(share_class.min_investment, 0)", 'Below the share class minimum investment'),
@@ -1057,13 +1067,14 @@ const fundOrder = {
     FX('amount_mur', 'Amount (MUR)', "IF(currency_code = 'MUR', amount, amount * LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date'))", { format: 'currency', precision: 2 }),
     F('maker', 'Captured by', 'text', { config: { always_disabled: true } }),
     FX('party_email', 'Investor email', 'party.email', { type: 'string' }),
-    FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
+    { ...FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }), options: LANGUAGES }, // shows English / French, not en / fr
     F('units', 'Units', 'decimal'),
+    FX('allotted_units', 'Units allotted', 'IF(ISBLANK(units), ROUND(amount / share_class.latest_nav, 4), units)', { precision: 4, help: 'The units entered, or the amount at the latest NAV — booked to the holding when the order is confirmed.' }),
     F('cut_off_date', 'Dealing date', 'date'),
     F('payment_proof_received', 'Payment proof received', 'checkbox'),
     F('ta_reference', 'Transfer agent reference'),
     FX('business_unit', 'Business unit', "'FND'", { type: 'string' }),
-    FX('name', 'Order', "CONCAT(order_type, ' · ', fund_code, ' · ', party.display_name)", { type: 'string' }),
+    FX('name', 'Order', "CONCAT(LABEL(order_type), ' · ', fund_code, ' · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'fund_order_create', label: 'Fund order', fields: ['party', 'share_class', 'order_type', 'switch_to', 'fund_campaign', 'amount', 'units', 'cut_off_date', 'payment_proof_received', { field: 'suitability_override', span: 2 }, 'client_acknowledged'] }],
   pipeline: {
@@ -1102,7 +1113,7 @@ const securitiesAccount = {
     F('trading_limit', 'Trading limit (MUR)', 'currency'),
     F('agreement_signed', 'Account agreement signed', 'checkbox'),
     FX('business_unit', 'Business unit', "'SEC'", { type: 'string' }),
-    FX('name', 'Account', "CONCAT(party.display_name, ' · ', account_type)", { type: 'string' }),
+    FX('name', 'Account', "CONCAT(party.display_name, ' · ', LABEL(account_type))", { type: 'string' }),
   ],
   forms: [{ name: 'securities_account_create', label: 'Securities account', fields: ['party', 'account_type', 'markets', 'custodian', 'settlement_bank', 'cds_account_no', 'oms_account_no', 'trading_limit', 'appropriateness_ok', 'agreement_signed', 'portfolio_value', 'last_trade_date', { field: 'authorised_instructors', span: 2 }] }],
   pipeline: {

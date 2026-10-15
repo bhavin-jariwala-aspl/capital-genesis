@@ -260,7 +260,8 @@ function DefaultCardContent({ card }) {
   return (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate leading-snug">{card.title}</p>
+        {/* Two lines, not one: titles such as "Statement request · Corinne Henry" lose the distinguishing part when cut. */}
+        <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200 line-clamp-2 break-words leading-snug">{card.title}</p>
         {card.badge && (
           <span
             className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white leading-none"

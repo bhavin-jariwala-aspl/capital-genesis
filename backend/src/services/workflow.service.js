@@ -619,7 +619,7 @@ class WorkflowEngineService {
         const recipients = await this.#resolveRecipients(cfg, record, actorId, crmCache);
         if (recipients.length) {
           if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-          const fieldCtx = crmCache.fields;
+          const fieldCtx = await this.#readable(record, crmCache.fields);
           const title = this.#interpolate(cfg.title   ?? 'Workflow notification', fieldCtx);
           const body  = this.#interpolate(cfg.message ?? '',                      fieldCtx);
           await this.db.notification.createMany({
@@ -681,8 +681,9 @@ class WorkflowEngineService {
         const token      = crypto.randomBytes(24).toString('hex');
         const recipients = await this.#resolveRecipients(cfg, record, actorId, crmCache);
         if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
-        const approvalTitle = this.#interpolate(cfg.title ?? 'Approval required', crmCache.fields);
-        const approvalBody  = this.#interpolate(cfg.message ?? '', crmCache.fields);
+        const readable      = await this.#readable(record, crmCache.fields);
+        const approvalTitle = this.#interpolate(cfg.title ?? 'Approval required', readable);
+        const approvalBody  = this.#interpolate(cfg.message ?? '', readable);
 
         await this.db.workflowPendingStep.create({
           data: {
@@ -1072,6 +1073,19 @@ class WorkflowEngineService {
           related_record_id: record?.id ?? null, related_type: 'record', sent_by: actorId ?? null,
         });
         logEntry.result = `email ${sent.status} → ${to} (${tpl.name})`;
+        // Show the email on the record's Activity timeline, as a manual send
+        // does, so staff can see what the automation told the client.
+        const by = actorId ?? record?.created_by ?? record?.assigned_to ?? null;
+        if (record?.id && by) {
+          await this.db.activity.create({
+            data: {
+              record_id: record.id, employee_id: String(by), type: 'email',
+              subject: `Email sent: ${sent.subject ?? tpl.name}`.slice(0, 200),
+              description: `Sent automatically to ${to}${sent.status === 'sent' ? '' : ` (${sent.status})`}`,
+              completed_at: new Date(),
+            },
+          }).catch(() => { /* best-effort, like the manual send */ });
+        }
         return step.on_true_id ?? defaultNextId;
       }
 
@@ -1383,6 +1397,34 @@ class WorkflowEngineService {
       logger?.warn?.('[WorkflowEngine] expression condition failed', { error: err.message });
       return false;
     }
+  }
+
+  /**
+   * The record's values as people should read them in an approval card or a
+   * notification: picklist labels instead of stored codes ("Approve with
+   * conditions", not "approve_conditions") and amounts with thousands
+   * separators. Integration payloads and field writes keep the raw values.
+   */
+  async #readable(record, values = {}) {
+    const objectId = record?.object_id;
+    if (!objectId || typeof this.db.uiField?.findMany !== 'function') return values;
+    const fields = await this.db.uiField.findMany({
+      where:  { object_id: Number(objectId), is_active: true, field_type: { in: ['select', 'radio', 'multi_select', 'currency', 'formula'] } },
+      select: { name: true, field_type: true, options: true, config: true },
+    }).catch(() => []);
+    const out = { ...values };
+    for (const f of fields ?? []) {
+      const v = values[f.name];
+      if (v === null || v === undefined || v === '') continue;
+      if (['select', 'radio', 'multi_select'].includes(f.field_type) && Array.isArray(f.options)) {
+        const label = (x) => f.options.find((o) => String(o?.value ?? o) === String(x))?.label ?? x;
+        out[f.name] = Array.isArray(v) ? v.map(label).join(', ') : label(v);
+      } else if (f.field_type === 'currency' || f.config?.format === 'currency') {
+        const n = Number(v);
+        if (Number.isFinite(n)) out[f.name] = n.toLocaleString('en-GB', { maximumFractionDigits: 2 });
+      }
+    }
+    return out;
   }
 
   #interpolate(template, data = {}) {

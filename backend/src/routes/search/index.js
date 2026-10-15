@@ -2,10 +2,13 @@
 
 const { authenticate } = require('../../middleware/authenticate');
 const SearchService    = require('../../services/search.service');
+const RecordService    = require('../../services/record.service');
+const PermissionService = require('../../services/permission.service');
 const { ok }           = require('../../utils/response');
 
 module.exports = async function searchRoutes(fastify) {
-  const svc = new SearchService(fastify.prisma);
+  const permissions = new PermissionService(fastify.prisma);
+  const svc = new SearchService(fastify.prisma, null, new RecordService(fastify.prisma, null, permissions), permissions);
 
   // GET /api/search?q=query&limit=20
   fastify.get('/', { preHandler: [authenticate] }, async (req) => {

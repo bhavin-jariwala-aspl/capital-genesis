@@ -90,7 +90,7 @@ const GROUPS = [
   ['CG-H01', 'Lagesse family', 'household', 'GCRM2', [1, 6, 18]],
   ['CG-H02', 'Ramgoolam household', 'household', 'GCLOAN1', [0, 24]],
   ['CG-H03', 'Naidoo family office', 'family_office', 'GCRM2', [2, 12, 30]],
-  ['CG-H04', 'Leclézio family', 'household', 'GCRM1', [13, 27]],
+  ['CG-H04', 'Seegoolam household', 'household', 'GCRM1', [13, 27]],
   ['CG-C01', 'Ocean Breeze Group', 'corporate_group', 'GCRM3', [], [0, 9]],
   ['CG-C02', 'Doorga Group', 'corporate_group', 'GCRM3', [5], [1, 5]],
 ];
@@ -101,6 +101,13 @@ const add = (object, records, extra = {}) => { if (records.length) sets.push({ o
 
 add('client_group', GROUPS.map(([ext_ref, name, group_type, primary_rm, , orgIdx]) => ({ ext_ref, name, group_type, primary_rm, group_limit: orgIdx ? 600000000 : null })));
 
+// Gender and title follow the first name. The random picks they replace are
+// still drawn so every later pick (and so the rest of the demo data) is unchanged.
+const FEMALE_FIRST = new Set(['Anjali', 'Priya', 'Sophie', 'Lina', 'Marie-Claire', 'Nadia', 'Christelle', 'Laetitia', 'Isabelle', 'Aurélie', 'Mélanie',
+  'Natacha', 'Stéphanie', 'Valérie', 'Corinne', 'Emilie', 'Fabienne', 'Joëlle', 'Karine', 'Annabelle', 'Shamim', 'Patricia', 'Rachel', 'Nathalie', 'Danielle']);
+const genderOf = (first, _drawn) => (FEMALE_FIRST.has(first) ? 'female' : 'male');
+const salutationOf = (first, drawn) => (drawn === 'dr' ? 'dr' : FEMALE_FIRST.has(first) ? (drawn === 'mrs' ? 'mrs' : 'ms') : 'mr');
+
 const groupOf = (kind, idx) => {
   const g = GROUPS.find((gg) => (kind === 'i' ? gg[4] : (gg[5] ?? [])).includes(idx));
   return g ? ref('client_group', g[0]) : null;
@@ -108,8 +115,8 @@ const groupOf = (kind, idx) => {
 
 add('party', [
   ...individuals.map((p, i) => ({
-    ext_ref: p.key, party_type: 'individual', salutation: pick(['mr', 'mrs', 'ms', 'dr']), first_name: p.first, last_name: p.last,
-    date_of_birth: dob(p.age), gender: pick(['male', 'female']), nationality: p.country === 'MU' ? 'MU' : p.country, id_type: p.country === 'MU' ? 'nic' : 'passport',
+    ext_ref: p.key, party_type: 'individual', salutation: salutationOf(p.first, pick(['mr', 'mrs', 'ms', 'dr'])), first_name: p.first, last_name: p.last,
+    date_of_birth: dob(p.age), gender: genderOf(p.first, pick(['male', 'female'])), nationality: p.country === 'MU' ? 'MU' : p.country, id_type: p.country === 'MU' ? 'nic' : 'passport',
     id_number: p.country === 'MU' ? `${p.last[0]}${String(int(1000000, 9999999))}${int(1000000, 9999999)}` : `P${int(10000000, 99999999)}`,
     id_expiry_date: i === 3 ? d(30) : i === 11 ? d(25) : d(int(200, 3000)),
     occupation: p.occupation, employer: p.employer, income_band: p.income_band, source_of_wealth: `${p.occupation} — employment income and savings`,

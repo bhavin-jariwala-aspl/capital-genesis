@@ -287,3 +287,20 @@ describe('SLA policy validation', () => {
     }
   });
 });
+
+describe('SLA board breakdown', () => {
+  it('names Builder-object timers by their object instead of one "record" bucket', () => {
+    const out = SlaService.splitRecordsByObject([
+      { entity_type: 'record', entity_id: 1, bucket: 'breached' },
+      { entity_type: 'record', entity_id: 2, bucket: 'on_track' },
+      { entity_type: 'record', entity_id: 3, bucket: 'at_risk' },
+      { entity_type: 'record', entity_id: 9, bucket: 'on_track' },
+      { entity_type: 'case', entity_id: 1, bucket: 'breached' },
+    ], { 1: { label: 'Enquiry', plural_label: 'Enquiries' }, 2: { label: 'Enquiry', plural_label: 'Enquiries' }, 3: { label: 'KYC Case', plural_label: null } });
+    expect(out).toEqual({
+      Enquiries: { total: 2, breached: 1, at_risk: 0 },
+      'KYC Case': { total: 1, breached: 0, at_risk: 1 },
+      'Other records': { total: 1, breached: 0, at_risk: 0 },
+    });
+  });
+});

@@ -40,6 +40,40 @@ describe('DocumentChecklistService', () => {
     const s = await new DocumentChecklistService(db({ product: 'LND-PL' })).forRecord(50);
     expect(s.checklists.map((c) => c.label)).toEqual(['Personal loan']);
   });
+
+  it('shows a product the checklist its applications use, read-only', async () => {
+    const product = {
+      ...db(),
+      record: { findUnique: jest.fn(async () => ({ id: 2900, object_id: 156, tenant_id: 7, deleted_at: null, object: { name: 'financial_product', label: 'Product', config: { title_field: 'name', checklist_field: 'document_checklist' } } })) },
+      recordFieldValue: { findMany: jest.fn(async () => [{ field_name: 'name', str_value: 'Real Estate Loan' }, { field_name: 'document_checklist', str_value: 'Real estate loan' }]) },
+      uiField: { findMany: jest.fn(async () => []) },
+      uiDocumentChecklist: {
+        count: jest.fn(async () => 0),
+        findMany: jest.fn(async () => CHECKLISTS.map((c) => ({ ...c, entity_type: 'loan_application' }))),
+      },
+    };
+    const s = await new DocumentChecklistService(product).forRecord(2900);
+    expect(s.reference).toBe(true);
+    expect(s.outstanding).toBe(0);
+    expect(s.checklists).toHaveLength(1);
+    expect(s.checklists[0]).toMatchObject({ label: 'Real estate loan', applies_to: 'loan_application' });
+    expect(s.checklists[0].items.map((i) => i.label)).toEqual(['Applicant ID', 'Valuation report']);
+  });
+});
+
+describe('DocumentChecklistService.choose', () => {
+  const packs = [{ id: 1, label: 'Individual KYC pack' }, { id: 2, label: 'Corporate KYC pack' }];
+  it('picks the KYC pack for the party type, an organisation getting the corporate pack', async () => {
+    const kyc = (partyType) => ({
+      ...db(),
+      record: { findUnique: jest.fn(async () => ({ id: 60, object_id: 228, tenant_id: 7, deleted_at: null, object: { name: 'kyc_case', label: 'KYC Case', config: { title_field: 'name' } } })) },
+      recordFieldValue: { findMany: jest.fn(async () => [{ field_name: 'party_type', str_value: partyType }, { field_name: 'name', str_value: 'KYC · Trading Ltd' }]) },
+      uiField: { findMany: jest.fn(async () => [{ name: 'party_type', field_type: 'formula', options: null }, { name: 'name', field_type: 'formula', options: null }]) },
+      uiDocumentChecklist: { findMany: jest.fn(async () => packs.map((p) => ({ ...p, items: [] }))) },
+    });
+    expect((await new DocumentChecklistService(kyc('individual')).forRecord(60)).checklists.map((c) => c.label)).toEqual(['Individual KYC pack']);
+    expect((await new DocumentChecklistService(kyc('organisation')).forRecord(60)).checklists.map((c) => c.label)).toEqual(['Corporate KYC pack']);
+  });
 });
 
 describe('upload link tokens', () => {

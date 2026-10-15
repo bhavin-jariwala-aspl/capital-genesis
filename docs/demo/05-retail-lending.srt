@@ -1,0 +1,240 @@
+1
+00:00:30,621 --> 00:00:41,326
+Retail Lending
+A home loan from the client's first call to disbursement — every hand-off, check and approval in one record.
+
+2
+00:00:41,331 --> 00:00:45,169
+Sarita Bissessur calls about a home loan
+The loans executive logs the enquiry while on the phone
+
+3
+00:00:45,169 --> 00:01:08,254
+Sign in as Sophie Lagesse — Loans Executive
+Loans executive — takes the client’s call
+
+4
+00:01:08,254 --> 00:01:23,261
+What she wants: a real-estate loan of MUR 4.5 million over 20 years
+
+5
+00:01:23,261 --> 00:01:32,802
+Routing gives the enquiry to the next loans executive in the pool: Yash Bholah
+Lending enquiries go round the loans team; the SLA clock starts now
+
+6
+00:01:32,802 --> 00:01:38,723
+Sign in as Yash Bholah — Loans Executive
+Loans executive — now owns the enquiry and the loan that follows
+
+7
+00:01:38,723 --> 00:02:34,771
+On the enquiry board: contacted, qualified, then converted
+Converting creates the client, the KYC case and the loan application
+
+8
+00:02:34,771 --> 00:02:37,507
+The loan application is waiting in Retail Lending
+Already at Pre-qualified, with the amount and tenure from the enquiry
+
+9
+00:02:37,507 --> 00:02:47,788
+Application captured needs the client's income and the property value
+The board refuses the move and says what is missing
+
+10
+00:02:47,788 --> 00:02:57,541
+Open the record from the message and complete it
+Purpose, income, existing repayments and property value
+
+11
+00:02:57,541 --> 00:03:07,966
+Tick the client's consent to the MCIB credit bureau check
+No consent, no credit report
+
+12
+00:03:07,966 --> 00:03:14,726
+The CRM prices the loan and checks eligibility by itself
+Genesis PLR + product margin = interest rate · monthly instalment · total interest
+
+13
+00:03:14,726 --> 00:03:21,472
+Loan-to-value, debt-service ratio and eligibility
+And the approval authority — up to MUR 5 million, the Loans Manager
+
+14
+00:03:21,472 --> 00:03:30,981
+Now Application captured is accepted
+The MCIB report is pulled and the client gets a status email
+
+15
+00:03:30,981 --> 00:03:44,188
+Documents pending: the client is emailed the document checklist
+
+16
+00:03:44,188 --> 00:03:48,441
+The Docs tab shows the checklist for a real-estate loan
+What is in and what is still missing
+
+17
+00:03:48,441 --> 00:03:54,436
+Send the client a secure upload link
+No sign-in — she only sees the documents still needed
+
+18
+00:03:54,438 --> 00:04:00,873
+Her uploads land on this application and tick off the checklist
+
+19
+00:04:00,873 --> 00:04:14,931
+Documents in: Documents complete, then on to credit
+Credit appraisal only accepts an eligible application — or one with its policy exceptions recorded
+
+20
+00:04:14,931 --> 00:04:20,739
+The credit analyst picks up the application
+Same record — another person, another form
+
+21
+00:04:20,739 --> 00:04:30,182
+Sign in as Nadia Peerbux — Credit Analyst
+Credit analyst — appraises the risk and recommends a decision
+
+22
+00:04:30,182 --> 00:04:38,874
+The MCIB credit report is already on the application
+Score, rating and reference came back from the credit bureau
+
+23
+00:04:38,874 --> 00:05:15,748
+Switch to the Credit appraisal workbench form
+Risk grade, recommendation and conditions
+
+24
+00:05:15,748 --> 00:05:24,812
+Credit approval: the request goes to the right authority for the amount
+
+25
+00:05:24,812 --> 00:05:31,039
+MUR 4.5 million: the Loans Manager decides
+Four eyes — whoever sent it can never approve it
+
+26
+00:05:31,039 --> 00:05:36,974
+Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
+Manager, Loans & Fixed Income — approves loans up to MUR 5 million
+
+27
+00:05:36,974 --> 00:05:59,352
+Tools ▸ Approvals: grade, DSR, LTV and the analyst's recommendation on one card
+
+28
+00:05:59,352 --> 00:06:07,482
+Approved — the application moved itself to Offer issued
+Decision, date and the PLR the offer is priced on are recorded
+
+29
+00:06:07,482 --> 00:06:11,825
+The offer letter was generated and filed here
+The client is emailed; an offer not accepted in 30 days lapses
+
+30
+00:06:11,825 --> 00:06:17,737
+The client signs the offer — back to the loans executive
+Record the signature, the security and the amount to disburse
+
+31
+00:06:17,737 --> 00:06:27,227
+Sign in as Yash Bholah — Loans Executive
+Loans executive
+
+32
+00:06:27,227 --> 00:07:28,936
+Valuation, notary, fixed charge, life and building insurance
+
+33
+00:07:28,936 --> 00:07:43,955
+Ready for disbursement needs perfected security and an approved KYC
+Her KYC case is still open — the move is refused
+
+34
+00:07:43,955 --> 00:07:50,958
+Finish the KYC case that was opened at conversion
+Clients ▸ KYC & Compliance ▸ KYC Cases
+
+35
+00:07:50,958 --> 00:08:28,485
+ID, proof of address and source of funds are on file
+Tick the checks and the FATCA status
+
+36
+00:08:28,485 --> 00:09:01,824
+Move it through verification and screening
+Screening checks sanctions and PEP lists automatically
+
+37
+00:09:01,824 --> 00:09:10,791
+Pending approval sends the case to Compliance
+High-risk clients go to the MLRO instead
+
+38
+00:09:10,791 --> 00:09:15,837
+Compliance signs off the KYC case
+Four eyes again: the loans executive cannot approve her own client
+
+39
+00:09:15,837 --> 00:09:21,407
+Sign in as Fatima Hossenbux — Compliance Officer
+Compliance officer — signs off KYC
+
+40
+00:09:21,407 --> 00:09:35,562
+Tools ▸ Approvals: the KYC case with its risk score and rating
+
+41
+00:09:35,562 --> 00:09:40,706
+KYC approved — the loans executive tries again
+Now the gate lets it through
+
+42
+00:09:40,706 --> 00:09:55,320
+Sign in as Yash Bholah — Loans Executive
+Loans executive
+
+43
+00:09:55,322 --> 00:09:59,889
+An approval request goes to the operations checker
+Maker-checker: whoever requests a disbursement cannot approve it
+
+44
+00:09:59,889 --> 00:10:05,419
+Sign in as Ritesh Seewoo — Operations Checker
+Operations checker — the second pair of eyes before money moves
+
+45
+00:10:05,419 --> 00:10:22,139
+Tools ▸ Approvals: the disbursement request, with security and KYC status
+
+46
+00:10:22,139 --> 00:10:29,866
+The loan is booked in the core loan system
+The LMS account number is written back on the application
+
+47
+00:10:29,866 --> 00:10:35,029
+The loans executive closes the application as Disbursed
+
+48
+00:10:35,029 --> 00:10:58,906
+Sign in as Yash Bholah — Loans Executive
+Loans executive
+
+49
+00:10:58,906 --> 00:11:04,255
+Related: the new loan account, the KYC case and the insurance referral
+Loan Servicing now follows instalments, arrears and the balance
+
+50
+00:11:04,255 --> 00:11:12,575
+One record, the whole journey
+Five people worked the same loan application — no re-keying, every step audited.

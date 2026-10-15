@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Badge from '../ui/Badge';
 import StatusTracker from '../ui/StatusTracker';
-import FieldValue, { hasValue } from './FieldValue';
+import FieldValue, { hasValue, recordCurrency } from './FieldValue';
 import { statusVariant, optionLabel } from '../../utils/metadata-helpers';
 import { recordTitle, initials, gradientFor } from '../../utils/record';
 
@@ -75,6 +75,7 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
       if (type === 'heading') { out.push({ label: f.label, fields: [] }); continue; }
       if (SKIP_TYPES.has(type) || SKIP_NAMES.has(f.name)) continue;
       if (f.is_active === false) continue;
+      if (f.config?.hide_in_detail) continue; // a working value for automation (e.g. a raw record id)
       if (!hasValue(data[f.name])) continue;
       out[out.length - 1].fields.push(f);
     }
@@ -170,7 +171,7 @@ export default function ClientDetails({ record, fields = [], object, stage: stag
               {section.fields.map((f) => (
                 <div key={f.name} className={clsx(ft(f) === 'textarea' || ft(f) === 'rich_text' ? 'sm:col-span-2 xl:col-span-3' : '')}>
                   <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-white/30 mb-1">{f.label}</dt>
-                  <dd><FieldValue field={f} value={data[f.name]} label={record?.labels?.[f.name]} masked={record?.masked?.includes(f.name)} recordId={record?.id} /></dd>
+                  <dd><FieldValue field={f} value={data[f.name]} label={record?.labels?.[f.name]} masked={record?.masked?.includes(f.name)} recordId={record?.can_reveal ? record.id : null} currency={recordCurrency(f, data)} /></dd>
                 </div>
               ))}
             </dl>

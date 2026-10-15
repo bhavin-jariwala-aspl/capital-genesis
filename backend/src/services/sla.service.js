@@ -679,6 +679,7 @@ class SlaService {
       } else {
         onTrack++; bucket = 'on_track'; active.push(i);
       }
+      i.bucket = bucket;
       (byEntity[i.entity_type] ||= { total: 0, breached: 0, at_risk: 0 });
       byEntity[i.entity_type].total++;
       (byPriority[i.priority] ||= { total: 0, breached: 0, at_risk: 0 });
@@ -691,6 +692,15 @@ class SlaService {
 
     const completed = metOnTime + metLate;
     const compliance = completed ? Math.round((metOnTime / completed) * 1000) / 10 : null;
+
+    // Builder-object records all share entity_type 'record'; break them down by
+    // object ("Enquiries", "KYC Cases"…) so the card says what the timers are.
+    if (byEntity.record) {
+      const recIds = [...new Set(instances.filter((i) => i.entity_type === 'record').map((i) => i.entity_id))];
+      const objs = await this.db.record.findMany({ where: { id: { in: recIds } }, select: { id: true, object: { select: { label: true, plural_label: true } } } });
+      Object.assign(byEntity, splitRecordsByObject(instances, Object.fromEntries(objs.map((r) => [r.id, r.object]))));
+      delete byEntity.record;
+    }
 
     // Enrich the most-urgent open timers (breached + at-risk first, soonest due).
     const urgent = active
@@ -738,12 +748,14 @@ class SlaService {
     const byType = { case: [], lead: [], task: [], record: [] };
     for (const i of instances) byType[i.entity_type]?.push(i.entity_id);
 
-    const [cases, leads, tasks, recordTitles] = await Promise.all([
+    const [cases, leads, tasks, recordTitles, recordObjects] = await Promise.all([
       byType.case.length ? this.db.crmCase.findMany({ where: { id: { in: byType.case } }, select: { id: true, subject: true, priority: true, status: true } }) : [],
       byType.lead.length ? this.db.crmLead.findMany({ where: { id: { in: byType.lead } }, select: { id: true, first_name: true, last_name: true, company: true, lead_status: true } }) : [],
       byType.task.length ? this.db.task.findMany({ where: { id: { in: byType.task } }, select: { id: true, title: true, priority: true, status: true } }) : [],
       byType.record.length ? this.db.recordFieldValue.findMany({ where: { record_id: { in: byType.record }, field_name: { in: TITLE_FIELDS } }, select: { record_id: true, field_name: true, str_value: true } }) : [],
+      byType.record.length ? this.db.record.findMany({ where: { id: { in: byType.record } }, select: { id: true, object_id: true, object: { select: { label: true, module_id: true } } } }) : [],
     ]);
+    const recordObject = Object.fromEntries(recordObjects.map((r) => [r.id, r]));
     const recordTitle = {};
     for (const t of recordTitles) {
       const rank = TITLE_FIELDS.indexOf(t.field_name);
@@ -766,6 +778,9 @@ class SlaService {
       if (i.entity_type === 'lead' && leadMap[i.entity_id]) { const l = leadMap[i.entity_id]; label = `${l.first_name || ''} ${l.last_name || ''}`.trim() || label; sub = l.company || l.lead_status; }
       if (i.entity_type === 'task' && taskMap[i.entity_id]) { label = taskMap[i.entity_id].title || label; sub = taskMap[i.entity_id].status; }
       if (i.entity_type === 'record' && recordTitle[i.entity_id]) label = recordTitle[i.entity_id].value;
+      // Records of a Builder object: name the object ("Service Request") and
+      // link straight to the record rather than to the SLA board.
+      const ro = i.entity_type === 'record' ? recordObject[i.entity_id] : null;
       return {
         id: i.id, entity_type: i.entity_type, entity_id: i.entity_id, metric: i.metric,
         metric_label: METRIC_LABEL[i.metric] || i.metric,
@@ -773,12 +788,34 @@ class SlaService {
         due_at: i.due_at, warning_at: i.warning_at, started_at: i.started_at,
         owner_id: i.owner_id, owner_name: ownerMap[i.owner_id] || null,
         label, sub, link: `/sla?focus=${i.entity_type}:${i.entity_id}`,
+        object_label: ro?.object?.label ?? null,
+        record_link: ro?.object ? `/module/${ro.object.module_id}/object/${ro.object_id}?record=${i.entity_id}` : null,
       };
     });
   }
 }
 
+/**
+ * Breakdown of 'record' SLA instances by their Builder object's plural label.
+ * `objectOf` maps record id → { label, plural_label }; `bucket` on each instance
+ * is 'breached' / 'at_risk' / … as computed by getDashboard.
+ */
+function splitRecordsByObject(instances, objectOf) {
+  const out = {};
+  for (const i of instances) {
+    if (i.entity_type !== 'record') continue;
+    const o = objectOf[i.entity_id];
+    const key = o?.plural_label || o?.label || 'Other records';
+    const row = (out[key] ||= { total: 0, breached: 0, at_risk: 0 });
+    row.total++;
+    if (i.bucket === 'breached') row.breached++;
+    if (i.bucket === 'at_risk') row.at_risk++;
+  }
+  return out;
+}
+
 module.exports = SlaService;
+module.exports.splitRecordsByObject = splitRecordsByObject;
 module.exports.ENTITY = ENTITY;
 module.exports.CONDITION_OPS = CONDITION_OPS;
 module.exports.METRIC_LABEL = METRIC_LABEL;

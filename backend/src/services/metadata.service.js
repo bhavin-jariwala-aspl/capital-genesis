@@ -567,6 +567,22 @@ class MetadataService {
   }
 
   async getDependenciesForForm(formId) {
+    // The cached full form already carries each field's dependencies, so the
+    // runtime bootstrap (every form of every object, on each page load) needs
+    // no extra queries here. Same shape as the query below.
+    const form = await this.getFormFull(formId).catch(() => null);
+    if (form?.field_layouts) {
+      const byId = new Map(form.field_layouts.filter((fl) => fl.field).map((fl) => [fl.field.id, fl.field]));
+      const brief = (f) => ({ id: f.id, name: f.name, label: f.label });
+      const out = [];
+      for (const target of byId.values()) {
+        for (const dep of target.dependencies_as_target ?? []) {
+          const source = byId.get(dep.source_field_id);
+          if (source) out.push({ ...dep, source_field: brief(source), target_field: brief(target) });
+        }
+      }
+      return out;
+    }
     // Get all fields in this form, then get all dependencies involving those fields
     const layouts = await this.db.uiFormFieldLayout.findMany({
       where:  { form_id: formId },

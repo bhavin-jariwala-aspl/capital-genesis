@@ -33,7 +33,7 @@ export default function RuntimeHome() {
   const dashboards = dashListData?.data || [];
 
   // A board the viewer cannot see falls back to their first one.
-  const defaultDashId = (selectedDashId && dashboards.some((d) => Number(d.id) === selectedDashId) ? selectedDashId : null) || dashboards[0]?.id;
+  const defaultDashId = (selectedDashId && dashboards.some((d) => Number(d.id) === selectedDashId) ? selectedDashId : null) || (dashboards.find((d) => d.is_home) ?? dashboards.find((d) => d.is_default) ?? dashboards[0])?.id;
 
   const { data: dashData, isLoading: dashLoading } = useQuery({
     queryKey: ['runtime-dashboard', defaultDashId],

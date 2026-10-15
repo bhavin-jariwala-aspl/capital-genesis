@@ -21,9 +21,17 @@ const { ROLE_LEVEL, ADMIN_THRESHOLD, MANAGER_THRESHOLD } = require('../middlewar
 const AccessScopeService = require('./access-scope.service');
 
 class SearchService {
-  constructor(prisma, accessScope = null) {
+  /**
+   * @param {object} [recordAccess] RecordService — when given, custom-object hits use
+   *   the same visibility rule as record lists (own book, desk-wide objects, unit
+   *   scope, barriers), so search finds exactly what the viewer could open.
+   * @param {object} [permissions] PermissionService — hides objects the role may not view.
+   */
+  constructor(prisma, accessScope = null, recordAccess = null, permissions = null) {
     this.db = prisma;
     this.scope = accessScope ?? new AccessScopeService(prisma);
+    this.recordAccess = recordAccess;
+    this.permissions = permissions;
   }
 
   async search(query, { limit = 20, viewer } = {}) {
@@ -51,10 +59,12 @@ class SearchService {
     // Owner filter for Record-anchored rows (custom objects use created_by / assigned_to)
     // plus business-unit scope and information barriers — search must never
     // surface a record the viewer could not open.
-    const recordOwnerFilter = {
-      ...(ownerIds ? { OR: [{ created_by: { in: ownerIds } }, { assigned_to: { in: ownerIds } }] } : {}),
-      ...this.scope.whereFor(await this.scope.forViewer(viewer)),
-    };
+    const recordOwnerFilter = this.recordAccess && viewer
+      ? await this.recordAccess.accessWhere(viewer)
+      : {
+        ...(ownerIds ? { OR: [{ created_by: { in: ownerIds } }, { assigned_to: { in: ownerIds } }] } : {}),
+        ...this.scope.whereFor(await this.scope.forViewer(viewer)),
+      };
 
     // ── Fan out search across all five CRM entity tables ─────────────────────
     const contains = { contains: q };
@@ -95,7 +105,7 @@ class SearchService {
         take: limit,
       }),
       // Search custom (non-CRM) objects via typed EAV field values
-      this.#searchCustomObjects(q, recordOwnerFilter, limit),
+      this.#searchCustomObjects(q, recordOwnerFilter, limit, viewer),
     ]);
 
     // ── Load CRM object/module metadata once ────────────────────────────────
@@ -147,7 +157,7 @@ class SearchService {
    * Owner filtering is applied via Record.created_by / Record.assigned_to.
    * Each record appears at most once in the results (distinct by record_id).
    */
-  async #searchCustomObjects(q, recordOwnerFilter, limit) {
+  async #searchCustomObjects(q, recordOwnerFilter, limit, viewer = null) {
     const CRM_NAMES = ['lead', 'contact', 'account', 'opportunity', 'case'];
 
     // Load searchable fields for non-CRM objects only
@@ -160,9 +170,10 @@ class SearchService {
       select: {
         id:     true,
         name:   true,
+        label:  true,
         object: {
           select: {
-            id: true, name: true, label: true,
+            id: true, name: true, label: true, config: true,
             module: { select: { id: true, label: true } },
           },
         },
@@ -176,50 +187,72 @@ class SearchService {
     for (const f of searchableFields) {
       const oid = f.object.id;
       if (!fieldsByObject.has(oid)) {
-        fieldsByObject.set(oid, { object: f.object, fieldNames: [] });
+        fieldsByObject.set(oid, { object: f.object, fieldNames: [], labels: {} });
       }
       fieldsByObject.get(oid).fieldNames.push(f.name);
+      fieldsByObject.get(oid).labels[f.name] = f.label || f.name;
     }
 
-    const results = [];
+    // Objects the role may not open never appear in search.
+    let groups = [...fieldsByObject.values()];
+    if (this.permissions && viewer?.role) {
+      const allowed = await Promise.all(groups.map((g) => this.permissions
+        .getEffectiveUiPermission('object', g.object.id, viewer.role, viewer.tenant_id ?? null)
+        .then((p) => p?.can_view !== false).catch(() => true)));
+      groups = groups.filter((_, i) => allowed[i]);
+    }
 
-    // Fan out one query per custom object type; collect distinct-by-record hits
+    const hits = [];
     await Promise.all(
-      [...fieldsByObject.values()].map(async ({ object, fieldNames }) => {
-        const hits = await this.db.recordFieldValue.findMany({
+      groups.map(async ({ object, fieldNames, labels }) => {
+        const rows = await this.db.recordFieldValue.findMany({
           where: {
             field_name: { in: fieldNames },
             str_value:  { contains: q },
-            record: { object_id: object.id, ...recordOwnerFilter },
+            record: { object_id: object.id, deleted_at: null, ...recordOwnerFilter },
           },
-          select: {
-            record_id:  true,
-            field_name: true,
-            str_value:  true,
-            record: { select: { id: true } },
-          },
+          select: { record_id: true, field_name: true, str_value: true },
           take:     limit,
           distinct: ['record_id'],
         });
-
-        for (const h of hits) {
-          if (results.length >= limit) break;
-          results.push({
-            id:           h.record.id,
-            record_id:    h.record_id,
-            title:        h.str_value ?? `${object.label} record`,
-            subtitle:     `${object.label} · ${h.field_name}`,
-            crm_type:     null,
-            object_id:    object.id,
-            object_label: object.label,
-            module_id:    object.module?.id ?? null,
-            module_label: object.module?.label ?? '',
-          });
-        }
+        for (const h of rows) hits.push({ ...h, object, label: labels[h.field_name] });
       }),
     );
+    if (!hits.length) return [];
 
-    return results;
+    // Show each record under its own title, not the fragment that matched.
+    const titleFields = [...new Set(['name', 'display_name', 'title', ...hits.map((h) => h.object.config?.title_field).filter(Boolean)])];
+    const titleRows = await this.db.recordFieldValue.findMany({
+      where:  { record_id: { in: hits.map((h) => h.record_id) }, field_name: { in: titleFields } },
+      select: { record_id: true, field_name: true, str_value: true },
+    });
+    const titleOf = (h) => {
+      const own = h.object.config?.title_field;
+      const rows = titleRows.filter((r) => r.record_id === h.record_id && r.str_value);
+      return (own && rows.find((r) => r.field_name === own)?.str_value) || rows[0]?.str_value || h.str_value || `${h.object.label} record`;
+    };
+
+    // Rank by how well the record's own title matches (exact, prefix, word
+    // start, elsewhere), then shorter titles first — so the client "Vikash
+    // Ramdhony" comes before "Vikash Ramdhony · Fund Holding".
+    const ranked = hits.map((h) => {
+      const title = titleOf(h);
+      const t = title.toLowerCase();
+      const score = t === q ? 0 : t.startsWith(q) ? 1 : t.split(/[^a-z0-9]+/).some((w) => w.startsWith(q)) ? 2 : t.includes(q) ? 3 : 4;
+      return { h, title, score };
+    }).sort((a, b) => a.score - b.score || a.title.length - b.title.length);
+
+    return ranked.slice(0, limit).map(({ h, title }) => ({
+      id:           h.record_id,
+      record_id:    h.record_id,
+      title,
+      subtitle:     title.toLowerCase().includes(String(h.str_value ?? '').toLowerCase()) ? h.object.label : `${h.object.label} · ${h.label}: ${h.str_value}`,
+      crm_type:     null,
+      object_id:    h.object.id,
+      object_label: h.object.label,
+      module_id:    h.object.module?.id ?? null,
+      module_label: h.object.module?.label ?? '',
+    }));
   }
 }
 

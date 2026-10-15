@@ -108,6 +108,10 @@ async function installVertical(packName, opts = {}) {
       }).install(pack));
 
     log(`✅ installed in ${((Date.now() - started) / 1000).toFixed(0)}s — written: ${JSON.stringify(result.summary)}`);
+    // A running server caches metadata (modules, objects, fields, forms,
+    // dashboards) in Redis for an hour; drop this tenant's copy so the change
+    // shows on the next request instead of after the TTL.
+    await flushTenantCache(tenant.id, log);
     if (Object.keys(result.unchanged ?? {}).length) log(`   unchanged (skipped): ${JSON.stringify(result.unchanged)}`);
     if (result.publicForms.length) {
       log('🌐 public forms:');
@@ -120,6 +124,29 @@ async function installVertical(packName, opts = {}) {
     return { ...result, tenant };
   } finally {
     await raw.$disconnect();
+  }
+}
+
+/** Delete the tenant's cached metadata keys (genesis:t<id>:*). No-op without Redis. */
+async function flushTenantCache(tenantId, log = () => {}) {
+  const config = require('../src/config');
+  let client;
+  try {
+    const Redis = require('ioredis');
+    client = new Redis({ ...config.redis, password: config.redis.password || undefined, lazyConnect: true, maxRetriesPerRequest: 1, enableOfflineQueue: false });
+    await client.connect();
+    const pattern = `${config.cache.prefix}t${tenantId}:*`;
+    let cursor = '0', n = 0;
+    do {
+      const [next, keys] = await client.scan(cursor, 'MATCH', pattern, 'COUNT', 500);
+      cursor = next;
+      if (keys.length) { await client.del(...keys); n += keys.length; }
+    } while (cursor !== '0');
+    log(`🧹 cleared ${n} cached metadata keys for tenant #${tenantId}`);
+  } catch (err) {
+    log(`   (metadata cache not cleared: ${err.message} — a running server picks the change up within the cache TTL)`);
+  } finally {
+    client?.disconnect();
   }
 }
 

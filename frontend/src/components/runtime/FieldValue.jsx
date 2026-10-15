@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { CheckCircle2, XCircle, Link2, Eye, Lock } from 'lucide-react';
-import { metadataService } from '../../services/metadata.service';
+import { runtimeService } from '../../services/metadata.service';
+import { showError } from '../../utils/dialog';
 import Badge from '../ui/Badge';
 import { statusVariant, optionLabel } from '../../utils/metadata-helpers';
 import { fmtDate, fmtDateTime, fmtCurrency, fmtPct } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/currency';
+import { currencyOptions } from '../../store/currencyStore';
 
 /**
  * FieldValue — one field's value, rendered from its metadata.
@@ -44,6 +47,22 @@ export function hasValue(v) {
   return true;
 }
 
+/**
+ * The ISO code a money field is denominated in on this record, when the field
+ * declares one with `config.currency_field` (e.g. a USD fund order's amount
+ * follows the order's `currency_code`). Undefined → the tenant's currency.
+ */
+export function recordCurrency(field, data) {
+  const src = field?.config?.currency_field;
+  const code = src && data ? data[src] : null;
+  return typeof code === 'string' && /^[A-Z]{3}$/.test(code) ? code : undefined;
+}
+
+/** Whole-unit money in `code`, or in the tenant's currency when no code is given. */
+export function fmtMoney(n, code) {
+  return code ? formatCurrency(n, { ...currencyOptions(), code, decimals: 0 }) : fmtCurrency(n);
+}
+
 /** The effective display type: a formula shows as the format it declares. */
 function displayType(field) {
   const type = field.field_type ?? field.type;
@@ -56,8 +75,9 @@ function displayType(field) {
 }
 
 /**
- * A personal-data value the API sent masked. "Reveal" asks the server for the
- * real value — allowed only on records the viewer may open, and audited.
+ * A personal-data value the API sent masked. "Reveal" (shown only when the API
+ * says the viewer's role may view personal data) asks the server for the real
+ * value — allowed only on records the viewer may open, and audited.
  */
 function MaskedValue({ field, value, recordId, compact }) {
   const [revealed, setRevealed] = useState(null);
@@ -67,12 +87,15 @@ function MaskedValue({ field, value, recordId, compact }) {
     e.stopPropagation();
     setBusy(true);
     try {
-      const res = await metadataService.revealField(recordId, field.name);
+      const res = await runtimeService.revealField(recordId, field.name);
       setRevealed(res?.data?.value ?? res?.value ?? '');
+    } catch (err) {
+      showError(err?.response?.data?.error?.message ?? 'Could not reveal this value');
     } finally { setBusy(false); }
   };
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-white/50">
+    <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-white/50"
+      title={recordId ? 'Personal data — masked until you reveal it' : 'Personal data — masked for your role'}>
       <Lock className="h-3 w-3 shrink-0" aria-hidden />
       <span className="font-mono">{String(value)}</span>
       {recordId && (
@@ -84,7 +107,7 @@ function MaskedValue({ field, value, recordId, compact }) {
   );
 }
 
-export default function FieldValue({ field, value, label = null, compact = false, masked = false, recordId = null }) {
+export default function FieldValue({ field, value, label = null, compact = false, masked = false, recordId = null, currency }) {
   if (masked && hasValue(value)) return <MaskedValue field={field} value={value} recordId={recordId} compact={compact} />;
   const type = displayType(field);
   const options = field.options ?? [];
@@ -99,6 +122,12 @@ export default function FieldValue({ field, value, label = null, compact = false
         {label ?? `#${value}`}
       </span>
     );
+  }
+
+  // Any field with an option list (e.g. a formula returning a unit code) shows the option's label.
+  if (type !== 'select' && type !== 'radio' && type !== 'multi_select' && options.length && !Array.isArray(value)
+    && options.some((o) => String(typeof o === 'object' ? o?.value : o) === String(value))) {
+    return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')}>{optionLabel(value, options)}</span>;
   }
 
   if (type === 'select' || type === 'radio' || field.name === 'status') {
@@ -124,10 +153,20 @@ export default function FieldValue({ field, value, label = null, compact = false
     );
   }
 
-  if (type === 'currency') return <span className={clsx(text, 'font-semibold text-gray-900 dark:text-white/90')}>{fmtNumeric(value, fmtCurrency)}</span>;
-  if (type === 'percent' || type === 'percentage') return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')}>{fmtNumeric(value, fmtPct)}</span>;
+  if (type === 'currency') {
+    return <span className={clsx(text, 'font-semibold text-gray-900 dark:text-white/90')}>{fmtNumeric(value, (n) => fmtMoney(n, currency))}</span>;
+  }
+  // A field's `config.precision` is the most decimals it shows (6.15 with precision 3 → "6.15%", not "6.2%").
+  const precision = field.config?.precision !== undefined && field.config?.precision !== '' && Number.isFinite(Number(field.config?.precision))
+    ? Math.max(0, Math.min(10, Number(field.config.precision))) : null;
+  if (type === 'percent' || type === 'percentage') {
+    const pct = precision === null ? fmtPct
+      : (n) => `${n.toLocaleString('en-US', { minimumFractionDigits: Math.min(1, precision), maximumFractionDigits: precision })}%`;
+    return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')}>{fmtNumeric(value, pct)}</span>;
+  }
   if (type === 'number' || type === 'integer' || type === 'decimal' || type === 'rating') {
-    return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')}>{fmtNumeric(value, (n) => n.toLocaleString())}</span>;
+    const num = precision === null ? (n) => n.toLocaleString() : (n) => n.toLocaleString(undefined, { maximumFractionDigits: precision });
+    return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')}>{fmtNumeric(value, num)}</span>;
   }
   if (type === 'datetime') return <span className={clsx(text, 'text-gray-700 dark:text-white/70')}>{fmtDateTime(value)}</span>;
   if (type === 'date') return <span className={clsx(text, 'text-gray-700 dark:text-white/70')}>{fmtDate(value)}</span>;
@@ -141,6 +180,10 @@ export default function FieldValue({ field, value, label = null, compact = false
         {value}
       </span>
     );
+  }
+  // A machine timestamp kept in a text field (e.g. when consent was captured) reads as a date and time.
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) {
+    return <span className={clsx(text, 'text-gray-700 dark:text-white/70')}>{fmtDateTime(value)}</span>;
   }
   return (
     <span className={clsx(text, 'text-gray-700 dark:text-white/80 break-words', compact ? 'line-clamp-2' : 'whitespace-pre-wrap')}>

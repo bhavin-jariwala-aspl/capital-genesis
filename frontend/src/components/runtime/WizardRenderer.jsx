@@ -189,9 +189,11 @@ export default function WizardRenderer({ wizardId, onComplete, onCancel, default
         // Surface the server's validation message and per-field details — the
         // raw axios message ("Request failed with status code 400") says nothing.
         const apiErr = err.response?.data?.error;
+        const message = apiErr?.message || err.response?.data?.message || err.message || 'Submission failed.';
         setSubmitError({
-          message: apiErr?.message || err.response?.data?.message || err.message || 'Submission failed.',
-          details: Array.isArray(apiErr?.details) ? apiErr.details : [],
+          message,
+          // A single-rule failure repeats the headline as its only detail — list only what adds information.
+          details: (Array.isArray(apiErr?.details) ? apiErr.details : []).filter((d) => d?.message && d.message !== message),
         });
       } finally {
         setSubmitting(false);
@@ -203,13 +205,14 @@ export default function WizardRenderer({ wizardId, onComplete, onCancel, default
     setValidationErrors(prev => ({ ...prev, [currentStep]: errors }));
   }, [currentStep]);
 
+  // Going back to correct an answer clears the last submission error — it no longer applies.
   const handleBack = useCallback(() => {
-    if (currentStep > 0) setCurrentStep(prev => prev - 1);
+    if (currentStep > 0) { setSubmitError(null); setCurrentStep(prev => prev - 1); }
   }, [currentStep]);
 
   // Jump to a previously completed step via the stepper rail
   const handleStepClick = useCallback((idx) => {
-    if (idx <= currentStep || validatedSteps[idx]) setCurrentStep(idx);
+    if (idx <= currentStep || validatedSteps[idx]) { if (idx !== currentStep) setSubmitError(null); setCurrentStep(idx); }
   }, [currentStep, validatedSteps]);
 
   // ── Early returns AFTER all hooks ──

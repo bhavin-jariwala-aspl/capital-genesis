@@ -163,9 +163,14 @@ function resolveStorage(objectName) {
 function toTypedValue(value, dataType) {
   const str  = value != null ? String(value) : null;
   const base = { str_value: str };
-  if (value == null) return base;
+  // Clearing a value clears every typed column: reads prefer num/bool/date over
+  // str_value, so a cleared lookup (num_value) or date kept its old value.
+  if (value == null) return { ...base, num_value: null, bool_value: null, date_value: null };
   switch (dataType) {
     case 'number':
+      // A blank input ('' or whitespace) is "no value", not zero: Number('') is 0, which
+      // would turn an unanswered rating into a score of 0 and skew averages.
+      if (typeof value === 'string' && value.trim() === '') return { ...base, num_value: null };
       return { ...base, num_value: Number.isNaN(Number(value)) ? null : Number(value) };
     case 'boolean':
       return { ...base, bool_value: value === true || value === 'true' || value === 1 || value === '1' };

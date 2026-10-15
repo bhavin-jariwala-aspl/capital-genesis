@@ -109,6 +109,8 @@ const feeds = {
   // Performance history behind the website's NAV table.
   nav_history: { name: 'nav-history', fields: ['class_code', 'fund', 'nav_date', 'nav'], sort: { field: 'nav_date', dir: 'asc' }, limit: 500 },
   plr_rate: { name: 'plr', fields: ['rate', 'effective_from'], sort: { field: 'effective_from', dir: 'desc' }, limit: 1 },
+  // The product catalogue (Products & Services): the website's product cards and "Rate from".
+  financial_product: { name: 'products', fields: ['code', 'name', 'name_fr', 'category', 'legal_entity', 'tagline', 'rate_from', 'website_url', 'active'], sort: { field: 'code' } },
 };
 for (const obj of modules.flatMap((m) => m.objects)) {
   if (feeds[obj.name]) obj.config = { ...(obj.config ?? {}), public_feed: feeds[obj.name] };
@@ -125,6 +127,17 @@ const calendars = {
 };
 for (const obj of modules.flatMap((m) => m.objects)) {
   if (calendars[obj.name]) obj.config = { ...(obj.config ?? {}), calendar: calendars[obj.name] };
+}
+
+// Calculated business-unit fields hold a unit code ('LND', 'WLT'…); give them the
+// unit list as options so lists and record panels show "Lending (Genesis Life Ltd)".
+const { BUSINESS_UNITS } = require('./options');
+for (const mod of modules) {
+  for (const obj of mod.objects) {
+    for (const f of obj.fields) {
+      if (f.name === 'business_unit' && f.type === 'formula' && !f.options) f.options = BUSINESS_UNITS;
+    }
+  }
 }
 
 // French labels (PRD X-02 / E-15): `config.label_fr` on modules, objects,

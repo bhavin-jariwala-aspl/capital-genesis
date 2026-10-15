@@ -11,7 +11,7 @@ import { runtimeService } from '../../services/metadata.service';
  * user may see) and stores the chosen record's id. The current value's title is
  * resolved on mount, so an edit form shows a name, not a number.
  */
-export default function RecordPicker({ targetObject, value, onChange, label, error, help, disabled, placeholder }) {
+export default function RecordPicker({ targetObject, value, onChange, label, error, help, disabled, placeholder, id, knownLabels }) {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [debounced, setDebounced] = useState('');
@@ -41,18 +41,21 @@ export default function RecordPicker({ targetObject, value, onChange, label, err
     staleTime: 30_000,
   });
 
-  const selectedLabel = (current.data?.data ?? [])[0]?.label ?? (value ? `#${value}` : '');
+  // The saved record already carries the title of the record it points to
+  // (`knownLabels`), which a viewer may not be able to search for themselves —
+  // e.g. a Loans executive editing a request for an RM's client.
+  const selectedLabel = (current.data?.data ?? [])[0]?.label ?? knownLabels?.[String(value)] ?? (value ? `#${value}` : '');
   const options = results.data?.data ?? [];
 
   return (
     <div className="flex flex-col gap-1.5" ref={box}>
-      {label && <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
+      {label && <label htmlFor={id} className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</label>}
       <div className="relative">
         {value && !open ? (
           <div className={clsx('flex items-center gap-2 rounded-lg border px-3 py-2 text-sm bg-white dark:bg-white/5',
             error ? 'border-red-400' : 'border-gray-300 dark:border-white/10')}>
             <Link2 className="h-4 w-4 text-primary-500 shrink-0" />
-            <button type="button" className="flex-1 text-left truncate text-gray-900 dark:text-white" disabled={disabled} onClick={() => setOpen(true)}>
+            <button type="button" id={id} className="flex-1 text-left truncate text-gray-900 dark:text-white" disabled={disabled} onClick={() => setOpen(true)}>
               {selectedLabel}
             </button>
             {!disabled && (
@@ -66,6 +69,7 @@ export default function RecordPicker({ targetObject, value, onChange, label, err
             error ? 'border-red-400' : 'border-gray-300 dark:border-white/10')}>
             <Search className="h-4 w-4 text-gray-400 shrink-0" />
             <input
+              id={id}
               className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white"
               placeholder={placeholder || 'Search…'}
               value={q}

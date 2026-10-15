@@ -377,7 +377,7 @@ const shareClasses = [
   ['FEQ-USD', 'FND-FEQ', 'USD class', 'USD', null, 4, 2000, null, null, null, null, 'daily', false],
   ['EME-USD', 'FND-EME', 'USD class', 'USD', 'MU0768S00004', 5, 2000, null, null, null, null, 'weekly', true],
   ['GPE-USD', 'FND-GPE', 'USD class', 'USD', 'MU0768S00012', 5, 10000, 5000, 3, null, null, 'quarterly', false],
-  ['FMB29-USD', 'FND-FMB29', 'Series 1 (USD)', 'USD', null, 2, 50000, null, 2, null, null, 'closed', true],
+  ['FMB29-USD', 'FND-FMB29', 'USD class', 'USD', null, 2, 50000, null, 2, null, null, 'closed', true],
 ].map(([class_code, fund, class_name, currency_code, isin, risk_rating, min_investment, additional_investment, entry_fee_pct, exit_fee_pct, management_fee_pct, dealing_frequency, distribution_policy]) => ({
   class_code, fund: `@fund:code=${fund}`, class_name, currency_code, isin, risk_rating, min_investment, additional_investment, entry_fee_pct, exit_fee_pct, management_fee_pct, dealing_frequency,
   distribution_policy, cut_off_time: '12:00 Mauritius time',

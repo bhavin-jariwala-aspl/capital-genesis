@@ -72,6 +72,12 @@ describe('formula engine — functions', () => {
     expect(await ev("IN(country, 'IR', 'KP', 'MM')", { country: 'kp' })).toBe(true);
   });
 
+  it('writes a date field as YYYY-MM-DD in CONCAT and TEXT', async () => {
+    const d = new Date('2026-01-01T00:00:00.000Z');
+    expect(await ev("CONCAT('PLR ', rate, '% from ', effective_from)", { rate: 6.825, effective_from: d })).toBe('PLR 6.825% from 2026-01-01');
+    expect(await ev('TEXT(effective_from)', { effective_from: d })).toBe('2026-01-01');
+  });
+
   it('delegates LOOKUP / LATEST / SUM_RELATED to the context', async () => {
     const lookup = jest.fn(async ({ object, returnField }) => (object === 'plr_rate' && returnField === 'rate' ? 6.825 : 0.5));
     const related = jest.fn(async ({ agg }) => (agg === 'count' ? 3 : 1500));
@@ -95,5 +101,16 @@ describe('formula engine — builder helpers', () => {
 
   it('references() lists the fields a formula reads', () => {
     expect(references('IF(party.age > 60, amount * rate, 0)').sort()).toEqual(['amount', 'party', 'rate']);
+  });
+});
+
+describe('formula engine — date arguments are never modified', () => {
+  it('ADD_YEARS / ADD_MONTHS / ADD_DAYS leave a Date field value unchanged', async () => {
+    const values = { date_of_birth: new Date('1985-07-27T00:00:00.000Z') };
+    expect(await ev('ADD_YEARS(date_of_birth, 42)', values)).toBe('2027-07-27');
+    await ev('ADD_MONTHS(date_of_birth, 3)', values);
+    await ev('ADD_DAYS(date_of_birth, 10)', values);
+    expect(values.date_of_birth.toISOString()).toBe('1985-07-27T00:00:00.000Z');
+    expect(await ev('AGE(date_of_birth) >= 18', values)).toBe(true);
   });
 });

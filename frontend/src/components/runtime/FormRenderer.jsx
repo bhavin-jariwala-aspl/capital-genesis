@@ -32,6 +32,7 @@ export default function FormRenderer({
   readOnly = false,
   recordId,
   serverErrors,
+  lookupLabels,
 }) {
   const {
     register,
@@ -70,7 +71,9 @@ export default function FormRenderer({
           coerced[key] = val.slice(0, 16); // → "2026-04-04T00:00"
         }
       }
-      reset(coerced);
+      // A background refetch of the record must not wipe what the user has
+      // already typed or ticked: keep dirty fields, refresh the rest.
+      reset(coerced, { keepDirtyValues: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(defaultValues)]);
@@ -195,6 +198,8 @@ export default function FormRenderer({
                     disabled={readOnly || isAlwaysDisabled || (state.disabled ?? false)}
                     required={state.required ?? field.is_required}
                     recordId={recordId}
+                    knownLabels={lookupLabels?.[fieldKey] && defaultValues?.[fieldKey] != null
+                      ? { [String(defaultValues[fieldKey])]: lookupLabels[fieldKey] } : undefined}
                     watchValue={field.config?.show_count ? formValues[fieldKey] : undefined}
                   />
                 </div>

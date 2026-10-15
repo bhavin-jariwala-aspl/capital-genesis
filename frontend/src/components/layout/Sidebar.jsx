@@ -463,7 +463,7 @@ export default function Sidebar({ open, onClose }) {
                 {employee?.employee_name}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-white/60 capitalize truncate leading-tight">
-                {employee?.role?.replaceAll('_', ' ')}
+                {employee?.role_label ?? employee?.role?.replaceAll('_', ' ')}
               </p>
             </div>
           </div>

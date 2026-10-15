@@ -50,6 +50,7 @@ const {
  * Writes audit_logs on create / update / stage-change / delete.
  */
 const { encrypt: encryptField, mask: maskValue } = require('./field-protection');
+const { references } = require('./formula');
 
 /** Which `Record` relation holds an object's first-class entity row. */
 const ENTITY_RELATION = {
@@ -72,6 +73,9 @@ const WIDE_SCOPE = new Map();
 
 /** Per-object field defaults, cached briefly (metadata changes rarely). */
 const FIELD_DEFAULTS = new Map();
+
+/** object name → lookups on other objects whose formulas read through them (see #refreshChildren), cached briefly. */
+const CHILD_READERS = new Map();
 
 class RecordService {
   /**
@@ -126,18 +130,94 @@ class RecordService {
       // Bulk loads (vertical installs, imports) collect parents and recompute
       // them once at the end instead of once per child.
       if (this.deferredParents) { for (const pid of parentIds) this.deferredParents.add(pid); return; }
+      const childName = parentIds.length ? await this.#objectName(objectId) : null;
       for (const pid of parentIds) {
         const parent = await this.db.record.findUnique({ where: { id: pid }, select: { id: true, object_id: true, deleted_at: true, tenant_id: true } });
         if (!parent || parent.deleted_at) continue;
-        const formulas = await this.compute.formulaFields(parent.object_id);
+        // Only the parent's roll-ups over this child (and the formulas built on
+        // them) can change: a party has ~25 formulas, and recomputing all of them
+        // for every address, consent or relationship saved made each save slow.
+        const all = await this.compute.formulaFields(parent.object_id);
+        const formulas = childName ? RecordService.formulasDependingOn(all, childName) : all;
         if (!formulas.length) continue;
         const data = { ...(await this.#loadData(pid)) };
         const changed = await this.#writeChangedFormulas(parent, data, formulas);
         // Roll-ups of roll-ups (household ← party ← holding) follow one more level.
         if (changed && depth < 2) await this.#refreshParents(parent.object_id, data, depth + 1);
+        // …and the parent's other children that read the changed value (an approved
+        // KYC case → the party's KYC status → each loan application's `party.kyc_status`).
+        if (changed && depth === 0) await this.#refreshChildren(parent.object_id, pid);
       }
     } catch (err) {
       logger?.warn?.('[RecordService] parent formula refresh failed', { objectId, error: err.message });
+    }
+  }
+
+  /**
+   * The formulas of `formulas` that read records of `objectName` (a roll-up such
+   * as COUNT_RELATED('consent_record', …) names the object as a quoted string),
+   * plus every formula that reads one of those, transitively — in their order.
+   */
+  static formulasDependingOn(formulas, objectName) {
+    const names = [`'${objectName}'`, `"${objectName}"`]; // object names are snake_case identifiers
+    const hit = new Set(formulas.filter((f) => names.some((n) => String(f.config?.expression ?? '').includes(n))).map((f) => f.name));
+    if (!hit.size) return [];
+    const reads = new Map(formulas.map((f) => {
+      try { return [f.name, references(String(f.config?.expression ?? ''))]; } catch { return [f.name, []]; }
+    }));
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const f of formulas) {
+        if (!hit.has(f.name) && reads.get(f.name).some((n) => hit.has(n))) { hit.add(f.name); grew = true; }
+      }
+    }
+    return formulas.filter((f) => hit.has(f.name));
+  }
+
+  /**
+   * Recompute the formulas of records that point at this one through a lookup
+   * and read its fields (`party.kyc_status`, `party.date_of_birth`), so a child
+   * follows a change on its parent instead of keeping the value it had when it
+   * was last saved. One level down; writes only changed values, no events.
+   */
+  async #refreshChildren(objectId, recordId) {
+    try {
+      if (this.deferredParents || typeof this.db.recordFieldValue?.findMany !== 'function') return;
+      const name = await this.#objectName(objectId);
+      if (!name) return;
+      const key = `${getTenantId() ?? ''}:${name}`;
+      let readers = CHILD_READERS.get(key);
+      if (!readers || readers.until < Date.now()) {
+        const lookups = await this.db.uiField.findMany({
+          where:  { is_active: true, field_type: 'lookup', config: { path: '$.target_object', equals: name } },
+          select: { name: true, object_id: true },
+        });
+        const list = [];
+        for (const lk of lookups) {
+          const formulas = await this.compute.formulaFields(lk.object_id);
+          const reads = new RegExp(`\\b${lk.name}\\.[A-Za-z_]`);
+          if (formulas.some((f) => reads.test(String(f.config?.expression ?? '')))) list.push({ ...lk, formulas });
+        }
+        readers = { until: Date.now() + 60_000, list };
+        CHILD_READERS.set(key, readers);
+      }
+      for (const lk of readers.list) {
+        const formulas = lk.formulas;
+        const rows = await this.db.recordFieldValue.findMany({
+          where:  { field_name: lk.name, num_value: Number(recordId), record: { object_id: lk.object_id, deleted_at: null } },
+          select: { record_id: true },
+          take:   500,
+        });
+        for (const { record_id: childId } of rows) {
+          const child = await this.db.record.findUnique({ where: { id: childId }, select: { id: true, object_id: true, tenant_id: true, deleted_at: true } });
+          if (!child || child.deleted_at) continue;
+          const data = { ...(await this.#loadData(childId)) };
+          const changed = await this.#writeChangedFormulas(child, data, formulas);
+          if (changed) await this.#refreshParents(child.object_id, data, 2);
+        }
+      }
+    } catch (err) {
+      logger?.warn?.('[RecordService] child formula refresh failed', { objectId, error: err.message });
     }
   }
 
@@ -613,6 +693,7 @@ class RecordService {
       where: { object_id: Number(objectId), is_active: true },
       select: { name: true, config: true },
     });
+    let issued = 0;
     for (const field of fields) {
       const autoNum = field.config?.auto_number;
       if (!autoNum || crmData[field.name]) continue;
@@ -653,7 +734,9 @@ class RecordService {
         ISSUED_AUTO_NUMBERS.set(seqKey, nextNum);
         crmData[field.name] = `${searchPrefix}${String(nextNum).padStart(width, '0')}`;
       });
+      issued += 1;
     }
+    return issued;
   }
 
   // ── Custom object (typed EAV) helpers ────────────────────────────────────
@@ -833,6 +916,7 @@ class RecordService {
     const data = { ...(await this.#loadData(rec.id)) };
     const changed = formulas.length ? await this.#writeChangedFormulas(rec, data, formulas) : false;
     if (changed || !formulas.length) await this.#refreshParents(rec.object_id, data);
+    if (changed) await this.#refreshChildren(rec.object_id, rec.id);
     return changed;
   }
 
@@ -1213,9 +1297,15 @@ class RecordService {
     await this.#assertValid(objectId, crmData ?? {}, { partial: draft, recordId: null });
     // ── Auto-number generation for fields with auto_number config ─────────
     if (crmData) {
-      await this.#generateAutoNumbers(objectId, crmData, tenantId);
+      // A formula may read the new number (a title "DSR-2026-000006 · Access · …"):
+      // formulas ran before the number existed, so run them again once it does.
+      if (await this.#generateAutoNumbers(objectId, crmData, tenantId)) await this.compute.applyFormulas(objectId, crmData, null);
     }
     const stamp = crmData ? await this.scope.stampFor(objectId, crmData) : {};
+    // A record of an object with a pipeline starts in its first stage when the caller names none (a wizard,
+    // the table view's New button, an import) — otherwise it sits in no board column and no stage gate or
+    // stage-change automation can ever reach it.
+    if (!stageId) stageId = await this.#firstStageId(objectId);
     const record = await this.db.record.create({
       data: {
         object_id:         Number(objectId),
@@ -1232,11 +1322,15 @@ class RecordService {
     // Audit + auto-assign fire-and-forget (don't block the response)
     this.#audit(record.id, createdBy, 'create', null, tenantId);
     // ── Auto-assign if no explicit assignee and assignment engine is wired ─────
-    if (!assignedTo && this.assignSvc) {
-      this.assignSvc.assign(Number(objectId), record.id, {}).catch(() => {});
-    }
     // ── Emit domain event: record.created ─────────────────────────────────
-    this.#emit('record.created', { objectId, record, actorId: createdBy });
+    // After routing has settled (still without blocking the response): an
+    // on-create workflow that reassigns the record (an existing client's
+    // enquiry to their RM, a referral to its receiving RM) must not race the
+    // assignment rules — whichever wrote last used to win.
+    const routed = !assignedTo && this.assignSvc
+      ? this.assignSvc.assign(Number(objectId), record.id, {}).catch(() => null)
+      : Promise.resolve(null);
+    routed.then((who) => this.#emit('record.created', { objectId, record: who ? { ...record, assigned_to: who } : record, actorId: createdBy }));
     // ── Auto-score leads/prospects (fire-and-forget) ──────────────────────
     if (crmData) this.#maybeScoreLead(record.id, objectId, tenantId);
     // A new child changes its parents' roll-ups.
@@ -1304,6 +1398,8 @@ class RecordService {
     // ── Re-score leads/prospects when their CRM data changes ──────────────
     if (crmData) this.#maybeScoreLead(Number(id), existing.object_id, tenantId);
     if (crmData) await this.#refreshParents(existing.object_id, crmData);
+    // Children that read this record's fields through a lookup follow the change.
+    if (crmData) await this.#refreshChildren(existing.object_id, Number(id));
     return this.#hydrateCrm(updated);
   }
 
@@ -1332,7 +1428,7 @@ class RecordService {
         ? await this.db.uiField.findMany({ where: { object_id: rec.object_id, name: { in: missing } }, select: { name: true, label: true } }).catch(() => [])
         : [];
       const label = (f) => rows.find((r) => r.name === f)?.label ?? f;
-      const err = new ValidationError(`Complete ${missing.map(label).join(', ')} before moving to ${stage.label}`);
+      const err = new ValidationError(`Fill in ${missing.map((f) => `“${label(f)}”`).join(', ')} before moving to ${stage.label}`);
       err.details = missing.map((f) => ({ field: f, label: label(f), message: `Required for ${stage.label}` }));
       throw err;
     }
@@ -1467,6 +1563,16 @@ class RecordService {
       ...data,
       changed_by: data.changed_by ?? viewer?.employee_id ?? null,
     }, tenantId);
+  }
+
+  /** The first stage of the object's (first) pipeline, or null when it has none. */
+  async #firstStageId(objectId) {
+    const stage = await this.db.uiPipelineStage?.findFirst({
+      where:   { pipeline: { object_id: Number(objectId) } },
+      orderBy: [{ pipeline_id: 'asc' }, { order_index: 'asc' }],
+      select:  { id: true },
+    }).catch(() => null);
+    return stage?.id ?? null;
   }
 
   /**
@@ -1786,9 +1892,14 @@ class RecordService {
 
   /** Names of an object's fields flagged `config.pii`. */
   async #piiFields(objectId) {
+    return (await this.#piiFieldDefs(objectId)).map((f) => f.name);
+  }
+
+  /** An object's fields flagged `config.pii`, with their type. */
+  async #piiFieldDefs(objectId) {
     if (typeof this.db.uiField?.findMany !== 'function') return [];
-    const fields = await this.db.uiField.findMany({ where: { object_id: Number(objectId), is_active: true }, select: { name: true, config: true } }).catch(() => []);
-    return (fields ?? []).filter((f) => f.config?.pii).map((f) => f.name);
+    const fields = await this.db.uiField.findMany({ where: { object_id: Number(objectId), is_active: true }, select: { name: true, field_type: true, config: true } }).catch(() => []);
+    return (fields ?? []).filter((f) => f.config?.pii);
   }
 
   /**
@@ -1809,25 +1920,41 @@ class RecordService {
     return Boolean(row);
   }
 
-  /** Replace PII values with masks for viewers without the permission; lists the masked fields. */
-  async #maskPii(objectId, records, viewer) {
+  /**
+   * Replace PII values with masks and list the masked fields. Screens show
+   * personal data masked to everyone; viewers holding the permission get
+   * `can_reveal` and unmask a value on demand, which is audited (user guide
+   * §3 "Personal data"). With `onDemand: false` (exports) holders get the
+   * real values. A coded value (picklist) is masked whole — its last four
+   * characters are a fragment of a code, not a hint.
+   */
+  async #maskPii(objectId, records, viewer, { onDemand = true } = {}) {
     if (!viewer || !records?.length) return records;
-    const pii = await this.#piiFields(objectId);
-    if (!pii.length || await this.canViewPii(viewer)) return records;
+    const pii = await this.#piiFieldDefs(objectId);
+    if (!pii.length) return records;
+    const canReveal = await this.canViewPii(viewer);
+    if (canReveal && !onDemand) return records;
     return records.map((r) => {
       if (!r?.data) return r;
       const data = { ...r.data };
       const masked = [];
       for (const f of pii) {
-        if (data[f] != null && data[f] !== '') { data[f] = maskValue(data[f]); masked.push(f); }
+        const v = data[f.name];
+        if (v == null || v === '') continue;
+        data[f.name] = ['select', 'radio', 'multi_select'].includes(f.field_type) ? '••••••' : maskValue(v);
+        masked.push(f.name);
       }
-      return masked.length ? { ...r, data, masked } : r;
+      return masked.length ? { ...r, data, masked, can_reveal: canReveal } : r;
     });
   }
 
+  /** Test seam for the private masking step. */
+  _maskForTest(objectId, records, viewer, opts) { return this.#maskPii(objectId, records, viewer, opts); }
+
   /**
-   * Reveal one masked field. Allowed only on a record the viewer may open;
-   * every reveal is written to the tamper-evident audit chain.
+   * Reveal one masked field. Allowed only to viewers holding the view-PII
+   * permission, on a record they may open; every reveal is written to the
+   * tamper-evident audit chain.
    */
   async revealField(recordId, fieldName, viewer) {
     const record = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { id: true, object_id: true, tenant_id: true, deleted_at: true, created_by: true, assigned_to: true, business_unit_id: true, barrier_zone_id: true } });
@@ -1835,6 +1962,7 @@ class RecordService {
     await this.#assertAccess(record, viewer);
     const pii = await this.#piiFields(record.object_id);
     if (!pii.includes(String(fieldName))) throw new ValidationError(`${fieldName} is not a protected field`);
+    if (!(await this.canViewPii(viewer))) throw new AuthorizationError('Your role may not view personal data — ask Compliance');
     const row = await this.db.recordFieldValue.findUnique({ where: { record_id_field_name: { record_id: record.id, field_name: String(fieldName) } } }).catch(() => null);
     await this.#chain().append({ entityType: 'pii.reveal', entityId: record.id, action: 'reveal', actor: viewer?.employee_id ?? null, sensitivity: 'sensitive', payload: { field: String(fieldName), object_id: record.object_id }, tenantId: record.tenant_id });
     return { field: String(fieldName), value: row ? RecordService.#readTypedValue(row) : null };
@@ -1875,7 +2003,7 @@ class RecordService {
     });
     if (!anchors.length) return 'id,stage,assigned_to,created_by,created_at\r\n';
 
-    const hydrated = await this.#maskPii(Number(objectId), await this.#hydrateMany(anchors), viewer);
+    const hydrated = await this.#maskPii(Number(objectId), await this.#hydrateMany(anchors), viewer, { onDemand: false });
     // Collect all CRM field keys present across all records
     const crmKeys = [...new Set(hydrated.flatMap(r => Object.keys(r.data ?? {})))];
     const headers = ['id', 'stage', 'assigned_to', 'created_by', 'created_at', ...crmKeys];

@@ -160,6 +160,74 @@ npx prisma migrate dev
 
 > If you change `schema.prisma` later, run `npx prisma migrate dev --name <description>` to generate and apply a new migration.
 
+#### Local demo database (macOS)
+
+On the demo laptop the backend uses a **local MySQL copy of the shared AWS RDS database**, so pages load in
+milliseconds instead of the 10–60 s they took over the remote connection. The RDS settings are kept in
+`backend/.env`, commented out, so either database can be selected.
+
+| Item | Value |
+| ---- | ----- |
+| Server | MySQL 8.4 (Homebrew `mysql@8.4`, started at login by `brew services`) |
+| Host / port | `127.0.0.1` / `3306` (bound to localhost only; not reachable from the network) |
+| Database | `genesis` |
+| App user | `genesis` / `genesis_local` (all privileges on `genesis`, plus `CREATE`/`DROP` for Prisma's shadow database) |
+| Admin user | `root`, no password (Homebrew default) |
+| Server config | `/opt/homebrew/etc/my.cnf`: `sql_mode = NO_ENGINE_SUBSTITUTION` and `utf8mb4` defaults, to match RDS |
+| Source of data | Full `mysqldump` of RDS `genesis` (MySQL 8.4.8) taken on 15 Oct 2026: 101 tables, row counts verified |
+
+`backend/.env`:
+
+```env
+# Local MySQL (Homebrew mysql@8.4) — copy of the AWS RDS "genesis" schema, used for demos.
+DATABASE_URL="mysql://genesis:genesis_local@127.0.0.1:3306/genesis"
+# AWS RDS (shared) — to switch back, comment the line above and uncomment this one.
+# DATABASE_URL="mysql://admin:<password>@smartsure-mysql.ckwh4wdl5opw.us-east-2.rds.amazonaws.com:3306/genesis"
+```
+
+To switch databases, swap which `DATABASE_URL` line is commented, then run `make restart`.
+
+Useful commands (Homebrew does not put `mysql@8.4` on the `PATH`; add it with
+`echo 'export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"' >> ~/.zshrc`):
+
+```bash
+brew services start mysql@8.4          # or: stop / restart
+mysql -uroot genesis                   # admin shell
+mysql -ugenesis -pgenesis_local genesis
+```
+
+GUI clients (TablePlus, DBeaver, MySQL Workbench): host `127.0.0.1`, port `3306`, user `genesis`, password
+`genesis_local`, database `genesis`.
+
+**Refreshing the local copy from RDS.** The local database is a snapshot, so changes made on RDS afterwards are not
+in it. To take a new copy, stop the app first. This replaces all local data:
+
+```bash
+make stop
+mysqldump -h smartsure-mysql.ckwh4wdl5opw.us-east-2.rds.amazonaws.com -u admin -p \
+  --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces \
+  --column-statistics=0 genesis > genesis.sql
+mysql -uroot -e "DROP DATABASE genesis; CREATE DATABASE genesis CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -uroot genesis < genesis.sql
+make start
+```
+
+Because the host is local, `node prisma/seed.js` runs against this database without `--allow-remote`. It still empties
+every table.
+
+**Setting it up on another Mac:** `brew install mysql@8.4 && brew services start mysql@8.4`, add the `my.cnf`
+lines above, then create the database and user:
+
+```sql
+CREATE DATABASE genesis CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'genesis'@'localhost' IDENTIFIED BY 'genesis_local';
+CREATE USER 'genesis'@'127.0.0.1' IDENTIFIED BY 'genesis_local';
+GRANT ALL PRIVILEGES ON genesis.* TO 'genesis'@'localhost', 'genesis'@'127.0.0.1';
+GRANT CREATE, DROP ON *.* TO 'genesis'@'localhost', 'genesis'@'127.0.0.1';
+```
+
+Then load a dump as above.
+
 ### Step 4: Seed Demo Data
 
 The seed script empties the database, creates the platform layer (plans, feature flags, security policy,
@@ -340,6 +408,8 @@ Once your installation is working:
 - Check MySQL server is running
 - Verify `DATABASE_URL` in `.env` file
 - Ensure database exists and user has permissions
+- Local demo database: `brew services list | grep mysql` should show `mysql@8.4 started`; see
+  [Local demo database (macOS)](#local-demo-database-macos)
 
 **Frontend won't start:**
 

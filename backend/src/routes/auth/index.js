@@ -133,9 +133,22 @@ module.exports = async function authRoutes(fastify) {
     const { employee_id, password } = req.body;
     const ip = clientIp(req);
     const accountKey = `login:acct:${String(employee_id).toLowerCase()}`;
-    await enforce(`login:ip:${ip}`, AUTH_LIMITS.loginIp, 'login attempts from this network');
+    const ipKey = `login:ip:${ip}`;
+    // The IP counter counts failed attempts only: a whole office signs in from
+    // one address at 9am, and counting its successful sign-ins locked it out.
+    const ipState = await limiter.peek(ipKey, AUTH_LIMITS.loginIp);
+    if (ipState.limited) {
+      const mins = Math.max(1, Math.ceil(ipState.retryAfterSec / 60));
+      throw new RateLimitedError(`Too many login attempts from this network. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`, ipState.retryAfterSec);
+    }
     await enforce(accountKey, AUTH_LIMITS.loginAccount, 'failed sign-in attempts for this account');
-    const result = await authSvc.login(employee_id, password, sessionMeta(req));
+    let result;
+    try {
+      result = await authSvc.login(employee_id, password, sessionMeta(req));
+    } catch (err) {
+      await limiter.hit(ipKey, AUTH_LIMITS.loginIp).catch(() => {});
+      throw err;
+    }
     await limiter.reset(accountKey);
     return ok(result);
   });

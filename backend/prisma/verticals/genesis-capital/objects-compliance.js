@@ -31,7 +31,7 @@ const screeningHit = {
     SEL('disposition', 'Disposition', o([['pending', 'Pending', '#f59e0b'], ['false_positive', 'False positive', '#10b981'], ['true_match', 'True match', '#ef4444'], ['escalated', 'Escalated to MLRO', '#8b5cf6']]), { default: 'pending', config: { show_in_list: true } }),
     F('reviewer', 'Reviewer'),
     F('rationale', 'Rationale', 'textarea', { validations: [EXPR("disposition = 'pending' OR NOT(ISBLANK(rationale))", 'Record the rationale for the disposition')] }),
-    FX('name', 'Hit', "CONCAT(list_type, ' · ', matched_name)", { type: 'string' }),
+    FX('name', 'Hit', "CONCAT(LABEL(list_type), ' · ', matched_name)", { type: 'string' }),
   ],
   forms: [{ name: 'screening_hit_create', label: 'Screening hit', fields: ['kyc_case', 'party', 'provider', 'list_type', 'matched_name', 'match_score', 'source_reference', 'trigger', 'disposition', 'reviewer', { field: 'rationale', span: 2 }] }],
 };
@@ -52,9 +52,9 @@ const kycReliance = {
     F('relied_on', 'Relied on', 'date', { required: true }),
     F('product_addons', 'Product-specific add-ons completed', 'textarea', { help: 'e.g. suitability for WLT / SEC' }),
     F('approved_by', 'Approved by'),
-    FX('risk_rating', 'Risk rating', 'kyc_case.risk_rating', { type: 'string', list: true }),
+    { ...FX('risk_rating', 'Risk rating', 'kyc_case.risk_rating', { type: 'string', list: true }), options: o([['low', 'Low'], ['medium', 'Medium'], ['high', 'High']]) },
     FX('within_appetite', 'Within risk appetite', "kyc_case.risk_rating != 'high'", { type: 'boolean', format: 'checkbox', list: true }),
-    FX('name', 'Reliance', "CONCAT(kyc_case.name, ' → ', relying_business_unit)", { type: 'string' }),
+    FX('name', 'Reliance', "CONCAT(kyc_case.name, ' → ', LABEL(relying_business_unit))", { type: 'string' }),
   ],
   forms: [{ name: 'kyc_reliance_create', label: 'Record reliance', fields: ['kyc_case', 'relying_business_unit', 'relied_on', 'approved_by', { field: 'product_addons', span: 2 }] }],
 };
@@ -77,7 +77,7 @@ const giftRegister = {
     F('event_date', 'Date', 'date', { required: true }),
     FX('needs_approval', 'Above threshold (MUR 5,000)', 'estimated_value > 5000', { type: 'boolean', format: 'checkbox', list: true }),
     SEL('decision', 'Compliance decision', o([['noted', 'Noted'], ['approved', 'Approved', '#10b981'], ['declined', 'Declined / returned', '#ef4444']]), { default: 'noted', config: { show_in_list: true } }),
-    FX('name', 'Gift', "CONCAT(employee_id, ' · ', direction, ' · ', description)", { type: 'string' }),
+    FX('name', 'Gift', "CONCAT(employee_id, ' · ', LABEL(direction), ' · ', description)", { type: 'string' }),
   ],
   forms: [{ name: 'gift_register_create', label: 'Declare gift / hospitality', fields: ['employee_id', 'direction', 'counterparty', 'description', 'estimated_value', 'event_date', 'decision'] }],
 };
@@ -99,7 +99,7 @@ const paDealing = {
     FX('restricted', 'On the restricted / watch list', "COALESCE(LOOKUP('restricted_list_entry', 'issuer', security, 'list_type'), 'clear')", { type: 'string', list: true }),
     SEL('decision', 'Decision', o([['pending', 'Pending'], ['cleared', 'Cleared (valid 2 business days)', '#10b981'], ['refused', 'Refused', '#ef4444']]), { default: 'pending', config: { show_in_list: true } }),
     F('decided_by', 'Decided by'),
-    FX('name', 'Pre-clearance', "CONCAT(request_no, ' · ', employee_id, ' · ', side, ' ', security)", { type: 'string' }),
+    FX('name', 'Pre-clearance', "CONCAT(request_no, ' · ', employee_id, ' · ', LABEL(side), ' ', security)", { type: 'string' }),
   ],
   forms: [{ name: 'pa_dealing_create', label: 'Request pre-clearance', fields: ['employee_id', 'security', 'side', 'quantity', 'requested_on', 'decision', 'decided_by'] }],
 };
@@ -123,7 +123,7 @@ const dataSubjectRequest = {
     F('aml_retention_applies', 'AML retention prevents erasure (7 years)', 'checkbox'),
     F('response', 'Response', 'textarea'),
     F('completed_on', 'Completed on', 'date'),
-    FX('name', 'DSR', "CONCAT(dsr_no, ' · ', request_type, ' · ', party.display_name)", { type: 'string' }),
+    FX('name', 'DSR', "CONCAT(dsr_no, ' · ', LABEL(request_type), ' · ', party.display_name)", { type: 'string' }),
   ],
   dependencies: showWhen('request_type', 'erasure', ['aml_retention_applies']),
   forms: [{ name: 'data_subject_request_create', label: 'Data subject request', fields: ['party', 'request_type', 'received_on', 'identity_verified', 'aml_retention_applies', { field: 'details', span: 2 }, { field: 'response', span: 2 }, 'completed_on'] }],
@@ -168,7 +168,7 @@ const webEvent = {
     FX('rate', 'Indicative rate %', "LATEST('plr_rate', 'rate', 'effective_from') + LOOKUP('financial_product', 'code', product_code, 'margin')", { precision: 3 }),
     FX('emi', 'Indicative instalment', 'IF(ISBLANK(tenure_months), null, PMT(rate / 1200, tenure_months, amount))', { format: 'currency', precision: 2, list: true }),
     FX('converted', 'Converted', 'NOT(ISBLANK(enquiry))', { type: 'boolean', format: 'checkbox', list: true }),
-    FX('name', 'Session', "CONCAT(event_type, ' · ', COALESCE(email, product_code), IF(ISBLANK(amount), '', CONCAT(' · ', amount)))", { type: 'string' }),
+    FX('name', 'Session', "CONCAT(LABEL(event_type), ' · ', COALESCE(email, LABEL(product_code)), IF(ISBLANK(amount), '', CONCAT(' · ', amount)))", { type: 'string' }),
   ],
   forms: [
     { name: 'web_event_create', label: 'Web event', fields: ['event_type', 'product_code', 'amount', 'tenure_months', 'applicant_age', 'page_url', 'utm_source', 'utm_campaign', 'session_date', 'enquiry'] },
@@ -241,7 +241,7 @@ const serviceCatalogue = {
   label: 'Service Type',
   plural_label: 'Service Request Catalogue',
   icon: 'BookMarked',
-  description: 'Each request type with its BU, SLA, approval need and checklist (SR-FR-01).',
+  description: 'Each type of service request with its business unit, service level, approval need and checklist.',
   config: { title_field: 'label' },
   fields: [
     F('request_type', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),

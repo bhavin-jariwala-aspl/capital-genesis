@@ -20,7 +20,7 @@ const clientGroup = {
   label: 'Client Group',
   plural_label: 'Households & Groups',
   icon: 'Home',
-  description: 'Households, family offices and corporate groups with aggregated relationship value and group lending exposure (C360-FR-03, COM-FR-02).',
+  description: 'Households, family offices and corporate groups with aggregated relationship value and group lending exposure.',
   config: { title_field: 'name' },
   fields: [
     AUTO('group_no', 'Group No.', 'CG-'),
@@ -41,7 +41,7 @@ const contactPoint = {
   label: 'Contact Point',
   plural_label: 'Addresses & Phones',
   icon: 'MapPin',
-  description: 'Multiple addresses and phones per party with verification status and preferred channel (C360-FR-07).',
+  description: 'Several addresses and phones per client, with verification status and the preferred one.',
   config: { title_field: 'name' },
   fields: [
     LK('party', 'Party', 'party', { required: true, config: { show_in_list: true } }),
@@ -50,7 +50,7 @@ const contactPoint = {
     F('verified', 'Verified', 'checkbox', LIST),
     F('verified_on', 'Verified on', 'date'),
     F('preferred', 'Preferred', 'checkbox', LIST),
-    FX('name', 'Contact point', "CONCAT(point_type, ': ', value)", { type: 'string' }),
+    FX('name', 'Contact point', "CONCAT(LABEL(point_type), ': ', value)", { type: 'string' }),
   ],
   forms: [{ name: 'contact_point_create', label: 'Add contact point', fields: ['party', 'point_type', { field: 'value', span: 2 }, 'verified', 'verified_on', 'preferred'] }],
 };
@@ -81,7 +81,7 @@ const opportunity = {
     SEL('loss_reason', 'Loss reason', o([['price', 'Price'], ['competitor', 'Competitor'], ['timing', 'Timing'], ['no_need', 'No need'], ['not_eligible', 'Not eligible']])),
     FX('amount_mur', 'Amount (MUR)', toMur('amount'), { format: 'currency', precision: 2, list: true }),
     FX('weighted_mur', 'Weighted (MUR)', 'amount_mur * COALESCE(probability, 0) / 100', { format: 'currency', precision: 2 }),
-    FX('name', 'Opportunity', "CONCAT(party.display_name, ' · ', product_code)", { type: 'string' }),
+    FX('name', 'Opportunity', "CONCAT(party.display_name, ' · ', LABEL(product_code))", { type: 'string' }),
   ],
   forms: [{ name: 'fs_opportunity_create', label: 'Opportunity', fields: ['party', 'business_unit', 'product_code', 'amount', 'currency_code', 'probability', 'expected_close', 'forecast_category', 'owner_rm', 'referrer_rm', 'split_pct', 'nba_suggestion', 'loss_reason'] }],
   pipeline: {
@@ -117,7 +117,7 @@ const nbaSuggestion = {
     SEL('status', 'Status', o([['open', 'Open', '#6366f1'], ['accepted', 'Accepted — opportunity opened', '#10b981'], ['dismissed', 'Dismissed', '#64748b']]), { default: 'open', config: { show_in_list: true } }),
     F('dismiss_reason', 'Dismiss reason'),
     FX('rule_status', 'Rule · status', "CONCAT(rule, '|', status)", { type: 'string' }),
-    FX('name', 'Suggestion', "CONCAT(party.display_name, ' · ', rule)", { type: 'string' }),
+    FX('name', 'Suggestion', "CONCAT(party.display_name, ' · ', LABEL(rule))", { type: 'string' }),
   ],
   dependencies: showWhen('status', 'dismissed', ['dismiss_reason']),
   forms: [{ name: 'nba_suggestion_create', label: 'Next-best action', fields: ['party', 'rule', 'business_unit', 'product_code', 'status', 'dismiss_reason', { field: 'reason', span: 2 }] }],
@@ -143,7 +143,7 @@ const meetingNote = {
     F('next_steps', 'Next steps', 'textarea'),
     F('follow_up_date', 'Follow up by', 'date'),
     F('rm', 'RM', 'text', LIST),
-    FX('name', 'Note', "CONCAT(template, ' · ', party.display_name, ' · ', meeting_date)", { type: 'string' }),
+    FX('name', 'Note', "CONCAT(LABEL(template), ' · ', party.display_name, ' · ', meeting_date)", { type: 'string' }),
   ],
   forms: [{ name: 'meeting_note_create', label: 'Meeting note', fields: ['party', 'template', 'business_unit', 'meeting_date', 'meeting_time', 'location', 'attendees', 'rm', { field: 'objectives', span: 2 }, { field: 'outcomes', span: 2 }, { field: 'next_steps', span: 2 }, 'follow_up_date'] }],
 };
@@ -165,7 +165,7 @@ const rmTarget = {
     F('achieved_new_business', 'Achieved new business (MUR)', 'currency'),
     F('achieved_revenue', 'Achieved revenue (MUR)', 'currency'),
     FX('attainment_pct', 'Attainment %', 'IF(COALESCE(new_business_target, 0) > 0, achieved_new_business / new_business_target * 100, null)', { format: 'percent', precision: 1, list: true }),
-    FX('name', 'Target', "CONCAT(rm, ' · ', business_unit, ' · ', period)", { type: 'string' }),
+    FX('name', 'Target', "CONCAT(rm, ' · ', LABEL(business_unit), ' · ', period)", { type: 'string' }),
   ],
   forms: [{ name: 'rm_target_create', label: 'Target', fields: ['rm', 'business_unit', 'period', 'new_business_target', 'revenue_target', 'meetings_target', 'achieved_new_business', 'achieved_revenue'] }],
 };
@@ -300,7 +300,7 @@ const subscription = {
     SEL('status', 'Status', o([['subscribed', 'Subscribed', '#10b981'], ['unsubscribed', 'Unsubscribed', '#64748b']]), { default: 'subscribed', config: { show_in_list: true } }),
     F('subscribed_on', 'Since', 'date'),
     SEL('source', 'Source', CHANNELS),
-    FX('name', 'Subscription', "CONCAT(topic, ' · ', party.display_name)", { type: 'string' }),
+    FX('name', 'Subscription', "CONCAT(LABEL(topic), ' · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'subscription_create', label: 'Subscription', fields: ['party', 'topic', 'status', 'subscribed_on', 'source'] }],
 };
@@ -427,7 +427,7 @@ const revenueEntry = {
     FX('rm_credit_mur', 'RM credit (MUR)', 'amount_mur * (100 - COALESCE(referrer_split_pct, 0)) / 100', { format: 'currency', precision: 2 }),
     FX('referrer_credit_mur', 'Referrer credit (MUR)', 'amount_mur * COALESCE(referrer_split_pct, 0) / 100', { format: 'currency', precision: 2 }),
     FX('variance', 'Variance vs finance', 'IF(ISBLANK(finance_amount), null, amount - finance_amount)', { format: 'currency', precision: 2 }),
-    FX('name', 'Revenue', "CONCAT(business_unit, ' · ', revenue_type, ' · ', period)", { type: 'string' }),
+    FX('name', 'Revenue', "CONCAT(LABEL(business_unit), ' · ', LABEL(revenue_type), ' · ', period)", { type: 'string' }),
   ],
   forms: [{ name: 'revenue_entry_create', label: 'Revenue line', fields: ['party', 'business_unit', 'product_code', 'revenue_type', 'amount', 'currency_code', 'period', 'booked_on', 'rm', 'referrer_rm', 'referrer_split_pct', 'campaign', 'finance_amount'] }],
 };

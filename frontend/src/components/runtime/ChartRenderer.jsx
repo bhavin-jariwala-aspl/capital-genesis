@@ -6,7 +6,7 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   RadialBarChart, RadialBar, Treemap, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  FunnelChart, Funnel, LabelList, ReferenceLine, Label,
+  LabelList, ReferenceLine, Label,
 } from 'recharts';
 import ReactApexChart from 'react-apexcharts';
 import Spinner from '../ui/Spinner';
@@ -185,6 +185,11 @@ function SwatchLegend({ items }) {
 
 const AXIS = { tickLine: false, axisLine: false };
 
+/** True when any plotted number has a fractional part — counts get whole-number ticks only. */
+function hasFractions(data) {
+  return (data || []).some((row) => Object.values(row || {}).some((v) => typeof v === 'number' && !Number.isInteger(v)));
+}
+
 // ---- Recharts-based charts ----
 
 function ReBarChart({ data, xKey = 'name', yKey = 'value', barDefs = [], stacked: stackedProp }) {
@@ -209,7 +214,7 @@ function ReBarChart({ data, xKey = 'name', yKey = 'value', barDefs = [], stacked
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} allowDecimals={hasFractions(data)} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,23,42,0.03)' }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -240,7 +245,7 @@ function ReLineChart({ data, xKey = 'name', yKey = 'value', lineDefs = [] }) {
       <LineChart data={data} margin={margin}>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} allowDecimals={hasFractions(data)} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ stroke: tick, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -288,7 +293,7 @@ function ReAreaChart({ data, xKey = 'name', yKey = 'value', stacked: stackedProp
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} allowDecimals={hasFractions(data)} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ stroke: tick, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -458,19 +463,29 @@ function TreemapCell({ x, y, width, height, name, fill }) {
 }
 
 function ReFunnelChart({ data, valueKey = 'value', nameKey = 'name' }) {
-  const { series } = useChartTheme();
+  // A centred horizontal-bar funnel: one row per stage in its pipeline order,
+  // stage names on the axis and each value beside its bar. Unlike trapezoids it
+  // stays legible when stages are not strictly decreasing (won / lost, nurture).
+  const { series, tick } = useChartTheme();
+  const { fmt } = useCartesianDecor();
+  const rows = (data || []).map((d) => ({ name: String(d?.[nameKey] ?? ''), value: Number(d?.[valueKey]) || 0 }));
+  const max = Math.max(0, ...rows.map((r) => r.value));
+  const shaped = rows.map((r) => ({ ...r, pad: (max - r.value) / 2, tail: (max - r.value) / 2 + max * 0.18 }));
+  const longest = Math.max(0, ...rows.map((r) => r.name.length));
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <FunnelChart>
-        <Tooltip content={<ChicTooltip />} />
-        <Funnel dataKey={valueKey} nameKey={nameKey} data={data} isAnimationActive stroke="none">
-          {data.map((_, i) => (
-            <Cell key={i} fill={series[i % series.length]} />
-          ))}
-          <LabelList position="right" fill="currentColor" stroke="none" dataKey={nameKey} className="text-gray-600 dark:text-white/70" fontSize={12} />
-          <LabelList position="center" fill="#fff" stroke="none" dataKey={valueKey} fontSize={13} fontWeight={700} />
-        </Funnel>
-      </FunnelChart>
+      <BarChart data={shaped} layout="vertical" margin={{ top: 6, right: 8, bottom: 6, left: 4 }} barCategoryGap="14%">
+        <XAxis type="number" hide domain={[0, max * 1.18 || 1]} />
+        <YAxis type="category" dataKey="name" {...AXIS} width={Math.min(150, 14 + longest * 7)} tick={{ fontSize: 11.5, fill: tick }} />
+        <Tooltip content={<ChicTooltip />} cursor={false} />
+        <Bar dataKey="pad" stackId="f" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none" />
+        <Bar dataKey="value" stackId="f" radius={6} isAnimationActive>
+          {shaped.map((_, i) => <Cell key={i} fill={series[i % series.length]} />)}
+        </Bar>
+        <Bar dataKey="tail" stackId="f" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none">
+          <LabelList dataKey="value" position="insideLeft" formatter={fmt} fontSize={11.5} fontWeight={700} fill={tick} />
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }
@@ -490,7 +505,7 @@ function ReComposedChart({ data, xKey = 'name', barKey = 'bar', lineKey = 'line'
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} allowDecimals={hasFractions(data)} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
         {showLegend(true) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}

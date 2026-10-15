@@ -70,7 +70,7 @@ export default function Header({ onMenuClick }) {
         <div className="flex items-center gap-2.5">
           <div className="text-right hidden sm:block">
             <p className="text-[13px] font-medium text-gray-700 dark:text-white/80 leading-tight">{employee?.employee_name}</p>
-            <p className="text-[11px] text-gray-400 dark:text-white/35 leading-tight capitalize">{employee?.role?.replaceAll('_', ' ')}</p>
+            <p className="text-[11px] text-gray-400 dark:text-white/35 leading-tight capitalize">{employee?.role_label ?? employee?.role?.replaceAll('_', ' ')}</p>
           </div>
           <button
             type="button"

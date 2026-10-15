@@ -1,4 +1,4 @@
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import clsx from 'clsx';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
@@ -8,6 +8,19 @@ import Checkbox from '../ui/Checkbox';
 import RadioGroup from '../ui/RadioGroup';
 import StatusTracker from '../ui/StatusTracker';
 import RecordPicker from '../ui/RecordPicker';
+
+/**
+ * A money input denominated in the record's own currency when the field names
+ * one with `config.currency_field` (a USD fund order's amount follows its
+ * `currency_code`). Until that code is known — e.g. a new order whose currency
+ * comes from the share class picked — no symbol is shown rather than the
+ * tenant's, which would be wrong.
+ */
+function RecordCurrencyInput({ control, currencyField, ...props }) {
+  const code = useWatch({ control, name: currencyField || '__no_currency_field__' });
+  const known = currencyField && typeof code === 'string' && /^[A-Z]{3}$/.test(code) ? code : undefined;
+  return <CurrencyInput {...props} currency={known} hideSymbol={!!currencyField && !known} />;
+}
 
 /**
  * FieldRenderer — renders a single field based on its field_type.
@@ -38,6 +51,7 @@ export default function FieldRenderer({
   required = false,
   recordId,
   watchValue,
+  knownLabels,
 }) {
   const fieldName = field.field_name ?? field.name;  // normaliseFormMeta sets field_name; defensive fallback
   const error = errors?.[fieldName]?.message;
@@ -131,8 +145,8 @@ export default function FieldRenderer({
           control={control}
           rules={validationRules}
           render={({ field: f }) => (
-            <RecordPicker targetObject={cfg.target_object} value={f.value ?? null} onChange={f.onChange}
-              label={ctl.label} error={error} help={commonProps.help} disabled={disabled} placeholder={field.placeholder} />
+            <RecordPicker id={fieldName} targetObject={cfg.target_object} value={f.value ?? null} onChange={f.onChange}
+              knownLabels={knownLabels} label={ctl.label} error={error} help={commonProps.help} disabled={disabled} placeholder={field.placeholder} />
           )}
         />
       );
@@ -230,7 +244,7 @@ export default function FieldRenderer({
           control={control}
           rules={validationRules}
           render={({ field: f }) => (
-            <Checkbox label={ctl.label ?? field.label} checked={!!f.value} onChange={(e) => f.onChange(e.target.checked)} disabled={disabled} error={error} />
+            <Checkbox id={fieldName} label={ctl.label ?? field.label} checked={!!f.value} onChange={(e) => f.onChange(e.target.checked)} disabled={disabled} error={error} />
           )}
         />
       );
@@ -243,7 +257,7 @@ export default function FieldRenderer({
           control={control}
           rules={validationRules}
           render={({ field: f }) => (
-            <CurrencyInput label={ctl.label} value={f.value ?? ''} onChange={f.onChange} disabled={disabled} error={error} placeholder={field.placeholder} help={help} />
+            <RecordCurrencyInput control={control} currencyField={cfg.currency_field} id={fieldName} label={ctl.label} value={f.value ?? ''} onChange={f.onChange} disabled={disabled} error={error} placeholder={field.placeholder} help={help} />
           )}
         />
       );
@@ -296,7 +310,7 @@ export default function FieldRenderer({
       return <Input {...ctl} type="email" placeholder={field.placeholder || 'email@example.com'} {...register(fieldName, validationRules)} />;
     }
     if (ft === 'phone') {
-      return <Input {...ctl} type="tel" placeholder={field.placeholder || '+1 (555) 000-0000'} {...register(fieldName, validationRules)} />;
+      return <Input {...ctl} type="tel" placeholder={field.placeholder || 'Phone number'} {...register(fieldName, validationRules)} />;
     }
     if (ft === 'url') {
       return <Input {...ctl} type="url" placeholder={field.placeholder || 'https://'} {...register(fieldName, validationRules)} />;

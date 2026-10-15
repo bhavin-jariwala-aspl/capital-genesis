@@ -75,19 +75,41 @@ describe('RecordService — masking, reveal and the save guard', () => {
   }
   const user = (role) => ({ role, role_level: role === 'admin' ? 3 : 5, employee_id: 'U1', tenant_id: 1 });
 
-  it('lets admins and view-PII roles see personal data, and no one else', async () => {
+  it('lets admins and view-PII roles reveal personal data, and no one else', async () => {
     expect(await new RecordService(db().d).canViewPii(user('admin'))).toBe(true);
     expect(await new RecordService(db({ piiRole: true }).d).canViewPii(user('compliance_officer'))).toBe(true);
     expect(await new RecordService(db().d).canViewPii(user('rm_masked'))).toBe(false);
     expect(await new RecordService(db().d).canViewPii(null)).toBe(true);
   });
 
-  it('reveals a protected field and writes it to the audit chain', async () => {
-    const { d, appended } = db();
+  it('reveals a protected field to a view-PII role and writes it to the audit chain', async () => {
+    const { d, appended } = db({ piiRole: true });
     const svc = new RecordService(d);
-    const out = await svc.revealField(7, 'id_number', user('rm_reveal'));
+    const out = await svc.revealField(7, 'id_number', user('compliance_reveal'));
     expect(out).toEqual({ field: 'id_number', value: 'R1204845400123' });
     expect(appended.length).toBe(1);
+  });
+
+  it('refuses a reveal to a role without the view-PII permission, and audits nothing', async () => {
+    const { d, appended } = db();
+    await expect(new RecordService(d).revealField(7, 'id_number', user('rm_noreveal'))).rejects.toThrow(/may not view personal data/);
+    expect(appended.length).toBe(0);
+  });
+
+  it('masks on screen for everyone; only view-PII roles get can_reveal; exports stay unmasked for them', async () => {
+    const rows = [{ id: 7, data: { id_number: 'R1204845400123', income_band: 'gt_3m', email: 'a@example.com' } }];
+    const flds = [...fields, { name: 'income_band', field_type: 'select', config: { pii: true } }];
+    const mk = (piiRole) => { const { d } = db({ piiRole }); d.uiField.findMany.mockResolvedValue(flds); return new RecordService(d); };
+    const rm = await mk(false)._maskForTest(3, rows, user('rm_list'));
+    expect(rm[0].data.id_number).toBe('••••••••0123');
+    expect(rm[0].data.income_band).toBe('••••••');
+    expect(rm[0].data.email).toBe('a@example.com');
+    expect(rm[0].can_reveal).toBe(false);
+    const co = await mk(true)._maskForTest(3, rows, user('compliance_list'));
+    expect(co[0].masked).toEqual(['id_number', 'income_band']);
+    expect(co[0].can_reveal).toBe(true);
+    const exp = await mk(true)._maskForTest(3, rows, user('compliance_exp'), { onDemand: false });
+    expect(exp[0].data.id_number).toBe('R1204845400123');
   });
 
   it('refuses to "reveal" a field that is not protected', async () => {

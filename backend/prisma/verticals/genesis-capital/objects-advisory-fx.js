@@ -219,7 +219,7 @@ const fxQuote = {
     FX('improvement_vs_board', 'Improvement vs board (MUR)', "IF(ISBLANK(quoted_rate), null, IF(side = 'buys', (board_rate - quoted_rate) * amount, (quoted_rate - board_rate) * amount))", { format: 'currency', precision: 2 }),
     FX('amount_mur', 'Amount (MUR)', 'amount * COALESCE(quoted_rate, board_rate)', { format: 'currency', precision: 2 }),
     FXBU,
-    FX('name', 'Quote', "CONCAT(quote_no, ' · ', side, ' ', currency_code, ' ', amount)", { type: 'string' }),
+    FX('name', 'Quote', "CONCAT(quote_no, ' · ', LABEL(side), ' ', currency_code, ' ', amount)", { type: 'string' }),
   ],
   forms: [{ name: 'fx_quote_create', label: 'Quote request', fields: ['party', 'fx_profile', 'product', 'side', 'currency_code', 'amount', 'value_date', 'requested_at', 'quoted_rate', 'quoted_at', 'responded_at'] }],
   pipeline: {
@@ -262,7 +262,7 @@ const fxDeal = {
     FX('open_forward', 'Open forward', "product != 'spot' AND NOT(settled)", { type: 'boolean', format: 'checkbox' }),
     FX('days_to_value', 'Days to value date', 'IF(ISBLANK(value_date), null, DAYS_BETWEEN(TODAY(), value_date))'),
     FXBU,
-    FX('name', 'Deal', "CONCAT(deal_no, ' · ', product, ' ', currency_code, ' ', amount)", { type: 'string' }),
+    FX('name', 'Deal', "CONCAT(deal_no, ' · ', LABEL(product), ' ', currency_code, ' ', amount)", { type: 'string' }),
   ],
   forms: [{ name: 'fx_deal_create', label: 'Record deal', fields: ['party', 'fx_profile', 'fx_quote', 'product', 'side', 'currency_code', 'amount', 'deal_rate', 'trade_date', 'value_date', 'dealing_reference', 'purpose_code', 'settled'] }],
 };
@@ -289,7 +289,7 @@ const fxRateAlert = {
     FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
     FX('party_mobile', 'Client mobile', 'party.mobile', { type: 'string' }),
     FXBU,
-    FX('name', 'Alert', "CONCAT(currency_code, ' ', direction, ' ', target_rate, ' · ', party.display_name)", { type: 'string' }),
+    FX('name', 'Alert', "CONCAT(currency_code, ' ', LABEL(direction), ' ', target_rate, ' · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'fx_rate_alert_create', label: 'Rate alert', fields: ['party', 'currency_code', 'direction', 'target_rate', 'channel', 'expires_on', 'converted_to_deal'] }],
   pipeline: {

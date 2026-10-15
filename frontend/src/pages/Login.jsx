@@ -140,7 +140,9 @@ export default function Login() {
       setAuth(res.token, res.employee, remember, res.refresh_token);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
+      // The API answers { success: false, error: { code, message } } — show its words
+      // ("Too many login attempts…", "Invalid credentials"), not "status code 429".
+      setError(err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Login failed. Please try again.');
     }
   };
 

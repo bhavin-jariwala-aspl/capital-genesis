@@ -25,14 +25,18 @@ export default function GlobalSearch() {
 
   // ── Search on debounced value ────────────────────────────────────────────
   useEffect(() => {
-    if (!debounced.trim()) { setResults([]); return; }
+    if (debounced.trim().length < 2) { setResults([]); return; }
+    let current = true;  // ignore a slower, older response
     setLoading(true);
     setActive(-1);
     searchService.search(debounced)
-      .then(r => setResults(r.data?.data ?? []))
-      .catch(() => setResults([]))
-      .finally(() => setLoading(false));
+      .then(r => { if (current) setResults(r.data?.data ?? []); })
+      .catch(() => { if (current) setResults([]); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
   }, [debounced]);
+  // Still typing (debounce pending) counts as searching, so "No results" never flashes.
+  const pending = loading || query.trim() !== debounced.trim();
 
   // ── Close on outside click ───────────────────────────────────────────────
   useEffect(() => {
@@ -45,7 +49,8 @@ export default function GlobalSearch() {
 
   // ── Keyboard navigation ───────────────────────────────────────────────────
   const goTo = useCallback((item) => {
-    navigate(`/module/${item.module_id}/object/${item.object_id}/edit/${item.id}`);
+    // Open the record itself (its panel), not the edit form.
+    navigate(`/module/${item.module_id}/object/${item.object_id}?record=${item.record_id ?? item.id}`);
     setQuery('');
     setResults([]);
     setFocused(false);
@@ -87,7 +92,9 @@ export default function GlobalSearch() {
 
       {open && (
         <div className="absolute top-full mt-2 left-0 w-80 rounded-xl shadow-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-night-3 z-50 overflow-hidden">
-          {loading ? (
+          {query.trim().length < 2 ? (
+            <p className="text-xs text-gray-400 text-center py-6">Type at least 2 characters</p>
+          ) : pending ? (
             <p className="text-xs text-gray-400 text-center py-6">Searching…</p>
           ) : results.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">No results for &ldquo;{query}&rdquo;</p>

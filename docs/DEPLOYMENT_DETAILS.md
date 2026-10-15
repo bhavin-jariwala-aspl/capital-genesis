@@ -29,6 +29,10 @@ An RDS instance already exists (`smartsure-mysql` in `us-east-2`). Ensure:
 - Automated backups are enabled.
 - Multi-AZ is enabled for production.
 
+The demo laptop does not use this instance day to day. It runs a local MySQL copy of the RDS `genesis` database, and
+the RDS URL is kept commented out in `backend/.env`. See
+[Local demo database](getting-started/INSTALLATION.md#local-demo-database-macos).
+
 ### Redis (ElastiCache)
 
 Create an ElastiCache Redis cluster:

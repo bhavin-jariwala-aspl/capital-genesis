@@ -59,6 +59,20 @@ describe('RecordService.createRecord validation', () => {
     expect(err.details.map((d) => d.field).sort()).toEqual(['email', 'qty']);
   });
 
+  it('computes formulas that read a new auto number after the number is issued', async () => {
+    const fields = [
+      F({ id: 1, name: 'title' }),
+      F({ id: 2, name: 'ref', label: 'Ref', config: { auto_number: { prefix: 'DSR-', format: 'YYYY-NNNNNN' } } }),
+      F({ id: 3, name: 'name', label: 'Name', field_type: 'formula', config: { expression: "CONCAT(ref, ' · ', title)" } }),
+    ];
+    const db = { ...makePrisma({ fields }), fields };
+    db.uiField.findMany.mockImplementation(async ({ where } = {}) => (where?.default_value ? [] : db.fields));
+    await new RecordService(db).createRecord(42, null, 'A1', null, viewer, { title: 'Access' });
+    const saved = Object.fromEntries(db.recordFieldValue.upsert.mock.calls.map(([a]) => [a.create.field_name, a.create.str_value]));
+    expect(saved.ref).toMatch(/^DSR-\d{4}-\d{6}$/);
+    expect(saved.name).toBe(`${saved.ref} · Access`);
+  });
+
   it('writes when everything passes', async () => {
     const db = makePrisma({ fields: [F({ is_required: true })] });
     const svc = new RecordService(db);
@@ -136,5 +150,43 @@ describe('RecordService.updateRecord validation', () => {
     const svc = new RecordService(db);
     await svc.updateRecord(5, 'A1', viewer, undefined, { code: 'X1' });
     expect(db.recordFieldValue.findFirst.mock.calls[0][0].where.record_id).toEqual({ not: 5 });
+  });
+});
+
+describe('RecordService.createRecord — starting stage', () => {
+  it('puts a record created without a stage into its pipeline\'s first stage', async () => {
+    const db = makePrisma();
+    db.uiPipelineStage = { findFirst: jest.fn().mockResolvedValue({ id: 512 }) };
+    await new RecordService(db).createRecord(42, null, 'A1', null, viewer, { title: 'x' });
+    expect(db.uiPipelineStage.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { pipeline: { object_id: 42 } } }));
+    expect(db.record.create.mock.calls[0][0].data.pipeline_stage_id).toBe(512);
+  });
+
+  it('keeps an explicit stage, and no stage for an object without a pipeline', async () => {
+    const db = makePrisma();
+    db.uiPipelineStage = { findFirst: jest.fn().mockResolvedValue(null) };
+    const svc = new RecordService(db);
+    await svc.createRecord(42, 77, 'A1', null, viewer, { title: 'x' });
+    await svc.createRecord(42, null, 'A1', null, viewer, { title: 'y' });
+    expect(db.record.create.mock.calls.map((c) => c[0].data.pipeline_stage_id)).toEqual([77, null]);
+    expect(db.uiPipelineStage.findFirst).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('RecordService.createRecord — routing before on-create automation', () => {
+  it('announces record.created only once assignment has settled, with the assignee', async () => {
+    const db = makePrisma();
+    const order = [];
+    let release;
+    const assignSvc = { assign: jest.fn(() => new Promise((res) => { release = () => { order.push('assigned'); res('GCPM1'); }; })) };
+    const eventBus = { publish: jest.fn(async (event, payload) => { order.push(`${event}:${payload.record.assigned_to}`); }) };
+    const svc = new RecordService(db, eventBus, null, assignSvc);
+    await svc.createRecord(42, null, 'A1', null, viewer, { title: 'x' });
+    // The response does not wait for routing…
+    expect(eventBus.publish).not.toHaveBeenCalledWith('record.created', expect.anything());
+    release();
+    await new Promise((r) => setImmediate(r));
+    // …but an on-create workflow (e.g. "give it to the receiving RM") runs after it, so it is not overwritten.
+    expect(order).toEqual(['assigned', 'record.created:GCPM1']);
   });
 });

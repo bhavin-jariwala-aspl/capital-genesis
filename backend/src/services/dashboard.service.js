@@ -140,6 +140,28 @@ class DashboardService {
     });
   }
 
+  /**
+   * Name of the dashboard a role lands on, from the `home.dashboards_by_role`
+   * workspace setting ("role:dashboard_name, …"). Null when the role is not listed.
+   */
+  async homeDashboardName(tenantId, roleName) {
+    if (!tenantId || !roleName) return null;
+    const row = await this.db.tenantConfig.findUnique({
+      where: { tenant_id_config_key: { tenant_id: Number(tenantId), config_key: 'home.dashboards_by_role' } },
+    }).catch(() => null);
+    return DashboardService.parseHomeMap(row?.config_value)[roleName] ?? null;
+  }
+
+  /** "rm:genesis_rm_workbench, coo:genesis_group_executive" → { rm: 'genesis_rm_workbench', … } */
+  static parseHomeMap(value) {
+    const map = {};
+    for (const pair of String(value ?? '').split(',')) {
+      const [role, name] = pair.split(':').map((x) => x?.trim());
+      if (role && name) map[role] = name;
+    }
+    return map;
+  }
+
   /** Whether `viewerRole` may open the dashboard gated on `minRole`. */
   async canViewDashboard(viewerRole, minRole) {
     if (!minRole) return true;

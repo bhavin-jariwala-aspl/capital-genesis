@@ -341,9 +341,11 @@ export default function PublicFormPage() {
                   {multi && step > 0
                     ? <Button type="button" variant="ghost" onClick={() => setStep(step - 1)}><ArrowLeft className="mr-1 h-4 w-4" />Back</Button>
                     : <span />}
+                  {/* Distinct keys: otherwise React turns the clicked "Continue" into the submit button in place and
+                      the same click submits step 2 before it is filled, showing every field as missing. */}
                   {last
-                    ? <Button type="submit" loading={isSubmitting} className="min-w-[10rem]">Send request<ArrowRight className="ml-1 h-4 w-4" /></Button>
-                    : <Button type="button" onClick={next} className="min-w-[10rem]">Continue<ArrowRight className="ml-1 h-4 w-4" /></Button>}
+                    ? <Button key="submit" type="submit" loading={isSubmitting} className="min-w-[10rem]">Send request<ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    : <Button key="next" type="button" onClick={next} className="min-w-[10rem]">Continue<ArrowRight className="ml-1 h-4 w-4" /></Button>}
                 </div>
               </form>
             )}

@@ -80,8 +80,8 @@ const workflows = [
       trig('Stage change'),
       cond('c1', 'Moved to Pending approval', 'stage', 'eq', 'pending_approval'),
       expr('c2', 'High risk?', "risk_rating = 'high'", { on_true: 'ap_mlro', on_false: 'ap_comp' }),
-      approval('ap_mlro', 'MLRO sign-off', 'mlro', 'KYC approval (high risk): {{name}}', 'Risk score {{risk_score}}, rating {{risk_rating}}. EDD notes: {{edd_notes}}', 'ok1', 'no1'),
-      approval('ap_comp', 'Compliance approval', 'compliance_officer', 'KYC approval: {{name}}', 'Risk score {{risk_score}}, rating {{risk_rating}}.', 'ok1', 'no1'),
+      approval('ap_mlro', 'MLRO sign-off', 'mlro', 'KYC approval (high risk): {{name}}', 'Risk score {{risk_score}} — high risk / PEP. EDD notes: {{edd_notes}}', 'ok1', 'no1'),
+      approval('ap_comp', 'Compliance approval', 'compliance_officer', 'KYC approval: {{name}}', 'Risk score {{risk_score}} — standard or medium risk.', 'ok1', 'no1'),
       set('ok1', 'Outcome approved', 'kyc_outcome', 'approved'),
       set('ok2', 'Decision date', 'decision_date', '{{today}}'),
       set('ok3', 'Move to Approved', 'stage', 'approved'),
@@ -277,6 +277,17 @@ const assignmentRules = [
     object: 'enquiry', name: `Route ${bu} enquiries`, rule_type: 'rule_based',
     conditions: [{ field: 'business_unit', operator: 'equals', value: bu }], pool, fallback: 'GCRM1', order_index: i + 1,
   })),
+  // A referral goes to the receiving entity's team (a named receiving RM wins — see the referral workflow).
+  ...ROUTES.map(([bu, pool], i) => ({
+    object: 'referral', name: `Route referrals to ${bu}`, rule_type: 'rule_based',
+    conditions: [{ field: 'to_business_unit', operator: 'equals', value: bu }], pool, fallback: 'GCRM1', order_index: i + 1,
+  })),
+  // Complaints go to Compliance whatever the business unit (SR-FR-03): the
+  // complaints register is owned there, and its SLA timers land on their board.
+  {
+    object: 'service_request', name: 'Route complaints to Compliance', rule_type: 'rule_based',
+    conditions: [{ field: 'request_type', operator: 'equals', value: 'complaint' }], pool: ['GCCOMP1'], fallback: 'GCCOMP1', order_index: 0,
+  },
   ...ROUTES.map(([bu, pool], i) => ({
     object: 'service_request', name: `Route ${bu} requests`, rule_type: 'rule_based',
     conditions: [{ field: 'business_unit', operator: 'equals', value: bu }], pool, fallback: 'GCRM1', order_index: i + 1,
@@ -373,6 +384,8 @@ const permissions = [
   ...perm(['loan_application', 'collateral'], ['rm', ...CONTROL], false),
   ...perm(['risk_profile', 'suitability_record', 'wealth_mandate', 'fund_order', 'securities_account'], ['rm', 'portfolio_manager', 'trader'], true),
   ...perm(['risk_profile', 'suitability_record', 'wealth_mandate', 'fund_order', 'securities_account'], CONTROL, false),
+  // The operations checker authorises fund orders (maker-checker), so must be able to open the order he approves.
+  ...perm(['fund_order'], ['operations_checker'], false),
   ...perm(['advisory_mandate', 'conflict_register'], ['corporate_advisor', 'compliance_officer'], true),
   ...perm(['advisory_mandate', 'conflict_register'], ['mlro', 'coo'], false),
   ...perm(['fx_profile'], ['fx_dealer', 'rm'], true),

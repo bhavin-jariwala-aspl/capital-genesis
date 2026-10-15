@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Circle, Copy, Link2, Mail, Check } from 'lucide-react';
+import { CheckCircle2, Circle, Copy, Link2, Mail, Check, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
@@ -9,6 +9,12 @@ import Button from '../ui/Button';
 import Alert from '../ui/Alert';
 import { uploadLinksService } from '../../services/uploadLinks.service';
 import { apiErrorText } from '../../utils/record';
+
+// Document lifecycle statuses (Document.status) in plain words.
+const DOC_STATUS = {
+  required: 'Required', pending: 'Pending', uploaded: 'Uploaded', under_review: 'Under review',
+  approved: 'Approved', rejected: 'Rejected', waived: 'Waived', deleted: 'Deleted',
+};
 
 /**
  * The record's document checklist — what is in and what is missing — with a
@@ -30,6 +36,8 @@ export default function DocumentChecklist({ recordId, clientEmail = '', clientNa
   const [error, setError] = useState(null);
 
   if (isLoading || !data?.checklists?.length) return null;
+  // A catalogue record (a product): the checklist its applications use, for reference only.
+  if (data.reference) return <ReferenceChecklist checklists={data.checklists} />;
 
   const copy = async () => {
     setError(null);
@@ -60,7 +68,7 @@ export default function DocumentChecklist({ recordId, clientEmail = '', clientNa
                   : <Circle className={clsx('mt-0.5 h-4 w-4 shrink-0', i.required ? 'text-amber-500' : 'text-gray-300')} aria-label="Missing" />}
                 <span className={clsx('min-w-0', i.received ? 'text-gray-700 dark:text-white/80' : 'text-gray-900 dark:text-white')}>
                   {i.label}{!i.required && <span className="text-xs text-gray-400"> (optional)</span>}
-                  {i.documents[0] && <span className="block truncate text-xs text-gray-400">{i.documents[0].filename} · {i.documents[0].status}</span>}
+                  {i.documents[0] && <span className="block truncate text-xs text-gray-400">{i.documents[0].filename} · {DOC_STATUS[i.documents[0].status] ?? i.documents[0].status}</span>}
                 </span>
               </li>
             ))}
@@ -79,6 +87,30 @@ export default function DocumentChecklist({ recordId, clientEmail = '', clientNa
       <Modal open={emailing} onClose={() => setEmailing(false)} title="Send a secure upload link">
         {emailing && <EmailLink recordId={recordId} defaultTo={clientEmail} defaultName={clientName} onDone={() => setEmailing(false)} />}
       </Modal>
+    </div>
+  );
+}
+
+function ReferenceChecklist({ checklists }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-white/[0.03]">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-white/50">Document checklist for applications</h4>
+      {checklists.map((c) => (
+        <div key={c.id} className="mt-2">
+          <p className="mb-1 text-sm font-medium text-gray-800 dark:text-white/80">{c.label}</p>
+          <ul className="space-y-1">
+            {c.items.map((i, n) => (
+              <li key={`${c.id}-${n}`} className="flex items-start gap-2 text-sm text-gray-900 dark:text-white">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary-500" aria-hidden />
+                <span className="min-w-0">{i.label}{!i.required && <span className="text-xs text-gray-400"> (optional)</span>}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p className="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-white/10 dark:text-white/50">
+        Every application for this product gets this checklist on its Docs tab, with what is in and what is still missing.
+      </p>
     </div>
   );
 }

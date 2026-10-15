@@ -57,6 +57,16 @@ const workflows = [
     ],
   },
   {
+    object: 'referral', name: 'genesis_referral_to_receiving_rm', label: 'Referral — goes to the receiving RM',
+    description: 'A cross-entity referral naming a receiving RM is assigned to that person, so the receiving entity sees it and can accept it within the SLA (LEAD-FR-15). Without a name, routing by the receiving entity applies.', ...ONCREATE,
+    steps: [
+      trig('A new referral'),
+      cond('c1', 'Receiving RM named', 'receiving_rm', 'notempty'),
+      set('a1', 'Assign to the receiving RM', 'assigned_to', '{{receiving_rm}}'),
+      notify('n1', 'Tell the receiving RM', { field: 'assigned_to', title: 'New referral — {{name}}', message: '{{reason}}' }),
+    ],
+  },
+  {
     object: 'introducer_referral', name: 'genesis_introducer_referral_intake', label: 'Introducer referral — create the enquiry',
     description: 'A referral from an introducer becomes an enquiry attributed to the introducer, inside the protection window (INT-FR-02, LEAD-FR-14).', ...ONCREATE,
     steps: [
@@ -87,10 +97,10 @@ const workflows = [
       trig('Stage change'),
       cond('c1', 'Moved to Screening', 'stage', 'eq', 'screening'),
       integrate('i1', 'Screen the party', 'genesis_screening', { name: '{{party_name}}', country: '{{party_country}}', pep: '{{pep_flag}}' },
-        { screening_result: 'result', screening_reference: 'reference', screening_date: 'screened_on' }),
+        { screening_result: 'result', screening_reference: 'reference', screening_date: 'screened_on', screening_top_list: 'top_list', screening_top_score: 'top_score' }),
       set('a1', 'Mark screened', 'screening_requested', 'true'),
       expr('c2', 'Potential match?', "screening_result = 'potential_match'"),
-      create('h1', 'Log the hit for triage', 'screening_hit', { kyc_case: '{{id}}', party: '{{party}}', provider: 'simulator', list_type: 'pep', matched_name: '{{party_name}}', match_score: 85, trigger: 'onboarding', disposition: 'pending', source_reference: '{{screening_reference}}' }),
+      create('h1', 'Log the hit for triage', 'screening_hit', { kyc_case: '{{id}}', party: '{{party}}', provider: 'simulator', list_type: '{{screening_top_list}}', matched_name: '{{party_name}}', match_score: '{{screening_top_score}}', trigger: 'onboarding', disposition: 'pending', source_reference: '{{screening_reference}}' }),
       notify('n1', 'Tell Compliance', { role: 'compliance_officer', title: 'Screening hit — {{party_name}}', message: 'Triage the hit on the KYC case before risk assessment.' }),
     ],
   },
@@ -364,7 +374,7 @@ const workflows = [
   // ── M10 Funds ──────────────────────────────────────────────────────────────
   {
     object: 'fund_order', name: 'genesis_fund_order_checker', label: 'Fund order — maker-checker and TA hand-off',
-    description: 'Checks complete → an operations checker other than the maker authorises → the order goes to the transfer agent and is confirmed (FND-FR-02).', ...STAGE,
+    description: 'Checks complete → an operations checker other than the maker authorises → the order goes to the transfer agent and is confirmed; a subscription books its units to a fund holding (FND-FR-02, FND-FR-03).', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Checks complete', 'stage', 'eq', 'checked'),
@@ -373,6 +383,8 @@ const workflows = [
       integrate('ok2', 'Transfer agent', 'genesis_ta', { order_no: '{{order_no}}', fund: '{{fund_code}}', amount: '{{amount}}', order_type: '{{order_type}}' }, { ta_reference: 'ta_reference' }),
       set('ok3', 'Confirmed', 'stage', 'confirmed'),
       email('ok4', 'Confirm to the investor', 'fund_order_confirmation', { to_field: 'party_email' }),
+      cond('ok5', 'A subscription?', 'order_type', 'eq', 'subscription'),
+      create('ok6', 'Book the units to the holding', 'fund_holding', { party: '{{party}}', share_class: '{{share_class}}', units: '{{allotted_units}}', book_cost: '{{amount}}', as_of: '{{today}}' }),
       cond('guard', 'Guard: stop the approved path', 'stage', 'eq', 'rejected'),
       set('no1', 'Reject', 'stage', 'rejected'),
     ],
@@ -557,7 +569,7 @@ const workflows = [
       cond('c0', 'Received date missing?', 'created_on', 'empty', undefined, { on_false: 'c1' }),
       set('a0', 'Received on', 'created_on', '{{today}}'),
       cond('c1', 'Needs approval?', 'needs_approval', 'eq', 'true'),
-      approval('ap', 'Business-unit head', 'bu_head', 'Service approval: {{name}}', '{{request_type}} for {{party_email}}: {{description}}', 'ok', 'no'),
+      approval('ap', 'Business-unit head', 'bu_head', 'Service approval: {{name}}', '{{request_no}} — {{description}}', 'ok', 'no'),
       notify('ok', 'Approved — tell the owner', { field: 'assigned_to', title: 'Approved — {{name}}', message: 'Proceed with the request.' }),
       cond('guard', 'Guard: stop', 'request_type', 'empty'),
       notify('no', 'Declined — tell the owner', { field: 'assigned_to', title: 'Not approved — {{name}}', message: 'Explain the decision to the client.' }),
@@ -629,8 +641,15 @@ const workflows = [
   },
   {
     object: 'gift_register', name: 'genesis_gift_threshold', label: 'Gifts — above-threshold approval',
-    description: 'A gift or hospitality above MUR 5,000 goes to Compliance (CMP-FR-05).', ...ONCREATE,
-    steps: [trig('A new declaration'), cond('c1', 'Above threshold', 'needs_approval', 'eq', 'true'), notify('n1', 'Tell Compliance', { role: 'compliance_officer', title: 'Gift above threshold — {{name}}', message: 'MUR {{estimated_value}} — decide.' })],
+    description: 'A gift or hospitality above MUR 5,000 waits for a Compliance decision in Approvals; the decision is written back to the register (CMP-FR-05).', ...ONCREATE,
+    steps: [
+      trig('A new declaration'),
+      cond('c1', 'Above threshold', 'needs_approval', 'eq', 'true'),
+      approval('ap', 'Compliance decision', 'compliance_officer', 'Gift above MUR 5,000: {{name}}', 'MUR {{estimated_value}} · {{counterparty}} · {{event_date}}', 'ok1', 'no1'),
+      set('ok1', 'Approved', 'decision', 'approved'),
+      cond('guard', 'Guard: stop the approved path', 'decision', 'eq', 'declined'),
+      set('no1', 'Declined / returned', 'decision', 'declined'),
+    ],
   },
   {
     object: 'pa_dealing', name: 'genesis_pa_dealing_check', label: 'Personal dealing — pre-clearance',

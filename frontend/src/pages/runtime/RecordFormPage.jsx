@@ -7,6 +7,8 @@ import { useEntityStore } from '../../store/entityStore';
 import FormRenderer from '../../components/runtime/FormRenderer';
 import Spinner from '../../components/ui/Spinner';
 import Alert from '../../components/ui/Alert';
+import { builderDefaults } from '../../utils/fieldDefaults';
+import { withNeededFields } from '../../utils/record';
 import { ArrowLeft, Wand2, Mail, Monitor, AlignLeft, FileText } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -107,9 +109,23 @@ export default function RecordFormPage() {
       : objects[0];
   }, [module, objectId, cachedObject]);
 
+  // ── Staff forms the user can switch between when editing ────────
+  // An object may carry several staff forms (e.g. a loan application's
+  // "Credit appraisal workbench"). Public web forms and wizard steps are
+  // not offered here. `?form=<id>` picks one; otherwise the default form.
+  const formParam = Number(searchParams.get('form')) || null;
+  const staffForms = useMemo(
+    () => (activeObject?.forms || []).filter(
+      (f) => ['create', 'edit'].includes(f.form_type) && f.is_active !== false && !f.config?.public?.enabled,
+    ),
+    [activeObject],
+  );
+  const requestedForm = formParam ? staffForms.find((f) => f.id === formParam) ?? null : null;
+
   // ── Try cached form from MetadataStore ──────────────────────────
   const cachedFormMeta = useMetadataStore((s) => {
     if (!activeObject?.id) return null;
+    if (requestedForm) return s.getForm(requestedForm.id);
     return s.getFormForObject(activeObject.id, isEdit ? 'edit' : 'create');
   });
 
@@ -122,8 +138,12 @@ export default function RecordFormPage() {
   const createForm = useMemo(() => {
     if (cachedFormMeta) return null; // Already have it
     const list = formsData?.data || [];
+    if (formParam) {
+      const picked = list.find(f => f.id === formParam);
+      if (picked) return picked;
+    }
     return list.find(f => f.form_type === (isEdit ? 'edit' : 'create')) ?? list[0] ?? null;
-  }, [formsData, isEdit, cachedFormMeta]);
+  }, [formsData, isEdit, cachedFormMeta, formParam]);
 
   // ── Fallback: Load full form metadata (with field_layouts) ──────
   const { data: fullFormData, isLoading: formLoading } = useQuery({
@@ -152,7 +172,22 @@ export default function RecordFormPage() {
   }, [noConfiguredForm, objectData, cachedObjectFields]);
 
   // ── The form to actually render (cached > designer form > auto-form)
-  const resolvedFormMeta = formMeta ?? autoFormMeta;
+  const baseFormMeta = formMeta ?? autoFormMeta;
+
+  // ── `?need=a,b` — fields a stage gate asked for (from "Open record to
+  // complete" on the pipeline board). A gate may require a field the usual
+  // form does not carry (e.g. a disqualification reason), so add any that are
+  // missing at the top of the form; otherwise the gate could not be met here.
+  const needParam = searchParams.get('need') || '';
+  const needed = useMemo(() => needParam.split(',').map((s) => s.trim()).filter(Boolean), [needParam]);
+  const neededLabels = useMemo(() => {
+    const byName = new Map((activeObject?.fields || []).map((f) => [f.name, f]));
+    return needed.map((n) => byName.get(n)?.label ?? n);
+  }, [needed, activeObject]);
+  const resolvedFormMeta = useMemo(
+    () => (isEdit ? withNeededFields(baseFormMeta, activeObject?.fields, needed, (f, i) => buildAutoFormMeta([f]).fields[0] ?? { ...f, field_name: f.name, position: i }) : baseFormMeta),
+    [isEdit, baseFormMeta, needed, activeObject],
+  );
 
   // ── Load existing record data (edit mode only)
   const { data: recordData, isLoading: recordLoading } = useQuery({
@@ -161,6 +196,16 @@ export default function RecordFormPage() {
     enabled:  isEdit && !!recordId,
   });
   const existingValues = recordData?.data?.data ?? {};
+  // A new record starts from the Builder defaults (e.g. Scope = Group-level),
+  // so the form shows what will be saved instead of an empty "Select...".
+  const newRecordDefaults = useMemo(() => {
+    if (isEdit) return {};
+    const byName = new Map((activeObject?.fields || []).map((f) => [f.name, f]));
+    return builderDefaults((resolvedFormMeta?.fields || []).map((f) => {
+      const key = f.field_name ?? f.name;
+      return f.default_value !== undefined ? f : { ...byName.get(key), field_name: key };
+    }));
+  }, [isEdit, resolvedFormMeta, activeObject]);
 
   // ── Back path
   const backPath = objectId
@@ -270,11 +315,44 @@ export default function RecordFormPage() {
             </div>
           </div>
 
+          {isEdit && staffForms.length > 1 && (
+            <div role="tablist" aria-label="Form" className="mb-4 inline-flex flex-wrap items-center gap-1 rounded-xl bg-gray-100/80 dark:bg-white/[0.04] p-1">
+              {staffForms.map((f, i) => {
+                const active = requestedForm ? requestedForm.id === f.id : (resolvedFormMeta?.id ? resolvedFormMeta.id === f.id : i === 0);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      const next = new URLSearchParams(searchParams);
+                      next.set('form', String(f.id));
+                      navigate({ search: next.toString() }, { replace: true });
+                    }}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      active
+                        ? 'bg-white dark:bg-white/10 text-primary-600 dark:text-primary-300 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/10'
+                        : 'text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70'
+                    }`}
+                  >
+                    {f.label || f.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="bg-white dark:bg-night-2 rounded-2xl shadow-sm ring-1 ring-gray-900/5 p-8">
             {(!cachedFormMeta && (formLoading || formsLoading || formsFetching || objectFieldsLoading)) || (isEdit && recordLoading) ? (
               <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
             ) : resolvedFormMeta ? (
               <>
+                {isEdit && neededLabels.length > 0 && (
+                  <div className="mb-6">
+                    <Alert variant="info">Needed for the stage move: <strong>{neededLabels.join(', ')}</strong></Alert>
+                  </div>
+                )}
                 {/* Subtle banner when using the auto-generated form */}
                 {autoFormMeta && !formMeta && (
                   <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-400">
@@ -288,9 +366,11 @@ export default function RecordFormPage() {
                   </div>
                 )}
                 <FormRenderer
+                  key={resolvedFormMeta.id ?? 'auto'}
                   formMeta={resolvedFormMeta}
                   recordId={isEdit ? recordId : undefined}
-                  defaultValues={existingValues}
+                  defaultValues={isEdit ? existingValues : newRecordDefaults}
+                  lookupLabels={isEdit ? recordData?.data?.labels : undefined}
                   onSubmit={(data) => saveMutation.mutate(data)}
                   onCancel={() => navigate(backPath)}
                   loading={saveMutation.isPending}

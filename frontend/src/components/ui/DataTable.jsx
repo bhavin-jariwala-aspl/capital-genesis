@@ -51,7 +51,8 @@ export default function DataTable({
     const q = search.toLowerCase();
     return data.filter((row) =>
       columns.some((col) => {
-        const val = cellValue(col, row);
+        // `searchText(row)` lets a column also match what it displays (a picklist label, a lookup's title).
+        const val = typeof col.searchText === 'function' ? `${cellValue(col, row) ?? ''} ${col.searchText(row) ?? ''}` : cellValue(col, row);
         return String(val ?? '').toLowerCase().includes(q);
       }),
     );

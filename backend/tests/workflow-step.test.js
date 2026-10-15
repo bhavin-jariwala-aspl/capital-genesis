@@ -440,3 +440,39 @@ describe('email open tracking', () => {
     expect(db.recordFieldValue.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { num_value: 3 } }));
   });
 });
+
+describe('send_email step — the email shows on the record timeline', () => {
+  it('sends the template and logs an email activity on the record', async () => {
+    const step = { id: 31, name: 'Acknowledge', step_type: 'send_email', order_index: 1, on_true_id: null, on_false_id: null,
+      config: { template: 'complaint_ack', to_field: 'party_email' } };
+    const db = makePrisma(makeWorkflow([step]), { party_email: 'anne@example.mu' });
+    db.emailTemplate = { findMany: jest.fn().mockResolvedValue([{ id: 8, name: 'complaint_ack' }]) };
+    db.activity = { create: jest.fn().mockResolvedValue({ id: 1 }) };
+    const svc = new WorkflowEngineService(db);
+    svc.emailSender = { sendWithTemplate: jest.fn().mockResolvedValue({ id: 1, status: 'sent', subject: 'We received your complaint' }) };
+    await svc.manualRun(1, makeRecord(), 'GCRM1');
+    expect(svc.emailSender.sendWithTemplate).toHaveBeenCalledWith(expect.objectContaining({ template_id: 8, to_email: 'anne@example.mu', related_record_id: 100 }));
+    expect(db.activity.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      record_id: 100, employee_id: 'GCRM1', type: 'email', subject: 'Email sent: We received your complaint',
+    }) });
+  });
+});
+
+describe('approval and notification text — what people read', () => {
+  it('shows picklist labels and formatted amounts, not stored codes', async () => {
+    const step = {
+      id: 10, name: 'Notify', step_type: 'notification', order_index: 1,
+      config: { employee_id: 'E002', title: 'Credit approval', message: 'MUR {{amount}} · Analyst: {{recommendation}} · {{lead_status}}' },
+      on_true_id: null, on_false_id: null,
+    };
+    const db = makePrisma(makeWorkflow([step]), { amount: 4500000, recommendation: 'approve_conditions', lead_status: 'new' });
+    db.uiField.findMany = jest.fn().mockResolvedValue([
+      { name: 'amount', field_type: 'currency', options: null, config: {} },
+      { name: 'recommendation', field_type: 'select', options: [{ value: 'approve', label: 'Approve' }, { value: 'approve_conditions', label: 'Approve with conditions' }], config: {} },
+    ]);
+    const svc = new WorkflowEngineService(db);
+    await svc.manualRun(1, makeRecord(), 'E001');
+    const body = db.notification.createMany.mock.calls[0][0].data[0].body;
+    expect(body).toBe('MUR 4,500,000 · Analyst: Approve with conditions · new');
+  });
+});

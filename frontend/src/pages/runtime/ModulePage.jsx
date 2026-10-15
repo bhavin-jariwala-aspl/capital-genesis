@@ -16,15 +16,15 @@ import TaskPanel from '../../components/runtime/TaskPanel';
 import ReminderPanel from '../../components/runtime/ReminderPanel';
 import DocumentPanel from '../../components/runtime/DocumentPanel';
 import ClientDetails from '../../components/runtime/ClientDetails';
-import FieldValue from '../../components/runtime/FieldValue';
+import FieldValue, { recordCurrency, fmtMoney } from '../../components/runtime/FieldValue';
 import RelatedPanel from '../../components/runtime/RelatedPanel';
 import RecordActions from '../../components/runtime/RecordActions';
 import RecordMerge from '../../components/runtime/RecordMerge';
 import { EmployeePicker } from '../../components/ui/EmployeePicker';
 import { useAuthStore } from '../../store/authStore';
-import { recordTitle, initials, gradientFor, apiErrorText } from '../../utils/record';
+import { recordTitle, initials, gradientFor, apiErrorText, gateFields } from '../../utils/record';
 import clsx from 'clsx';
-import { fmtCurrency } from '../../utils/formatters';
+import { optionLabel } from '../../utils/metadata-helpers';
 import {
   Plus, LayoutList, Kanban, Wand2, Download, Upload, Trash2, X,
   History, Activity, CheckSquare, LayoutGrid, Edit, ImageOff, Mail, FileText,
@@ -143,7 +143,7 @@ function RecordCard({ record, fields, imageField, moduleId, objectId, onActivity
                   <span className="text-[11px] text-gray-400 truncate shrink-0">{f.label}</span>
                   <span className="text-[11px] text-gray-700 dark:text-gray-300 truncate text-right">
                     {f.field_type === 'currency' || f.name === 'annual_revenue'
-                      ? fmtCurrency(val)
+                      ? fmtMoney(val, recordCurrency(f, record.data))
                       : String(val)}
                   </span>
                 </div>
@@ -421,7 +421,10 @@ export default function ModulePage() {
       // The card goes back to its lane; say why, in words (the API's error is
       // an object — rendering it as-is used to crash the board).
       if (ctx?.snapshot) queryClient.setQueryData(['runtime-records', activeObject?.id], ctx.snapshot);
-      setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: id });
+      // A stage gate lists the fields it needs; the edit form is told to show
+      // them even when the object's usual form does not carry them.
+      const need = gateFields(err);
+      setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: id, need });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] }),
   });
@@ -557,7 +560,16 @@ export default function ModulePage() {
         sortable: true,
         // Formatted from the field's metadata (type, options, lookup label) —
         // the same renderer the record panel uses.
-        render:   (_, row) => <FieldValue field={f} value={row.data?.[f.name]} label={row.labels?.[f.name]} masked={row.masked?.includes(f.name)} recordId={row.id} compact />,
+        render:   (_, row) => <FieldValue field={f} value={row.data?.[f.name]} label={row.labels?.[f.name]} masked={row.masked?.includes(f.name)} recordId={row.can_reveal ? row.id : null} currency={recordCurrency(f, row.data)} compact />,
+        // The table search also matches what the cell shows: "Global Funds" finds the
+        // "Funds (Genesis Global Funds)" unit whose stored value is FND.
+        searchText: (row) => {
+          if (row.masked?.includes(f.name)) return '';
+          if (row.labels?.[f.name]) return row.labels[f.name];
+          const v = row.data?.[f.name];
+          if (!f.options?.length || v === null || v === undefined || v === '') return '';
+          return (Array.isArray(v) ? v : [v]).map((x) => optionLabel(x, f.options)).join(' ');
+        },
       }));
 
     if (pipeline) {
@@ -810,7 +822,7 @@ export default function ModulePage() {
                 <span>{moveNotice.text}</span>
                 {canEdit && moveNotice.recordId && (
                   <button type="button" className="ml-3 font-semibold underline underline-offset-2"
-                    onClick={() => { setMoveNotice(null); navigate(`/module/${moduleId}/object/${activeObject?.id}/edit/${moveNotice.recordId}`); }}>
+                    onClick={() => { setMoveNotice(null); navigate(`/module/${moduleId}/object/${activeObject?.id}/edit/${moveNotice.recordId}${moveNotice.need?.length ? `?need=${moveNotice.need.join(',')}` : ''}`); }}>
                     Open record to complete
                   </button>
                 )}
@@ -858,8 +870,8 @@ export default function ModulePage() {
                 loading={recordsLoading}
                 onRowClick={(row) => handleActivityClick(row)}
                 emptyText={canEdit
-                  ? `No ${(activeObject.plural_label || activeObject.label || activeObject.name).toLowerCase()} yet. Click "New ${activeObject.label || activeObject.name}" to add one.`
-                  : `No ${(activeObject.plural_label || activeObject.label || activeObject.name).toLowerCase()} yet.`}
+                  ? `No ${(activeObject.plural_label || activeObject.label || activeObject.name).split(' ').map((w) => (/^[A-Z0-9]{2,}$/.test(w) ? w : w.toLowerCase())).join(' ')} yet. Click "New ${activeObject.label || activeObject.name}" to add one.`
+                  : `No ${(activeObject.plural_label || activeObject.label || activeObject.name).split(' ').map((w) => (/^[A-Z0-9]{2,}$/.test(w) ? w : w.toLowerCase())).join(' ')} yet.`}
               />
             </div>
           )}
@@ -1183,6 +1195,7 @@ function AuditTab({ recordId }) {
     if (action === 'update')        return { label: 'Updated', color: 'text-blue-600   bg-blue-50    dark:bg-blue-950/20' };
     if (action === 'delete')        return { label: 'Deleted', color: 'text-red-600    bg-red-50     dark:bg-red-950/20' };
     if (action === 'stage_change')  return { label: 'Stage',   color: 'text-violet-600 bg-violet-50  dark:bg-violet-950/20' };
+    if (action === 'pii_reveal')    return { label: 'Reveal',  color: 'text-amber-700  bg-amber-50   dark:bg-amber-950/20' };
     if (action.endsWith('_create')) return { label: 'Added',   color: 'text-green-600  bg-green-50   dark:bg-green-950/20' };
     if (action.endsWith('_delete')) return { label: 'Deleted', color: 'text-red-600    bg-red-50     dark:bg-red-950/20' };
     return { label: action.replace('_', ' '), color: 'text-gray-500 bg-gray-50' };

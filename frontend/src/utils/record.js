@@ -54,3 +54,24 @@ export function apiErrorText(err, fallback = 'Something went wrong.') {
   const e = err?.response?.data?.error;
   return (typeof e === 'string' ? e : e?.message) || err?.response?.data?.message || err?.message || fallback;
 }
+
+/** Field names a refused stage move asked for (a stage gate's `details`). */
+export function gateFields(err) {
+  const details = err?.response?.data?.error?.details;
+  return Array.isArray(details) ? [...new Set(details.map((d) => d?.field).filter(Boolean))] : [];
+}
+
+/**
+ * A form that also carries the fields a stage gate needs. A gate may require a
+ * field the object's usual form does not show (e.g. a disqualification reason);
+ * those are added, required, at the top so the gate can be met from the form.
+ * `toEntry(field, i)` turns an object field into a form entry.
+ */
+export function withNeededFields(formMeta, objectFields, needed, toEntry) {
+  if (!formMeta || !needed?.length) return formMeta;
+  const have = new Set((formMeta.fields || []).map((f) => f.field_name ?? f.name));
+  const extra = (objectFields || []).filter((f) => needed.includes(f.name) && !have.has(f.name));
+  if (!extra.length) return formMeta;
+  const added = extra.map((f, i) => ({ ...toEntry(f, i), position: -1000 + i, is_required: true }));
+  return { ...formMeta, fields: [...added, ...(formMeta.fields || [])] };
+}

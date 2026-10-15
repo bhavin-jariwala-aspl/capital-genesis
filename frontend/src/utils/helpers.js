@@ -265,6 +265,16 @@ export function computeFieldStates(dependencies, formValues, allFields) {
     states[field.name] = { visible: true, disabled: false, required: field.is_required };
   }
 
+  // A "show" rule means the field is hidden until its condition is met (and an
+  // "enable" rule that it is read-only until then) — otherwise the rule would
+  // never change anything, since every field starts visible and enabled.
+  for (const dep of dependencies) {
+    const targetName = dep.target_field?.name;
+    if (!targetName || !states[targetName]) continue;
+    if (dep.action_type === 'show') states[targetName].visible = false;
+    if (dep.action_type === 'enable') states[targetName].disabled = true;
+  }
+
   for (const dep of dependencies) {
     const targetName = dep.target_field?.name;
     if (!targetName) continue;

@@ -124,7 +124,7 @@ module.exports = {
   'Expected activity': 'Activité attendue', 'Risk score': 'Score de risque', 'Calculated rating': 'Notation calculée', 'Rating override': 'Notation forcée', 'Override reason': 'Motif du forçage',
   'Risk rating': 'Notation de risque', 'Enhanced due diligence required': 'Vigilance renforcée requise', 'Checks': 'Contrôles', 'Document checklist complete': 'Liste des pièces complète',
   'Source of funds / wealth verified': 'Origine des fonds / du patrimoine vérifiée', 'Sanctions / PEP screening': 'Filtrage sanctions / PPE', 'Clear': 'Sans alerte', 'Potential match': 'Correspondance possible',
-  'True match': 'Correspondance avérée', 'Screening date': 'Date du filtrage', 'Screening reference': 'Référence du filtrage', 'Screening requested': 'Filtrage demandé', 'Open screening hits': 'Alertes de filtrage ouvertes',
+  'True match': 'Correspondance avérée', 'Screening date': 'Date du filtrage', 'Screening reference': 'Référence du filtrage', 'Screening requested': 'Filtrage demandé', 'Strongest hit — list': 'Alerte la plus forte — liste', 'Strongest hit — match %': 'Alerte la plus forte — correspondance %', 'Open screening hits': 'Alertes de filtrage ouvertes',
   'FATCA status': 'Statut FATCA', 'Non-US person': 'Non US Person', 'US person': 'US Person', 'Self-certification pending': 'Auto-certification en attente', 'CRS tax residencies': 'Résidences fiscales (CRS)',
   'Tax identification number(s)': 'Numéro(s) d\'identification fiscale', 'EDD notes (source of wealth, senior management approval)': 'Notes de vigilance renforcée', 'Next review': 'Prochaine revue',
   'Periodic review opened': 'Revue périodique ouverte', 'Review due within 30 days': 'Revue dans les 30 jours', 'Initiated': 'Ouvert', 'Documents pending': 'Pièces en attente',
@@ -313,10 +313,10 @@ module.exports = {
   'RM credit (MUR)': 'Crédit du chargé (MUR)', 'Referrer credit (MUR)': 'Crédit de l\'apporteur (MUR)', 'Variance vs finance': 'Écart avec la comptabilité',
 
   // Service
-  'Request': 'Demande', 'Address change': 'Changement d\'adresse', 'Statement request': 'Demande de relevé', 'Early settlement quote': 'Décompte de remboursement anticipé', 'Partial prepayment': 'Remboursement partiel anticipé',
+  'Request': 'Demande', 'Request type': 'Type de demande', 'Address change': 'Changement d\'adresse', 'Statement request': 'Demande de relevé', 'Early settlement quote': 'Décompte de remboursement anticipé', 'Partial prepayment': 'Remboursement partiel anticipé',
   'Tenure change': 'Changement de durée', 'Moratorium request': 'Demande de différé', 'Fund redemption': 'Rachat de parts', 'Top-up': 'Versement complémentaire', 'FX settlement query': 'Question sur un règlement de change',
   'Certificate of balance': 'Attestation de solde', 'Release of title deeds': 'Restitution des titres de propriété', 'Complaint': 'Réclamation', 'Letter': 'Courrier', 'Open complaint': 'Réclamation ouverte',
-  'Catalogue SLA (business hours)': 'Délai catalogue (heures ouvrables)', 'Needs approval': 'Approbation requise', 'Complaint handling': 'Traitement de la réclamation', 'Service quality': 'Qualité de service', 'Pricing / fees': 'Tarifs / frais',
+  'Catalogue SLA (business hours)': 'Délai catalogue (heures ouvrables)', 'Needs approval': 'Approbation requise', 'Complaint handling': 'Traitement de la réclamation', 'Handling': 'Suivi', 'Service quality': 'Qualité de service', 'Pricing / fees': 'Tarifs / frais',
   'Staff conduct': 'Comportement du personnel', 'Root cause': 'Cause', 'Process': 'Processus', 'People': 'Personnel', 'System': 'Système', 'Third party': 'Tiers', 'No fault found': 'Aucune faute constatée',
   'Final response': 'Réponse définitive', 'Redress (MUR)': 'Indemnisation (MUR)', 'Referred to the Ombudsperson for Financial Services': 'Transmis à l\'Ombudsperson for Financial Services', 'Acknowledged on': 'Accusé réception le',
   'Age (days)': 'Ancienneté (jours)', 'Client satisfaction': 'Satisfaction client', 'CSAT (1–5)': 'Satisfaction (1–5)', 'Likelihood to recommend (0–10)': 'Probabilité de recommander (0–10)', 'Acknowledged': 'Accusé réception',

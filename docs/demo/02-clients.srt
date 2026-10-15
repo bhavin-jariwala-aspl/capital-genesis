@@ -1,0 +1,185 @@
+1
+00:00:23,243 --> 00:00:32,873
+Clients — Client 360
+One golden record per client, shared by every Genesis entity — and everything Genesis does with that client in one place.
+
+2
+00:00:32,876 --> 00:00:35,965
+Priya, a relationship manager, meets a new client at the branch
+Kavya Beeharry, the wife of an existing client, wants to invest with Genesis Wealth
+
+3
+00:00:35,965 --> 00:00:41,836
+Sign in as Priya Ramdin — Relationship Manager
+Relationship manager — she owns the client and the relationship
+
+4
+00:00:41,836 --> 00:01:00,155
+First, a household for the family
+Clients ▸ Households & Groups ▸ New — the family’s value is added up here
+
+5
+00:01:00,155 --> 00:01:06,419
+A household or corporate group adds up its members’ relationship value
+Members join it from their own client record · a corporate group also has a lending limit
+
+6
+00:01:06,419 --> 00:01:09,792
+Now the client herself: Clients ▸ Parties ▸ New
+One party per person or company — every entity of the group shares it
+
+7
+00:01:09,792 --> 00:01:20,589
+Identity: the form shows the individual fields for a person
+Choose Organisation instead and it asks for the legal name, BRN and sector
+
+8
+00:01:20,589 --> 00:01:32,641
+The ID number is personal data: it is stored encrypted and shown masked
+Clients must be at least 18 — the date of birth is checked when you save
+
+9
+00:01:32,641 --> 00:01:53,685
+Contact details, preferred language and channel
+Put her in the household you just created
+
+10
+00:01:53,685 --> 00:02:13,722
+A client can have several addresses and phones
+Clients ▸ Addresses & Phones ▸ New — mark one as verified and preferred
+
+11
+00:02:13,722 --> 00:02:27,015
+Record her marketing consent: one record per purpose and channel
+Clients ▸ Consents ▸ New — Data Protection Act 2017
+
+12
+00:02:27,015 --> 00:02:33,525
+Marketing campaigns only reach clients with a granted consent
+No consent, a withdrawal, “do not contact” or an open complaint suppresses her
+
+13
+00:02:33,525 --> 00:02:50,234
+Link related people: spouse, director, shareholder, beneficial owner, guarantor…
+Clients ▸ Party Relationships ▸ New
+
+14
+00:02:50,234 --> 00:03:16,082
+Open her relationship with the entity she will deal with
+Clients ▸ Client Relationships ▸ New — one per Genesis entity
+
+15
+00:03:16,082 --> 00:03:22,857
+The relationship lifecycle: Prospect ▸ Onboarding ▸ Active ▸ Dormant ▸ Closed ▸ Exited
+Drag the card to move it
+
+16
+00:03:22,857 --> 00:03:30,968
+She has agreed to go ahead: move her to Onboarding
+
+17
+00:03:30,968 --> 00:03:37,383
+Can she become Active straight away?
+
+18
+00:03:37,383 --> 00:03:43,424
+No — the move is refused: her KYC is not approved yet
+The KYC & Compliance team approves her KYC case; then the move goes through
+
+19
+00:03:43,424 --> 00:03:47,672
+Closing a relationship asks for the closing date; Exited also asks for a note
+These rules are set in the Builder — no code
+
+20
+00:03:47,672 --> 00:03:56,403
+Back on her client record: everything is linked
+The header shows her email, phone and address
+
+21
+00:03:56,403 --> 00:04:05,239
+Related: her relationship, household, address, consent and spouse
+Click any row to open it
+
+22
+00:04:05,239 --> 00:04:10,111
+The calculated Client 360 figures fill themselves in
+KYC: not started yet · Marketing consent: yes
+
+23
+00:04:10,111 --> 00:04:35,569
+A week later she calls: no more marketing emails
+Open the consent ▸ Edit ▸ status Withdrawn and the withdrawal date
+
+24
+00:04:35,569 --> 00:04:41,019
+Marketing consent is now No and she is suppressed from marketing
+The latest decision per purpose wins — campaigns skip her automatically
+
+25
+00:04:41,019 --> 00:04:46,104
+Now an established client: Christelle Leclézio
+Start any client conversation on the client record
+
+26
+00:04:46,104 --> 00:04:54,182
+ID number and income band are masked for a relationship manager
+No Reveal link: her role may not view personal data
+
+27
+00:04:54,182 --> 00:05:02,254
+Client 360 figures: wealth AUM, fund holdings, total relationship value in MUR and USD
+Products held, open applications and complaints, KYC status and AML risk
+
+28
+00:05:02,254 --> 00:05:09,969
+Next-best actions open, and the suitable product risk ceiling from her risk profile
+Every figure recalculates when a linked record changes
+
+29
+00:05:09,969 --> 00:05:17,292
+Related: everything Genesis does with her, across every entity
+KYC case, risk profile, fund holdings, next-best actions, consents, meetings, events…
+
+30
+00:05:17,292 --> 00:05:24,199
+Rows owned by another desk that you may not open show as “restricted”
+Ask Compliance if you need them — nothing is hidden silently
+
+31
+00:05:24,199 --> 00:05:41,673
+Activity: log the call you just had with her
+Calls, meetings, emails and notes stay on the client record
+
+32
+00:05:41,673 --> 00:05:45,291
+The call is on her timeline, with who logged it and when
+
+33
+00:05:45,291 --> 00:05:50,440
+Compliance may view personal data — on demand, and audited
+Sign in as the Compliance Officer
+
+34
+00:05:50,440 --> 00:06:05,994
+Sign in as Fatima Hossenbux — Compliance Officer
+Compliance Officer — her role holds the “view personal data” permission
+
+35
+00:06:05,994 --> 00:06:12,952
+She also sees the ID number masked — with a Reveal link
+Personal data is only shown when someone deliberately asks for it
+
+36
+00:06:12,952 --> 00:06:20,043
+Revealed — and recorded in the tamper-evident audit trail
+
+37
+00:06:20,043 --> 00:06:23,664
+The Audit tab shows who revealed which field, and when
+Alongside every change, stage move and approval on the record
+
+38
+00:06:30,741 --> 00:06:39,477
+What you learned
+The party is the golden record; everything else links to it.

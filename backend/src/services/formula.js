@@ -178,7 +178,10 @@ function toNumber(v) {
 
 function toDate(v) {
   if (isBlank(v)) return null;
-  const d = v instanceof Date ? v : new Date(v);
+  // A Date is copied: ADD_DAYS/ADD_MONTHS/ADD_YEARS modify the result, and
+  // must never change the record's own value (date_of_birth moved a year on
+  // every save once next_birthday had been computed from it).
+  const d = v instanceof Date ? new Date(v.getTime()) : new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -224,6 +227,9 @@ function monthsBetween(a, b) {
 }
 
 const isoDay = (d) => d.toISOString().slice(0, 10);
+// Text form of a value: a date field's value is a Date — show it as YYYY-MM-DD,
+// not "Wed Jan 01 2025 05:30:00 GMT+0530 (…)".
+const toText = (v) => (v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : isoDay(v)) : String(v));
 
 // ── Function library ─────────────────────────────────────────────────────────
 // Each entry receives already-evaluated arguments, except the lazy ones (IF,
@@ -261,13 +267,13 @@ const FUNCTIONS = {
     return pairs.length % 2 ? pairs[pairs.length - 1] : null;
   },
 
-  CONCAT: (args) => args.filter((a) => !isBlank(a)).map(String).join(''),
+  CONCAT: (args) => args.filter((a) => !isBlank(a)).map(toText).join(''),
   UPPER: ([v]) => (isBlank(v) ? null : String(v).toUpperCase()),
   LOWER: ([v]) => (isBlank(v) ? null : String(v).toLowerCase()),
   LEN: ([v]) => (isBlank(v) ? 0 : String(v).length),
   CONTAINS: ([hay, needle]) => !isBlank(hay) && !isBlank(needle) && String(hay).toLowerCase().includes(String(needle).toLowerCase()),
   IN: ([v, ...options]) => options.some((o) => compare('=', v, o)),
-  TEXT: ([v]) => (isBlank(v) ? null : String(v)),
+  TEXT: ([v]) => (isBlank(v) ? null : toText(v)),
 
   TODAY: () => isoDay(new Date()),
   NOW: () => new Date().toISOString(),
@@ -298,6 +304,13 @@ const FUNCTIONS = {
     if (!ctx.lookup) return null;
     return ctx.lookup({ object, returnField, dateField });
   },
+  // LABEL(request_type) → "Statement request": the display label of a picklist
+  // field's current option (the evaluator passes the field path, see evalNode).
+  LABEL: async ([value, path], ctx) => {
+    if (isBlank(value)) return null;
+    const label = path && ctx.optionLabel ? await ctx.optionLabel(path, value) : null;
+    return label ?? String(value);
+  },
   COUNT_RELATED: async ([object, linkField, whereField, whereValue], ctx) => {
     if (!ctx.related) return null;
     return ctx.related({ object, linkField, agg: 'count', whereField, whereValue });
@@ -324,6 +337,8 @@ async function evalNode(node, ctx) {
       if (LAZY.has(node.name)) return fn(node.args.map((a) => () => evalNode(a, ctx)), ctx);
       const args = [];
       for (const a of node.args) args.push(await evalNode(a, ctx));
+      // LABEL needs the field it was given, not only its value.
+      if (node.name === 'LABEL') return fn([args[0], node.args[0]?.k === 'ref' ? node.args[0].name : null], ctx);
       return fn(args, ctx);
     }
     case 'bin': {
@@ -375,6 +390,7 @@ function compile(expression) {
  * @param {Function} [ctx.resolve]  name → value; may be async (dotted lookup paths)
  * @param {Function} [ctx.lookup]   ({object, matchField, matchValue, returnField, dateField}) → value
  * @param {Function} [ctx.related]  ({object, linkField, agg, field, whereField, whereValue}) → number
+ * @param {Function} [ctx.optionLabel] (fieldPath, value) → the picklist option's label, for LABEL()
  */
 async function evaluate(expression, ctx = {}) {
   const ast = compile(expression);

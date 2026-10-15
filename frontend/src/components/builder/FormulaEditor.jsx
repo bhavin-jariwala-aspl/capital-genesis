@@ -82,7 +82,7 @@ export default function FormulaEditor({ cfg, setCfg, dataType, onDataType }) {
             <li key={x}><button type="button" className="text-left hover:text-primary-600" onClick={() => { setExpr(x); setCfg({ expression: x }); }}>{x}</button></li>
           ))}
         </ul>
-        <p className="mt-2">Fields by API name; follow a lookup with a dot. Functions: IF, AND, OR, NOT, CASE, IN, ROUND, MIN, MAX, PMT, AGE, ADD_MONTHS, DAYS_BETWEEN, LOOKUP, LATEST, COUNT_RELATED, SUM_RELATED, CONCAT, CONTAINS, ISBLANK, COALESCE, TODAY.</p>
+        <p className="mt-2">Fields by API name; follow a lookup with a dot. Functions: IF, AND, OR, NOT, CASE, IN, ROUND, MIN, MAX, PMT, AGE, ADD_MONTHS, DAYS_BETWEEN, LOOKUP, LATEST, COUNT_RELATED, SUM_RELATED, CONCAT, LABEL, CONTAINS, ISBLANK, COALESCE, TODAY.</p>
       </details>
     </div>
   );

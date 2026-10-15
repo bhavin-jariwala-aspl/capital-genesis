@@ -49,9 +49,21 @@ class RecordCompute {
   }
 
   /** A formula context over `values` (mutated in place as formulas resolve). */
-  context(values, recordId = null) {
+  context(values, recordId = null, ownObjectId = null) {
     const recordCache = new Map();
     const objectCache = new Map();
+    const fieldCache = new Map();
+
+    // Field definition by object id + name (options, lookup target).
+    const fieldDef = async (oid, name) => {
+      const key = `${oid}:${name}`;
+      if (!fieldCache.has(key)) {
+        fieldCache.set(key, oid ? await this.db.uiField.findFirst({
+          where: { object_id: Number(oid), name: String(name) }, select: { options: true, config: true },
+        }).catch(() => null) : null);
+      }
+      return fieldCache.get(key);
+    };
 
     const objectId = async (name) => {
       if (!objectCache.has(name)) {
@@ -88,6 +100,22 @@ class RecordCompute {
           value = data ? (data[seg] ?? null) : null;
         }
         return value;
+      },
+
+      // LABEL(field) / LABEL(party.segment): walk lookup fields to the object
+      // that owns the last segment, then map the stored value to its label.
+      optionLabel: async (path, value) => {
+        const segs = String(path).split('.');
+        let oid = ownObjectId;
+        for (const seg of segs.slice(0, -1)) {
+          const def = await fieldDef(oid, seg);
+          oid = def?.config?.target_object ? await objectId(def.config.target_object) : null;
+          if (!oid) return null;
+        }
+        const def = await fieldDef(oid, segs[segs.length - 1]);
+        const opts = Array.isArray(def?.options) ? def.options : [];
+        const hit = opts.find((o) => (typeof o === 'string' ? o : o?.value) === value);
+        return hit ? (typeof hit === 'string' ? hit : hit.label ?? hit.value) : null;
       },
 
       lookup: async ({ object, matchField, matchValue, returnField, dateField }) => {
@@ -170,7 +198,7 @@ class RecordCompute {
     // rather than failing the save.
     const formulas = fields ?? await this.formulaFields(objectId).catch(() => []);
     if (!formulas?.length) return [];
-    const ctx = this.context(values, recordId);
+    const ctx = this.context(values, recordId, objectId);
     const computed = [];
     for (const f of formulas) {
       const expression = f.config?.expression;

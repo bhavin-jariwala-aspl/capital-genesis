@@ -36,6 +36,17 @@ describe('Genesis pack — objects', () => {
     }
   });
 
+  it('denominates money fields only in a currency field the object has', () => {
+    const problems = [];
+    for (const o of Object.values(objects)) {
+      for (const f of o.fields.filter((x) => x.config?.currency_field)) {
+        if (!fieldsOf(o.name).has(f.config.currency_field)) problems.push(`${o.name}.${f.name}: ${f.config.currency_field}`);
+      }
+    }
+    expect(problems).toEqual([]);
+    expect(objects.fund_order.fields.find((f) => f.name === 'amount').config.currency_field).toBe('currency_code');
+  });
+
   it('points every lookup at an object in the pack', () => {
     for (const o of Object.values(objects)) {
       for (const f of o.fields.filter((x) => x.type === 'lookup')) {
@@ -188,6 +199,40 @@ describe('Genesis pack — automation', () => {
 
   it('never creates a custom role at admin level or above', () => {
     for (const r of pack.roles) expect(r.level).toBeGreaterThanOrEqual(4);
+  });
+
+  it('hands a cross-entity referral to the receiving side so it can accept it (LEAD-FR-15)', () => {
+    // Left with the referrer, the receiving RM could not see it — nor accept it within the SLA.
+    const wf = pack.workflows.find((w) => w.name === 'genesis_referral_to_receiving_rm');
+    expect(wf).toMatchObject({ object: 'referral', trigger_type: 'on_create' });
+    expect(wf.steps.find((s) => s.config?.field === 'assigned_to')?.config.value).toBe('{{receiving_rm}}');
+    const routed = pack.assignmentRules.filter((r) => r.object === 'referral').map((r) => r.conditions[0]);
+    expect(routed.every((c) => c.field === 'to_business_unit')).toBe(true);
+    expect(routed.map((c) => c.value)).toEqual(expect.arrayContaining(['LND', 'WLT', 'FX']));
+  });
+
+  it('lets every approver role open the record it is asked to approve', () => {
+    const problems = [];
+    const ADMIN_ROLES = new Set(['super_admin', 'admin']);
+    for (const wf of pack.workflows) {
+      for (const s of wf.steps.filter((x) => x.step_type === 'approval' && x.config?.role && !ADMIN_ROLES.has(x.config.role))) {
+        const ok = pack.permissions.some((p) => p.object === wf.object && p.can_view && [].concat(p.roles).includes(s.config.role));
+        if (!ok) problems.push(`${wf.name}/${s.key}: ${s.config.role} cannot view ${wf.object}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('books a confirmed subscription\'s units to a fund holding (FND-FR-03)', () => {
+    const wf = pack.workflows.find((w) => w.name === 'genesis_fund_order_checker');
+    const keys = wf.steps.map((s) => s.key);
+    const book = wf.steps.find((s) => s.step_type === 'create_record' && s.config.object === 'fund_holding');
+    expect(book).toBeDefined();
+    // After the confirmation, only for subscriptions, and before the guard that ends the approved path.
+    expect(keys.indexOf(book.key)).toBeGreaterThan(keys.indexOf('ok3'));
+    expect(keys.indexOf(book.key)).toBeLessThan(keys.indexOf('guard'));
+    expect(wf.steps[keys.indexOf(book.key) - 1].config).toEqual({ field: 'order_type', operator: 'eq', value: 'subscription' });
+    expect(book.config.fields).toMatchObject({ party: '{{party}}', share_class: '{{share_class}}', units: '{{allotted_units}}' });
   });
 });
 

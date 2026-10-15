@@ -9,14 +9,17 @@ const { NotFoundError } = require('../utils/errors');
  * Checklists (`ui_document_checklists`) are defined per object. When an object
  * has several (a real-estate, a personal and an investment-backed loan pack),
  * the one whose label best matches the record's own picklist values (its
- * product, its party type) is chosen; with no clear match, all are shown.
+ * product) or calculated codes (a KYC case's party type) is chosen; with no clear match, all are shown.
  *
  * Used by the record's Docs tab and by client upload links, so both always
  * agree on what is outstanding.
  */
 
 const STOP = new Set(['pack', 'loan', 'loans', 'the', 'and', 'for', 'account', 'opening']);
-const words = (s) => String(s ?? '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.has(w));
+// A party type is stored as "organisation" while packs are named "Corporate …".
+const SYNONYMS = { organisation: 'corporate', organization: 'corporate', company: 'corporate' };
+const words = (s) => String(s ?? '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.has(w))
+  .flatMap((w) => (SYNONYMS[w] ? [w, SYNONYMS[w]] : [w]));
 
 const NOT_RECEIVED = new Set(['rejected', 'expired']);
 
@@ -45,9 +48,48 @@ class DocumentChecklistService {
       const opt = v != null && f.options.find((o) => String(o?.value ?? o) === String(v));
       if (opt) labels.push(String(opt.label ?? opt.value ?? opt));
     }
+    // A calculated code copied from a related record (a KYC case's party type) counts too.
+    for (const f of fields) {
+      const v = f.field_type === 'formula' ? byName[f.name] : null;
+      if (v && /^[a-z][a-z_]*$/.test(v)) labels.push(v);
+    }
     const titleField = rec.object?.config?.title_field;
     const title = (titleField && byName[titleField]) || byName.name || byName.display_name || `${rec.object?.label ?? 'Record'} #${rec.id}`;
     return { rec, title, labels, data: byName };
+  }
+
+  /**
+   * A catalogue record (a product) that names, in its `config.checklist_field`,
+   * the checklist another object's records use (its applications): that
+   * checklist, read-only — `reference: true`, nothing "outstanding" on the
+   * product itself. Null when the object has its own checklists or names none.
+   */
+  async #referenceChecklist(rec, data, title) {
+    const field = rec.object?.config?.checklist_field;
+    const wanted = field ? String(data?.[field] ?? '').trim().toLowerCase() : '';
+    if (!wanted) return null;
+    const own = await this.db.uiDocumentChecklist.count({ where: { entity_type: rec.object.name, is_active: true } });
+    if (own) return null;
+    const [all, categories] = await Promise.all([
+      this.db.uiDocumentChecklist.findMany({ where: { is_active: true }, orderBy: { order_index: 'asc' } }),
+      this.db.uiDocumentCategory.findMany({ where: { is_active: true }, select: { code: true, label: true, allowed_mime: true, max_file_mb: true } }),
+    ]);
+    const hits = all.filter((c) => String(c.label ?? '').trim().toLowerCase() === wanted);
+    if (!hits.length) return null;
+    const catLabel = Object.fromEntries(categories.map((c) => [c.code, c.label]));
+    return {
+      record: { id: rec.id, object: rec.object.name, object_label: rec.object?.label ?? rec.object.name, title, tenant_id: rec.tenant_id },
+      reference: true,
+      checklists: hits.map((c) => ({
+        id: c.id, label: c.label, applies_to: c.entity_type,
+        items: (Array.isArray(c.items) ? c.items : []).map((i) => ({
+          label: i.label ?? catLabel[i.category_code] ?? i.category_code, category: i.category_code,
+          category_label: catLabel[i.category_code] ?? i.category_code, required: Boolean(i.required), received: false, documents: [],
+        })),
+      })),
+      outstanding: 0,
+      categories: categories.map((c) => ({ code: c.code, label: c.label, allowed_mime: c.allowed_mime ?? null, max_file_mb: c.max_file_mb ?? null })),
+    };
   }
 
   /** Pick the checklists that apply to a record (see the class comment). */
@@ -66,8 +108,10 @@ class DocumentChecklistService {
    * one document per item, in order.
    */
   async forRecord(recordId, { checklistId = null } = {}) {
-    const { rec, title, labels } = await this.#record(recordId);
+    const { rec, title, labels, data } = await this.#record(recordId);
     const objectName = rec.object?.name;
+    const reference = await this.#referenceChecklist(rec, data, title);
+    if (reference) return reference;
     const [all, categories, docs] = await Promise.all([
       this.db.uiDocumentChecklist.findMany({ where: { entity_type: objectName, is_active: true }, orderBy: { order_index: 'asc' } }),
       this.db.uiDocumentCategory.findMany({ where: { is_active: true }, select: { code: true, label: true, allowed_mime: true, max_file_mb: true } }),

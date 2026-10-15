@@ -98,6 +98,7 @@ class AuthService extends BaseRepository {
         employee_id:   employee.employee_id,
         employee_name: employee.employee_name,
         role:          employee.role,
+        role_label:    await this.resolveRoleLabel(employee),
         role_level:    roleLevel,
         email:         employee.email,
         branch:        employee.branch,
@@ -268,8 +269,38 @@ class AuthService extends BaseRepository {
 
     if (!employee) throw new NotFoundError('Employee');
 
-    const { password: _pwd, ...rest } = employee;
-    return rest;
+    // Allow-list: never return the password hash, the MFA secret and recovery
+    // codes, or a pending reset token — a stolen access token must not be
+    // enough to read them.
+    return {
+      employee_id:   employee.employee_id,
+      employee_name: employee.employee_name,
+      role:          employee.role,
+      role_label:    await this.resolveRoleLabel(employee),
+      email:         employee.email,
+      phone:         employee.phone,
+      branch_id:     employee.branch_id,
+      region_id:     employee.region_id,
+      branch:        employee.branch,
+      region:        employee.region,
+      tenant_id:     employee.tenant_id,
+      is_active:     employee.is_active,
+      mfa_enabled:   Boolean(employee.mfa_enabled),
+      created_at:    employee.created_at,
+      updated_at:    employee.updated_at,
+    };
+  }
+
+  /** The role's display name ("Relationship Manager"), falling back to the role key. */
+  async resolveRoleLabel(employee) {
+    const role = await this.db.role.findFirst({
+      where: { name: employee.role, tenant_id: employee.tenant_id },
+      select: { label: true },
+    }) ?? await this.db.role.findFirst({
+      where: { name: employee.role, tenant_id: null },
+      select: { label: true },
+    });
+    return role?.label || employee.role;
   }
 
   async changePassword(employeeId, currentPassword, newPassword) {

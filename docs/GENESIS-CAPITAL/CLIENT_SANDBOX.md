@@ -14,7 +14,7 @@ tunnel (ngrok or similar).
 
 | In the development setup | Risk if shared |
 | --- | --- |
-| `DATABASE_URL` is the shared development RDS | Client actions (imports, bulk edits) and our re-installs affect each other; their test data sits beside ours |
+| `DATABASE_URL` is a laptop-local copy of the shared development RDS ([local demo database](../getting-started/INSTALLATION.md#local-demo-database-macos)), or the RDS itself | Client actions (imports, bulk edits) and our re-installs affect each other; their test data sits beside ours |
 | Every `GC…` account has the same password, printed in DEMO_PITCH.md | Anyone can sign in as anyone; the audit trail stops meaning anything |
 | `PLATFORM01` is the platform super-admin | Full control of every workspace and platform setting |
 | Runs on a laptop, far from the database | Only up while the laptop is on; slow pages; the API has stopped on database connection errors |

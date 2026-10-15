@@ -152,6 +152,11 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
    cd ..
    ```
 
+   The demo laptop uses a local MySQL 8.4 copy of the AWS RDS database
+   (`mysql://genesis:genesis_local@127.0.0.1:3306/genesis`); the RDS URL is kept, commented out, in `backend/.env`.
+   Credentials, switching back and refreshing the copy:
+   [Local demo database](docs/getting-started/INSTALLATION.md#local-demo-database-macos).
+
 3. **Install and run — one command for both servers:**
 
    ```bash

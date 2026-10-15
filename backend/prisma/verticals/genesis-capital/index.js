@@ -59,6 +59,15 @@ module.exports = {
     'localization.timezone': 'Indian/Mauritius',
     'localization.date_format': 'DD/MM/YYYY',
     'appearance.app_name': 'Genesis Capital',
+    // Each desk lands on its own dashboard (user guide §1 "Your home page").
+    'home.dashboards_by_role': [
+      'rm:genesis_rm_workbench', 'bu_head:genesis_lead_funnel',
+      'loans_executive:genesis_lending', 'loans_manager:genesis_lending', 'credit_analyst:genesis_lending',
+      'credit_committee:genesis_lending', 'operations_checker:genesis_loan_book',
+      'portfolio_manager:genesis_wealth', 'trader:genesis_securities', 'corporate_advisor:genesis_advisory',
+      'fx_dealer:genesis_forex', 'marketing:genesis_marketing', 'compliance_officer:genesis_compliance',
+      'mlro:genesis_compliance', 'auditor:genesis_regulatory', 'coo:genesis_group_executive',
+    ].join(', '),
   },
   businessUnits: masters.businessUnits,
   barrierZones: masters.barrierZones,

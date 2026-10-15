@@ -46,7 +46,7 @@ fields       loan_amount        party.date_of_birth   (follow a lookup with a do
 operators    + - * / % ^    = == != <> < <= > >=    AND OR NOT  && || !
 functions    IF  AND  OR  NOT  CASE  IN  COALESCE  IFBLANK  ISBLANK
              ROUND FLOOR CEIL ABS MIN MAX SUM NUMBER PMT
-             CONCAT UPPER LOWER LEN CONTAINS TEXT
+             CONCAT UPPER LOWER LEN CONTAINS TEXT  LABEL(picklist_field)
              TODAY NOW YEAR AGE YEARS_BETWEEN MONTHS_BETWEEN DAYS_BETWEEN ADD_DAYS ADD_MONTHS ADD_YEARS
              LOOKUP(object, match_field, value, return_field[, date_field])
              LATEST(object, return_field, date_field)
@@ -55,6 +55,8 @@ functions    IF  AND  OR  NOT  CASE  IN  COALESCE  IFBLANK  ISBLANK
 ```
 
 - Blank inputs propagate as blank (no invented zeros); division by zero is blank.
+- `LABEL(request_type)` returns the display label of a picklist field's current option ("Statement request", not
+  `statement_request`); it follows lookups too (`LABEL(party.segment)`). Use it in record titles.
 - `LOOKUP` with a `date_field` returns the newest row already in effect (rate tables). `LOOKUP(…, 'id')` returns the matched record's id (duplicate detection).
 - `id` is the record's own id (so a parent can `LOOKUP('kyc_case', 'party', id, …)`).
 - Every cross-record read goes through the tenant-scoped client.

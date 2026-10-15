@@ -484,7 +484,7 @@ See §7.
 | X-05 maker-checker | Workflow approvals with `exclude_actor`: KYC approval, disbursement, fund orders, rate overrides. Merge is manager-only. |
 | X-06 status timeline | Every pipeline records its stage history. |
 | X-07 notifications | In-app, email, and SMS (`send_sms` workflow step through the SMS integration). WhatsApp is not connected (§11). |
-| X-08 masking | `id_number` and income band are masked for roles without `view_pii`. *Reveal* writes an audit-chain entry. |
+| X-08 masking | `id_number` and income band are shown masked to everyone. Roles holding `view_pii` get a *Reveal* link (the server refuses a reveal to other roles); every reveal writes an audit-chain entry. CSV export stays unmasked for `view_pii` roles. |
 | X-09 bulk operations | Bulk reassign (RM exit), bulk stage change, bulk delete. |
 | X-10 import / migration | `ext_ref` on every object; CSV import matches on it. |
 

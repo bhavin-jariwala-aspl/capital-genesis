@@ -42,7 +42,7 @@ const loanApplicant = {
     F('signed_offer', 'Signed the offer', 'checkbox'),
     FX('applicant_age', 'Age', 'AGE(party.date_of_birth)'),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
-    FX('name', 'Applicant', "CONCAT(party.display_name, ' · ', role)", { type: 'string' }),
+    FX('name', 'Applicant', "CONCAT(party.display_name, ' · ', LABEL(role))", { type: 'string' }),
   ],
   forms: [{ name: 'loan_applicant_create', label: 'Add applicant', fields: ['loan_application', 'party', 'role', 'relationship', 'employment_type', 'employer', 'monthly_income', 'rental_income', 'existing_obligations', 'mcib_rating', 'mcib_pulled_on', 'signed_offer'] }],
 };
@@ -181,7 +181,7 @@ const creditFacility = {
     SEL('credit_decision', 'Credit decision', o([['approved', 'Approved', '#10b981'], ['declined', 'Declined', '#ef4444']]), { config: { always_disabled: true } }),
     FX('approval_level', 'Approval authority', "IF(amount_mur <= 5000000, 'Loans Manager', IF(amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee'))", { type: 'string' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
-    FX('name', 'Facility', "CONCAT(borrower.display_name, ' · ', facility_type)", { type: 'string' }),
+    FX('name', 'Facility', "CONCAT(borrower.display_name, ' · ', LABEL(facility_type))", { type: 'string' }),
   ],
   forms: [
     { name: 'credit_facility_create', label: 'New facility', fields: ['borrower', 'borrower_group', 'facility_type', 'tranche', 'amount', 'currency_code', 'tenor_months', 'margin', 'arrangement_fee_pct', 'commitment_fee_pct', 'expiry_date', { field: 'purpose', span: 2 }] },
@@ -258,7 +258,7 @@ const covenant = {
     F('next_test_date', 'Next test date', 'date', LIST),
     FX('last_result', 'Last result', "LOOKUP('covenant_test', 'covenant', id, 'result', 'test_date')", { type: 'string', list: true }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
-    FX('name', 'Covenant', "CONCAT(credit_facility.facility_no, ' · ', metric, ' ', threshold)", { type: 'string' }),
+    FX('name', 'Covenant', "CONCAT(credit_facility.facility_no, ' · ', LABEL(metric), ' ', threshold)", { type: 'string' }),
   ],
   forms: [{ name: 'covenant_create', label: 'Add covenant', fields: ['credit_facility', 'covenant_type', 'metric', 'threshold', 'frequency', 'next_test_date'] }],
 };
@@ -481,7 +481,7 @@ const collectionAction = {
     F('ptp_date', 'Promised by', 'date'),
     F('notes', 'Notes', 'textarea'),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
-    FX('name', 'Action', "CONCAT(loan_account.lms_account_no, ' · ', action, ' · ', action_date)", { type: 'string' }),
+    FX('name', 'Action', "CONCAT(loan_account.lms_account_no, ' · ', LABEL(action), ' · ', action_date)", { type: 'string' }),
   ],
   dependencies: showWhen('outcome', 'ptp', ['ptp_amount', 'ptp_date']),
   forms: [{ name: 'collection_action_create', label: 'Log collections action', fields: ['loan_account', 'action', 'action_date', 'outcome', 'ptp_amount', 'ptp_date', { field: 'notes', span: 2 }] }],

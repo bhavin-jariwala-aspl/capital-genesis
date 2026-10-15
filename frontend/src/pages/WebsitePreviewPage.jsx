@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { ArrowRight, Calculator, ClipboardList, Globe, Landmark, LineChart as LineIcon, PhoneCall, Newspaper, Code2 } from 'lucide-react';
+import { ArrowRight, Calculator, ClipboardList, Globe, Landmark, LineChart as LineIcon, PhoneCall, Newspaper, Code2, Package } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../services/api';
 import Spinner from '../components/ui/Spinner';
@@ -41,6 +41,59 @@ function Card({ title, icon: Icon, children, footer, className }) {
   );
 }
 
+const CATEGORY_LABELS = { lending: 'Financing', wealth: 'Wealth management', funds: 'Investment funds', securities: 'Securities', advisory: 'Corporate advisory', fx: 'Forex' };
+const categoryLabel = (c) => CATEGORY_LABELS[c] ?? (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Other');
+
+/**
+ * The product catalogue from the CRM's product masters. Each product's
+ * "Request more information" opens the first published form that offers it
+ * (a general web form before a calculator), with `?prod=` pre-selecting it.
+ */
+function ProductCatalogue({ items, forms }) {
+  const live = items.filter((p) => p.active !== false && p.code && p.name);
+  const categories = [...new Set(live.map((p) => p.category).filter(Boolean))];
+  const [cat, setCat] = useState(null);
+  const shown = cat ? live.filter((p) => p.category === cat) : live;
+  const formFor = (code) => {
+    const offering = forms.filter((f) => (f.products ?? []).some((x) => x.value === code));
+    return offering.find((f) => f.channel !== 'calculator') ?? offering[0] ?? null;
+  };
+  const chip = (active) => clsx('rounded-full px-3 py-1 text-sm font-medium transition',
+    active ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/15');
+  return (
+    <Card title="Products & services" icon={Package} footer="Rates are indicative: variable, set as a margin over the prime lending rate, and subject to approval.">
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className={chip(!cat)} onClick={() => setCat(null)}>All</button>
+        {categories.map((c) => <button key={c} type="button" className={chip(cat === c)} onClick={() => setCat(c)}>{categoryLabel(c)}</button>)}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {shown.map((p) => {
+          const form = formFor(p.code);
+          return (
+            <article key={p.code} data-product={p.code} className="flex flex-col rounded-xl border border-gray-200 p-4 dark:border-white/10">
+              <p className="text-xs font-medium uppercase tracking-wide text-primary-600 dark:text-primary-300">{categoryLabel(p.category)}</p>
+              <h3 className="mt-1 font-semibold text-gray-900 dark:text-white">{p.name}</h3>
+              {p.legal_entity && <p className="text-xs text-gray-500 dark:text-white/50">{p.legal_entity}</p>}
+              {p.tagline && <p className="mt-2 text-sm text-gray-600 dark:text-white/70">{p.tagline}</p>}
+              {p.rate_from != null && p.rate_from !== '' && (
+                <p className="mt-2 text-sm text-gray-900 dark:text-white">Rates from <span className="font-display text-lg font-semibold">{Number(p.rate_from).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 3 })}%</span> p.a.</p>
+              )}
+              <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 text-sm">
+                {form && (
+                  <a href={`${form.path}?prod=${encodeURIComponent(p.code)}`} className="inline-flex items-center gap-1 font-semibold text-primary-600 hover:underline dark:text-primary-300">
+                    Request more information<ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {p.website_url && <a href={p.website_url} target="_blank" rel="noreferrer" className="text-gray-500 hover:underline dark:text-white/60">Product page</a>}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 export default function WebsitePreviewPage() {
   const { slug } = useParams();
   const ws = useQuery({ queryKey: ['site', slug, 'forms'], queryFn: () => getData(`/public/workspaces/${slug}/forms`), retry: false });
@@ -48,6 +101,8 @@ export default function WebsitePreviewPage() {
   const navs = useQuery({ queryKey: ['site', slug, 'nav'], queryFn: () => getData(`/public/feeds/${slug}/fund-nav`) });
   const hist = useQuery({ queryKey: ['site', slug, 'nav-history'], queryFn: () => getData(`/public/feeds/${slug}/nav-history`) });
   const plr = useQuery({ queryKey: ['site', slug, 'plr'], queryFn: () => getData(`/public/feeds/${slug}/plr`) });
+  // The product catalogue, when the workspace publishes one (a `products` feed).
+  const products = useQuery({ queryKey: ['site', slug, 'products'], queryFn: () => getData(`/public/feeds/${slug}/products`), retry: false });
   useWorkspaceBranding(ws.data?.tenant_id);
   const appearance = useAppearanceStore((s) => s.current);
   const [selected, setSelected] = useState(null);
@@ -151,6 +206,10 @@ export default function WebsitePreviewPage() {
             </div>
           )}
         </Card>
+
+        {(products.data?.items ?? []).length > 0 && (
+          <ProductCatalogue items={products.data.items} forms={ws.data?.forms ?? []} />
+        )}
 
         <Card title="Get started online" icon={ArrowRight}>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

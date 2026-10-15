@@ -115,6 +115,12 @@ describe('CurrencyInput', () => {
     expect(screen.getByText('£')).toBeInTheDocument();
   });
 
+  it('shows the number next to the symbol without repeating the currency', () => {
+    setTenantCurrency({ 'localization.currency': 'GBP' });
+    render(<CurrencyInput label="Premium" value={1500} onChange={() => {}} />);
+    expect(screen.getByRole('textbox')).toHaveValue('1,500.00');
+  });
+
   it('reports the raw number on change, not the formatted string', () => {
     const onChange = vi.fn();
     render(<CurrencyInput label="Premium" value={null} onChange={onChange} />);

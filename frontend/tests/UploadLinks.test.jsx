@@ -52,7 +52,7 @@ describe('DocumentChecklist (staff Docs tab)', () => {
   it('shows the outstanding count and copies a client upload link', async () => {
     renderList();
     expect(await screen.findByText('1 outstanding')).toBeTruthy();
-    expect(screen.getByText('id.pdf · approved')).toBeTruthy();
+    expect(screen.getByText('id.pdf · Approved')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Copy client link/ }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:5173/upload/gul1.x.y'));
   });

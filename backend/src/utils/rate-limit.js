@@ -31,6 +31,12 @@ class MemoryStore {
     return 1;
   }
 
+  /** @returns {Promise<number>} count within the current window, without adding to it */
+  async get(key, now = Date.now()) {
+    const cur = this.hits.get(key);
+    return cur && cur.expires > now ? cur.n : 0;
+  }
+
   async ttl(key, now = Date.now()) {
     const cur = this.hits.get(key);
     if (!cur || cur.expires <= now) return 0;
@@ -54,6 +60,8 @@ class RedisStore {
     if (n === 1) await this.redis.expire(key, windowSec);
     return n;
   }
+
+  async get(key) { return Number(await this.redis.get(key)) || 0; }
 
   async ttl(key) {
     const t = await this.redis.ttl(key);
@@ -111,6 +119,20 @@ class RateLimiter {
     return { limited, remaining: Math.max(0, rule.max - n), retryAfterSec };
   }
 
+  /**
+   * Whether `key` is already over the limit, without recording an attempt —
+   * for counters that only count failures (checked before, hit after).
+   * @returns {Promise<{ limited: boolean, retryAfterSec: number }>}
+   */
+  async peek(key, rule) {
+    const k = this.prefix + key;
+    let store = this.#store();
+    let n;
+    try { n = await store.get(k); } catch { store = this.memory; n = await store.get(k); }
+    const limited = n >= rule.max;
+    return { limited, retryAfterSec: limited ? await store.ttl(k).catch(() => rule.windowSec) : 0 };
+  }
+
   /** Forget a key — called after a successful login. */
   async reset(key) {
     const k = this.prefix + key;
@@ -122,7 +144,7 @@ class RateLimiter {
 const AUTH_LIMITS = {
   /** per account: 5 failed logins in 15 minutes locks the account for the rest of the window */
   loginAccount: { max: 5,  windowSec: 15 * 60 },
-  /** per IP: 30 login attempts in 15 minutes */
+  /** per IP: 30 failed login attempts in 15 minutes (successful sign-ins are not counted: one office shares one IP) */
   loginIp:      { max: 30, windowSec: 15 * 60 },
   /** per IP: 5 password-reset requests per hour */
   forgotIp:     { max: 5,  windowSec: 60 * 60 },

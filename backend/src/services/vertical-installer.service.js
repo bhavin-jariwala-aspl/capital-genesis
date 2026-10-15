@@ -860,7 +860,10 @@ class VerticalInstaller {
         if (!dirty.has(name) && [...ds].some((d) => dirty.has(d))) { dirty.add(name); grew = true; }
       }
     }
-    const order = topoOrder([...dirty].filter((n) => deps.get(n)?.size), deps);
+    // An object is revisited when it reads another object, or when its own
+    // formulas changed (or were named with --recompute) — even if they only
+    // read its own fields, existing records still hold the old results.
+    const order = topoOrder([...dirty].filter((n) => deps.get(n)?.size || this.formulaChanged.has(n)), deps);
     await this.#recomputeObjects(order);
     this.records.takeDeferredParents();
   }

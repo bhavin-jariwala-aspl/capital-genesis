@@ -270,6 +270,17 @@ async function buildApp() {
     name: 'formula-refresh', intervalMs: 3_600_000, startDelayMs: 300_000, log: fastify.log,
     run: () => formulaRefresh.run(),
   });
+  // A new, changed or removed row of a rate table read with LATEST(…) (the
+  // Genesis PLR) recomputes the records that read it — a product's "Rate from"
+  // follows the new PLR straight away, not at the next edit.
+  const { tenantContext: tctx } = require('./middleware/tenant-scope');
+  const latestChanged = (_e, p) => {
+    const tenantId = p?.record?.tenant_id ?? tctx.getStore()?.tenantId;
+    if (!tenantId || !p?.objectId) return;
+    Promise.resolve(formulaRefresh.refreshReadersOf(tenantId, p.objectId))
+      .catch((err) => fastify.log.warn({ err }, '[formula-refresh] readers refresh failed'));
+  };
+  for (const ev of ['record.created', 'record.updated', 'record.deleted']) eventBus.subscribe(ev, latestChanged);
 
   schedulers.add({
     name: 'job-queue', intervalMs: 15_000, startDelayMs: 20_000, log: fastify.log,

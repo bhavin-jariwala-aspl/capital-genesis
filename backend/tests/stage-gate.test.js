@@ -80,7 +80,7 @@ describe('stage moves in the user\'s words, and mirrored status fields', () => {
   it('names missing fields by their label, keeping the field names in the details', async () => {
     const { s } = svc2({ stageConfig: { required_fields: ['lms_reference'] }, labels: [{ name: 'lms_reference', label: 'LMS reference' }] });
     const err = await s.updateRecordStage(1, 20, 'U', null).catch((e) => e);
-    expect(err.message).toBe('Complete LMS reference before moving to Booked');
+    expect(err.message).toBe('Fill in “LMS reference” before moving to Booked');
     expect(err.details).toEqual([{ field: 'lms_reference', label: 'LMS reference', message: 'Required for Booked' }]);
   });
 

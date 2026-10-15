@@ -143,8 +143,9 @@ module. The steps that ran appear in the record's Audit tab.
 
 ### Personal data
 
-ID numbers and income bands are **masked** (•••• 1234) unless your role may view personal data (Compliance, MLRO,
-credit, operations). Those users see a **Reveal** link; every reveal is recorded in the tamper-evident audit trail.
+ID numbers and income bands are always shown **masked** (•••• 1234). Roles that may view personal data (Compliance,
+MLRO, credit, operations) see a **Reveal** link next to the value; every reveal is recorded in the tamper-evident audit
+trail. Other roles see the masked value only.
 
 ### Duplicates
 
@@ -467,7 +468,8 @@ retainers and success fees, FX spread income; credited to the RM and a referrer;
 type comes from the catalogue (address change, statements, early settlement quote, redemption, top-up, title release,
 complaint…), each with its SLA and approval. Complaints are acknowledged automatically, routed to Compliance and cannot
 be resolved without a root cause and final response; referral to the Ombudsperson for Financial Services is recorded.
-A satisfaction survey (CSAT and NPS) follows closure.
+When a request is resolved the client is emailed a satisfaction survey (CSAT and NPS); the scores are recorded on the
+request.
 
 ### KYC & Compliance
 

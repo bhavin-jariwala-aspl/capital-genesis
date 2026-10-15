@@ -230,7 +230,7 @@ export default function DocumentPanel({ recordId, relatedType, clientEmail, clie
                           ·
                         </span>
                         <span className="text-[10px] text-gray-400">
-                          {doc.category}
+                          {CATEGORIES.find((c) => c.value === doc.category)?.label ?? doc.category}
                         </span>
                       </>
                     )}

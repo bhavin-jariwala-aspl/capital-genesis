@@ -70,13 +70,13 @@ function TimerRow({ timer, now }) {
   const cd = countdown(timer.due_at, now);
   const frac = elapsedFraction(timer, now);
   return (
-    <Link to="/sla" className="grid grid-cols-12 items-center gap-2 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+    <Link to={timer.record_link || '/sla'} className="grid grid-cols-12 items-center gap-2 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
       <div className="col-span-5 flex min-w-0 items-center gap-2.5">
         <span className={clsx('h-8 w-1.5 shrink-0 rounded-full', tone.solid)} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{timer.label}</p>
           <p className="truncate text-[11px] text-gray-400">
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-white/10">{ENTITY_SINGULAR[timer.entity_type]}</span>
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-white/10">{timer.object_label || ENTITY_SINGULAR[timer.entity_type]}</span>
             {' '}{timer.metric_label}{timer.sub ? ` · ${timer.sub}` : ''}
           </p>
         </div>
@@ -88,7 +88,7 @@ function TimerRow({ timer, now }) {
           <div className={clsx('h-full rounded-full', tone.solid)} style={{ width: `${Math.min(100, frac * 100)}%` }} />
         </div>
         <span className={clsx('flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold tabular-nums', tone.bg, tone.text)}>
-          <Clock className="h-3 w-3" />{cd.text}
+          <Clock className="h-3 w-3" />{state === 'paused' ? 'Paused' : cd.text}
         </span>
       </div>
     </Link>

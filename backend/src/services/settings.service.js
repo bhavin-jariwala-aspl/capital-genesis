@@ -144,6 +144,18 @@ const SCHEMA = [
     ],
   },
   {
+    key: 'home',
+    label: 'Home Page',
+    icon: 'LayoutDashboard',
+    description: 'The dashboard each role sees first after signing in. Roles not listed get the default dashboard.',
+    settings: [
+      { key: 'dashboards_by_role', label: 'Home Dashboard by Role', type: 'text', default: '', max_length: 2000,
+        pattern: /^\s*[a-z0-9_]+\s*:\s*[a-z0-9_]+\s*(,\s*[a-z0-9_]+\s*:\s*[a-z0-9_]+\s*)*$/,
+        pattern_help: 'use role:dashboard_name pairs separated by commas, e.g. rm:genesis_rm_workbench, coo:genesis_group_executive',
+        help: 'Comma-separated role:dashboard_name pairs, e.g. rm:genesis_rm_workbench, credit_analyst:genesis_lending' },
+    ],
+  },
+  {
     key: 'security',
     label: 'Security',
     icon: 'Shield',
@@ -239,8 +251,12 @@ class SettingsService {
         throw new ValidationError(`${setting.key} must be an http(s) URL or a same-origin path`);
       }
     }
-    if (setting.type === 'text' && typeof coerced === 'string' && coerced.length > 200) {
-      throw new ValidationError(`${setting.key} must be 200 characters or fewer`);
+    const maxLength = setting.max_length ?? 200;
+    if (setting.type === 'text' && typeof coerced === 'string' && coerced.length > maxLength) {
+      throw new ValidationError(`${setting.key} must be ${maxLength} characters or fewer`);
+    }
+    if (setting.pattern && typeof coerced === 'string' && coerced && !setting.pattern.test(coerced)) {
+      throw new ValidationError(`${setting.key}: ${setting.pattern_help || 'invalid format'}`);
     }
     return coerced;
   }

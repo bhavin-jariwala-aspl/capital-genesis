@@ -64,19 +64,19 @@ function UrgentChip({ timer, now }) {
   const cd = countdown(timer.due_at, now);
   return (
     <Link
-      to="/sla"
+      to={timer.record_link || '/sla'}
       className="flex min-w-[180px] shrink-0 items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 transition hover:border-gray-300 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
     >
       <span className={clsx('h-8 w-1 shrink-0 rounded-full', tone.solid)} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-gray-900 dark:text-white">{timer.label}</p>
-        <p className="truncate text-[10px] text-gray-400">{ENTITY_SINGULAR[timer.entity_type]} · {timer.metric_label}</p>
+        <p className="truncate text-[10px] text-gray-400">{timer.object_label || ENTITY_SINGULAR[timer.entity_type]} · {timer.metric_label}</p>
       </div>
       <div className="text-right">
         <div className={clsx('flex items-center gap-1 text-xs font-bold tabular-nums', tone.text)}>
           <Clock className="h-3 w-3" />{cd.text}
         </div>
-        <div className="text-[9px] uppercase tracking-wide text-gray-400">{PRIORITY_LABEL(timer.priority)}</div>
+        {timer.priority !== '*' && <div className="text-[9px] uppercase tracking-wide text-gray-400">{PRIORITY_LABEL(timer.priority)}</div>}
       </div>
     </Link>
   );

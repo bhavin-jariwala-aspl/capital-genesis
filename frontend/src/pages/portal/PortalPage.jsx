@@ -7,7 +7,7 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
-import FieldValue from '../../components/runtime/FieldValue';
+import FieldValue, { recordCurrency } from '../../components/runtime/FieldValue';
 import { portalClient, portalToken } from '../../services/portal.service';
 import { fmtDate, fmtCurrency } from '../../utils/formatters';
 import { useWorkspaceBranding } from '../../hooks/useWorkspaceBranding';
@@ -201,7 +201,7 @@ function Section({ api, view, onChanged }) {
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {rows.map((r) => (
                 <tr key={r.id}>
-                  {view.fields.map((f) => <td key={f.name} className="whitespace-nowrap px-2 py-2"><FieldValue field={f} value={r.data?.[f.name]} label={r.labels?.[f.name]} compact /></td>)}
+                  {view.fields.map((f) => <td key={f.name} className="whitespace-nowrap px-2 py-2"><FieldValue field={f} value={r.data?.[f.name]} label={r.labels?.[f.name]} currency={recordCurrency(f, r.data)} compact /></td>)}
                   <td className="px-2 py-2">{r.stage ? <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || 'rgb(var(--n-500))' }}>{r.stage.label}</span> : '—'}</td>
                   {(view.uploads || actions.length > 0) && (
                     <td className="whitespace-nowrap px-2 py-2 text-right">

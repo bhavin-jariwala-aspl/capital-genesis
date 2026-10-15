@@ -311,7 +311,11 @@ module.exports = async function runtimeRoutes(fastify) {
     const filtered = await permSvc.filterMetadataByRole(all, 'dashboard', roleName, tenantId);
     // Secondary min_role filter for rows that have no explicit UiPermission row yet
     const visible = await Promise.all(filtered.map((d) => dashSvc.canViewDashboard(roleName, d.min_role)));
-    return ok(filtered.filter((_, i) => visible[i]));
+    const list = filtered.filter((_, i) => visible[i]);
+    // The role's home dashboard (Settings ▸ Home Page), else the default one.
+    const homeName = await dashSvc.homeDashboardName(tenantId, roleName);
+    const home = list.find((d) => homeName && d.name === homeName) ?? list.find((d) => d.is_default) ?? list[0];
+    return ok(list.map((d) => ({ ...d, is_home: d === home })));
   });
 
   // GET /api/runtime/wizards — list wizards (optionally filtered by object_id), role-filtered
@@ -601,14 +605,34 @@ module.exports = async function runtimeRoutes(fastify) {
   // GET /api/runtime/records/:id/audit
   fastify.get('/records/:id/audit', { preHandler: [authenticate] }, async (req) => {
     // Assert the viewer can see this record before exposing its audit trail
-    await recSvc.getRecord(req.params.id, req.user);
+    const rec = await recSvc.getRecord(req.params.id, req.user);
     const logs = await fastify.prisma.auditLog.findMany({
       where:   { record_id: Number(req.params.id) },
       orderBy: { created_at: 'desc' },
       take: 50,
       include: { employee: { select: { employee_id: true, employee_name: true } } },
     });
-    return ok(logs);
+    // Personal-data reveals live in the tamper-evident audit chain; the user
+    // guide promises them on the record's Audit tab, so merge them in.
+    const reveals = await fastify.prisma.auditChainEvent.findMany({
+      where:   { tenant_id: Number(rec.tenant_id ?? req.user.tenant_id), entity_type: 'pii.reveal', entity_id: String(req.params.id) },
+      orderBy: { created_at: 'desc' },
+      take: 50,
+    }).catch(() => []);
+    if (!reveals.length) return ok(logs);
+    const actors = [...new Set(reveals.map((e) => e.actor).filter(Boolean))];
+    const [emps, flds] = await Promise.all([
+      fastify.prisma.employee.findMany({ where: { employee_id: { in: actors } }, select: { employee_id: true, employee_name: true } }),
+      fastify.prisma.uiField.findMany({ where: { object_id: Number(rec.object_id) }, select: { name: true, label: true } }),
+    ]);
+    const empBy = new Map(emps.map((e) => [e.employee_id, e]));
+    const labelBy = new Map(flds.map((f) => [f.name, f.label]));
+    const revealRows = reveals.map((e) => ({
+      id: `chain-${e.id}`, record_id: Number(req.params.id), action: 'pii_reveal', employee_id: e.actor, created_at: e.created_at,
+      employee: empBy.get(e.actor) ?? { employee_id: e.actor, employee_name: e.actor },
+      changes: { summary: `Revealed ${labelBy.get(e.payload?.field) ?? e.payload?.field ?? 'personal data'} (personal data — audited)` },
+    }));
+    return ok([...logs, ...revealRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50));
   });
 
   // ── Status timeline (status_tracker fieldtype) ─────────────────────────────
