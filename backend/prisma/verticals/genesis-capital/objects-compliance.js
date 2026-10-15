@@ -172,9 +172,9 @@ const webEvent = {
   ],
   forms: [
     { name: 'web_event_create', label: 'Web event', fields: ['event_type', 'product_code', 'amount', 'tenure_months', 'applicant_age', 'page_url', 'utm_source', 'utm_campaign', 'session_date', 'enquiry'] },
-    { name: 'web_event_calculator', label: 'Loan calculator', fields: ['product_code', 'amount', 'tenure_months', 'applicant_age'] },
-    { name: 'web_event_newsletter', label: 'Newsletter sign-up', fields: ['first_name', 'last_name', 'email', 'topic', { field: 'consent_marketing', span: 2 }] },
-    { name: 'web_event_callback', label: 'Request a call-back', fields: ['first_name', 'last_name', 'mobile', 'email', 'topic', 'preferred_time', { field: 'consent_marketing', span: 2 }] },
+    { name: 'web_event_calculator', label: 'Quick loan estimate', description: 'See an indicative monthly instalment in seconds — no personal details needed.', fields: ['product_code', 'amount', 'tenure_months', 'applicant_age'] },
+    { name: 'web_event_newsletter', label: 'Newsletter sign-up', description: 'Market updates, fund news and events from Genesis Capital, on the topics you choose.', fields: ['first_name', 'last_name', 'email', 'topic', { field: 'consent_marketing', span: 2 }] },
+    { name: 'web_event_callback', label: 'Request a call-back', description: 'Tell us when suits you and a specialist will call you.', fields: ['first_name', 'last_name', 'mobile', 'email', 'topic', 'preferred_time', { field: 'consent_marketing', span: 2 }] },
   ],
 };
 

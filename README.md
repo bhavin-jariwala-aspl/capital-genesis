@@ -97,6 +97,10 @@ Shipped and wired end-to-end:
 6. **Tasks & Reminders** — Assignable tasks and time-based reminders on any record, with
    snooze/complete, a due-time notification sweep, and a "My Reminders" agenda
    (Overdue / Today / Upcoming)
+7. **Web forms** — Any Builder form can be published as a branded, mobile-friendly web form (`/f/<key>`) whose
+   answers become CRM records; staff email a form to a client or copy its link from **Tools ▸ Web forms**
+8. **Kanban pipelines** — Drag a card to change its stage, saved at once; stage gates explain what is missing, and a
+   status field can follow the stage automatically. Table, Pipeline and an optional Cards view per object
 
 ## 🛠️ Technology Stack
 

@@ -78,6 +78,9 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...understand how money is formatted and how a tenant switches currency"**
 → [developer-guide/CURRENCY.md](developer-guide/CURRENCY.md)
 
+**"...send a web form to a client, or copy its link"**
+→ [GENESIS-CAPITAL/genesis-capital-user-guide.md §11](GENESIS-CAPITAL/genesis-capital-user-guide.md#sending-a-web-form-to-a-client) (Tools ▸ Web forms)
+
 **"...add formula fields, lookups, record actions, stage gates, business units, information barriers, public web forms or a vertical pack"**
 → [developer-guide/PLATFORM_BUILDER_EXTENSIONS.md](developer-guide/PLATFORM_BUILDER_EXTENSIONS.md)
 

@@ -46,6 +46,7 @@ const SocialMediaPage    = lazy(() => import('./pages/runtime/SocialMediaPage'))
 const SlaDashboardPage   = lazy(() => import('./pages/runtime/SlaDashboardPage'));
 const ReportsPage        = lazy(() => import('./pages/runtime/ReportsPage'));
 const RemindersPage      = lazy(() => import('./pages/runtime/RemindersPage'));
+const WebFormsPage       = lazy(() => import('./pages/runtime/WebFormsPage'));
 
 // ── Builder pages (admin-only — always lazy) ─────────────────────────────────
 const BuilderHome              = lazy(() => import('./pages/builder/BuilderHome'));
@@ -141,6 +142,7 @@ function App() {
             <Route path="/record/:objectId/new" element={<RecordFormPage />} />
             <Route path="/record/:objectId/:recordId" element={<RecordFormPage />} />
             <Route path="/wizard/:wizardId" element={<WizardPage />} />
+            <Route path="/web-forms" element={<WebFormsPage />} />
             <Route path="/approvals" element={<ApprovalsPage />} />
             {/* Plan-gated. FeatureGate infers the feature from the path (see
                 utils/featureMap.js) and shows a locked-feature page instead of

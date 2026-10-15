@@ -125,6 +125,7 @@ All 22 accounts: [IMPLEMENTATION.md §0](IMPLEMENTATION.md#0-signing-in-to-the-g
 | Builder: pipelines (rename a stage) | <http://localhost:5173/builder/pipeline> |
 | Builder: forms (add a field) | <http://localhost:5173/builder/form> |
 | Client portal | <http://localhost:5173/portal/genesis-capital> |
+| Web forms (share a form with a client) | <http://localhost:5173/web-forms> |
 
 ---
 
@@ -284,7 +285,7 @@ Short, honest answers. If you do not know, write the question down and promise a
 | What happens when the prime lending rate changes? | A rate-change campaign finds the affected loans and produces client notices. |
 | Can it handle staged disbursements and conditions? | Yes. Conditions precedent, security perfection, tranches and a four-eyes disbursement check. |
 | Does it connect to our loan management system and credit bureau? | The connections are built and running on the sandbox. We need your provider credentials to go live. |
-| Can clients apply online? | Yes, through website forms (with a calculator). Clients then follow progress and upload documents in the portal. |
+| Can clients apply online? | Yes, through website forms (with a calculator). Staff can also email any form to a client, or copy its link, from **Tools ▸ Web forms**. Clients then follow progress and upload documents in the portal. |
 
 ### Wealth, funds and securities
 

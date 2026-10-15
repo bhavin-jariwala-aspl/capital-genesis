@@ -210,7 +210,8 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
   document-level **native e-signature** and **merge templates** already ship in the DMS; this item is the
   contract-object lifecycle layer on top)
 - **Territory Management & Sales Teams** — territory rules/assignment, team rollups (interim: `EmployeeHierarchy`)
-- **Customer Portal & Knowledge Base** — portal users, cases, service requests, articles
+- **Knowledge Base** — articles and self-help (the **client and introducer portal** shipped in October 2026: sign-in by
+  one-time code, own records, requests, uploads, fund orders, messages)
 - **Partner / Channel Management (PRM)** — partner lifecycle, deal registration, performance
 - **Deal Stages** (interim: `UiPipeline` / `UiPipelineStage`) and the duplicate **Analytics/KPI**
   stack (superseded by the live `UiDashboard` engine)
@@ -405,7 +406,7 @@ Genesis CRM has been elevated to enterprise-grade status with 8 major enterprise
 3. **Advanced Analytics & Custom Reporting** — Self-service report builder, report-backed dashboards, automated emailed delivery
 4. **Contract & Deal Management** — Contract lifecycle, digital signatures, approval workflows
 5. **Territory Management & Sales Teams** — Territory assignment, team management, quota tracking
-6. **Customer Portal & Self-Service** — Customer authentication, case management, knowledge base
+6. **Customer Self-Service** — knowledge base (portal authentication, requests and uploads shipped October 2026)
 7. **Social Media Integration** — Multi-platform management, social listening, lead generation
 8. **Partner/Channel Management** — Partner lifecycle, deal registration, performance tracking
 
@@ -513,7 +514,7 @@ CRM" while preserving metadata flexibility.
 | 1 | **Live Chat / Chatbot** | Salesforce, HubSpot, Zoho, Freshsales | No models or services for real-time chat, chatbots, or conversational AI. Table stakes for modern CRMs. | P0 |
 | 2 | **Invoicing & Billing** | Zoho, Freshsales, Dynamics | No quote, `Invoice`, `Payment`, or billing lifecycle models. No quote-to-cash cycle. | P0 |
 | 3 | **Full Marketing Automation** | HubSpot, Salesforce Pardot, Zoho | Email campaigns exist but missing: landing pages, A/B testing, multi-channel journeys (SMS, WhatsApp), marketing attribution, web forms with tracking. | P0 |
-| 4 | **Web Forms / Form-to-Lead** | HubSpot, Salesforce, Zoho | No public-facing web form capture that creates leads from external websites. | P1 |
+| 4 | ~~**Web Forms / Form-to-Lead**~~ | HubSpot, Salesforce, Zoho | **Delivered (October 2026):** any Builder form publishes as a branded web form (`/f/<key>`) creating records of its object, with CAPTCHA, honeypot, consent, UTM capture, routing, and staff sharing by email or link (Tools ▸ Web forms). Remaining: an embeddable JS snippet and A/B testing. | — |
 | 5 | **Telephony / CTI Integration** | Salesforce, Freshsales, Dynamics | No click-to-call, VoIP, IVR, or CTI adapter framework (call tracking is via the Activity Timeline, type: call). | P1 |
 | 6 | **AI / ML Features** | Salesforce Einstein, Zoho Zia, HubSpot | Lead scoring is manual/rule-based. No predictive scoring, sentiment analysis, deal insights, or AI recommendations. | P1 |
 | 7 | **SLA Management** | Salesforce, Dynamics, Freshdesk | Cases exist but no SLA policy, response time tracking, or escalation rules based on SLA breaches. | P1 |
@@ -631,11 +632,10 @@ Add AI-powered intelligence and complete the service management suite.
    - IVR routing integration
    - Automatic call logging with duration and disposition
 
-4. **Web Forms / Form-to-Lead**
-   - Public form builder with embeddable HTML/JS snippet
-   - Field mapping to any CRM object
-   - CAPTCHA and spam protection
-   - Lead routing via existing assignment engine
+4. **Web Forms / Form-to-Lead** — *delivered October 2026* (any object, CAPTCHA and honeypot, assignment routing,
+   staff sharing). Still open:
+   - Embeddable JS snippet (today: iframe or posting to `/api/public/forms/:key`)
+   - A/B testing and per-form conversion reporting
 
 ---
 

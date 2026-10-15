@@ -11,7 +11,7 @@ import {
   Shield, UserCheck, Plug, Crown, Flag, CreditCard,
   Lock, Server, Search, AlertTriangle, Calculator,
   ClipboardCheck, Wallet, FileSignature, FolderOpen, Network, ShieldCheck, FileBarChart, Palette,
-  Eye, ChevronRight,
+  Eye, ChevronRight, Send,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../store/authStore';
@@ -261,6 +261,13 @@ export default function Sidebar({ open, onClose }) {
             icon={Bell}
             label="My Reminders"
             active={isActive('/reminders')}
+            onClick={handleLinkClick}
+          />
+          <NavItem
+            to="/web-forms"
+            icon={Send}
+            label="Web forms"
+            active={isActive('/web-forms')}
             onClick={handleLinkClick}
           />
           {allowed('/reports') && <NavItem

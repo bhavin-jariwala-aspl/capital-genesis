@@ -67,6 +67,7 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 | `/api/public` | Published web forms and website data feeds (**no authentication**) | Websites, `/f/:key` |
 | `/api/portal` | Client & introducer portal (separate sign-in realm) | `/portal/:workspace` |
 | `/api/calendar` | Personal iCalendar feed | Calendar apps, My account ▸ Security |
+| `/api/web-forms` | Share published web forms with clients (link, email) | Tools ▸ Web forms |
 
 ---
 
@@ -95,6 +96,7 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 - [Public forms · `/api/public`](#public-forms--apipublic)
 - [Portal · `/api/portal`](#portal--apiportal)
 - [Calendar · `/api/calendar`](#calendar--apicalendar)
+- [Web forms · `/api/web-forms`](#web-forms--apiweb-forms)
 
 ---
 
@@ -137,8 +139,8 @@ create/update/delete require **admin** (`requireAdmin`). Source: `backend/src/ro
 | GET `/api/auth/direct-reports` | Direct reports of the current user. | JWT (`authenticate`) | Service method `authService.getDirectReports()` is defined but no direct UI caller was found. |
 | GET `/api/auth/employees` | List all employees (id, name, role, contact, branch, region). | Admin (`requireAdmin`) | `authService.getEmployees()` — EmployeesPage, RolesPage, and `EmployeePicker` component (`frontend/src/components/ui/EmployeePicker.jsx`). |
 | POST `/api/auth/employees` | Create an employee (validates, enforces tenant `max_users`, builds hierarchy rows). | Admin (`requireAdmin`) | `authService.createEmployee()` — EmployeesPage create dialog. |
-| PUT `/api/auth/employees/:id` | Update an employee (optional password re-hash, optional hierarchy re-parent). | Admin (`requireAdmin`) | `authService.updateEmployee()` — EmployeesPage edit dialog. |
-| PATCH `/api/auth/employees/:id/deactivate` | Soft-deactivate an employee (`is_active=false`). | Admin (`requireAdmin`) | `authService.deactivateEmployee()` — EmployeesPage row action. |
+| PUT `/api/auth/employees/:id` | Update an employee (optional password re-hash, optional hierarchy re-parent). Refused for the platform administrator and for an account with more authority than the caller. | Admin (`requireAdmin`) | `authService.updateEmployee()` — EmployeesPage edit dialog. |
+| PATCH `/api/auth/employees/:id/deactivate` | Soft-deactivate an employee (`is_active=false`) and revoke their sessions. Refused for the platform administrator, an account with more authority, and yourself (`PATCH …/reactivate` has the same guard, except self). | Admin (`requireAdmin`) | `authService.deactivateEmployee()` — EmployeesPage row action. |
 | PATCH `/api/auth/employees/:id/reactivate` | Reactivate an employee (`is_active=true`). | Admin (`requireAdmin`) | `authService.reactivateEmployee()` — EmployeesPage row action. |
 | GET `/api/auth/roles` | List tenant roles (ordered by level) with employee counts. | JWT (`authenticate`) | `authService.getRoles()` — RolesPage and EmployeesPage (role dropdown). |
 | POST `/api/auth/roles` | Create a custom role; shifts existing roles at/below the level down by 1. | Admin (`requireAdmin`) | `authService.createRole()` — RolesPage create form. |
@@ -438,7 +440,7 @@ endpoints (`/crm/*`) have no direct frontend caller.
 | GET `/api/runtime/records/:id` | Single record with resolved field values; enforces view access. | JWT + `RecordService` scoping | `metadataService.getRecord(id)` — record detail/drawer. |
 | POST `/api/runtime/records` | Creates a record (coerces `object_id` to int against injection); body `{ object_id, stage_id?, assigned_to?, data }`. Returns 201. | JWT | `metadataService.createRecord(data)` — form/wizard submit to create a new record. |
 | PUT `/api/runtime/records/:id` | Updates a record's field values / assignee; body `{ assigned_to?, data }`. | JWT | `metadataService.updateRecord(id, data)` — edit form submit. |
-| PATCH `/api/runtime/records/:id/stage` | Moves a record to a pipeline stage AND runs domain automation (lead→"Converted" creates a Prospect, prospect→"Converted" converts to Client). Returns `{ ...record, automation }`. A Prospect→"Converted" move is **blocked with 400 `{ error, missing_fields }` before moving** if required Prospect fields are incomplete. | JWT | `metadataService.updateRecordStage(id, stageId)` — **Kanban drag-and-drop** of a card to a new stage. |
+| PATCH `/api/runtime/records/:id/stage` | Moves a record to a pipeline stage (body `{ stage_id }`); used by Kanban drag-and-drop. Stage gates run first: a missing required field or a false entry rule answers **400** `{ error: { code: 'VALIDATION_ERROR', message, details: [{ field, label, message }] } }`, the message naming fields by label ("Complete LMS reference before moving to Booked"). On success the pipeline's mirrored status field (`config.status_field`) is updated too; audit, status timeline, `record.updated` and `record.field_changed` follow. Returns the record with `pipeline_stage`. | JWT | `metadataService.updateRecordStage` — Kanban drop (`ModulePage`), record panel stage bar. |
 | DELETE `/api/runtime/records/:id` | Deletes a record; 204. **Soft** (moves to admin Trash, recoverable) or **hard** (permanent) per the record's pipeline `config.delete_mode` (resolved in `RecordService`) — the deleting user never sees the mode, the record just disappears from their list. | JWT | `metadataService.deleteRecord(id)` — delete action on list/detail. |
 | POST `/api/runtime/records/bulk-delete` | Deletes many records; body `{ ids }`. Resolves soft/hard per record from its pipeline, same as the single delete. | JWT | `metadataService.bulkDeleteRecords(ids)` — multi-select "Delete" on list page. |
 | POST `/api/runtime/records/bulk-stage` | Moves many records to a stage; body `{ ids, stage_id }`. | JWT | `metadataService.bulkUpdateRecordStage(ids, stageId)` — multi-select "Change stage". |
@@ -1330,8 +1332,8 @@ tenant. Rate limits: 20 submissions per IP and 600 per form per 10 minutes (429 
 
 | Method & Path | Purpose / Relevance |
 |---|---|
-| GET `/api/public/forms/:key` | The renderable form: `{ title, description, columns, consent_field, captcha, captcha_site_key, fields }` |
-| POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language? }`. Creates the record through `RecordService` in the form's tenant. Returns `{ message, reference, results? }` |
+| GET `/api/public/forms/:key` | The renderable form: `{ tenant_id, workspace, title, description, columns, consent_field, captcha, captcha_site_key, fields }`. A picklist narrowed by the form's `field_options` lists only the allowed values; `tenant_id` lets the page load the workspace's public theme |
+| POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language? }`. Creates the record through `RecordService` in the form's tenant; a value outside a narrowed picklist is refused (400). Returns `{ message, reference, results?, result_fields? }` — `result_fields: [{ name, label, format, precision }]` describes the computed results |
 | GET `/api/public/feeds/:workspace/:name` | Read-only data feed configured by an object's `config.public_feed`: `{ feed, updated_at, items }`. Any origin; cached 60 s on the server and 5 min by clients; 300 requests per IP per 10 minutes. Personal or encrypted fields are never included. |
 
 ## Portal · `/api/portal`
@@ -1340,12 +1342,13 @@ Mounted from `backend/src/routes/portal/index.js`. A separate realm: sign-in by 
 
 | Method & Path | Purpose |
 |---|---|
-| GET `/api/portal/:slug` | Workspace branding (name, logo, colour) for the sign-in page |
+| GET `/api/portal/:slug` | Workspace branding (`tenant_id`, name, logo, colour) for the sign-in page |
 | POST `/api/portal/:slug/login/request` | Body `{ realm: client \| introducer, email }`. Sends a code when the email matches a record (always answers the same way). Outside production with no SMTP, returns `dev_code` |
 | POST `/api/portal/:slug/login/verify` | Body `{ realm, email, code }` → `{ token, me }` |
 | GET `/api/portal/me` | The signed-in person |
 | GET `/api/portal/views` | The sections (`config.portal.<realm>`) available to this realm |
 | GET / POST `/api/portal/records/:object` | The user's own records of a portal object / create one (only `create.fields`, with `create.defaults`) |
+| POST `/api/portal/records/:object/:id/actions/:action` | Run a row action (`config.portal.<realm>.row_actions`, e.g. *Redeem* on a fund holding) on one of the user's own rows: creates a record in the action's target section with the user's `fields`, the row's `prefill` values and the configured `defaults` (never taken from the request). Returns `{ id, object }` |
 | GET `/api/portal/records/:object/options/:field` | Options for a create-form lookup, limited to the user's own records |
 | GET `/api/portal/documents` · GET `…/documents/:id/download` | Portal-visible documents on the user's records |
 | POST `/api/portal/records/:id/documents` | Upload (base64; PDF, JPEG, PNG; 10 MB) to a record whose section allows `uploads` |
@@ -1357,3 +1360,13 @@ Mounted from `backend/src/routes/portal/index.js`. A separate realm: sign-in by 
 |---|---|---|
 | GET `/api/calendar/subscription` | `{ path }` of the user's private iCalendar feed | JWT |
 | GET `/api/calendar/feed/:token.ics` | `text/calendar`: the user's scheduled activities, open tasks and pending reminders (−30 to +180 days). The token is signed over the user's revocation point; any failure answers 404. 120 requests per IP per hour | The token |
+
+## Web forms · `/api/web-forms`
+
+Mounted from `backend/src/routes/web-forms/index.js`; `WebFormShareService`. Any signed-in staff member; tenant-scoped.
+
+| Method & Path | Purpose |
+|---|---|
+| GET `/api/web-forms` | The workspace's published forms: `[{ id, key, title, description, object, path, field_count, products, channel }]` (`products` = the options of the form's product picker, after `field_options`) |
+| POST `/api/web-forms/:id/link` | Body `{ prod? }` → `{ url }`: `/f/<key>?prod=…&utm_source=crm&utm_medium=link&utm_campaign=form_share`. The base is `APP_URL`, else the browser's origin. A product the form does not offer → 400 |
+| POST `/api/web-forms/:id/send` | Body `{ to, name?, prod?, message?, language: en\|fr, record_id? }`. Emails the link (`utm_medium=email`) through `EmailSendService.sendRaw`, logged with `related_type: 'web_form'`; user text is HTML-escaped. 30 sends per user per hour (429). Returns `{ url, status, email_log_id }` |

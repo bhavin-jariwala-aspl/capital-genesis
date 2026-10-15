@@ -684,6 +684,8 @@ let an admin reset a super-admin's password); and no self-deactivation.
 - Their `gp1.` tokens are HMAC-signed with a separate key and are not JWTs, so staff routes cannot accept them and portal routes cannot accept staff tokens.
 - Every portal query is filtered to records linked to the signed-in person.
 - Uploads are restricted to PDF, JPEG and PNG, checked by content (magic bytes), up to 10 MB.
+- Row actions (*Redeem* on a holding) run only on a row the signed-in person owns; the values that matter — which
+  holding, which order type — come from the row (`prefill`) and the configuration (`defaults`), never from the request.
 
 ### Calendar feed tokens
 
@@ -694,7 +696,16 @@ let an admin reset a super-admin's password); and no self-deactivation.
 
 - Publish only the fields an administrator lists. Fields marked `pii` or `encrypt` are dropped even when listed.
 
-Tests: `auth-hardening.test.js`, `field-protection.test.js`, `portal.test.js`, `calendar-feed.test.js`, `public-feed.test.js`.
+### Public forms and sharing them (`/api/public`, `/api/web-forms`)
+
+- A form's `field_options` is enforced on submit: a value the form never offered (a forex product on the loan
+  calculator) is refused, not just hidden.
+- Staff can email a form link to any address, so sending is limited to 30 per user per hour; what the user types
+  (name, note) is HTML-escaped in the email, and every send is written to the email log.
+- The link's base is `APP_URL` when set, otherwise the requesting browser's origin — set `APP_URL` in production so
+  links always point at the public host.
+
+Tests: `auth-hardening.test.js`, `field-protection.test.js`, `portal.test.js`, `calendar-feed.test.js`, `public-feed.test.js`, `public-form.test.js`, `web-form-share.test.js`, `employee-deactivation.test.js`.
 
 ## Areas for Security Enhancement
 

@@ -527,6 +527,23 @@ PLR) takes effect without any release.
 
 ## 11. The client and introducer portal
 
+### Sending a web form to a client
+
+When a client asks for a form — a loan calculator, the investor questionnaire, a call-back request — open
+**Tools ▸ Web forms**. Every published form is listed with what it is for.
+
+- **Email to client** — enter the client's email (and name, if you like), pick English or French, optionally
+  preselect a product and add a personal note, then **Send**. The client gets a short email with a button that
+  opens the form. The email is recorded under Email logs.
+- **Copy link** — copies the form's address, with the product you preselected, to paste into WhatsApp, Teams or a
+  message.
+- **Open** — shows the form in a new tab.
+
+Answers become records in the CRM (an enquiry, a call-back request…) and are routed to the right team, exactly like a
+form filled in from the website. Links you share are tagged as coming from the CRM, so reports can tell them apart.
+
+### The portal
+
 `/portal/<workspace>` — for Genesis, `/portal/genesis-capital`.
 
 - **Clients** sign in with the email Genesis holds and a one-time code. They see their loan applications (and upload

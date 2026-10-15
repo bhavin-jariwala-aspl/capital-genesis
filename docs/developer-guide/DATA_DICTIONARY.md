@@ -231,6 +231,10 @@ Object Builder. Delete runs in a transaction that also removes dependent metadat
 - `icon`, `order_index`, `is_active`.
 - `config` (JSON) — record settings: `title_field` (what lookups and related lists show), `business_unit_field`,
   `barrier_zone`, `barrier_zone_field` (how records are stamped for access segmentation).
+  `portal: { client?, introducer? }` exposes the object in the client / introducer portal: `title`, `link` (the
+  lookup tying a row to the signed-in person), `fields`, `create` (a create form), `uploads`, and `row_actions` (a
+  button on each row that creates a record in another portal section — *Redeem* on a fund holding — with `prefill`
+  and `defaults` set by the server).
 
 **Related to:** Child of `ui_modules`. Parent/anchor of `ui_fields`, `ui_forms`, `ui_pages`, `ui_pipelines`,
 `ui_workflows`, `ui_wizards`, `records`, `assignment_rules`, `import_jobs`, `quotas`, and `email_templates`.
@@ -278,7 +282,8 @@ Form Builder.
 - `is_active`.
 - `public_key` / `config.public` — set only by `POST /api/builder/forms/:id/publish` (never by the ordinary form update):
   a random key that makes the form an unauthenticated web-to-record form at `/f/<key>`, and its settings (consent,
-  capture fields, result fields, captcha, success message).
+  capture fields, result fields, captcha, success message, and `field_options: { field: [values] }` to narrow a
+  picklist on this form only). Staff share published forms from **Tools ▸ Web forms** (`/api/web-forms`).
 
 **Related to:** Child of `ui_objects`. Parent of `ui_form_field_layouts` (field placements) and referenced by
 `ui_wizard_steps` (each wizard step maps to a form).
@@ -518,7 +523,9 @@ the builder.
 
 - `object_id` — required FK to the object the board visualizes.
 - `name`, `label`, `description`.
-- `config` (JSON) — e.g. `{ enabled_views: ['table','cards','pipeline'] }`.
+- `config` (JSON) — `enabled_views` (which views the object's page offers: `table`, `pipeline`, and the opt-in
+  `cards`; unset → Table + Pipeline), `delete_mode` (`soft` | `hard`), and `status_field: { field, map: { stage_name:
+  value } }` — a status picklist kept in step with the stage on every stage change.
 - `is_active`.
 
 **Related to:** Child of `ui_objects`. Parent of `ui_pipeline_stages`.

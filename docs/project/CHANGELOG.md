@@ -11,6 +11,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — Web forms page for staff (2026-10-15)
+
+- **Tools ▸ Web forms** lists every published public form (`/f/<key>`) with a description and, where the form has a
+  product picker, the products it offers. Any staff member can **Email to client** (EN/FR, optional product and
+  personal note; logged under Email logs; 30 per user per hour), **Copy link** (optionally with a product
+  preselected) or **Open** it. Shared links are tagged `utm_source=crm`.
+- API: `GET /api/web-forms`, `POST /api/web-forms/:id/link`, `POST /api/web-forms/:id/send`.
+- The Genesis Capital forms have descriptions, and the second "Loan calculator" (no contact details) is now
+  **Quick loan estimate**, so the two can be told apart.
+
 ### Changed — Kanban board; Cards view made optional (2026-10-14)
 
 - The **Cards** view is now **opt-in**: it appears only on objects whose pipeline ticks *Card view* in the Pipeline

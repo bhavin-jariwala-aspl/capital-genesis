@@ -296,11 +296,13 @@ const enquiry = {
     {
       // Published as the website "Get in touch" form.
       name: 'enquiry_web', label: 'Get in touch', columns: 2,
+      description: 'Ask about any of our loans, investments, trading, advisory or forex services.',
       fields: ['first_name', 'last_name', 'email', 'mobile', 'product_code', 'estimated_amount', 'currency_code', 'requested_tenure_months', 'preferred_language', { field: 'message', span: 2 }, { field: 'consent_marketing', span: 2 }],
     },
     {
       // Published as the embeddable loan calculator.
       name: 'enquiry_calculator', label: 'Loan calculator', columns: 2,
+      description: 'Work out your indicative instalment and ask a loans specialist to contact you.',
       fields: ['product_code', 'estimated_amount', 'requested_tenure_months', 'applicant_age', 'first_name', 'last_name', 'email', 'mobile', { field: 'consent_marketing', span: 2 }],
     },
   ],
@@ -532,7 +534,7 @@ const riskProfile = {
   ],
   forms: [
     { name: 'risk_profile_create', label: 'Risk profile', fields: ['party', 'profiled_on', 'age', 'client_classification', 'time_horizon', 'risk_tolerance', 'knowledge', 'objective', 'liquidity_needs', 'net_worth', 'esg_preference'] },
-    { name: 'risk_profile_web', label: 'Investor questionnaire', fields: ['first_name', 'last_name', 'email', 'age', 'time_horizon', 'risk_tolerance', 'knowledge', 'objective', 'esg_preference'] },
+    { name: 'risk_profile_web', label: 'Investor questionnaire', description: 'A few questions about your goals and comfort with risk, and the investment approach that suits you.', fields: ['first_name', 'last_name', 'email', 'age', 'time_horizon', 'risk_tolerance', 'knowledge', 'objective', 'esg_preference'] },
   ],
 };
 // Website submissions carry no profiling date; default it on the form.

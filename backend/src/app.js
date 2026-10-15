@@ -45,6 +45,7 @@ const accessRoutes        = require('./routes/access/index');
 const publicRoutes        = require('./routes/public/index');
 const portalRoutes        = require('./routes/portal/index');
 const calendarRoutes      = require('./routes/calendar/index');
+const webFormRoutes       = require('./routes/web-forms/index');
 
 // ── Workflow engine & Social media ────────────────────────
 const WorkflowEngineService = require('./services/workflow.service');
@@ -360,6 +361,7 @@ async function buildApp() {
   fastify.register(publicRoutes,        { prefix: '/api/public' });
   fastify.register(portalRoutes,        { prefix: '/api/portal' });
   fastify.register(calendarRoutes,      { prefix: '/api/calendar' });
+  fastify.register(webFormRoutes,       { prefix: '/api/web-forms' });
 
   // ── Global error handler ────────────────────────────────
   fastify.setErrorHandler((error, request, reply) => {

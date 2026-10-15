@@ -187,7 +187,7 @@ Objects: `enquiry`, `web_event`, `referral`.
 
 | Requirement | Delivered as |
 |---|---|
-| LEAD-FR-01 public intake | `POST /api/public/forms/<key>` for the published forms `enquiry_web` and `enquiry_calculator`, plus `web_event_*` (calculator, newsletter, call-back). Rate limited, schema-validated, optional reCAPTCHA, honeypot, consent text and version, UTM fields, `prod`, page URL, language. |
+| LEAD-FR-01 public intake | Six published forms, hosted at `/f/<key>`: *Get in touch* (`enquiry_web`, all 22 products), *Loan calculator* (`enquiry_calculator`, the 4 loan products), *Quick loan estimate* (`web_event_calculator`, loans, no personal details), *Investor questionnaire*, *Newsletter sign-up* and *Request a call-back*. Rate limited, schema-validated, optional reCAPTCHA, honeypot, consent text and version, UTM fields, `prod`, page URL, language. The hosted page wears the workspace theme, splits longer forms into two steps and shows computed results on the confirmation. Staff share any form from **Tools ▸ Web forms** (email in EN/FR or copy a link). |
 | LEAD-FR-02 routing matrix | `product_routing` master (22 website labels) → `product_code`, `business_unit`, queue, first-contact target. |
 | LEAD-FR-03 duplicates | `mobile_e164` normalisation; matches existing parties by email, mobile, national ID and BRN (`existing_party_*` formulas); conversion links rather than duplicates. |
 | LEAD-FR-04 assignment | Six rules route enquiries by business unit. `genesis_enquiry_existing_client_rm` sends an existing client's enquiry to their primary RM. |
@@ -196,7 +196,7 @@ Objects: `enquiry`, `web_event`, `referral`.
 | LEAD-FR-07 SLA | *Enquiry — speed to lead*: first contact within the product's business hours; warning and escalation. |
 | LEAD-FR-08 statuses | New → Contacted → Qualified → Converted / Disqualified / Nurture. Disqualification needs a reason code (gate). |
 | LEAD-FR-09 conversion | `genesis_enquiry_conversion` creates or links the party, the entity relationship, the KYC case and the consent record and, for loans, the loan application. |
-| LEAD-FR-10 calculator | Calculator form returns the indicative rate and EMI; anonymous sessions are `web_event` records. |
+| LEAD-FR-10 calculator | Calculator forms offer only the loan products (`field_options`) and return the indicative rate and EMI, shown labelled on the confirmation; anonymous sessions (*Quick loan estimate*) are `web_event` records. |
 | LEAD-FR-11 questionnaire | `risk_profile_web` form; `genesis_questionnaire_lead` creates the enquiry for the Wealth desk. |
 | LEAD-FR-12 acknowledgement | `enquiry_ack` / `enquiry_ack_fr` by preferred language. |
 | LEAD-FR-13 import | Platform CSV import with dedupe; consent source field. |
@@ -265,7 +265,7 @@ Objects: `loan_application`, `loan_applicant`, `credit_condition`, `loan_offer`,
 | LOAN-FR-09 approval matrix | `approval_matrix` master (by amount band and exception type); `genesis_loan_credit_approval`. |
 | LOAN-FR-10 offer | Offer letter merge template; e-signature in the DMS; daily lapse of unaccepted offers. |
 | LOAN-FR-11 security | Valuation, notary, charge registration, life and building insurance assigned to Genesis Life, pledge; gate before *Ready for disbursement*. |
-| LOAN-FR-12 disbursement | Staged tranches with certificates; checker is never the maker; LMS booking returns the account number. |
+| LOAN-FR-12 disbursement | Staged tranches with certificates; checker is never the maker; LMS booking returns the account number. The *Status* picklist follows the pipeline stage on every move (`status_field`), including Kanban drags. |
 | LOAN-FR-13 client updates | `genesis_loan_status_update` emails each milestone in EN/FR (portal shows status). |
 | LOAN-FR-14 TAT | *Loan — application to decision* SLA; Lending dashboard. |
 | LOAN-FR-15 decline | Reason codes, decline letter, re-apply date. |
@@ -506,7 +506,7 @@ All external systems are Builder integrations. In this environment they use the 
 
 | # | System | How |
 |---|---|---|
-| I-01 | Website in | Six public forms (§M01). |
+| I-01 | Website in | Six public forms (§M01), also shareable by staff from **Tools ▸ Web forms**. |
 | I-02 | Website out | `GET /api/public/feeds/genesis-capital/{fx-rates, fund-nav, plr}`: cached, read-only and open to any origin. The fields are configured on the object (`config.public_feed`); personal data is never published. |
 | I-03 | Loan management system | `genesis_lms`: disbursement booking returns the account number; `loan_account` holds the daily snapshot. |
 | I-04 | Transfer agent | `genesis_ta`: fund orders. |
@@ -680,7 +680,7 @@ the short technical version.
 
 ## 14. Verification
 
-- `backend`: `npx jest`. 79 suites, including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
+- `backend`: `npx jest`. 78 suites (about 1,220 tests), including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
 - **Live business flows**, driven through the API against the installed workspace, with each step performed by the
   role that owns it:
   - *Lending, 14 steps:* website enquiry (French), routing, French acknowledgement, speed-to-lead SLA, conversion
@@ -690,5 +690,5 @@ the short technical version.
   - *Desks:* fund order maker-checker to TA confirmation; suitability block; FX quote to deal with dealing
     reference; advisory conflict check invisible to the trading desk; complaint acknowledgement; restricted-list
     block; introducer referral through the portal to a routed enquiry.
-- `frontend`: `npx vitest run`, `npm run lint`, `npm run build`.
+- `frontend`: `npx vitest run` (28 files, about 300 tests, including the web form, Web forms page, portal, Kanban views and theming), `npm run lint`, `npm run build`.
 - CI runs all of the above on every push (`.github/workflows/ci.yml`).
