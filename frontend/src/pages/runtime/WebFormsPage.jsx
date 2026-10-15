@@ -59,14 +59,23 @@ function ProductPicker({ form, value, onChange, label = 'Product (optional)' }) 
   );
 }
 
-function EmailForm({ form, initialProd, onDone }) {
+function ExpertPicker({ form, value, onChange, label = 'Send to a specific person (optional)' }) {
+  if (!form.experts?.length) return null;
+  return (
+    <Select label={label} value={value} onChange={(e) => onChange(e.target.value)}
+      options={[{ value: '', label: 'Normal routing' }, ...form.experts]} />
+  );
+}
+
+function EmailForm({ form, initialProd, initialExpert = '', onDone }) {
   const [to, setTo] = useState('');
   const [name, setName] = useState('');
   const [prod, setProd] = useState(initialProd);
+  const [expert, setExpert] = useState(initialExpert);
   const [language, setLanguage] = useState('en');
   const [message, setMessage] = useState('');
   const send = useMutation({
-    mutationFn: () => webFormsService.send(form.id, { to: to.trim(), name: name.trim() || null, prod: prod || null, language, message: message.trim() || null }),
+    mutationFn: () => webFormsService.send(form.id, { to: to.trim(), name: name.trim() || null, prod: prod || null, language, message: message.trim() || null, ...(expert ? { expert } : {}) }),
   });
 
   if (send.isSuccess) {
@@ -90,6 +99,7 @@ function EmailForm({ form, initialProd, onDone }) {
         <Select label="Email language" value={language} onChange={(e) => setLanguage(e.target.value)} options={[{ value: 'en', label: 'English' }, { value: 'fr', label: 'Français' }]} />
         <ProductPicker form={form} value={prod} onChange={setProd} />
       </div>
+      <ExpertPicker form={form} value={expert} onChange={setExpert} />
       <TextArea label="Personal note (optional)" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="As discussed on the phone today…" maxLength={2000} />
       <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-white/5 dark:text-white/50">
         The client receives a short email with a button that opens <strong>{form.title}</strong>
@@ -107,18 +117,19 @@ function EmailForm({ form, initialProd, onDone }) {
 function FormCard({ form, onEmail }) {
   const Icon = iconFor(form);
   const [prod, setProd] = useState('');
+  const [expert, setExpert] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
   const copy = async () => {
     setError(null);
     try {
-      const { data } = await webFormsService.link(form.id, prod || null);
+      const { data } = await webFormsService.link(form.id, prod || null, expert || null);
       if (await copyText(data.url)) { setCopied(true); setTimeout(() => setCopied(false), 2000); } else setError('Copy failed — use Open and copy the address.');
     } catch (err) { setError(apiErrorText(err, 'Could not create the link.')); }
   };
   const open = async () => {
     try {
-      const { data } = await webFormsService.link(form.id, prod || null);
+      const { data } = await webFormsService.link(form.id, prod || null, expert || null);
       window.open(data.url, '_blank', 'noopener');
     } catch (err) { setError(apiErrorText(err, 'Could not open the form.')); }
   };
@@ -139,9 +150,10 @@ function FormCard({ form, onEmail }) {
       {form.products.length > 0 && (
         <div className="mt-4"><ProductPicker form={form} value={prod} onChange={setProd} label="Preselect a product" /></div>
       )}
+      {form.experts?.length > 0 && <div className="mt-3"><ExpertPicker form={form} value={expert} onChange={setExpert} label="Talk to (optional)" /></div>}
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <Button size="sm" onClick={() => onEmail(form, prod)}><Mail className="mr-1.5 h-4 w-4" />Email to client</Button>
+        <Button size="sm" onClick={() => onEmail(form, prod, expert)}><Mail className="mr-1.5 h-4 w-4" />Email to client</Button>
         <Button size="sm" variant="secondary" onClick={copy} aria-live="polite">
           {copied ? <><Check className="mr-1.5 h-4 w-4" />Copied</> : <><Copy className="mr-1.5 h-4 w-4" />Copy link</>}
         </Button>
@@ -154,7 +166,7 @@ function FormCard({ form, onEmail }) {
 export default function WebFormsPage() {
   const { data, isLoading, error } = useQuery({ queryKey: ['web-forms'], queryFn: webFormsService.list });
   const forms = data?.data ?? [];
-  const [emailing, setEmailing] = useState(null); // { form, prod }
+  const [emailing, setEmailing] = useState(null); // { form, prod, expert }
 
   return (
     <div className="space-y-6 p-6">
@@ -174,12 +186,12 @@ export default function WebFormsPage() {
             <>
               <p className="text-sm text-gray-500 dark:text-white/60">{forms.length} published form{forms.length > 1 ? 's' : ''}. Answers become records in the CRM and are routed to the right team.</p>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {forms.map((f) => <FormCard key={f.id} form={f} onEmail={(form, prod) => setEmailing({ form, prod })} />)}
+                {forms.map((f) => <FormCard key={f.id} form={f} onEmail={(form, prod, expert) => setEmailing({ form, prod, expert })} />)}
               </div>
             </>
           )}
       <Modal open={Boolean(emailing)} onClose={() => setEmailing(null)} title={emailing ? `Email “${emailing.form.title}”` : ''}>
-        {emailing && <EmailForm key={emailing.form.id} form={emailing.form} initialProd={emailing.prod} onDone={() => setEmailing(null)} />}
+        {emailing && <EmailForm key={emailing.form.id} form={emailing.form} initialProd={emailing.prod} initialExpert={emailing.expert} onDone={() => setEmailing(null)} />}
       </Modal>
     </div>
   );

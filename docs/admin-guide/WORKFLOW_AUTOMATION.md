@@ -235,7 +235,7 @@ and `{{annual_revenue}}` return the same value on a Prospect.
 | ------ | ---- | ----------- |
 | id | int | Primary key |
 | workflow_id | int | Parent workflow |
-| step_type | enum | trigger, condition, action, notification, delay, approval, webhook, create_record, update_related |
+| step_type | enum | trigger, condition, action, notification, delay, approval, webhook, integration, create_record, update_related, send_email, send_sms, generate_document, email_list |
 | order_index | int | Execution sequence |
 | config | json | Step-specific configuration |
 | on_true_id | int | Next step if condition true |

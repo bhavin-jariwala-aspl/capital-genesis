@@ -58,6 +58,7 @@ To change a template later, expand its row and click **Edit**; the same dialog r
 | --- | --- | --- |
 | Object Fields | `{{first_name}}`, `{{company}}`, `{{opportunity_name}}` | Auto-filled from the linked record when sending. |
 | System Variables | `{{sender_name}}`, `{{sender_email}}`, `{{company_name}}`, `{{help_center_url}}` | Filled from sender and tenant settings. |
+| Workflow emails | `{{upload_link}}` | A secure link (valid 14 days) where the client uploads the documents the record still needs. |
 
 System fields such as `id`, `record_id`, `owner_id`, `created_by`, `created_at`, `updated_at`, and `external_id`
 are intentionally excluded from the picker.

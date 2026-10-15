@@ -55,6 +55,11 @@ class WebFormShareService {
       },
       orderBy: { label: 'asc' },
     });
+    // Staff a "Talk to …" link may name, for forms that allow it (name and id only).
+    const roles = [...new Set(forms.flatMap((f) => (Array.isArray(f.config?.public?.expert_roles) ? f.config.public.expert_roles : [])))];
+    const staff = roles.length && typeof this.db.employee?.findMany === 'function'
+      ? await this.db.employee.findMany({ where: { is_active: true, role: { in: roles } }, select: { employee_id: true, employee_name: true, role: true }, orderBy: { employee_name: 'asc' } })
+      : [];
     return forms
       .filter((f) => f.config?.public?.enabled && f.object?.is_active !== false)
       .map((f) => {
@@ -75,19 +80,33 @@ class WebFormShareService {
           field_count: fields.length,
           products,
           channel: pub.channel ?? null,
+          expert_roles: Array.isArray(pub.expert_roles) ? pub.expert_roles : [],
+          experts: Array.isArray(pub.expert_roles)
+            ? staff.filter((e) => pub.expert_roles.includes(e.role)).map((e) => ({ value: e.employee_id, label: e.employee_name }))
+            : [],
           success_message: pub.success_message ?? null,
         };
       });
   }
 
   /** The shareable URL for a form, optionally preselecting a product. */
-  static url(base, key, { prod = null, medium = 'link' } = {}) {
+  static url(base, key, { prod = null, expert = null, medium = 'link' } = {}) {
     const u = new URL(`/f/${key}`, base);
     if (prod) u.searchParams.set('prod', prod);
+    if (expert) u.searchParams.set('expert', expert);
     u.searchParams.set('utm_source', 'crm');
     u.searchParams.set('utm_medium', medium);
     u.searchParams.set('utm_campaign', 'form_share');
     return u.toString();
+  }
+
+  /** A staff member the form may route to (its `expert_roles`), or null. */
+  async #expert(form, id) {
+    if (!id) return null;
+    if (!form.expert_roles.length) throw new ValidationError('This form cannot be addressed to a person');
+    const emp = await this.db.employee.findFirst({ where: { employee_id: String(id), is_active: true, role: { in: form.expert_roles } }, select: { employee_id: true } });
+    if (!emp) throw new ValidationError('That person cannot receive this form');
+    return emp.employee_id;
   }
 
   async #form(formId) {
@@ -97,17 +116,18 @@ class WebFormShareService {
   }
 
   /** A link to copy, with the product checked against what the form offers. */
-  async link(formId, { base, prod = null } = {}) {
+  async link(formId, { base, prod = null, expert = null } = {}) {
     const form = await this.#form(formId);
     if (prod && !form.products.some((p) => p.value === prod)) throw new ValidationError('This form does not offer that product');
-    return { url: WebFormShareService.url(base, form.key, { prod, medium: 'link' }) };
+    const who = await this.#expert(form, expert);
+    return { url: WebFormShareService.url(base, form.key, { prod, expert: who, medium: 'link' }) };
   }
 
   /**
    * Email a form link to a client. The email is logged like any other
    * outbound email (Email logs), against the record when one is given.
    */
-  async send(formId, { to, name = null, prod = null, message = null, language = 'en', base, sender, workspace = null, recordId = null }) {
+  async send(formId, { to, name = null, prod = null, expert = null, message = null, language = 'en', base, sender, workspace = null, recordId = null }) {
     const email = String(to ?? '').trim();
     if (!EMAIL.test(email)) throw new ValidationError('Enter a valid email address');
     const form = await this.#form(formId);
@@ -115,7 +135,7 @@ class WebFormShareService {
     if (!this.email) throw new ValidationError('Email is not available');
 
     const t = TEXT[language] ?? TEXT.en;
-    const url = WebFormShareService.url(base, form.key, { prod, medium: 'email' });
+    const url = WebFormShareService.url(base, form.key, { prod, expert: await this.#expert(form, expert), medium: 'email' });
     const product = prod ? form.products.find((p) => p.value === prod)?.label : null;
     const title = product ? `${form.title} — ${product}` : form.title;
     const from = workspace ? `${workspace}` : 'our team';

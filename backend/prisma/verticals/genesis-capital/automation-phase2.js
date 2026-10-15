@@ -592,6 +592,22 @@ const workflows = [
     ],
   },
   {
+    // A button on the publication (manual trigger): email it to the subscribers
+    // of its topic who still consent, count opens, and mark it distributed.
+    object: 'research_publication', name: 'genesis_research_distribute', label: 'Send to subscribers',
+    description: 'Emails the publication to subscribers of its topic (EN/FR), skipping anyone without marketing consent; opens are counted on the publication (MKT-FR-04, SEC-FR-05).',
+    trigger_type: 'manual',
+    steps: [
+      trig('Send to subscribers'),
+      { key: 'l1', name: 'Email the subscribers', step_type: 'email_list', config: {
+        template: 'research_publication', list_object: 'subscription', link_field: 'party',
+        match: { topic: '{{publication_type}}' }, active: { status: 'subscribed' },
+        language_field: 'preferred_language', suppress_field: 'marketing_suppressed', track_field: 'opens',
+      } },
+      set('s1', 'Mark distributed', 'sent', true),
+    ],
+  },
+  {
     object: 'web_event', name: 'genesis_web_newsletter', label: 'Website — newsletter sign-up',
     description: 'A newsletter sign-up is welcomed and passed to Marketing (MKT-FR-04).', ...ONCREATE,
     steps: [

@@ -24,6 +24,10 @@ const pair = (name, category, object, en, fr) => [
 ];
 
 const emailTemplates = [
+  // Sent by "Send to subscribers" on a research publication (MKT-FR-04, SEC-FR-05).
+  ...pair('research_publication', 'marketing', 'research_publication',
+    { subject: '{{title}}', html: '<p>Dear {{first_name}},</p><p><strong>{{title}}</strong> — {{published_on}}</p><p>{{summary}}</p><p>SEMDEX close: <strong>{{sem_index}}</strong> ({{sem_change_pct}}% on the week).</p><p style="font-size:13px;color:#6b7280">You receive this because you subscribed to Genesis Capital research. To stop, reply with "unsubscribe" or tell your relationship manager.</p>', text: '{{title}} — {{published_on}}\n\n{{summary}}\n\nSEMDEX close: {{sem_index}} ({{sem_change_pct}}% on the week).' },
+    { subject: '{{title}}', html: '<p>Bonjour {{first_name}},</p><p><strong>{{title}}</strong> — {{published_on}}</p><p>{{summary}}</p><p>Clôture du SEMDEX : <strong>{{sem_index}}</strong> ({{sem_change_pct}} % sur la semaine).</p><p style="font-size:13px;color:#6b7280">Vous recevez ce message car vous êtes abonné(e) aux analyses de Genesis Capital. Pour vous désabonner, répondez « désabonnement » ou prévenez votre chargé de clientèle.</p>', text: '{{title}} — {{published_on}}\n\n{{summary}}\n\nClôture du SEMDEX : {{sem_index}} ({{sem_change_pct}} % sur la semaine).' }),
   ...pair('loan_status_update', 'service', 'loan_application',
     { subject: 'Update on your loan application {{application_no}}', html: '<p>Dear {{party_name}},</p><p>Your application <strong>{{application_no}}</strong> has moved to <strong>{{stage}}</strong>. Your loans executive will contact you if anything else is needed.</p>', text: 'Application {{application_no}} is now at {{stage}}.' },
     { subject: 'Point sur votre demande de prêt {{application_no}}', html: '<p>Bonjour {{party_name}},</p><p>Votre demande <strong>{{application_no}}</strong> est passée à l\'étape <strong>{{stage}}</strong>. Votre conseiller vous contactera si d\'autres éléments sont nécessaires.</p>', text: 'La demande {{application_no}} est à l\'étape {{stage}}.' }),
@@ -83,6 +87,8 @@ const documentChecklists = [
   { entity_type: 'fund_order', label: 'Fund subscription', items: [item('fund_forms', 'Signed subscription form'), item('bank_statements', 'Proof of payment'), item('fund_documents', 'Acknowledged prospectus / KIID', false)] },
   { entity_type: 'wealth_mandate', label: 'Discretionary mandate', items: [item('mandates_ips', 'Signed mandate agreement'), item('mandates_ips', 'Investment Policy Statement'), item('tax_self_cert', 'FATCA / CRS self-certification')] },
   { entity_type: 'advisory_mandate', label: 'Advisory engagement', items: [item('engagement_letters', 'Signed engagement letter'), item('nda', 'NDA with the client'), item('deal_documents', 'Conflict-check clearance')] },
+  // What a client sends when their ID expires (the ID-expiry email carries the upload link).
+  { entity_type: 'party', label: 'Identity renewal', items: [item('kyc_id', 'New identity document'), { ...item('proof_of_address', 'Proof of address (under 3 months)'), required: false }] },
   { entity_type: 'introducer', label: 'Introducer onboarding', items: [item('kyc_id', 'ID / incorporation documents'), item('account_agreements', 'Signed introducer agreement')] },
 ];
 
@@ -392,7 +398,8 @@ const publicForms = [
   ...base.publicForms,
   { form: 'web_event_calculator', settings: { field_options: { product_code: LOAN_CODES }, success_message: 'Your indicative instalment is below. Leave your details on the enquiry form for a personalised offer.', channel: 'calculator', result_fields: ['rate', 'emi'] } },
   { form: 'web_event_newsletter', settings: { success_message: 'You are subscribed — thank you.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', channel: 'web_form' } },
-  { form: 'web_event_callback', settings: { success_message: 'Thank you — a specialist will call you back.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', channel: 'web_form' } },
+  // "Talk to …" links (?expert=GCFX1) go straight to that member of staff.
+  { form: 'web_event_callback', settings: { expert_roles: ['rm', 'loans_manager', 'loans_executive', 'portfolio_manager', 'trader', 'corporate_advisor', 'fx_dealer', 'bu_head', 'coo'], success_message: 'Thank you — a specialist will call you back.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', channel: 'web_form' } },
 ];
 
 // Categories clients may see and download on the portal (statements, letters).

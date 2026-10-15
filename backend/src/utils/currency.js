@@ -67,6 +67,7 @@ const CURRENCIES = [
   { code: 'PKR', name: 'Pakistani Rupee',      symbol: '₨',   decimals: 2 },
   { code: 'BDT', name: 'Bangladeshi Taka',     symbol: '৳',   decimals: 2 },
   { code: 'LKR', name: 'Sri Lankan Rupee',     symbol: 'Rs',  decimals: 2 },
+  { code: 'MUR', name: 'Mauritian Rupee',      symbol: 'Rs',  decimals: 2 },
 ];
 
 const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));

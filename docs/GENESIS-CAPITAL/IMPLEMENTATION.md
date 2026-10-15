@@ -81,14 +81,14 @@ Use this only in demo environments; in production each user sets their own passw
 | Modules (sidebar sections) | 19 |
 | Objects | 91 |
 | Fields (including formulas and roll-ups) | 1,406 |
-| Workflows | 71 |
+| Workflows | 72 |
 | Assignment rules / SLA policies | 22 / 13 |
 | Object permission entries | 208 |
 | Roles / staff logins | 17 / 22 |
 | Business units / barrier zones | 6 / 4 |
 | Dashboards | 15 |
-| Email templates (EN + FR) | 34 |
-| Merge templates / document categories / checklists | 14 / 27 / 11 |
+| Email templates (EN + FR) | 36 |
+| Merge templates / document categories / checklists | 14 / 27 / 12 |
 | Wizards / public website forms | 11 / 6 |
 | Sandbox integrations | 7 |
 | Master-data sets | 13 (22 products, 6 funds, 9 share classes, 18 countries, …) |
@@ -111,7 +111,14 @@ node scripts/install-vertical.js genesis-capital --tenant genesis-capital --reco
 - **First install.** `--create-tenant` creates tenant `genesis-capital` (plan *enterprise*, industry *finance*, timezone `Indian/Mauritius`) and runs the structural onboarding steps. The generic CRM catalogue is not cloned; the pack replaces it.
 - **Re-runs.** The installer is idempotent and diff-based: unchanged metadata is skipped and demo records are matched by `ext_ref`. A re-run reports what it created, updated or left unchanged.
 - **Staff accounts.** These are created once, with random passwords printed once (or `--password`). Change them at first sign-in.
+- **Workspace settings.** The pack sets the currency (MUR), timezone (`Indian/Mauritius`), date format (DD/MM/YYYY) and app name. Only values that differ are written; note that a re-run resets any of these four an administrator has changed.
 - **Duration.** A full install with demo data takes about 40–60 minutes against a remote database (each write is a network round trip). Upgrades that change only metadata take a few minutes.
+
+### A sandbox for a client's staff
+
+When a prospect's own users are to try the CRM, build a separate hosted installation with its own database, named
+accounts, two-factor sign-in, a test mail inbox and demo data only; never share a developer machine or the
+development database. Steps, settings, reset and close-down: [CLIENT_SANDBOX.md](CLIENT_SANDBOX.md).
 
 ### Environment for production
 
@@ -121,7 +128,8 @@ node scripts/install-vertical.js genesis-capital --tenant genesis-capital --reco
 | `SMTP_*` | Outbound email: correspondence, portal sign-in codes. |
 | `RECAPTCHA_SECRET` | Turns on reCAPTCHA for the public website forms. |
 | `ALLOWED_ORIGINS` | Front-end origins allowed by CORS. |
-| `CALENDAR_FEED_SECRET`, `PORTAL_SECRET` | Optional dedicated signing keys. Both default to values derived from `JWT_SECRET`. |
+| `CALENDAR_FEED_SECRET`, `PORTAL_SECRET`, `UPLOAD_LINK_SECRET` | Optional dedicated signing keys. All default to values derived from `JWT_SECRET`. Changing `UPLOAD_LINK_SECRET` invalidates upload links already sent. |
+| `APP_URL`, `API_URL` | Public addresses of the web app and the API. Upload links and form links use `APP_URL`; the email-open pixel uses `API_URL`, else `APP_URL` (when the web server proxies `/api`). Set them in production, or links point at the address of whoever issued them. |
 
 `scripts/encrypt-existing-fields.js` encrypts values stored before a field was marked encrypted. It is a dry run by default; add `--apply` to write.
 
@@ -188,6 +196,7 @@ Objects: `enquiry`, `web_event`, `referral`.
 | Requirement | Delivered as |
 |---|---|
 | LEAD-FR-01 public intake | Six published forms, hosted at `/f/<key>`: *Get in touch* (`enquiry_web`, all 22 products), *Loan calculator* (`enquiry_calculator`, the 4 loan products), *Quick loan estimate* (`web_event_calculator`, loans, no personal details), *Investor questionnaire*, *Newsletter sign-up* and *Request a call-back*. Rate limited, schema-validated, optional reCAPTCHA, honeypot, consent text and version, UTM fields, `prod`, page URL, language. The hosted page wears the workspace theme, splits longer forms into two steps and shows computed results on the confirmation. Staff share any form from **Tools ▸ Web forms** (email in EN/FR or copy a link). |
+| LEAD-FR-16 *Talk to an expert* | *Get in touch* and *Request a call-back* accept `?expert=<staff ID>`. The form names the person ("You'll speak with …") and the enquiry is assigned to them, ahead of the routing rules. Only active staff whose role is in the form's `expert_roles` qualify; any other ID is ignored and normal routing applies. **Tools ▸ Web forms** has a *Talk to* picker for building these links. |
 | LEAD-FR-02 routing matrix | `product_routing` master (22 website labels) → `product_code`, `business_unit`, queue, first-contact target. |
 | LEAD-FR-03 duplicates | `mobile_e164` normalisation; matches existing parties by email, mobile, national ID and BRN (`existing_party_*` formulas); conversion links rather than duplicates. |
 | LEAD-FR-04 assignment | Six rules route enquiries by business unit. `genesis_enquiry_existing_client_rm` sends an existing client's enquiry to their primary RM. |
@@ -228,12 +237,12 @@ Objects: `kyc_case`, `screening_hit`, `kyc_reliance`, `str_report`, `kyc_risk_fa
 | Requirement | Delivered as |
 |---|---|
 | KYC-FR-01 lifecycle | Initiated → Documents Pending → Under Verification → Screening → Risk Assessed → Pending Approval → Approved / Rejected / On Hold, with stage gates. |
-| KYC-FR-02 checklists | Individual and corporate KYC packs (11 checklists in total). |
+| KYC-FR-02 checklists | Individual and corporate KYC packs (12 checklists in total, including *Identity renewal* for expiring IDs). |
 | KYC-FR-03 screening | `genesis_kyc_screening` calls the screening integration; hits become `screening_hit` records; daily batch rescreening; triage (true match escalates to the MLRO). Providers: World-Check, Dow Jones, ComplyAdvantage, LexisNexis. |
 | KYC-FR-04 risk engine | Weighted factors read from the versioned `kyc_risk_factor` master (country, PEP, product, channel, occupation, ownership, activity); low / medium / high with an override reason. |
 | KYC-FR-05 EDD | High risk or PEP needs EDD notes and MLRO approval. |
 | KYC-FR-06 periodic review | High 1 year, medium 3, low 5; `genesis_kyc_periodic_review` opens the review case. |
-| KYC-FR-07 expiry | `genesis_id_expiry` requests a new ID 30 days ahead (email; portal upload). |
+| KYC-FR-07 expiry | `genesis_id_expiry` requests a new ID 30 days ahead. The email (`kyc_refresh_request`, EN/FR) carries a secure upload link for the *Identity renewal* checklist; the client can also upload through the portal. |
 | KYC-FR-08 reliance | `kyc_reliance` records one entity relying on another's KYC, with validity and add-on checks. |
 | KYC-FR-09 FATCA/CRS | Status, tax residencies, TINs, self-certification category. |
 | KYC-FR-10 STR register | `MLRO_STR` barrier; `conceal_existence` hides even the count; FIU reference and filing date. |
@@ -260,7 +269,7 @@ Objects: `loan_application`, `loan_applicant`, `credit_condition`, `loan_offer`,
 | LOAN-FR-03 pricing | PLR (effective-dated) + product margin; discretionary spread changes go through the approval matrix; `plr_at_offer` stored. |
 | LOAN-FR-04 scenarios | `loan_offer` scenarios compare tenure, EMI and total interest; the selected one feeds the offer letter. |
 | LOAN-FR-05/06 income and MCIB | Income and obligations per applicant; `genesis_loan_mcib` requests the MCIB report after consent and stores the score and reference. |
-| LOAN-FR-07 documents | Product checklists (real estate, personal, investment-backed); `genesis_loan_documents` emails the request (EN/FR). |
+| LOAN-FR-07 documents | Product checklists (real estate, personal, investment-backed). The Docs tab shows each item as received or outstanding. `genesis_loan_documents` emails the request (EN/FR) with a secure upload link; staff can also email or copy a link from the Docs tab. |
 | LOAN-FR-08 appraisal | Risk grade, recommendation, conditions precedent and subsequent, exceptions. |
 | LOAN-FR-09 approval matrix | `approval_matrix` master (by amount band and exception type); `genesis_loan_credit_approval`. |
 | LOAN-FR-10 offer | Offer letter merge template; e-signature in the DMS; daily lapse of unaccepted offers. |
@@ -337,7 +346,7 @@ Objects: `securities_account`, `client_order`, `ioi_entry`, `research_publicatio
 - Account record with CDS, OMS, limits and instructors (SEC-FR-02).
 - Time-stamped order log with OMS hand-off and the restricted-list block (SEC-FR-03).
 - IPO / bond indications (SEC-FR-04).
-- Research distribution with consent (SEC-FR-05).
+- Research distribution with consent (SEC-FR-05): *Send to subscribers* on a research publication (see MKT-FR-04).
 - Dormant-account reactivation (SEC-FR-06).
 
 ### M12 Corporate Advisory — *Corporate Advisory*
@@ -399,7 +408,8 @@ Objects: `service_request`, `service_catalogue` (master).
 
 - 27 Genesis categories with seven-year retention (DOC-FR-01, -02).
 - 14 merge templates (DOC-FR-03).
-- Client upload through the portal, against the record (DOC-FR-04).
+- Client upload against the record, through the portal or a **secure upload link** (DOC-FR-04). The link is signed, names one record (and optionally one checklist) and expires (14 days by default, at most 60). It opens `/upload/<token>` without a sign-in. The page lists the requested items and whether each has arrived, never file names or other documents. Files must be PDF, JPEG or PNG (checked by content) and under 10 MB, and must match a requested category. Uploads land in the record's documents waiting for review (*under review* where the category requires review). A rejected or expired document no longer counts as received, so the item reopens.
+- Checklist status on the Docs tab: the checklist is chosen from the record's product, each item shows received or outstanding with its review status, and *Email link to client* / *Copy client link* send the upload link.
 - Deal documents inherit the advisory barrier (DOC-FR-05).
 - National ID numbers are encrypted (AES-256-GCM) and masked (DOC-FR-06).
 - E-signature uses the DMS's native flow.
@@ -411,7 +421,7 @@ Objects: `campaign`, `campaign_member`, `segment`, `marketing_event`, `event_reg
 - Consent per purpose and channel, with source, text version and withdrawal (MKT-FR-01).
 - Segments with filter criteria (MKT-FR-02).
 - Campaigns with budget, attributed enquiries, loans and revenue, and ROI (MKT-FR-03).
-- Newsletter and research subscriptions, with a welcome email (MKT-FR-04).
+- Newsletter and research subscriptions, with a welcome email (MKT-FR-04). A research publication (weekly highlights, market reports) has a *Send to subscribers* button. It emails every active subscriber of that publication type in their language (`research_publication` EN/FR) and skips clients flagged `marketing_suppressed`. Each email carries an open-tracking pixel; opens are stamped on the email log and counted on the publication.
 - Events with registration, attendance and follow-up (MKT-FR-05).
 - Suppression: a campaign member cannot be added when the client has no consent, is do-not-contact or has an open complaint (MKT-FR-06).
 
@@ -507,7 +517,7 @@ All external systems are Builder integrations. In this environment they use the 
 | # | System | How |
 |---|---|---|
 | I-01 | Website in | Six public forms (§M01), also shareable by staff from **Tools ▸ Web forms**. |
-| I-02 | Website out | `GET /api/public/feeds/genesis-capital/{fx-rates, fund-nav, plr}`: cached, read-only and open to any origin. The fields are configured on the object (`config.public_feed`); personal data is never published. |
+| I-02 | Website out | `GET /api/public/feeds/genesis-capital/{fx-rates, fund-nav, nav-history, plr}`: cached, read-only and open to any origin. The fields are configured on the object (`config.public_feed`); personal data is never published. `nav-history` (up to 500 points, oldest first) drives a performance chart. `/site/genesis-capital` is a website preview built only from these feeds and the published forms. |
 | I-03 | Loan management system | `genesis_lms`: disbursement booking returns the account number; `loan_account` holds the daily snapshot. |
 | I-04 | Transfer agent | `genesis_ta`: fund orders. |
 | I-05 | OMS / CDS | `genesis_oms`: client orders. |
@@ -661,7 +671,9 @@ the short technical version.
 9. **Approvals.** Move an application to *Credit approval* as GCCRED1; sign in as GCLMGR, open **Tools ▸ Approvals**,
    approve with a comment; the application moves to *Offer issued* and the PDF offer letter appears in its documents.
 10. **Documents.** Open a loan application's Docs tab: the checklist shows which items are in, each with its
-    review status; open the offer letter and its signature request.
+    review status. *Copy client link* and open it in a private window: upload a PDF and the item turns received.
+11. **Website.** Open `/site/genesis-capital`: rate board, PLR, fund NAVs with a performance chart, and the forms.
+12. **Research.** Open a research publication and press *Send to subscribers*; the opens count rises as clients read it.
 
 ## 13. Not delivered, or needs the client's accounts
 
@@ -680,7 +692,7 @@ the short technical version.
 
 ## 14. Verification
 
-- `backend`: `npx jest`. 78 suites (about 1,220 tests), including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
+- `backend`: `npx jest`. 79 suites (about 1,230 tests), including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for upload links, expert routing, subscriber distribution, portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
 - **Live business flows**, driven through the API against the installed workspace, with each step performed by the
   role that owns it:
   - *Lending, 14 steps:* website enquiry (French), routing, French acknowledgement, speed-to-lead SLA, conversion
@@ -690,5 +702,5 @@ the short technical version.
   - *Desks:* fund order maker-checker to TA confirmation; suitability block; FX quote to deal with dealing
     reference; advisory conflict check invisible to the trading desk; complaint acknowledgement; restricted-list
     block; introducer referral through the portal to a routed enquiry.
-- `frontend`: `npx vitest run` (28 files, about 300 tests, including the web form, Web forms page, portal, Kanban views and theming), `npm run lint`, `npm run build`.
+- `frontend`: `npx vitest run` (29 files, about 310 tests, including the web form, Web forms page, upload links, portal, Kanban views and theming), `npm run lint`, `npm run build`.
 - CI runs all of the above on every push (`.github/workflows/ci.yml`).

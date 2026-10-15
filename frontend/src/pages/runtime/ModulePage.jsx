@@ -987,7 +987,7 @@ export default function ModulePage() {
                     )}
                     {sideTab === 'tasks'     && <TaskPanel recordId={activeRecord.id} />}
                     {sideTab === 'reminders' && <ReminderPanel recordId={activeRecord.id} />}
-                    {sideTab === 'docs'     && <DocumentPanel recordId={activeRecord.id} relatedType={activeObject?.name} />}
+                    {sideTab === 'docs'     && <DocumentPanel recordId={activeRecord.id} relatedType={activeObject?.name} clientEmail={activeRecord.data?.party_email ?? activeRecord.data?.email ?? ''} clientName={activeRecord.data?.party_name ?? activeRecord.data?.first_name ?? ''} />}
                     {sideTab === 'audit'    && <AuditTab recordId={activeRecord.id} />}
                     {sideTab === 'related'  && <RelatedPanel recordId={activeRecord.id} />}
                     {sideTab === 'preview'  && <EmailPreviewTab record={activeRecord} />}

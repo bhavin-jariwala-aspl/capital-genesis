@@ -81,6 +81,7 @@ class EmailSendService {
     related_record_id,
     related_type,
     sent_by,
+    append_html = null,   // trusted markup added after the rendered body (an open-tracking image)
   }) {
     // ── Validate inputs ──────────────────────────────────────────────────────
     if (!template_id) throw new ValidationError('template_id is required');
@@ -109,7 +110,7 @@ class EmailSendService {
         cc:      cc_emails?.length  ? cc_emails.join(', ')  : undefined,
         bcc:     bcc_emails?.length ? bcc_emails.join(', ') : undefined,
         subject: rendered.subject,
-        html:    rendered.body_html  || undefined,
+        html:    rendered.body_html ? `${rendered.body_html}${append_html ?? ''}` : undefined,
         text:    rendered.body_text  || rendered.subject,
       });
     } catch (err) {

@@ -106,6 +106,8 @@ for (const obj of modules.flatMap((m) => m.objects)) {
 const feeds = {
   fx_rate: { name: 'fx-rates', fields: ['currency_code', 'rate_to_mur', 'buy_tt', 'sell_tt', 'rate_date'], latest_by: { group: 'currency_code', order: 'rate_date' }, sort: { field: 'currency_code' } },
   fund_share_class: { name: 'fund-nav', fields: ['class_code', 'name', 'currency_code', 'latest_nav', 'latest_nav_date', 'risk_rating', 'min_investment', 'dealing_frequency'], sort: { field: 'class_code' } },
+  // Performance history behind the website's NAV table.
+  nav_history: { name: 'nav-history', fields: ['class_code', 'fund', 'nav_date', 'nav'], sort: { field: 'nav_date', dir: 'asc' }, limit: 500 },
   plr_rate: { name: 'plr', fields: ['rate', 'effective_from'], sort: { field: 'effective_from', dir: 'desc' }, limit: 1 },
 };
 for (const obj of modules.flatMap((m) => m.objects)) {

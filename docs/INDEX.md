@@ -90,6 +90,9 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...present the Genesis Capital CRM to a client, and prepare for their questions"**
 → [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md)
 
+**"...let a client's staff try the Genesis Capital CRM (hosted sandbox)"**
+→ [GENESIS-CAPITAL/CLIENT_SANDBOX.md](GENESIS-CAPITAL/CLIENT_SANDBOX.md)
+
 **"...see how the Genesis Capital financial-services CRM was built and install it"**
 → [GENESIS-CAPITAL/IMPLEMENTATION.md](GENESIS-CAPITAL/IMPLEMENTATION.md) (requirements: [GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md](GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md))
 
@@ -266,6 +269,10 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 - [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md) —
   How Genesis staff use the CRM: navigation, records, approvals, documents, every module and journey, and a glossary of
   every business and CRM term
+- [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md) —
+  Running a client demonstration: scenes with links, talk tracks and expected questions
+- [GENESIS-CAPITAL/CLIENT_SANDBOX.md](GENESIS-CAPITAL/CLIENT_SANDBOX.md) —
+  Building, running, resetting and closing a hosted sandbox for a client's own testers
 - [GENESIS-CAPITAL/IMPLEMENTATION.md](GENESIS-CAPITAL/IMPLEMENTATION.md) —
   All 25 modules and 22 products: PRD traceability, product catalogue, dashboards, portal, install
   steps, roles and logins, demo data and walk-through, and what needs the client's accounts

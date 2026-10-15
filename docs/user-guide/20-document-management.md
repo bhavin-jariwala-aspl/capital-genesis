@@ -53,6 +53,21 @@ Click the **share** action on a document to open **Share & Analytics**:
 - **Track engagement** — see total **views** and **downloads**, active links, and recent
   activity (who opened it and when). Revoke a link any time.
 
+## Ask a client for documents (checklist and upload link)
+
+On a record with a document checklist (for example a loan application), open the **Docs** tab:
+
+- **Checklist** — each requested document shows as received (green, with its review status) or outstanding.
+  The checklist is picked from the record's product; the badge counts the required items still missing.
+- **Email link to client** — sends the client a secure upload link (English or French; choose how many days it
+  stays valid, 1–60, default 14). The email is logged against the record.
+- **Copy client link** — the same link, to paste into a chat or message.
+
+The client opens the link without signing in and sees only what is requested and whether it has arrived — never
+file names or other documents. They upload a PDF, JPEG or PNG (up to 10 MB) per item, from a phone or a computer.
+Each upload lands on the record waiting for review. If you reject a document, its checklist item shows as outstanding again and the client's link asks for it again. A link cannot be revoked before it expires, so keep the validity
+short. In workflow emails, the `{{upload_link}}` variable inserts a link for the record being processed.
+
 ## Generate documents from templates
 
 Admins create **merge templates** in the builder — reusable HTML/text with `{{placeholders}}`

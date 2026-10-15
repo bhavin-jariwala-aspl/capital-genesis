@@ -120,7 +120,7 @@ SMTP_PORT=587
 SMTP_USER=""
 SMTP_PASS=""
 SMTP_FROM="noreply@genesis-crm.local"
-# Base URL used to build password-reset links. Defaults to the request's origin;
+# Base URL used to build password-reset, shared web-form and client upload links. Defaults to the request's origin;
 # set explicitly when running behind a proxy or on a custom domain.
 APP_URL="http://localhost:5173"
 ```
@@ -164,7 +164,7 @@ npx prisma migrate dev
 
 The seed script empties the database, creates the platform layer (plans, feature flags, security policy,
 rate limits) and installs the **Genesis Capital** workspace from its vertical pack — 19 modules, 91 objects,
-71 workflows, 15 dashboards, 22 staff accounts and about 2,300 demo records. It finishes by creating the
+72 workflows, 15 dashboards, 22 staff accounts and about 2,300 demo records. It finishes by creating the
 platform administrator `PLATFORM01`.
 
 ```bash

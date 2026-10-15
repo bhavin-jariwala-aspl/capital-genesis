@@ -11,6 +11,56 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — Client upload links, expert routing, subscriber distribution, website preview (2026-10-15)
+
+- **Document checklist status and secure upload links** (DOC-FR-04, LOAN-FR-07, KYC-FR-07). The record's Docs tab
+  shows each checklist item as received or outstanding, and can **email** or **copy** a signed, expiring upload link
+  (`/upload/<token>`, 14 days by default, at most 60). The client uploads without signing in and sees only what is
+  requested. Files are checked by content (PDF, JPEG, PNG; 10 MB) and must match a requested category. Workflow
+  emails can use `{{upload_link}}`; the Genesis loan-document and ID-renewal emails now carry one. API:
+  `/api/upload-links`.
+- **"Talk to an expert" links.** A form that lists `expert_roles` accepts `?expert=<staff ID>`: the page names the
+  person and the enquiry is assigned to them. **Tools ▸ Web forms** has a *Talk to* picker. An unknown or ineligible
+  ID falls back to normal routing.
+- **Send to subscribers.** New workflow step `email_list`: one template to every active subscriber of a list, in
+  each recipient's language, skipping suppressed clients, with an open-tracking pixel
+  (`/api/public/email-open/<token>.gif`) that counts opens on the source record. Genesis research publications have
+  a *Send to subscribers* button.
+- **Website preview** at `/site/<workspace>`: rate board, prime lending rate, fund NAVs with a performance chart and
+  the published forms, built only from the public feeds. New feed `nav-history`; new public endpoint
+  `GET /api/public/workspaces/:slug/forms`.
+- **Vertical packs can set workspace settings** (installer step `settings`). Genesis Capital sets MUR, the
+  Mauritius timezone, DD/MM/YYYY and its app name. Currency list gains **MUR** (Mauritian Rupee).
+
+### Fixed — Upload links and configuration (2026-10-15)
+
+- A **rejected or expired** document counted as received on the checklist, so the client's upload link said it had
+  arrived. It no longer counts: the item reopens and the same link asks for it again.
+- The email-open tracking image used a new `API_PUBLIC_URL` variable; it now uses the existing `API_URL` (falling
+  back to `APP_URL`). `backend/.env.example` documents `APP_URL`, `API_URL` and `UPLOAD_LINK_SECRET` for these links.
+
+### Docs (2026-10-15)
+
+- New `docs/GENESIS-CAPITAL/CLIENT_SANDBOX.md`: how to host a sandbox for a client's own testers (separate
+  installation and database, production settings, persona accounts with forced password reset and two-factor sign-in,
+  test mail inbox, smoke test, reset and close-down). Linked from the demo pitch, implementation notes, deployment
+  guide and docs index.
+
+- Platform Builder extensions §27–29 (checklists and upload links, distribution lists and open tracking, website
+  preview), expert routing, installer `settings` step and feed lookups; Security (upload tokens, tracking pixel,
+  `?expert=`); Workflow Engine (`send_sms` and `email_list` were missing from the step list — the engine has 14 step
+  types); Automation reference, workflow and form-builder guides, data dictionary, schema, deployment variables,
+  the Genesis user guide and the demo pitch (agenda timings, rehearsal checks, upload-link step, research scene,
+  new Q&A).
+
+### Fixed — Dashboards (2026-10-15)
+
+- KPI tiles showed raw numbers (and "$" for every workspace). They now use the widget's format and the workspace
+  currency, compacted ("MUR 5.8B").
+- Chart value axes were a fixed width and clipped long labels; the width now follows the longest label.
+- Charts grouped by a period held as text (for example `2026-07`) sorted by value; they now sort by time.
+- The Genesis Capital welcome announcement, out of date since the demo data changed, is no longer shown.
+
 ### Added — Web forms page for staff (2026-10-15)
 
 - **Tools ▸ Web forms** lists every published public form (`/f/<key>`) with a description and, where the form has a

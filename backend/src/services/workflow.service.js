@@ -1041,6 +1041,12 @@ class WorkflowEngineService {
         // Template variables: dates as YYYY-MM-DD rather than Date#toString.
         const ctx = Object.fromEntries(Object.entries({ ...crmCache.fields, id: record?.id ?? '' })
           .map(([k, v]) => [k, v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : v]));
+        // {{upload_link}}: a signed 14-day link where the client sends the
+        // documents the record's checklist still needs (DOC-FR-04).
+        if (record?.id && record?.tenant_id) {
+          const UploadLinkService = require('./upload-link.service');
+          ctx.upload_link = UploadLinkService.linkFor({ tenantId: record.tenant_id, recordId: record.id }).url;
+        }
         const to = cfg.to ? this.#interpolate(cfg.to, ctx) : ctx[cfg.to_field ?? 'email'];
         if (!to || !cfg.template) {
           logEntry.result = 'no-op (missing template or recipient address)';
@@ -1066,6 +1072,95 @@ class WorkflowEngineService {
           related_record_id: record?.id ?? null, related_type: 'record', sent_by: actorId ?? null,
         });
         logEntry.result = `email ${sent.status} → ${to} (${tpl.name})`;
+        return step.on_true_id ?? defaultNextId;
+      }
+
+      // ── Email a list ──────────────────────────────────────────────────────
+      // Sends a template to everyone on a list that matches this record — a
+      // research publication to the subscribers of its topic (MKT-FR-04).
+      // Recipients come from `list_object` rows that match `match` (values
+      // may be {{placeholders}} from this record) and `active`, through their
+      // `link_field` lookup (a party). A recipient flagged by `suppress_field`
+      // (no consent, do-not-contact) or without an email is skipped, and each
+      // person gets one email however many list rows they have. With
+      // `track_field`, the email carries an open-tracking image and opens are
+      // counted into that field of this record.
+      //
+      // Config: { template, list_object, link_field, match: {f: v}, active?: {f: v},
+      //           email_field? = 'email', language_field?, suppress_field?, track_field?, limit? = 2000 }
+      case 'email_list': {
+        if (!cfg.template || !cfg.list_object || !cfg.link_field) {
+          logEntry.result = 'no-op (missing template, list_object or link_field)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const ctx = Object.fromEntries(Object.entries({ ...crmCache.fields, id: record?.id ?? '' })
+          .map(([k, v]) => [k, v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : v]));
+        const listObj = await this.db.uiObject.findFirst({ where: { name: String(cfg.list_object) }, select: { id: true } });
+        if (!listObj) { logEntry.result = `no-op (list object '${cfg.list_object}' not found)`; return step.on_true_id ?? defaultNextId; }
+        const want = Object.entries({ ...(cfg.match ?? {}), ...(cfg.active ?? {}) })
+          .map(([f, v]) => [f, typeof v === 'string' ? this.#interpolate(v, ctx) : v]);
+        const names = [...new Set([cfg.link_field, ...want.map(([f]) => f)])];
+        const rows = await this.db.recordFieldValue.findMany({
+          where: { field_name: { in: names }, record: { object_id: listObj.id, deleted_at: null } },
+          select: { record_id: true, field_name: true, str_value: true, num_value: true, bool_value: true },
+          take: (Number(cfg.limit) || 2000) * names.length,
+        });
+        const byRow = new Map();
+        for (const r of rows) {
+          const v = r.str_value ?? (r.num_value != null ? String(r.num_value) : r.bool_value != null ? String(r.bool_value) : null);
+          (byRow.get(r.record_id) ?? byRow.set(r.record_id, {}).get(r.record_id))[r.field_name] = v;
+        }
+        const recipients = [...new Set([...byRow.values()]
+          .filter((row) => want.every(([f, v]) => String(row[f] ?? '') === String(v ?? '')))
+          .map((row) => Number(row[cfg.link_field])).filter((n) => Number.isInteger(n) && n > 0))];
+        if (!recipients.length) { logEntry.result = 'no recipients on the list'; return step.on_true_id ?? defaultNextId; }
+
+        const emailField = cfg.email_field ?? 'email';
+        const personFields = [...new Set([emailField, 'first_name', 'display_name', cfg.language_field, cfg.suppress_field].filter(Boolean))];
+        const pv = await this.db.recordFieldValue.findMany({
+          where: { record_id: { in: recipients }, field_name: { in: personFields }, record: { deleted_at: null } },
+          select: { record_id: true, field_name: true, str_value: true, bool_value: true, num_value: true },
+        });
+        const people = new Map();
+        for (const r of pv) (people.get(r.record_id) ?? people.set(r.record_id, {}).get(r.record_id))[r.field_name] = r.str_value ?? r.bool_value ?? r.num_value;
+        // A suppression formula is computed on read for some objects; the
+        // record service resolves it when the stored value is missing.
+        const suppressed = async (pid, person) => {
+          if (!cfg.suppress_field) return false;
+          let v = person[cfg.suppress_field];
+          if (v == null && this.recordService?.getRecord) v = (await this.recordService.getRecord(pid).catch(() => null))?.data?.[cfg.suppress_field];
+          return v === true || v === 'true' || v === 1 || v === '1';
+        };
+
+        const tplNames = await this.db.emailTemplate.findMany({ where: { name: { in: [cfg.template, `${cfg.template}_fr`, `${cfg.template}_en`] }, is_active: true }, select: { id: true, name: true } });
+        const pick = (lang) => tplNames.find((t) => t.name === `${cfg.template}_${lang}`) ?? tplNames.find((t) => t.name === cfg.template);
+        if (!pick('en')) { logEntry.result = `no-op (email template '${cfg.template}' not found)`; return step.on_true_id ?? defaultNextId; }
+        if (!this.emailSender) {
+          const EmailSendService = require('./email-send.service');
+          const EmailTemplateService = require('./email-template.service');
+          this.emailSender = new EmailSendService(this.db, new EmailTemplateService(this.db));
+        }
+        const tracking = require('./email-tracking');
+        const base = (process.env.API_URL || process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+        const tenantId = record?.tenant_id;
+        let sent = 0; let skipped = 0;
+        for (const pid of recipients) {
+          const person = people.get(pid) ?? {};
+          const to = person[emailField];
+          if (!to || await suppressed(pid, person)) { skipped += 1; continue; }
+          const lang = cfg.language_field ? String(person[cfg.language_field] ?? '').toLowerCase() : 'en';
+          const tpl = pick(lang) ?? pick('en');
+          await this.emailSender.sendWithTemplate({
+            template_id: tpl.id, to_email: String(to),
+            variables: { ...ctx, first_name: person.first_name ?? '', display_name: person.display_name ?? '' },
+            related_record_id: record?.id ?? null,
+            related_type: cfg.track_field ? `distribution:${cfg.track_field}` : 'distribution',
+            sent_by: actorId ?? null,
+            append_html: cfg.track_field && tenantId ? tracking.pixel({ base, tenantId, recordId: record.id, email: to, field: cfg.track_field }) : null,
+          }).then(() => { sent += 1; }, () => { skipped += 1; });
+        }
+        logEntry.result = `emailed ${sent} of ${recipients.length} on the list (${skipped} skipped: no email, no consent or failed)`;
         return step.on_true_id ?? defaultNextId;
       }
 

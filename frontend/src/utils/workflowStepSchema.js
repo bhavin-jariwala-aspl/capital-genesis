@@ -265,6 +265,25 @@ export const STEP_SCHEMAS = {
     example: { integration: 'genesis_sms', message: 'Genesis: your instalment of MUR {{instalment}} is due on {{next_due_date}}.', to_field: 'mobile' },
   },
 
+  email_list: {
+    summary: 'Emails a template to everyone on a list that matches this record (e.g. a publication to its subscribers).',
+    standard:
+      'Recipients are the people linked from rows of a list object (subscriptions, campaign members) that match '
+      + 'this record. Each person gets one email; anyone without an email address or flagged by the suppression '
+      + 'field (no consent, do-not-contact) is skipped. With a tracking field, opens are counted on this record.',
+    fields: [
+      { key: 'template', label: 'Email template name', type: 'text', required: true, help: 'A template named <name>_fr is used for French speakers.' },
+      { key: 'list_object', label: 'List object', type: 'text', required: true, help: 'e.g. subscription' },
+      { key: 'link_field', label: 'Person field on the list', type: 'text', required: true, help: 'The lookup to the recipient, e.g. party.' },
+      { key: 'match', label: 'Match', type: 'json', help: 'List field → value, e.g. {"topic": "{{publication_type}}"}.' },
+      { key: 'active', label: 'Only rows where', type: 'json', help: 'e.g. {"status": "subscribed"}.' },
+      { key: 'language_field', label: 'Recipient language field', type: 'text', help: 'e.g. preferred_language' },
+      { key: 'suppress_field', label: 'Skip recipients when true', type: 'text', help: 'e.g. marketing_suppressed' },
+      { key: 'track_field', label: 'Count opens in field', type: 'field', help: 'A number field on this record, e.g. opens.' },
+    ],
+    example: { template: 'research_publication', list_object: 'subscription', link_field: 'party', match: { topic: '{{publication_type}}' }, active: { status: 'subscribed' }, suppress_field: 'marketing_suppressed', track_field: 'opens' },
+  },
+
   generate_document: {
     summary: 'Renders a merge template from this record and files it in the record\'s Docs.',
     standard:

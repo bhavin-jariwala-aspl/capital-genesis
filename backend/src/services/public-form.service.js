@@ -26,7 +26,8 @@ const { NotFoundError, ValidationError } = require('../utils/errors');
  * `ui_forms.config.public`:
  *   { enabled, success_message, consent_field, consent_text_version,
  *     capture_fields: [...], result_fields: [...], stage, captcha, channel,
- *     field_options: { field: [allowed values] } }   // narrow a picklist on this form only
+ *     field_options: { field: [allowed values] },    // narrow a picklist on this form only
+ *     expert_roles: [role names] }                    // ?expert=<employee id> may route to these staff
  */
 
 /** A field's options, narrowed by the form's `field_options` (a calculator offers only loans). */
@@ -91,12 +92,29 @@ class PublicFormService {
     return form;
   }
 
+  /**
+   * The staff member a "Talk to …" link names, if the form allows experts and
+   * the person is an active member of the form's workspace in an allowed role.
+   */
+  async #expert(form, id) {
+    const roles = form.config?.public?.expert_roles;
+    if (!id || !Array.isArray(roles) || !roles.length) return null;
+    const emp = await tenantContext.run({ tenantId: form.tenant_id }, () => this.db.employee.findFirst({
+      where: { employee_id: String(id).slice(0, 20), tenant_id: form.tenant_id, is_active: true, role: { in: roles } },
+      select: { employee_id: true, employee_name: true, role: true },
+    })).catch(() => null);
+    return emp ?? null;
+  }
+
   /** What the website needs to render the form. Never exposes internal ids beyond the field list. */
-  async describe(key) {
+  async describe(key, { expert = null } = {}) {
     const form = await this.#resolve(key);
     const cfg = form.config.public;
     const tenant = await Promise.resolve(this.db.tenant?.findUnique?.({ where: { id: form.tenant_id }, select: { name: true } })).catch(() => null);
+    const person = await this.#expert(form, expert);
     return {
+      // "You'll speak with …" — only the name, and only for allowed roles.
+      expert:      person ? { id: person.employee_id, name: person.employee_name } : null,
       // Which workspace's public branding (theme, logo) the page should wear.
       tenant_id:   form.tenant_id,
       workspace:   tenant?.name ?? null,
@@ -168,8 +186,11 @@ class PublicFormService {
       stageId = stage?.id ?? null;
     }
 
+    // A "Talk to …" link goes straight to that person; an unknown or ineligible
+    // name falls back to the normal routing rules.
+    const person = await this.#expert(form, body.expert);
     const record = await tenantContext.run({ tenantId: form.tenant_id }, () =>
-      this.records.createRecord(form.object.id, stageId, null, null, { tenant_id: form.tenant_id }, values));
+      this.records.createRecord(form.object.id, stageId, null, person?.employee_id ?? null, { tenant_id: form.tenant_id }, values));
 
     const reference = Object.values(record?.data ?? {}).find((v) => typeof v === 'string' && /^[A-Z]{2,6}-\d{4}-\d+$/.test(v)) ?? null;
     // `result_fields` lets the website show what the CRM computed — a loan

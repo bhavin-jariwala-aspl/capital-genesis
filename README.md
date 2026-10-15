@@ -4,7 +4,7 @@
 
 > **Genesis Capital** — the shipped demo workspace is a complete financial-services CRM (lending, wealth,
 > funds, securities, advisory, forex, compliance) built entirely as Builder metadata: 19 modules, 91 objects,
-> 71 workflows, 15 dashboards, a client and introducer portal, French labels and about 2,300 demo records. See
+> 72 workflows, 15 dashboards, a client and introducer portal, French labels and about 2,300 demo records. See
 > [docs/GENESIS-CAPITAL/IMPLEMENTATION.md](docs/GENESIS-CAPITAL/IMPLEMENTATION.md) and the
 > [user guide](docs/GENESIS-CAPITAL/genesis-capital-user-guide.md). Presenting it? See the
 > [demo pitch and Q&A guide](docs/GENESIS-CAPITAL/DEMO_PITCH.md).

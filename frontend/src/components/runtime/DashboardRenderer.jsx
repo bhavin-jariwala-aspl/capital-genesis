@@ -6,6 +6,8 @@ import { TrendingUp, TrendingDown, Minus, CalendarRange, X } from 'lucide-react'
 import { useDataSourceRows, useDataSourceRecord } from '../../hooks/useDataSource';
 import { resolveWidgetChart } from '../../utils/dashboard';
 import { formatValue, isNumericType } from '../../utils/report';
+import { makeValueFormatter } from '../../utils/chart';
+import { useCurrencyStore } from '../../store/currencyStore';
 import { reportService } from '../../services/report.service';
 
 /**
@@ -160,15 +162,21 @@ const TREND = {
 
 function MetricCard({ widget }) {
   const { data: row, loading, error } = useDataSourceRecord(widget.data_source);
+  const currency = useCurrencyStore((s) => s.code);
 
   const valueKey = widget.config?.valueKey || 'value';
   const changeKey = widget.config?.changeKey || 'change';
   const rawValue = row[valueKey] ?? row.value;
   // A report-backed tile reports its own measure type, so a currency measure
   // renders as currency without the widget having to be told.
+  // Otherwise the widget's own `config.format` applies (currency, compact
+  // currency, percent…) in the workspace currency; a bare number still gets
+  // digit grouping rather than printing as "5628201541.5".
   const value    = rawValue === null || rawValue === undefined
     ? '—'
-    : (row.type ? formatValue(rawValue, row.type) : String(rawValue));
+    : row.type
+      ? formatValue(rawValue, row.type)
+      : makeValueFormatter({ format: widget.config?.format ?? 'number', decimals: widget.config?.decimals ?? 0, currency })(rawValue);
   const change   = row[changeKey] ?? row.change ?? widget.config?.change;
   const trendKey = row.trend  ?? widget.config?.trend ?? 'flat';
   const { Icon, bg, text, iconBg } = TREND[trendKey] ?? TREND.flat;

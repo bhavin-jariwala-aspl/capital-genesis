@@ -33,13 +33,13 @@ const emailTemplates = [
   ...pair('loan_document_request', 'service', 'loan_application',
     {
       subject: 'Documents needed for your loan application {{application_no}}',
-      html: '<p>Dear client,</p><p>To assess application <strong>{{application_no}}</strong> we need: identity document, proof of address (under 3 months), last 3 payslips or audited accounts, 6 months of bank statements, and — for property loans — the title deed and valuation report.</p><p>Your relationship manager will send a secure upload link.</p>',
-      text: 'Documents needed for {{application_no}}: ID, proof of address, payslips or accounts, 6 months of bank statements, title deed and valuation (property loans).',
+      html: '<p>Dear client,</p><p>To assess application <strong>{{application_no}}</strong> we need: identity document, proof of address (under 3 months), last 3 payslips or audited accounts, 6 months of bank statements, and — for property loans — the title deed and valuation report.</p><p><a href="{{upload_link}}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;display:inline-block">Upload your documents</a></p><p style="font-size:13px;color:#6b7280">This secure link works for 14 days. You can send the documents one at a time, from your phone or computer.</p>',
+      text: 'Documents needed for {{application_no}}: ID, proof of address, payslips or accounts, 6 months of bank statements, title deed and valuation (property loans). Upload them here: {{upload_link}}',
     },
     {
       subject: 'Documents requis pour votre demande de prêt {{application_no}}',
-      html: '<p>Madame, Monsieur,</p><p>Pour étudier la demande <strong>{{application_no}}</strong>, nous avons besoin : pièce d\'identité, justificatif de domicile (moins de 3 mois), 3 dernières fiches de paie ou comptes audités, 6 mois de relevés bancaires et, pour un prêt immobilier, l\'acte de propriété et le rapport d\'évaluation.</p><p>Votre conseiller vous enverra un lien de dépôt sécurisé.</p>',
-      text: 'Documents requis pour {{application_no}} : pièce d\'identité, justificatif de domicile, fiches de paie ou comptes, 6 mois de relevés, acte et évaluation (prêt immobilier).',
+      html: '<p>Madame, Monsieur,</p><p>Pour étudier la demande <strong>{{application_no}}</strong>, nous avons besoin : pièce d\'identité, justificatif de domicile (moins de 3 mois), 3 dernières fiches de paie ou comptes audités, 6 mois de relevés bancaires et, pour un prêt immobilier, l\'acte de propriété et le rapport d\'évaluation.</p><p><a href="{{upload_link}}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;display:inline-block">Envoyer vos documents</a></p><p style="font-size:13px;color:#6b7280">Ce lien sécurisé est valable 14 jours. Vous pouvez envoyer les documents un par un, depuis votre téléphone ou votre ordinateur.</p>',
+      text: 'Documents requis pour {{application_no}} : pièce d\'identité, justificatif de domicile, fiches de paie ou comptes, 6 mois de relevés, acte et évaluation (prêt immobilier). Envoyez-les ici : {{upload_link}}',
     }),
   ...pair('loan_offer', 'sales', 'loan_application',
     {
@@ -88,13 +88,13 @@ const emailTemplates = [
   ...pair('kyc_refresh_request', 'compliance', 'party',
     {
       subject: 'Please update your identity document',
-      html: '<p>Dear {{first_name}},</p><p>Our records show your identity document expires on {{id_expiry_date}}. Regulations require us to keep it current — please send a copy of your new document to your relationship manager.</p>',
-      text: 'Your identity document expires on {{id_expiry_date}}. Please send a copy of your new document to your relationship manager.',
+      html: '<p>Dear {{first_name}},</p><p>Our records show your identity document expires on {{id_expiry_date}}. Regulations require us to keep it current — please send a copy of your new document using the secure link below.</p><p><a href="{{upload_link}}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;display:inline-block">Upload your new ID</a></p><p style="font-size:13px;color:#6b7280">This secure link works for 14 days.</p>',
+      text: 'Your identity document expires on {{id_expiry_date}}. Please upload a copy of your new document here: {{upload_link}}',
     },
     {
       subject: 'Merci de mettre à jour votre pièce d\'identité',
-      html: '<p>Bonjour {{first_name}},</p><p>Votre pièce d\'identité expire le {{id_expiry_date}}. La réglementation nous impose de la tenir à jour : merci d\'en transmettre une copie à votre conseiller.</p>',
-      text: 'Votre pièce d\'identité expire le {{id_expiry_date}}. Merci d\'en transmettre une copie à votre conseiller.',
+      html: '<p>Bonjour {{first_name}},</p><p>Votre pièce d\'identité expire le {{id_expiry_date}}. La réglementation nous impose de la tenir à jour : merci d\'en transmettre une copie avec le lien sécurisé ci-dessous.</p><p><a href="{{upload_link}}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;display:inline-block">Envoyer votre nouvelle pièce</a></p><p style="font-size:13px;color:#6b7280">Ce lien sécurisé est valable 14 jours.</p>',
+      text: 'Votre pièce d\'identité expire le {{id_expiry_date}}. Merci d\'en déposer une copie ici : {{upload_link}}',
     }),
 ];
 
@@ -271,7 +271,7 @@ const dashboards = [
 // The calculators price loans only, so they offer only the loan products.
 const LOAN_CODES = ['LND-RE', 'LND-PL', 'LND-IBL', 'LND-COM'];
 const publicForms = [
-  { form: 'enquiry_web', settings: { success_message: 'Thank you — a Genesis specialist will contact you within four business hours.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'web_form' } },
+  { form: 'enquiry_web', settings: { expert_roles: ['rm', 'loans_manager', 'loans_executive', 'portfolio_manager', 'trader', 'corporate_advisor', 'fx_dealer', 'bu_head', 'coo'], success_message: 'Thank you — a Genesis specialist will contact you within four business hours.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'web_form' } },
   { form: 'enquiry_calculator', settings: { field_options: { product_code: LOAN_CODES }, success_message: 'Here is your indicative monthly instalment. A loans specialist will be in touch.', consent_field: 'consent_marketing', consent_text_version: '2026-10-v1', stage: 'new', channel: 'calculator', result_fields: ['indicative_rate', 'indicative_emi'] } },
   { form: 'risk_profile_web', settings: { success_message: 'Thank you — your investor profile is below. A wealth adviser will contact you.', result_fields: ['model_portfolio', 'risk_profile_label'] } },
 ];

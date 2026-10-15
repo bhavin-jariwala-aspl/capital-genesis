@@ -34,6 +34,24 @@ const AppearanceCtx = createContext({ a: resolveChartAppearance({}), fmt: (v) =>
  * ──────────────────────────────────────────────────────────────────────────── */
 
 // Categorical series palette — validated (CVD-safe) for each surface.
+/**
+ * Y-axis width that fits its widest tick label. A fixed width clipped longer
+ * currency labels ("MUR 28M") — the axis is sized from the largest value the
+ * chart plots, formatted the way the axis will show it.
+ */
+function axisWidth(data, fmt, extra = 0) {
+  let max = 0;
+  for (const row of data ?? []) {
+    for (const v of Object.values(row ?? {})) {
+      if (typeof v === 'boolean' || v === '' || v === null) continue;
+      const n = Number(v);
+      if (Number.isFinite(n) && Math.abs(n) > max) max = Math.abs(n);
+    }
+  }
+  const label = String(fmt ? fmt(max) : max);
+  return Math.min(120, Math.max(40, Math.round(label.length * 6.8) + 16)) + extra;
+}
+
 const SERIES_LIGHT = ['#6366f1', '#14b8a6', '#f59e0b', '#a855f7', '#22c55e', '#ef4444', '#0ea5e9', '#f97316'];
 const SERIES_DARK  = ['#6366f1', '#0d9488', '#d97706', '#9333ea', '#16a34a', '#dc2626', '#0284c7', '#ea580c'];
 
@@ -191,7 +209,7 @@ function ReBarChart({ data, xKey = 'name', yKey = 'value', barDefs = [], stacked
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={a.yLabel ? 64 : 48} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,23,42,0.03)' }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -222,7 +240,7 @@ function ReLineChart({ data, xKey = 'name', yKey = 'value', lineDefs = [] }) {
       <LineChart data={data} margin={margin}>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={a.yLabel ? 64 : 48} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ stroke: tick, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -270,7 +288,7 @@ function ReAreaChart({ data, xKey = 'name', yKey = 'value', stacked: stackedProp
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={a.yLabel ? 64 : 48} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ stroke: tick, strokeDasharray: '4 4', strokeOpacity: 0.5 }} />
         {showLegend(yKeys.length > 1) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}
@@ -472,7 +490,7 @@ function ReComposedChart({ data, xKey = 'name', barKey = 'bar', lineKey = 'line'
         </defs>
         {gridEl}
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: tick }} {...AXIS} dy={6} label={xLabel} />
-        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={a.yLabel ? 64 : 48} tickFormatter={fmt} label={yLabel} />
+        <YAxis tick={{ fontSize: 11, fill: tick }} {...AXIS} width={axisWidth(data, fmt, a.yLabel ? 16 : 0)} tickFormatter={fmt} label={yLabel} />
         <Tooltip content={<ChicTooltip />} cursor={{ fill: 'rgba(148,163,184,0.08)' }} />
         {showLegend(true) && <Legend content={<ChicLegend />} {...legendProps} />}
         {goalEl}

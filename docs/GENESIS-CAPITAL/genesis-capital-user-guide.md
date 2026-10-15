@@ -209,8 +209,10 @@ Who approves what:
 ### On a record (Docs tab)
 
 - **Checklist** — the documents this kind of record needs (for example the *Real estate loan* checklist: ID, proof of
-  address, bank statements, payslips, title deed, valuation report, insurance assignment). Items show as received or
-  missing.
+  address, bank statements, payslips, title deed, valuation report, insurance assignment). The checklist is picked
+  from the record's product. Items show as received (with their review status) or outstanding, and the badge counts
+  the required ones still missing. A rejected document does not count: the item reopens.
+- **Email link to client** / **Copy client link** — a secure upload link for the client (see below).
 - **Upload** — choose the category that matches the checklist item.
 - **Review status** — *Uploaded* (new), *Under review*, *Approved*, *Rejected* (with a reason). Reviewers set it.
 - **Generated letters** — offer letters, decline letters, PLR change notices, margin-call notices, KYC refresh letters
@@ -221,6 +223,20 @@ Who approves what:
   completion certificate is filed.
 
 Documents follow the record's visibility: a document on an advisory mandate is behind the advisory wall.
+
+### Asking a client for documents (upload link)
+
+1. On the record, open **Docs** and check the checklist.
+2. Click **Email link to client**: the client's email is filled in from the record; choose English or French and how
+   many days the link works (default 14, at most 60), then **Send**. Or click **Copy client link** to paste it into
+   a message.
+3. The client opens the link on a phone or computer, without signing in. They see only the documents still needed
+   and whether each has arrived — never file names or other documents — and upload a photo or PDF for each.
+4. Each upload appears on the Docs tab for review. Approve it, or reject it with a reason so the item reopens and the
+   same link asks for it again.
+
+The loan-documents email (*Documents pending*) and the ID-renewal email (30 days before an ID expires) already carry
+an upload link. A link cannot be cancelled before it expires, so keep it short for sensitive files.
 
 ### Document Management (sidebar)
 
@@ -328,7 +344,8 @@ Start any client conversation here: the **Related** tab shows everything Genesis
   the loan calculator, the investor questionnaire, walk-ins, phone, events, introducers and referrals all land here.
   The enquiry is **routed** to the right entity and executive, **acknowledged** in the client's language, given a
   **lead score and grade (A–F)** and an **indicative rate and instalment**, and timed by the speed-to-lead SLA.
-  Duplicates against existing clients are flagged; an existing client's enquiry goes to their RM.
+  Duplicates against existing clients are flagged; an existing client's enquiry goes to their RM. An enquiry from a
+  *Talk to* link (see §11) goes straight to the person it names.
   **Converting** creates (or links) the party, opens the entity relationship and the KYC case, records consent and —
   for retail loans — starts the loan application.
 - **Calculator Sessions** — anonymous website calculator and newsletter / call-back events.
@@ -404,7 +421,10 @@ Start any client conversation here: the **Related** tab shows everything Genesis
 - **Securities Accounts**: *Requested → KYC & appropriateness → Agreement → CDS opening → Active → Closed*.
 - **Order Intake Log**: *Received → Sent to OMS → Executed* — phone and email instructions time-stamped and handed to the
   order system; orders on a **restricted** issuer are refused.
-- **IPO / Bond Book** (indications of interest) and **Research & Market Statistics**.
+- **IPO / Bond Book** (indications of interest) and **Research & Market Statistics**. On a research note or weekly
+  highlights, **Send to subscribers** emails it to every active subscriber of that topic, in their language, skipping
+  clients who opted out of marketing. *Sent* is ticked and **Opens** counts how many recipients opened it (an
+  estimate: some mail apps block images).
 
 ### Corporate Advisory (behind the advisory wall)
 
@@ -427,7 +447,7 @@ Start any client conversation here: the **Related** tab shows everything Genesis
 
 **Campaigns** (*Planning → Approved → Live → Completed / Cancelled*) with budget, audience, attributed enquiries,
 loans, revenue and ROI; **Segments**; **Events & Seminars** and **Registrations** (follow-up after attendance);
-**Newsletter & Research Subscriptions**. Clients without consent, flagged do-not-contact or with an open complaint
+**Newsletter & Research Subscriptions** (who receives *Send to subscribers*). Clients without consent, flagged do-not-contact or with an open complaint
 cannot be added to a campaign.
 
 ### Introducers
@@ -481,7 +501,7 @@ PLR) takes effect without any release.
 | 3 | Loans executive | Moves to *Converted* | Party, relationship, KYC case, consent and loan application created |
 | 4 | Loans executive | KYC case: fill the risk questions, collect ID / address / source of funds, move through *Screening* to *Pending approval* | Screening result recorded; approval request to Compliance (MLRO if high risk) |
 | 5 | Compliance | **Approvals** ▸ approve | KYC approved; client's KYC status = approved |
-| 6 | Loans executive | Application: income, obligations, property value, MCIB consent; *Application captured* → *Documents pending* → *Documents complete* | MCIB report pulled; document request emailed; rate, EMI, DSR, LTV and eligibility calculated |
+| 6 | Loans executive | Application: income, obligations, property value, MCIB consent; *Application captured* → *Documents pending* → *Documents complete* | MCIB report pulled; document request emailed with an upload link; rate, EMI, DSR, LTV and eligibility calculated |
 | 7 | Credit analyst | *Credit appraisal*: risk grade, recommendation, conditions; *Credit approval* | Approval request to the right authority |
 | 8 | Loans manager / committee | **Approvals** ▸ approve | Moves to *Offer issued*; PDF offer letter filed; e-signature can be sent |
 | 9 | Loans executive | Offer signed ▸ *Offer accepted* ▸ *Security & insurance*: valuation, notary, charge, life and building insurance | Security complete calculated |
@@ -538,9 +558,18 @@ When a client asks for a form — a loan calculator, the investor questionnaire,
 - **Copy link** — copies the form's address, with the product you preselected, to paste into WhatsApp, Teams or a
   message.
 - **Open** — shows the form in a new tab.
+- **Talk to** (on *Get in touch* and *Request a call-back*) — name the person the client will deal with, for
+  example yourself. The form shows *You'll speak with …* and the enquiry is assigned to that person instead of the
+  usual routing. Leave it on *Normal routing* otherwise.
 
 Answers become records in the CRM (an enquiry, a call-back request…) and are routed to the right team, exactly like a
 form filled in from the website. Links you share are tagged as coming from the CRM, so reports can tell them apart.
+
+### The website preview
+
+`/site/genesis-capital` shows what the Genesis website can display straight from the CRM: indicative exchange rates,
+the prime lending rate, fund prices with a performance chart, and every published form. No sign-in is needed. The
+website team can use the same data feeds (listed at the bottom of the page).
 
 ### The portal
 

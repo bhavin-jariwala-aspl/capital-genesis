@@ -38,7 +38,14 @@ after a re-install, open the same screen from the sidebar and use the record nam
   **Karine Ruhee · LND-IBL** is waiting (Scene 3).
 - [ ] Open the client portal — <http://localhost:5173/portal/genesis-capital> — and sign in as `karine.ruhee@example.mu`. Leave email
   unconfigured in the demo environment, so the one-time code appears on screen.
+- [ ] Open the website preview — <http://localhost:5173/site/genesis-capital> — and check that the rate board, the
+  prime lending rate and the fund NAV chart show figures.
 - [ ] Open the website loan form once — <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE> — but do not submit it during rehearsal.
+- [ ] As `GCLOAN1`, open Anjali Ramgoolam's application
+  <http://localhost:5173/module/89/object/170?record=3722> ▸ **Docs**: the checklist shows **4 outstanding**, including
+  *Title deed / sale agreement*. Do not upload during rehearsal — or, if you do, reject the test file afterwards so the
+  item is outstanding again.
+- [ ] Keep a one-page PDF on the desktop (for example `Title deed - SPECIMEN.pdf`) for the upload in Scene 3.
 - [ ] Take screenshots of each scene in §5 as a backup if the network fails.
 
 > **Rehearse without using up the demo.** Approving Karine Ruhee's loan (Scene 3) can only be done once. To
@@ -48,7 +55,8 @@ after a re-install, open the same screen from the sidebar and use the record nam
 ### On the day
 
 - Use one browser with a separate **profile or private window per persona**, so you can switch user without
-  signing out. Name the windows "Loans", "RM", "Loans manager", "Compliance", "Trader", "COO".
+  signing out. Name the windows "Loans", "RM", "Loans manager", "Compliance", "Trader", "COO", plus one
+  "Client" private window for the website preview, the upload link and the portal.
 - Set browser zoom to 110–125% so the room can read the screen.
 - Close email, chat and notifications.
 - Have one person present and one person take notes of every question and request.
@@ -61,13 +69,16 @@ after a re-install, open the same screen from the sidebar and use the record nam
 | --- | --- | --- |
 | 0–5 | Introductions; what they want from today | Account lead |
 | 5–12 | Their challenges and how we understood them (§3.1) | Account lead |
-| 12–42 | Live demo, scenes 1–8 (§5) | Solution consultant |
-| 42–52 | How it works underneath: security, integrations, deployment (§6) | Technical lead |
-| 52–60 | Questions and next steps (§9) | Account lead |
+| 12–44 | Live demo, scenes 1–8 (§5) | Solution consultant |
+| 44–53 | How it works underneath: security, integrations, deployment (§6) | Technical lead |
+| 53–60 | Questions and next steps (§10) | Account lead |
+
+The extra scene (research to subscribers) is only for when a scene runs short or the client asks about marketing.
 
 ### 30-minute version
 
-Show scenes 1, 2, 4, 6 and 8 only. Offer the technical deep-dive as a separate session.
+Show scenes 1, 2, 4, 6 and 8 only. In Scene 6, the portal upload covers documents; skip the upload-link step of
+Scene 3. Offer the technical deep-dive as a separate session.
 
 ### 3.1 What we heard (say this back to them)
 
@@ -87,14 +98,14 @@ Sign in at <http://localhost:5173/login>. Password for every staff account: `Gen
 
 | Persona | Employee ID | Use for |
 | --- | --- | --- |
-| Loans Executive | `GCLOAN1` (or `GCLOAN2`) | New website enquiries, loan applications, document checklist |
+| Loans Executive | `GCLOAN1` (or `GCLOAN2`) | New website enquiries, loan applications, document checklist and client upload link |
 | Relationship Manager | `GCRM1` | My Workbench, client view, fund orders |
 | Relationship Manager | `GCRM2` | Karine Ruhee's RM — receives her portal message |
 | Loans Manager | `GCLMGR` | Approving a loan in the Approvals inbox |
 | Operations Checker | `GCOPS1` | Second pair of eyes on fund orders and disbursements |
 | Compliance Officer | `GCCOMP1` | Revealing masked data, KYC, barriers |
 | Corporate Advisor | `GCADV1` | Confidential advisory mandates |
-| Trader | `GCTRD1` | Showing that advisory work is invisible to trading |
+| Trader | `GCTRD1` | Showing that advisory work is invisible to trading; sending research to subscribers |
 | Forex Dealer | `GCFX1` | FX quote to deal |
 | Chief Operating Officer | `GCCOO` | Group Executive dashboard |
 | CRM Administrator | `GCADMIN` | Builder: changing a field or a stage live |
@@ -107,6 +118,7 @@ All 22 accounts: [IMPLEMENTATION.md §0](IMPLEMENTATION.md#0-signing-in-to-the-g
 | Screen | Link |
 | --- | --- |
 | Sign in | <http://localhost:5173/login> |
+| Website preview (rates, NAVs, forms) | <http://localhost:5173/site/genesis-capital> |
 | Website loan enquiry form (Real Estate Loan preselected) | <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE> |
 | Enquiries list | <http://localhost:5173/module/87/object/163> |
 | My Workbench dashboard | <http://localhost:5173/?dashboard=42> |
@@ -116,6 +128,9 @@ All 22 accounts: [IMPLEMENTATION.md §0](IMPLEMENTATION.md#0-signing-in-to-the-g
 | Client: Karine Ruhee | <http://localhost:5173/module/86/object/157?record=3091> |
 | Loan application: Karine Ruhee · LND-IBL | <http://localhost:5173/module/89/object/170?record=3744> |
 | Loan application already disbursed | <http://localhost:5173/module/89/object/170?record=3721> |
+| Loan application waiting for documents: Anjali Ramgoolam · LND-RE | <http://localhost:5173/module/89/object/170?record=3722> |
+| "Talk to" link: call-back form addressed to Priya Ramdin (`GCRM1`) | <http://localhost:5173/f/cab99175d481635f6bf4fc23480748c9fc975143e6f2f44f?expert=GCRM1> |
+| Research note: Weekly market highlights — week 36 | <http://localhost:5173/module/95/object/203?record=4322> |
 | Approvals inbox | <http://localhost:5173/approvals> |
 | New fund order | <http://localhost:5173/module/94/object/196/new> |
 | Advisory mandate: Project Dodo | <http://localhost:5173/module/96/object/204?record=4327> |
@@ -137,7 +152,8 @@ The story follows one client, **Karine Ruhee**, wherever it can.
 ### Scene 1 — A new client arrives from the website (5 min)
 
 - **Who:** nobody (a member of the public), then `GCLOAN1`.
-- **Where:** the website form <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE>, then the Enquiries list <http://localhost:5173/module/87/object/163>.
+- **Where:** the website preview <http://localhost:5173/site/genesis-capital> (optional opener: live FX rates, PLR and
+  fund prices, all fed by the CRM), then the website form <http://localhost:5173/f/2fe40fb6f0da0570cbe29eb9f465541b5c52897826acc486?prod=LND-RE>, then the Enquiries list <http://localhost:5173/module/87/object/163>.
 - **Do:** step 1 shows *Real Estate Loan* already chosen — enter an amount and tenure and click **Continue**. In
   step 2 enter a new name and email, choose **Français**, tick consent and click **Send request**: the confirmation
   shows the enquiry reference. Sign in as `GCLOAN1` and open the Enquiries list: the enquiry is at the top, routed to Lending, with a
@@ -147,6 +163,9 @@ The story follows one client, **Karine Ruhee**, wherever it can.
   as `GCLOAN2`.
 - **Say:** "No re-typing. The website, the CRM and the client's language are joined up."
 - **Moment:** the response-time (SLA) clock on the enquiry.
+- **If asked "can a client ask for a specific person?":** open the "Talk to" link from §4 (call-back form addressed to
+  Priya Ramdin). The form says *You'll speak with Priya Ramdin* and the enquiry lands in her list. Staff build these
+  links in **Tools ▸ Web forms** with the *Talk to* picker.
 
 ### Scene 2 — The whole client on one screen (4 min)
 
@@ -161,7 +180,7 @@ The story follows one client, **Karine Ruhee**, wherever it can.
 - **Moment:** Annabelle's ID number is **masked** (`••••••••6519`). Click **Reveal**: it shows, and the reveal is
   recorded in the audit trail with the RM's name — Compliance will see it in Scene 4.
 
-### Scene 3 — A loan from application to approval (7 min)
+### Scene 3 — A loan from application to approval (9 min)
 
 - **Who:** `GCLOAN1` → `GCLMGR` → `GCOPS1`.
 - **Where:** Karine Ruhee's application <http://localhost:5173/module/89/object/170?record=3744>, then the Approvals inbox
@@ -172,6 +191,13 @@ The story follows one client, **Karine Ruhee**, wherever it can.
   PDF offer letter is in its documents, ready for e-signature. As `GCOPS1`, open Approvals: a fund order waits for
   the operations check — the second pair of eyes. Finally open the disbursed loan to show its disbursement and the
   account number returned by the loan system.
+- **Then (2 min):** open Anjali Ramgoolam's real-estate application
+  <http://localhost:5173/module/89/object/170?record=3722>, scroll down to the record tabs and click **Docs**. The
+  checklist shows three documents received and four outstanding. Click **Copy client link** and open it in a private
+  window: this is what the client sees — only what is still needed, no sign-in. Upload a PDF against *Title deed*;
+  back in the CRM, refresh the Docs tab: it is received and waiting for review, and **3 outstanding** remain. Say:
+  "No documents as email attachments, and the client never sees anything but their own list." The same link goes
+  out automatically in the *Documents pending* email.
 - **Say:** "Every stage, document and decision is recorded. The person who prepares a payment or an order can
   never be the person who approves it."
 - **Moment:** the application moving to *Offer issued* with the offer letter attached.
@@ -236,6 +262,17 @@ The story follows one client, **Karine Ruhee**, wherever it can.
   minutes — no release, no developer."
 - **Moment:** the live change.
 
+### Extra scene, if time — Research to subscribers (2 min)
+
+- **Who:** `GCTRD1`.
+- **Where:** the research note <http://localhost:5173/module/95/object/203?record=4322>.
+- **Do:** click **Send to subscribers**. All 34 active *weekly highlights* subscribers are emailed in their own
+  language (English or French); clients who opted out of marketing are skipped. *Sent* is ticked on the note. Show **Email logs**: one email per subscriber. As clients open it,
+  the publication's *Opens* count rises.
+- **Say:** "Your weekly highlights go out from the CRM, respecting consent, and you see who reads them."
+- **Careful:** in the demo environment email is not configured, so nothing leaves the laptop and the opens count
+  stays at zero. Say so.
+
 ---
 
 ## 6. Technical talk track (10 minutes)
@@ -254,6 +291,8 @@ Keep it simple; offer a deep-dive session for detail.
     for roles without permission.
   - Business units, information barriers (Chinese walls) and wall-crossings control who sees what.
   - A tamper-evident audit trail records changes, approvals, permission changes and data reveals.
+  - Client upload links are signed and expire; they show the client only what is requested, and accept only
+    genuine PDF, JPEG or PNG files.
   - Each workspace's data is kept apart by the platform; one workspace can never read another's.
 - **Integrations.** Screening, credit bureau, loan system, transfer agent, order management, FX dealing and SMS
   are already wired into the workflows. In the demo they run against a **sandbox** that gives realistic
@@ -274,7 +313,8 @@ Short, honest answers. If you do not know, write the question down and promise a
 | --- | --- |
 | Can I see the whole relationship with a client across all our companies? | Yes. One client record, with roll-ups of loans, holdings, mandates, trading and FX across business units (Scene 2). |
 | Can we get our monthly management pack from it? | Yes. 15 dashboards ship, including Group Executive, Loan Book, Wealth, Funds, Compliance and an RM league table. Any saved report can be added to a dashboard. |
-| How long until we are live? | It depends on integrations and data migration. The CRM itself is already configured; we propose a discovery workshop to agree scope and a plan (§9). |
+| How long until we are live? | It depends on integrations and data migration. The CRM itself is already configured; we propose a discovery workshop to agree scope and a plan (§10). |
+| Can our own staff try it? | Yes. We host a private sandbox for 2–4 weeks: a personal account per tester with two-factor sign-in, the demo company and data, and a test inbox for every email it sends. No real client data goes in. |
 | Is it built for us or a generic CRM? | Both: a general CRM platform with a ready financial-services setup that matches your business lines and products. It is changed through settings, not custom code. |
 
 ### Lending
@@ -286,6 +326,7 @@ Short, honest answers. If you do not know, write the question down and promise a
 | Can it handle staged disbursements and conditions? | Yes. Conditions precedent, security perfection, tranches and a four-eyes disbursement check. |
 | Does it connect to our loan management system and credit bureau? | The connections are built and running on the sandbox. We need your provider credentials to go live. |
 | Can clients apply online? | Yes, through website forms (with a calculator). Staff can also email any form to a client, or copy its link, from **Tools ▸ Web forms**. Clients then follow progress and upload documents in the portal. |
+| How do clients send documents? | Through the portal, or through a secure upload link emailed from the application's **Docs** tab — no sign-in, only the requested items, valid for 14 days by default. The loan-documents email sends one automatically. |
 
 ### Wealth, funds and securities
 
@@ -293,8 +334,9 @@ Short, honest answers. If you do not know, write the question down and promise a
 | --- | --- |
 | How do you handle suitability? | Each client has a risk profile; orders above it are blocked unless an override and the client's acknowledgement are recorded (Scene 4). |
 | Can clients place fund orders themselves? | Yes, in the portal, subject to cut-off times, KYC and suitability rules. Operations checks them before they go to the transfer agent. |
-| Do you show NAVs and holdings? | Yes. NAV history, holdings and order history per client. NAVs, FX rates and the prime lending rate can also be published to your website. |
-| Can we run fund campaigns? | Yes. Campaigns, segments, events and consent-aware mailing lists. |
+| Do you show NAVs and holdings? | Yes. NAV history, holdings and order history per client. NAVs with their history, FX rates and the prime lending rate are published as feeds for your website — show <http://localhost:5173/site/genesis-capital>. |
+| Can we send our weekly highlights from it? | Yes. **Send to subscribers** on a research note emails every active subscriber of that topic in their language, respects marketing opt-outs, and counts opens (extra scene). |
+| Can we run fund campaigns? | Yes. Campaigns, segments, events and consent-aware mailing lists, with attributed enquiries and ROI. |
 
 ### Advisory and forex
 
@@ -323,6 +365,7 @@ Short, honest answers. If you do not know, write the question down and promise a
 | Does it work with Outlook? | Each user gets a calendar link that shows their CRM meetings in Outlook or Google Calendar. Two-way sync needs your Microsoft 365 connection. |
 | Does it work on a phone? | It runs in a mobile browser. There is no separate mobile app or offline mode today. |
 | Will it remind me what to do? | Yes. My Workbench, tasks, reminders, notifications and next-best actions. |
+| Can a client ask for me by name? | Yes. In **Tools ▸ Web forms**, pick yourself under *Talk to* and send the link. The form says *You'll speak with* your name and the enquiry comes straight to you (§4, "Talk to" link). |
 
 ---
 
@@ -337,7 +380,9 @@ Short, honest answers. If you do not know, write the question down and promise a
 | How is data encrypted? | Sensitive fields are encrypted in the database with AES-256-GCM. Encryption in transit (HTTPS) and at rest for the disk and backups is set up in your hosting. |
 | How are sessions secured? | Short-lived access tokens with rotating refresh tokens; a replayed refresh token revokes the whole session family. Sessions end at once on deactivation or password change. Sign-in attempts are rate-limited, and repeated failures block further attempts for a while. |
 | How do integrations work? | Each external system is an integration in the Builder. Workflows call it; calls are logged; failures are retried with back-off from a durable queue. Inbound webhooks are signed (HMAC). |
-| Do you have an API? | Yes, a REST API for records and metadata, plus read-only public feeds for the website. |
+| Do you have an API? | Yes, a REST API for records and metadata, plus read-only public feeds for the website (rates, NAVs and NAV history, prime lending rate, published forms). |
+| How are client upload links secured? | Each link is signed (HMAC-SHA256), names one record and expires (14 days by default, at most 60). Anyone without the link sees nothing; with it, only the list of requested documents — no file names. Files are checked by their content, limited to 10 MB, rate-limited, and land as unreviewed. A link cannot be cancelled early, which is why it is short-lived. |
+| How do you track email opens? | A tracking image whose address is signed and holds no readable personal data. Counts are approximate (some mail apps block or pre-load images) and only apply to marketing emails sent with consent. |
 | How do we migrate our data? | CSV import, matched on an external reference, so loads can be repeated safely. We run trial loads and reconciliation in the project. |
 | Where are documents stored? | Pluggable storage: local disk, Amazon S3 (or compatible), Azure Blob or Google Cloud Storage. Files are de-duplicated and versioned. |
 | How do you test it? | About 1,500 automated tests (back end and front end) run on every change in CI, plus end-to-end business-flow scripts for lending and every desk. |
@@ -376,7 +421,9 @@ nothing in the workflow changes."*
 2. **Ask:** *"Which part would make the biggest difference to your team first?"*
 3. **Propose:**
    - a **discovery workshop** (half a day per business line) to confirm processes, roles and reports;
-   - a **sandbox** environment for their key users to try for two weeks;
+   - a **sandbox** for their own staff to try for 2–4 weeks: a private hosted installation, one account per tester,
+     demo data only (the client-facing *Sandbox Evaluation Plan* explains it; we build it with
+     [CLIENT_SANDBOX.md](CLIENT_SANDBOX.md));
    - an **integration list**: which systems, which provider, who owns the credentials;
    - a **phased plan**, for example lending and client view first, then wealth and funds, then advisory and FX.
 4. **Agree** a date for the follow-up and who attends.
@@ -384,7 +431,9 @@ nothing in the workflow changes."*
 ### Follow-up email (within 24 hours)
 
 - Thank them; list the questions asked and the answers (or the date an answer will follow).
-- Attach the sandbox access details if agreed.
+- If they want a sandbox, send the *Sandbox Evaluation Plan* and ask for the signed evaluation agreement, an
+  evaluation lead and the tester list (name, work email, role). Sign-in details go to each tester at the kickoff,
+  never in the follow-up email.
 - Confirm the next meeting.
 
 ---
@@ -396,6 +445,7 @@ nothing in the workflow changes."*
 | Tell a story with one client from start to finish | Click through every menu |
 | Switch persona to show who sees what | Show everything as the administrator |
 | Say "sandbox" when an integration answers | Suggest live connections exist today |
+| Offer a hosted sandbox for their staff | Let them use the demo laptop, or hand out the shared demo password |
 | Write down every question | Guess at an answer to a technical question |
 | Stop and ask "how do you do this today?" | Talk for more than five minutes without a question |
 

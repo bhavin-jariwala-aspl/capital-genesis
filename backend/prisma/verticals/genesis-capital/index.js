@@ -52,6 +52,14 @@ module.exports = {
     timezone: 'Indian/Mauritius', locale: 'en', max_users: 200,
     metadata: { vertical: 'genesis-capital', base_currency: 'MUR', languages: ['en', 'fr'] },
   },
+  // Workspace settings: amounts show in Mauritian rupees, dates day-first, and
+  // the app is named for the workspace rather than the platform.
+  settings: {
+    'localization.currency': 'MUR',
+    'localization.timezone': 'Indian/Mauritius',
+    'localization.date_format': 'DD/MM/YYYY',
+    'appearance.app_name': 'Genesis Capital',
+  },
   businessUnits: masters.businessUnits,
   barrierZones: masters.barrierZones,
   roles: masters.roles,

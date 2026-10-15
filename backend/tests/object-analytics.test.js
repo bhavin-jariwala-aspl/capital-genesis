@@ -72,3 +72,17 @@ describe('ObjectAnalyticsService', () => {
     expect(db.uiObject.findFirst).not.toHaveBeenCalled();
   });
 });
+
+describe('ObjectAnalyticsService — periods sort by time', () => {
+  it('orders a text period field chronologically, not by value', async () => {
+    const { svc, db } = fixture();
+    const periods = { 1: '2026-07', 2: '2026-05', 3: '2026-06' };
+    db.uiField.findFirst = jest.fn(async () => null);
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => where.record_id.in.flatMap((id) => [
+      ...(where.field_name.in.includes('period') ? [{ record_id: id, field_name: 'period', str_value: periods[id] }] : []),
+      ...(where.field_name.in.includes('amount') ? [{ record_id: id, field_name: 'amount', num_value: id * 100 }] : []),
+    ]));
+    const { data } = await svc.run({ object: 'revenue_entry', metric: 'sum', field: 'amount', group_by: 'period' }, null);
+    expect(data.map((r) => r.key)).toEqual(['2026-05', '2026-06', '2026-07']);
+  });
+});

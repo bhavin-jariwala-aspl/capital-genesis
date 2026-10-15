@@ -373,3 +373,70 @@ describe('WorkflowEngineService — durable retry (E-03)', () => {
     }
   });
 });
+
+describe('email_list step — a publication to the subscribers of its topic', () => {
+  const step = { id: 21, name: 'Email the subscribers', step_type: 'email_list', order_index: 1, on_true_id: null, on_false_id: null, config: {
+    template: 'research_publication', list_object: 'subscription', link_field: 'party',
+    match: { topic: '{{publication_type}}' }, active: { status: 'subscribed' },
+    language_field: 'preferred_language', suppress_field: 'marketing_suppressed', track_field: 'opens',
+  } };
+  // Subscriptions: 501/502 weekly + subscribed (party 1 twice), 503 unsubscribed, 504 another topic.
+  const SUBS = [
+    [501, { topic: 'weekly_highlights', status: 'subscribed', party: '1' }],
+    [502, { topic: 'weekly_highlights', status: 'subscribed', party: '1' }],
+    [503, { topic: 'weekly_highlights', status: 'unsubscribed', party: '2' }],
+    [504, { topic: 'research', status: 'subscribed', party: '3' }],
+    [505, { topic: 'weekly_highlights', status: 'subscribed', party: '4' }],
+    [506, { topic: 'weekly_highlights', status: 'subscribed', party: '5' }],
+  ];
+  const PEOPLE = {
+    1: { email: 'anne@example.mu', first_name: 'Anne', preferred_language: 'fr', marketing_suppressed: false },
+    4: { email: 'raj@example.mu', first_name: 'Raj', preferred_language: 'en', marketing_suppressed: true },
+    5: { first_name: 'No Email', marketing_suppressed: false },
+  };
+
+  async function run() {
+    const db = makePrisma(makeWorkflow([step]), { publication_type: 'weekly_highlights', title: 'Weekly market highlights' });
+    db.uiObject.findFirst = jest.fn().mockResolvedValue({ id: 9 });
+    db.emailTemplate = { findMany: jest.fn().mockResolvedValue([{ id: 5, name: 'research_publication' }, { id: 6, name: 'research_publication_fr' }]) };
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => {
+      if (where.record?.object_id === 9) return SUBS.flatMap(([id, row]) => Object.entries(row).map(([field_name, str_value]) => ({ record_id: id, field_name, str_value })));
+      if (where.record_id?.in) return where.record_id.in.flatMap((pid) => Object.entries(PEOPLE[pid] ?? {}).map(([field_name, v]) => ({ record_id: pid, field_name, ...(typeof v === 'boolean' ? { bool_value: v } : { str_value: v }) })));
+      return [];
+    });
+    const svc = new WorkflowEngineService(db);
+    svc.emailSender = { sendWithTemplate: jest.fn().mockResolvedValue({ id: 1, status: 'sent' }) };
+    await svc.manualRun(1, { ...makeRecord(), tenant_id: 7 }, 'GCMKT1');
+    return svc.emailSender.sendWithTemplate;
+  }
+
+  it('emails each matching, consenting subscriber once, in their language, with open tracking', async () => {
+    const send = await run();
+    expect(send).toHaveBeenCalledTimes(1);
+    const mail = send.mock.calls[0][0];
+    expect(mail).toMatchObject({ template_id: 6, to_email: 'anne@example.mu', related_record_id: 100, related_type: 'distribution:opens' });
+    expect(mail.variables).toMatchObject({ first_name: 'Anne', title: 'Weekly market highlights' });
+    expect(mail.append_html).toMatch(/\/api\/public\/email-open\/geo1\..+\.gif/);
+  });
+});
+
+describe('email open tracking', () => {
+  const tracking = require('../src/services/email-tracking');
+  it('stamps the recipient\'s email as opened once and counts opens on the record', async () => {
+    const token = tracking.signOpen({ tenantId: 7, recordId: 100, email: 'Anne@Example.mu', field: 'opens' });
+    const p = tracking.verifyOpen(token);
+    expect(p).toMatchObject({ t: 7, r: 100, f: 'opens' });
+    expect(tracking.verifyOpen(token.replace(/.$/, 'x'))).toBeNull();
+    const db = {
+      emailLog: {
+        findMany: jest.fn().mockResolvedValue([{ id: 1, to_email: 'raj@example.mu' }, { id: 2, to_email: 'anne@example.mu' }]),
+        update: jest.fn().mockResolvedValue({}),
+        count: jest.fn().mockResolvedValue(3),
+      },
+      recordFieldValue: { upsert: jest.fn().mockResolvedValue({}) },
+    };
+    expect(await tracking.recordOpen(db, p)).toBe(true);
+    expect(db.emailLog.update).toHaveBeenCalledWith({ where: { id: 2 }, data: { opened_at: expect.any(Date) } });
+    expect(db.recordFieldValue.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: { num_value: 3 } }));
+  });
+});

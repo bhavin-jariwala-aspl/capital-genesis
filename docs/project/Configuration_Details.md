@@ -235,7 +235,7 @@ threads `recordId` to `FieldRenderer`, which renders `StatusTracker` for the
 ## Seed Data Structure
 
 `node prisma/seed.js` installs one workspace from the **Genesis Capital** vertical pack
-(`backend/prisma/verticals/genesis-capital/`): 19 modules, 91 objects, 71 workflows, 15 dashboards and
+(`backend/prisma/verticals/genesis-capital/`): 19 modules, 91 objects, 72 workflows, 15 dashboards and
 22 staff accounts, plus demo records. The module and object inventory is in
 [GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md). Tenants onboarded from the
 platform console instead clone the template tenant's metadata (see

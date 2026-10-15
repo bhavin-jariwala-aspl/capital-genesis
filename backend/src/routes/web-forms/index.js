@@ -26,6 +26,7 @@ function appBase(req) {
 
 const idParams = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } };
 const prod = { type: ['string', 'null'], maxLength: 40, pattern: '^[A-Za-z0-9_-]*$' };
+const expert = { type: ['string', 'null'], maxLength: 20, pattern: '^[A-Za-z0-9_-]*$' };
 
 module.exports = async function webFormRoutes(fastify) {
   const svc = () => new WebFormShareService(fastify.prisma, new EmailSendService(fastify.prisma, new EmailTemplateService(fastify.prisma)));
@@ -35,8 +36,8 @@ module.exports = async function webFormRoutes(fastify) {
 
   fastify.post('/:id/link', {
     preHandler: [authenticate],
-    schema: { params: idParams, body: { type: ['object', 'null'], additionalProperties: false, properties: { prod } } },
-  }, async (req) => ok(await svc().link(req.params.id, { base: appBase(req), prod: req.body?.prod || null })));
+    schema: { params: idParams, body: { type: ['object', 'null'], additionalProperties: false, properties: { prod, expert } } },
+  }, async (req) => ok(await svc().link(req.params.id, { base: appBase(req), prod: req.body?.prod || null, expert: req.body?.expert || null })));
 
   fastify.post('/:id/send', {
     preHandler: [authenticate],
@@ -48,6 +49,7 @@ module.exports = async function webFormRoutes(fastify) {
           to: { type: 'string', maxLength: 200 },
           name: { type: ['string', 'null'], maxLength: 120 },
           prod,
+          expert,
           message: { type: ['string', 'null'], maxLength: 2000 },
           language: { type: 'string', enum: ['en', 'fr'] },
           record_id: { type: ['integer', 'null'], minimum: 1 },
@@ -64,7 +66,7 @@ module.exports = async function webFormRoutes(fastify) {
       : null;
     const b = req.body;
     return ok(await svc().send(req.params.id, {
-      to: b.to, name: b.name || null, prod: b.prod || null, message: b.message || null, language: b.language ?? 'en',
+      to: b.to, name: b.name || null, prod: b.prod || null, expert: b.expert || null, message: b.message || null, language: b.language ?? 'en',
       recordId: b.record_id ?? null, base: appBase(req), workspace: tenant?.name ?? null,
       sender: { id: who, name: req.user.employeeName ?? null },
     }));

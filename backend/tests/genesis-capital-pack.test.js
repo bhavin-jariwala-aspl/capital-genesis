@@ -322,7 +322,9 @@ describe('Genesis pack — deep references', () => {
 
   it('fills every template placeholder from a field of the template\'s object', () => {
     const problems = [];
-    const ctx = new Set(['today', 'id', 'stage', 'record_id']);
+    // Values the email step adds itself (upload_link: a signed client upload link).
+    // first_name / display_name: added per recipient by the email_list step.
+    const ctx = new Set(['today', 'id', 'stage', 'record_id', 'upload_link', 'first_name', 'display_name']);
     const scan = (where, object, text) => {
       for (const m of String(text ?? '').matchAll(/\{\{(\w+)\}\}/g)) if (!ctx.has(m[1]) && !fieldDef(object, m[1])) problems.push(`${where}: {{${m[1]}}}`);
     };

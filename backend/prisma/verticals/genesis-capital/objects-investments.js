@@ -170,6 +170,7 @@ const navHistory = {
     F('nav_date', 'NAV date', 'date', { required: true, config: { show_in_list: true } }),
     F('nav', 'NAV per unit', 'decimal', { required: true, config: { show_in_list: true }, validations: [{ type: 'positive', message: 'A NAV must be above zero' }] }),
     FX('fund', 'Fund', 'share_class.fund.name', { type: 'string' }),
+    FX('class_code', 'Share class code', 'share_class.class_code', { type: 'string' }),
     FX('name', 'NAV', "CONCAT(share_class.class_code, ' @ ', nav_date, ': ', nav)", { type: 'string' }),
   ],
   forms: [{ name: 'nav_history_create', label: 'NAV', fields: ['share_class', 'nav_date', 'nav'] }],

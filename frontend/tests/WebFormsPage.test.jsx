@@ -11,7 +11,8 @@ import WebFormsPage from '../src/pages/runtime/WebFormsPage';
 const FORMS = [
   { id: 222, title: 'Get in touch', description: 'Ask about any of our services.', object: 'Enquiry', path: '/f/a', channel: 'web_form',
     products: [{ value: 'LND-RE', label: 'Real Estate Loan' }, { value: 'FND-INC', label: 'Income Fund' }] },
-  { id: 227, title: 'Request a call-back', description: null, object: 'Web Event', path: '/f/b', channel: 'web_form', products: [] },
+  { id: 227, title: 'Request a call-back', description: null, object: 'Web Event', path: '/f/b', channel: 'web_form', products: [],
+    experts: [{ value: 'GCFX1', label: 'Deepak Mungur' }] },
 ];
 
 const renderPage = () => render(
@@ -44,7 +45,7 @@ describe('WebFormsPage', () => {
     fireEvent.change(within(card).getByRole('combobox'), { target: { value: 'FND-INC' } });
     fireEvent.click(within(card).getByRole('button', { name: /Copy link/ }));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:5173/f/a?prod=FND-INC&utm_source=crm'));
-    expect(webFormsService.link).toHaveBeenCalledWith(222, 'FND-INC');
+    expect(webFormsService.link).toHaveBeenCalledWith(222, 'FND-INC', null);
     expect(await within(card).findByText('Copied')).toBeTruthy();
   });
 
@@ -57,5 +58,13 @@ describe('WebFormsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Send$/ }));
     await waitFor(() => expect(webFormsService.send).toHaveBeenCalledWith(227, { to: 'anne@example.mu', name: 'Anne', prod: null, language: 'en', message: null }));
     expect(await screen.findByText('Sent to anne@example.mu')).toBeTruthy();
+  });
+
+  it('addresses a call-back link to a chosen expert', async () => {
+    renderPage();
+    const card = (await screen.findByText('Request a call-back')).closest('.card');
+    fireEvent.change(within(card).getByRole('combobox'), { target: { value: 'GCFX1' } });
+    fireEvent.click(within(card).getByRole('button', { name: /Copy link/ }));
+    await waitFor(() => expect(webFormsService.link).toHaveBeenCalledWith(227, null, 'GCFX1'));
   });
 });

@@ -2,12 +2,15 @@
 
 const https = require('https');
 const { ok } = require('../../utils/response');
-const { RateLimitedError } = require('../../utils/errors');
+const { RateLimitedError, NotFoundError } = require('../../utils/errors');
 const { RateLimiter, clientIp } = require('../../utils/rate-limit');
 const PublicFormService = require('../../services/public-form.service');
 const RecordService = require('../../services/record.service');
 const AssignmentService = require('../../services/assignment.service');
 const PublicFeedService = require('../../services/public-feed.service');
+const WebFormShareService = require('../../services/web-form-share.service');
+const { tenantContext } = require('../../middleware/tenant-scope');
+const { verifyOpen, recordOpen, GIF } = require('../../services/email-tracking');
 
 /**
  * /api/public — unauthenticated website intake.
@@ -66,7 +69,40 @@ module.exports = async function publicRoutes(fastify) {
     }
   }
 
-  fastify.get('/forms/:key', { schema: { params: keyParams } }, async (req) => ok(await svc.describe(req.params.key)));
+  fastify.get('/forms/:key', {
+    schema: { params: keyParams, querystring: { type: 'object', properties: { expert: { type: 'string', maxLength: 20, pattern: '^[A-Za-z0-9_-]*$' } } } },
+  }, async (req) => ok(await svc.describe(req.params.key, { expert: req.query?.expert || null })));
+
+  // Open tracking for distribution emails: a 1×1 image whose signed name says
+  // which email was opened (see services/email-tracking.js). Always answers the
+  // image, whatever the token, so it reveals nothing.
+  fastify.get('/email-open/:file', {
+    schema: { params: { type: 'object', required: ['file'], properties: { file: { type: 'string', maxLength: 400, pattern: '^geo1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.gif$' } } } },
+  }, async (req, reply) => {
+    const p = verifyOpen(req.params.file.replace(/\.gif$/, ''));
+    if (p) {
+      const r = await limiter.hit(`pub:open:${clientIp(req)}`, { max: 600, windowSec: 10 * 60 });
+      if (!r.limited) await tenantContext.run({ tenantId: p.t }, () => recordOpen(fastify.prisma, p)).catch(() => {});
+    }
+    return reply.header('Content-Type', 'image/gif').header('Cache-Control', 'no-store, max-age=0').send(GIF);
+  });
+
+  // The workspace's published forms (title, description, link) — for its website
+  // and the website preview page. Only what /f/<key> shows anyway.
+  fastify.get('/workspaces/:slug/forms', {
+    schema: { params: { type: 'object', required: ['slug'], properties: { slug: { type: 'string', pattern: '^[a-z0-9-]{2,100}$' } } } },
+  }, async (req, reply) => {
+    const r = await limiter.hit(`pub:wsforms:${clientIp(req)}`, { max: 120, windowSec: 10 * 60 });
+    if (r.limited) throw new RateLimitedError('Too many requests. Please try again later.', r.retryAfterSec);
+    const tenant = await fastify.prisma.tenant.findUnique({ where: { slug: req.params.slug }, select: { id: true, name: true, status: true } });
+    if (!tenant || tenant.status !== 'active') throw new NotFoundError('Workspace');
+    const forms = await tenantContext.run({ tenantId: tenant.id }, () => new WebFormShareService(fastify.prisma).list());
+    reply.header('Cache-Control', 'public, max-age=300');
+    return ok({
+      workspace: tenant.name, tenant_id: tenant.id,
+      forms: forms.map((f) => ({ title: f.title, description: f.description, path: f.path, channel: f.channel, products: f.products })),
+    });
+  });
 
   // Website data feeds (PRD I-02): public, cacheable, any origin may read them.
   const feeds = new PublicFeedService(fastify.prisma);
@@ -96,6 +132,7 @@ module.exports = async function publicRoutes(fastify) {
           language: { type: 'string', maxLength: 10 },
           captcha_token: { type: 'string', maxLength: 4000 },
           _hp: { type: 'string', maxLength: 200 },
+          expert: { type: 'string', maxLength: 20, pattern: '^[A-Za-z0-9_-]*$' },
         },
         additionalProperties: false,
       },

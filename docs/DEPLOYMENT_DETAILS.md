@@ -3,6 +3,10 @@
 Genesis is a **Fastify (Node.js) backend + React (Vite) frontend + MySQL (RDS) + Redis** stack. This guide covers
 deploying the application on AWS using ECS Fargate.
 
+The same images serve a short-lived **client sandbox** (one small server or service, its own database). The
+checklist for that case, including accounts, email mode, reset and deletion, is
+[GENESIS-CAPITAL/CLIENT_SANDBOX.md](GENESIS-CAPITAL/CLIENT_SANDBOX.md).
+
 ---
 
 ## Phase 1: Prerequisites
@@ -302,6 +306,9 @@ jobs:
 | `NODE_ENV`         | Environment mode                 | `production`                         |
 | `CACHE_TTL_METADATA` | Metadata cache TTL (seconds)  | `3600`                               |
 | `CACHE_TTL_SESSION`  | Session cache TTL (seconds)   | `28800`                              |
+| `APP_URL`          | Public web address; base of password-reset, web-form and client upload links | `https://crm.example.com` |
+| `API_URL`          | Public API address; OAuth callbacks and the email-open pixel (else `APP_URL`) | `https://api.example.com` |
+| `UPLOAD_LINK_SECRET` | Optional key for client upload links (default derived from `JWT_SECRET`) | Random secure string |
 
 ---
 
@@ -320,6 +327,7 @@ jobs:
 
 - [ ] Change `JWT_SECRET` to a strong random value (32+ characters)
 - [ ] Set `NODE_ENV=production`
+- [ ] Set `APP_URL` (and `API_URL` if the API has its own host) so emailed links and tracking point at the public address
 - [ ] Enable HTTPS via ACM certificate on the ALB
 - [ ] Enable RDS automated backups and Multi-AZ
 - [ ] Set up CloudWatch alarms for CPU, memory, and error rates

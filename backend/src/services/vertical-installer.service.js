@@ -132,6 +132,7 @@ class VerticalInstaller {
     };
     await step('business units', () => this.#businessUnits(pack.businessUnits ?? []));
     await step('barrier zones', () => this.#zones(pack.barrierZones ?? []));
+    await step('settings', () => this.#settings(pack.settings ?? {}));
     await step('roles', () => this.#roles(pack.roles ?? []));
     await step('operational permissions', () => this.#operationalPermissions(pack.operationalPermissions ?? []));
     const credentials = await step('staff', () => this.#staff(pack.staff ?? []));
@@ -167,6 +168,23 @@ class VerticalInstaller {
     if (this.demo && typeof pack.platformDemo === 'function') await step('demo activity, documents & access', () => this.#platformDemo(pack.platformDemo));
     await step('recompute roll-ups', () => this.#recomputePass(pack.modules ?? []));
     return { summary: this.summary, unchanged: this.unchanged, credentials, publicForms };
+  }
+
+  /**
+   * Workspace settings (currency, time zone, date format, app name…) through
+   * SettingsService, so they are validated and the currency cache is dropped.
+   * Only keys whose value differs are written.
+   */
+  async #settings(wanted) {
+    const keys = Object.keys(wanted ?? {});
+    if (!keys.length) return;
+    const SettingsService = require('./settings.service');
+    const svc = new SettingsService(this.db);
+    const current = await svc.getEffective(this.tenantId);
+    const patch = Object.fromEntries(keys.filter((k) => String(current[k] ?? '') !== String(wanted[k] ?? '')).map((k) => [k, wanted[k]]));
+    if (!Object.keys(patch).length) { this.#skip('settings', keys.length); return; }
+    await svc.updateSettings(this.tenantId, null, patch);
+    this.#count('settings', Object.keys(patch).length);
   }
 
   // ── Generic keyed upsert over a preloaded list ───────────────────────────

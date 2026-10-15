@@ -125,7 +125,13 @@ class ObjectAnalyticsService {
       groups.get(k.key).items.push(a);
     }
     let rows = [...groups.values()].map((g) => ({ name: g.label, key: g.key, value: agg(g.items), _order: g.order }));
-    rows.sort((x, y) => (groupBy === 'stage' || groupBy === 'created_month'
+    // Stages and time keep their natural order; categories rank by value. A
+    // field grouped into periods ("2026-07", "2026-Q3", dates) is time, even
+    // when it is a text field — sorting months by value scrambled trend charts.
+    const PERIOD = /^\d{4}(-\d{2}){0,2}$|^\d{4}-Q[1-4]$/;
+    const temporal = groupBy === 'stage' || groupBy === 'created_month'
+      || (rows.length > 1 && rows.every((r) => r.key === '—' || PERIOD.test(r.key)));
+    rows.sort((x, y) => (temporal
       ? (x._order > y._order ? 1 : x._order < y._order ? -1 : 0)
       : y.value - x.value));
     if (spec.limit) rows = rows.slice(0, Math.max(1, Number(spec.limit)));

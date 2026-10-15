@@ -705,7 +705,35 @@ let an admin reset a super-admin's password); and no self-deactivation.
 - The link's base is `APP_URL` when set, otherwise the requesting browser's origin — set `APP_URL` in production so
   links always point at the public host.
 
-Tests: `auth-hardening.test.js`, `field-protection.test.js`, `portal.test.js`, `calendar-feed.test.js`, `public-feed.test.js`, `public-form.test.js`, `web-form-share.test.js`, `employee-deactivation.test.js`.
+- **"Talk to an expert" (`?expert=`).** The public page honours the ID only for an active employee of the form's
+  tenant in one of the form's `expert_roles`, and then shows only their name. Anything else is ignored without an
+  error, so the parameter cannot be used to find out who works there. Staff-side link building validates it and
+  answers 400.
+
+### Client upload links (`/api/upload-links`, `/upload/:token`)
+
+- Tokens are `gul1.<payload>.<HMAC-SHA256>` over tenant, record, optional checklist and expiry, keyed by
+  `UPLOAD_LINK_SECRET` (else derived from `JWT_SECRET`) and compared in constant time. A tampered or expired token
+  is a 404. Nothing is stored, so a link cannot be revoked before it expires: keep validity short (default 14 days,
+  maximum 60); rotating the secret invalidates every outstanding link.
+- Issuing a link requires the staff member to be able to open the record (`RecordService.getRecord`), and the
+  token's tenant is checked against the record's on every use.
+- The client view shows only item labels and received flags — never file names, other documents or staff data.
+- Uploads: the category must be one the link requests; the declared type must be PDF, JPEG or PNG **and** the first
+  bytes must match it (no HTML or SVG can be planted); 10 MB, plus the category's own limit; 15 MB request body.
+  Files are stored as unreviewed, without an uploader. 120 reads and 30 uploads per IP per 10 minutes; emailing a
+  link is limited to 30 per user per hour.
+
+### Email open tracking (`/api/public/email-open/:token.gif`)
+
+- The pixel token is HMAC-signed and carries the tenant, record, counting field and a truncated SHA-256 of the
+  recipient's address — no readable personal data in the URL.
+- The endpoint returns the same GIF whatever the token, so it cannot be used to test tokens; a valid token only
+  stamps `opened_at` once and recounts a whitelisted field name. Recording is rate limited per IP.
+- Opens are a marketing signal subject to the recipient's consent; `email_list` already skips people whose
+  suppression flag is set.
+
+Tests: `auth-hardening.test.js`, `field-protection.test.js`, `portal.test.js`, `calendar-feed.test.js`, `public-feed.test.js`, `public-form.test.js`, `web-form-share.test.js`, `upload-link.test.js`, `workflow-step.test.js`, `employee-deactivation.test.js`.
 
 ## Areas for Security Enhancement
 

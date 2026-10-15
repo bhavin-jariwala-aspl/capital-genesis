@@ -76,6 +76,8 @@ values of changed fields inside condition steps.
 | Update Related | Bulk-updates linked records in another object. | `object_id`, `link_field`, `field`, `value`. Matches records where `link_field` equals this record's id. |
 | Send Email | Emails a template to the record. | `template`, optional `to_field` (default `email`) or `to`, and `language_field`: with `preferred_language = fr` the `<template>_fr` version is used when it exists. |
 | Generate Document | Creates a document from a merge template and files it on the record. | `template` (the document template's name), optional `filename`. |
+| Send SMS | Texts the record through an SMS integration. | `integration`, `message`, optional `message_fr`, `to_field` (default `mobile`), `language_field`, `suppress_field` (for example `do_not_contact`: skipped when true). |
+| Email a List | Emails a template to everyone on a list held in another object — for example every subscriber of this publication's topic. | `template`, `list_object`, `link_field` (the list's field pointing at the person), `match` (list fields that must equal this record's values, e.g. `{ "topic": "{{publication_type}}" }`), `active` (e.g. `{ "status": "subscribed" }`), `language_field`, `suppress_field`, `track_field` (a number field on this record that counts opens). |
 
 **Create Record** can also take `link_field` (a lookup field on the new record that points back to this one),
 `store_as` (a field on this record that receives the new record's id) and `stage` (the starting stage by API
@@ -84,6 +86,10 @@ apply. An **Approval** with `exclude_actor: true` never asks the person who trig
 
 A workflow with the **Manual** trigger appears as a button on its object's record panel, so users can run it
 on a record.
+
+In a **Send Email** template, `{{upload_link}}` inserts a secure link (valid 14 days) where the client uploads the
+documents the record's checklist still needs. **Email a List** sends each person one email even if they appear on
+the list twice; open counts are approximate, because many mail apps block or pre-load images.
 
 ## Reference: condition operators
 

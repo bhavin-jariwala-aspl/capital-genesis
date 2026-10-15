@@ -7,10 +7,12 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import DocumentChecklist from './DocumentChecklist';
 import { useDocumentPreviewEnabled } from '../../hooks/useDocumentPreviewEnabled';
 import { showError, confirmDialog } from '../../utils/dialog';
 
-const CATEGORIES = [
+// Used only when the workspace has no document categories of its own.
+const FALLBACK_CATEGORIES = [
   { value: 'contract',     label: 'Contract' },
   { value: 'proposal',     label: 'Proposal' },
   { value: 'presentation', label: 'Presentation' },
@@ -53,12 +55,16 @@ function timeAgo(dateStr) {
  * @param {number} recordId    – the record to attach documents to
  * @param {string} relatedType – entity type (lead, contact, etc.)
  */
-export default function DocumentPanel({ recordId, relatedType }) {
+export default function DocumentPanel({ recordId, relatedType, clientEmail, clientName }) {
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [category, setCategory] = useState('other');
+  // The workspace's own categories (from the checklist call), so staff file a
+  // document where the checklist looks for it.
+  const [workspaceCategories, setWorkspaceCategories] = useState([]);
+  const CATEGORIES = workspaceCategories.length ? workspaceCategories.map((c) => ({ value: c.code, label: c.label })) : FALLBACK_CATEGORIES;
   const [previewDoc, setPreviewDoc] = useState(null);
   const showPreview = useDocumentPreviewEnabled();
 
@@ -98,6 +104,7 @@ export default function DocumentPanel({ recordId, relatedType }) {
       });
 
       qc.invalidateQueries({ queryKey: ['documents', recordId] });
+      qc.invalidateQueries({ queryKey: ['doc-checklist', recordId] });
       setShowUpload(false);
     } catch (err) {
       showError(err.response?.data?.error || err.message);
@@ -125,13 +132,16 @@ export default function DocumentPanel({ recordId, relatedType }) {
   // ── Delete ─────────────────────────────────────────────────
   const deleteMut = useMutation({
     mutationFn: (id) => documentService.remove(id),
-    onSuccess:  () => qc.invalidateQueries({
-      queryKey: ['documents', recordId],
-    }),
+    onSuccess:  () => {
+      qc.invalidateQueries({ queryKey: ['documents', recordId] });
+      qc.invalidateQueries({ queryKey: ['doc-checklist', recordId] });
+    },
   });
 
   return (
     <div className="space-y-3">
+      <DocumentChecklist recordId={recordId} clientEmail={clientEmail} clientName={clientName}
+        onCategories={(cats) => { setWorkspaceCategories(cats); if (cats.length && !cats.some((c) => c.code === category)) setCategory(cats[0].code); }} />
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-white/80">
           Documents

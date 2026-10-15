@@ -283,7 +283,8 @@ Form Builder.
 - `public_key` / `config.public` — set only by `POST /api/builder/forms/:id/publish` (never by the ordinary form update):
   a random key that makes the form an unauthenticated web-to-record form at `/f/<key>`, and its settings (consent,
   capture fields, result fields, captcha, success message, and `field_options: { field: [values] }` to narrow a
-  picklist on this form only). Staff share published forms from **Tools ▸ Web forms** (`/api/web-forms`).
+  picklist on this form only). `expert_roles: [role names]` (set by a vertical pack, kept by re-publishing) lets a
+  link `?expert=<employee_id>` assign the submission to an active employee in one of those roles. Staff share published forms from **Tools ▸ Web forms** (`/api/web-forms`).
 
 **Related to:** Child of `ui_objects`. Parent of `ui_form_field_layouts` (field placements) and referenced by
 `ui_wizard_steps` (each wizard step maps to a form).
@@ -452,7 +453,7 @@ as steps are added in the builder. Cascade-deletes with the workflow.
 - `workflow_id` — FK to owning workflow.
 - `name`.
 - `step_type` —
-  `trigger | condition | action | notification | delay | approval | webhook | create_record | update_related`.
+  `trigger | condition | action | notification | delay | approval | webhook | create_record | update_related | email_list`.
 - `order_index` — sequence.
 - `config` (JSON) — step-type-specific configuration.
 - `on_true_id` / `on_false_id` — next-step pointers for branching (the false branch applies to `condition` steps).
@@ -1179,11 +1180,14 @@ via `related_record_id`.
 
 - `template_id` — nullable FK→email_templates (SetNull).
 - `related_record_id` + `related_type` — polymorphic link to the CRM record the email relates to (type ∈ lead | contact
-  | account | opportunity | case); indexed together.
+  | account | opportunity | case | record | web_form | `distribution` | `distribution:<field>`); indexed together.
+  `distribution:<field>` rows come from an `email_list` workflow step; their opens are counted into `<field>` on the
+  related record.
 - `to_email` (required), `from_email`, `cc_emails`/`bcc_emails` JSON arrays.
 - `subject` (required), `body_html` MediumText, `body_text`.
 - `status` default `sent` — sent | bounced | delivered | opened | clicked.
-- Tracking timestamps: `opened_at`, `clicked_at`, `bounced_at`, `bounce_reason`.
+- Tracking timestamps: `opened_at`, `clicked_at`, `bounced_at`, `bounce_reason`. `opened_at` is stamped by the
+  open-tracking pixel (`/api/public/email-open/…`) on distribution emails.
 - `sent_by` (employee), `sent_at` default now.
 
 **Related to:** references `email_templates`; polymorphic link to a CRM record via `related_record_id`/`related_type`.
@@ -1308,6 +1312,11 @@ admin).
 `[{ category_code, required, label }]`), `is_active`, `order_index`, `tenant_id`.
 
 **Related to:** references category codes in `ui_document_categories`.
+
+**Read by:** `DocumentChecklistService` — the record's Docs tab and client upload links compare a record's documents
+with its checklist (a document whose `status` is `rejected` or `expired` does not count). When an object has several
+checklists, the one whose `label` shares most words with the record's picklist labels is used, so name checklists
+after the product they serve.
 
 ### `lead_scoring_rules`  ·  Prisma model `LeadScoringRule`
 

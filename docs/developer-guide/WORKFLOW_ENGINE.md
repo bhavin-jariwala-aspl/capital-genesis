@@ -51,6 +51,7 @@ Recent capability changes, newest first. Each is described in full in the sectio
 
 | Capability | What changed | Where |
 | ---------- | ------------ | ----- |
+| **`email_list` step and `{{upload_link}}`** | Email one template to every member of a list held in another object (subscribers of a publication), in each person's language, skipping suppressed people, with optional open tracking. `send_email` templates can use `{{upload_link}}`, a 14-day link where the client uploads the record's missing documents. | [Config keys per step type](#config-keys-per-step-type), [PLATFORM_BUILDER_EXTENSIONS.md §28](PLATFORM_BUILDER_EXTENSIONS.md#28-distribution-lists-and-open-tracking) |
 | **`send_email` and `generate_document` steps** | Email a template to the record (picking a `<template>_<lang>` variant from a language field), and render a merge template filed on the record. | [Config keys per step type](#config-keys-per-step-type) |
 | **Formula conditions** | Operator `expression` evaluates a formula over the whole record (`AND`/`OR`/`IF`/`LOOKUP`…), so multi-field logic no longer needs chained steps. | [Operators Reference](#operators-reference) |
 | **Linked `create_record`, stage by name** | `create_record` runs through `RecordService` (formulas, BU stamping, assignment, events) and takes `link_field`, `store_as` and `stage`; an `action` on `stage` moves the record through the stage gates. | [Config keys per step type](#config-keys-per-step-type) |
@@ -82,10 +83,12 @@ Recent capability changes, newest first. Each is described in full in the sectio
 | | `approval` | Persist a `WorkflowPendingStep` + notify approvers; resumed via API token | Manager sign-off |
 | | `send_email` | Send an email template to the record (language variant aware) | Bilingual acknowledgement |
 | | `generate_document` | Render a merge template and file it on the record | Offer letter |
+| | `send_sms` | Send a text through an SMS integration (language variant aware, suppressible) | Payment reminder |
+| | `email_list` | Email a template to every matching member of a list in another object, with open tracking | Research to subscribers |
 | **Integration** | `webhook` | SSRF-protected HTTP POST/GET to an external URL | Sync with external system |
 | | `integration` | Run a registered integration, or publish a custom domain event | Enrich from a data provider |
 
-These eleven `step_type` values are the **only** ones the engine recognizes. Any other value falls
+These fourteen `step_type` values are the **only** ones the engine recognizes. Any other value falls
 through to the `default` case and is skipped (logged as `unknown step type: …`).
 
 ---
@@ -175,6 +178,17 @@ All config lives under `step.config`:
 { "template": "loan_offer_letter", "filename": "Offer {{application_number}}.pdf" }
 // update_related
 { "object_id": 5, "link_field": "account_id", "field": "status", "value": "…" }
+// send_sms — through a Builder SMS integration
+{ "integration": "sms_gateway", "message": "…", "message_fr": "…", "to_field": "mobile",
+  "language_field": "preferred_language", "suppress_field": "do_not_contact" }
+// email_list — one email per person on a list held in another object
+{ "template": "research_publication", "list_object": "subscription", "link_field": "party",
+  "match": { "topic": "{{publication_type}}" },   // interpolated against THIS record
+  "active": { "status": "subscribed" },
+  "email_field": "email", "language_field": "preferred_language",
+  "suppress_field": "marketing_suppressed",      // true on the person → skipped
+  "track_field": "opens",                         // integer field on THIS record counting opens
+  "limit": 2000 }
 ```
 
 > ⚠️ **`action` steps only do `field = value`.** A config like

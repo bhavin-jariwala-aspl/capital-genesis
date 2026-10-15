@@ -30,6 +30,9 @@ October 2026. These are the generic platform capabilities added so that a comple
 | [Record visibility per role](#24-record-visibility-per-role) | "Own & team" or "All" records per role and object, within units and barriers | `ui_permissions.view_scope`, `RecordService.#ownerOnlyFilter` |
 | [PDF documents](#25-pdf-documents) | Merge templates render letterheaded PDFs; picklist labels and formatted amounts | `utils/pdf.js`, `DocumentTemplateService.render` |
 | [Defaults and immediate SLAs](#26-server-side-defaults-and-immediate-sla-timers) | Builder defaults on every create path; SLA timers start when the record is created | `RecordService.#withDefaults`, `SlaService.reconcileRecord` |
+| [Checklists and client upload links](#27-document-checklists-and-client-upload-links) | Checklist status on any record; signed, expiring links where a client uploads what is missing | `services/document-checklist.service.js`, `services/upload-link.service.js`, `/api/upload-links`, `/upload/:token` |
+| [Distribution lists and open tracking](#28-distribution-lists-and-open-tracking) | `email_list` step: one template to every member of a list, in their language, with opens counted | `workflow.service.js`, `services/email-tracking.js` |
+| [Website preview](#29-website-preview) | A page showing what a website built on the feeds and forms looks like | `pages/WebsitePreviewPage.jsx`, `/site/:slug` |
 
 ---
 
@@ -129,12 +132,16 @@ Appended for: business-unit and barrier membership changes, wall-crossing reques
 
 Any Builder form can be published (Form Builder ▸ Public web form):
 
-- `POST /api/builder/forms/:id/publish` — `{ success_message, consent_field, consent_text_version, capture_fields, result_fields, field_options, stage, captcha, channel, rotate }`. The key is always random (48 hex chars); `config` and `public_key` are not writable through the ordinary form update.
+- `POST /api/builder/forms/:id/publish` — `{ success_message, consent_field, consent_text_version, capture_fields, result_fields, stage, captcha, channel, rotate }`. The key is always random (48 hex chars); `config` and `public_key` are not writable through the ordinary form update. The settings are merged into `config.public`, so keys a vertical pack set (`field_options`, `expert_roles`) survive a re-publish; they are set by the pack, not through this endpoint.
 - `GET /api/public/forms/:key` — the renderable field list; `POST` — a submission. Hosted page: `/f/:key` (iframe-able).
 
 A submission becomes a record **through the normal record path**, in the form's tenant — formulas, validation, unit stamping, assignment, SLA timers and `on_create` workflows all run. Guard rails: only laid-out fields (plus UTM/`page_url`/`referrer`/`language` where the object has fields of those names) are accepted; consent is enforced and time-stamped; honeypot `_hp`; per-IP and per-form rate limits; optional reCAPTCHA (`RECAPTCHA_SECRET`, `RECAPTCHA_SITE_KEY`); JSON schema and a 64 KB body limit. `result_fields` lets the website show computed values (a calculator's EMI, a questionnaire's model portfolio); the response carries each result's label and format (`result_fields: [{ name, label, format, precision }]`). `field_options: { field: [values] }` narrows a picklist on one form only — the Genesis Capital loan calculators offer just the four loan products — and a submitted value outside it is rejected.
 
-**Sharing with clients** (`/web-forms` page, any staff member): `GET /api/web-forms` lists the workspace's published forms (title, description, object, the products each offers); `POST /api/web-forms/:id/link { prod? }` returns a share URL; `POST /api/web-forms/:id/send { to, name?, prod?, message?, language: en|fr, record_id? }` emails it through `EmailSendService.sendRaw` (logged as `related_type: 'web_form'`), limited to 30 sends per user per hour. Links carry `utm_source=crm`, `utm_medium=link|email`, `utm_campaign=form_share`, which the form stores on the record where the object has those fields. The base URL is `APP_URL`, else the browser's origin.
+**"Talk to an expert" links.** `expert_roles: [role names]` lets a link name the person the client will deal with: `/f/<key>?expert=<employee_id>`. The describe response then carries `expert: { id, name }` (the page shows "You'll speak with …"), and the submission sends `expert` back; the record is created assigned to that person, ahead of the assignment rules. The ID is honoured only for an **active** employee of the form's tenant whose role is in `expert_roles`; anything else is ignored silently and normal routing applies, so a guessed or stale ID never fails a submission or reveals who works there.
+
+**Sharing with clients** (`/web-forms` page, any staff member): `GET /api/web-forms` lists the workspace's published forms (title, description, object, the products each offers, and the `experts` a link may name); `POST /api/web-forms/:id/link { prod?, expert? }` returns a share URL; `POST /api/web-forms/:id/send { to, name?, prod?, expert?, message?, language: en|fr, record_id? }` emails it through `EmailSendService.sendRaw` (logged as `related_type: 'web_form'`), limited to 30 sends per user per hour. Links carry `utm_source=crm`, `utm_medium=link|email`, `utm_campaign=form_share`, which the form stores on the record where the object has those fields. The base URL is `APP_URL`, else the browser's origin. Unlike on the public page, an ineligible `expert` here is a 400, so staff learn at once that the link would not route.
+
+`GET /api/public/workspaces/:slug/forms` lists an active workspace's published forms (title, description, path) for a website menu; it exposes no staff or field details.
 
 **The hosted page** wears the workspace's theme and logo, and its name (`workspace` in the describe response). It puts a brand panel beside the form; splits forms of seven or more fields into two steps (the request, then the person's details and consent) with a progress bar; shows picklists of up to six options as option cards; starts from the fields' Builder defaults and `?prod=`; and ends on a confirmation showing the reference and the computed results.
 
@@ -169,7 +176,8 @@ The reconciler builds rows from records and typed field values and runs the same
 | `create_record` | now runs through `RecordService` (formulas, stamping, assignment, events); `link_field` points the new record back; `store_as` stores its id on the source; `stage` names its starting stage; `{{id}}` interpolates the source id |
 | `action` on `stage` | `{ field: 'stage', value: '<stage name>' }` moves the record through the record service, so gates and stage events apply |
 | condition operator `expression` | a formula over the whole record |
-| context | `{{stage}}` (stage API name), `{{today}}`, `{{id}}` |
+| context | `{{stage}}` (stage API name), `{{today}}`, `{{id}}`; in `send_email`, `{{upload_link}}` — a 14-day client upload link for the record ([§27](#27-document-checklists-and-client-upload-links)) |
+| `email_list` step | `{ template, list_object, link_field, match?, active?, email_field? = email, language_field?, suppress_field?, track_field?, limit? = 2000 }` — see [§28](#28-distribution-lists-and-open-tracking) |
 | approval `exclude_actor` / `exclude_field` | maker-checker: the person who triggered the step (or the employee named in a field) can never approve |
 | `send_sms` step | `{ integration, message, message_<lang>?, to_field? = mobile, to?, language_field?, suppress_field? }` — see [§16](#16-sms-integration-retries-and-the-job-queue) |
 | `action` through a lookup | `{ field: 'decision_mandate.conflict_status', value }` writes to the record a lookup points at |
@@ -179,7 +187,7 @@ Fields written by workflow actions and `update_related` trigger formula recomput
 
 ## 11. Vertical packs
 
-A pack (`backend/prisma/verticals/<name>/`) is plain data: business units, barrier zones, roles, staff, modules/objects/fields/forms/pipelines, dependencies, wizards, document categories/checklists/templates, email templates, workflows, assignment rules, business hours, SLA policies, object permissions, master data, dashboards, public forms and optional demo records.
+A pack (`backend/prisma/verticals/<name>/`) is plain data: workspace settings, business units, barrier zones, roles, staff, modules/objects/fields/forms/pipelines, dependencies, wizards, document categories/checklists/templates, email templates, workflows, assignment rules, business hours, SLA policies, object permissions, master data, dashboards, public forms and optional demo records.
 
 ```bash
 node scripts/install-vertical.js genesis-capital --create-tenant [--demo] [--password <pw>]
@@ -197,6 +205,8 @@ The installer is **idempotent and diff-based**: every row is matched by its natu
 - **Platform demo.** `pack.platformDemo(ctx)` returns activities, tasks, reminders, PDF documents (with review
   status, share links and e-signature requests), wall-crossings and an audit-chain baseline, which are written
   through the platform services.
+
+**Workspace settings.** `pack.settings` is a map of setting keys to values (Genesis Capital: `localization.currency: 'MUR'`, `localization.timezone: 'Indian/Mauritius'`, `localization.date_format: 'DD/MM/YYYY'`, `appearance.app_name`). The `settings` step compares them with the tenant's effective settings and writes only those that differ, through `SettingsService.updateSettings`. A re-run therefore resets these keys if an administrator has changed them; leave a key out of the pack to let administrators own it.
 
 `--reset-passwords --password <pw>` sets one password on every pack staff account (demo environments only). `--skip-records` (with `--demo`) skips master data and demo records that are already loaded and runs only the ownership, history and platform-demo steps. Connection-level database errors (unreachable, closed, pool timeout) are retried with back-off, so a long install survives a network blip.
 
@@ -306,6 +316,8 @@ config.public_feed = {
 };
 ```
 
+A feed field may be a lookup path (Genesis Capital's `nav_history` publishes `class_code`, a formula over `share_class.class_code`), so a history feed can be joined to a latest-value feed on the website. Genesis Capital publishes `fx-rates`, `fund-nav`, `nav-history` (500 points, oldest first) and `plr`.
+
 `GET /api/public/feeds/<workspace>/<name>` returns `{ feed, updated_at, items }`. It is cached for a minute on the server and five minutes by browsers, open to any origin, and rate limited per IP. Fields marked `pii` or `encrypt` are never published, even when listed.
 
 ## 19. Calendar feed
@@ -386,7 +398,82 @@ dates, `<field>_raw` for the stored value, and a letterhead built from the recor
 - When a timer is created for a record that is already complete, the completion time is taken from the record's
   stage history (`status_events`) rather than the time the timer was created.
 
-## 27. Fixes made alongside
+## 27. Document checklists and client upload links
+
+**Checklist status.** `DocumentChecklistService.forRecord(id)` reads the active `ui_document_checklists` whose
+`entity_type` is the record's object, the workspace's document categories and the record's documents, and returns each
+item as `{ label, category, category_label, required, received, documents }` plus an `outstanding` count of required
+items still missing. When an object has several checklists (real-estate, personal and investment-backed loans), the
+one whose label shares most words with the record's picklist labels is chosen (`LND-RE` → *Real estate loan*); if
+none matches, all are returned. A category used by several items is satisfied one document per item, in order.
+Rejected and expired documents do not count as received, so the item reopens and the client's link asks for it again. The record's **Docs** tab shows this above the document list.
+
+**Upload links.** A link is `/upload/gul1.<payload>.<sig>`: the payload is base64url JSON `{ t: tenant, r: record,
+c?: checklist, e: expiry (unix seconds) }`, the signature an HMAC-SHA256 with `UPLOAD_LINK_SECRET` (default: derived
+from `JWT_SECRET`), compared in constant time. Validity is 14 days by default, 1–60 when issued from the Docs tab.
+Nothing is stored server-side, so a link cannot be revoked early; rotating the secret invalidates every link.
+
+- Staff: `GET /api/upload-links/records/:id/checklist`, `POST /api/upload-links/records/:id { days?, checklist_id?,
+  email? }`. Both first open the record through `RecordService.getRecord`, so a user can only issue links for
+  records they can see. A record with no checklist cannot have a link (400). Emailed links go out in EN or FR,
+  logged against the record; 30 per user per hour.
+- Client: `GET /api/upload-links/:token` runs in the token's tenant and returns only item labels, categories and
+  received flags — never file names, staff notes or other documents. `POST` accepts one file per call
+  (`{ filename, mime_type, data: base64, category }`, body limit 15 MB): the category must be one the link requests,
+  the type must be PDF, JPEG or PNG **and** the first bytes must match it, and the file must be under 10 MB (the
+  category's own limit also applies). The file is stored through `DocumentService.upload` on the record with status
+  *uploaded* (*under review* where the category requires review), no uploader and a description saying it came
+  through a client link. Identical bytes are deduplicated. Rate limits: 120 reads and 30 uploads per IP per
+  10 minutes.
+- Workflows: `send_email` adds `{{upload_link}}` to its context, so a template such as `loan_document_request` can
+  carry the link (`UploadLinkService.linkFor`, no database call).
+
+The hosted page (`UploadPage.jsx`) wears the workspace theme, lists the items with *Needed* / *Received*, checks type
+and size in the browser before sending, and refreshes after each upload.
+
+## 28. Distribution lists and open tracking
+
+The `email_list` workflow step sends one template to every member of a list held in another object — for example
+the subscribers of a research publication:
+
+```js
+{ step_type: 'email_list', config: {
+  template: 'research_publication',       // <template>_<lang> is used when it exists
+  list_object: 'subscription',            // the list
+  link_field: 'party',                    // list row → the person to email
+  match: { topic: '{{publication_type}}' },  // list rows for this record (interpolated)
+  active: { status: 'subscribed' },       // and only active rows
+  language_field: 'preferred_language',   // on the person
+  suppress_field: 'marketing_suppressed', // true → skipped
+  track_field: 'opens',                   // integer field on this record counting opens
+} }
+```
+
+Each person is emailed once even when several list rows point at them; people without an email address or with the
+suppression flag set are skipped (a formula suppression flag is computed on read). Template variables are the
+record's fields plus the recipient's `first_name` and `display_name`. Each email is logged with
+`related_record_id` = the record and `related_type` = `distribution:<track_field>`; the step's log line reports how
+many were sent and skipped. At most `limit` (default 2,000) list rows are read.
+
+**Open tracking.** With `track_field`, each email carries a 1×1 image:
+`<API_URL or APP_URL>/api/public/email-open/geo1.<payload>.<sig>.gif`. The payload names the tenant, the
+record, the field and a truncated SHA-256 of the recipient's address — nothing readable about the person. Loading
+it stamps `opened_at` on that recipient's first unopened log row and recounts the opens into the record field. The
+endpoint always returns the GIF, valid or not, so it cannot be used to probe tokens; recording is rate limited per IP.
+Image blocking and privacy proxies (Apple Mail) make open counts approximate: treat them as a trend, not a fact.
+
+Genesis Capital uses this for **Send to subscribers** on `research_publication` (MKT-FR-04, SEC-FR-05), which then
+sets `sent`.
+
+## 29. Website preview
+
+`/site/:slug` (no sign-in) renders what a website built on the public feeds and forms shows: the exchange-rate board
+(the base currency's row against itself is left out), the prime lending rate, fund NAVs with a performance chart
+from `nav-history` (click a fund to chart it), and cards for every published form. It reads only
+`/api/public/feeds/:slug/*` and `/api/public/workspaces/:slug/forms`, and wears the workspace theme. Its purpose is to
+show a client's web team what they can embed; it is not a CMS.
+
+## 30. Fixes made alongside
 
 | Defect | Effect before | Fix |
 |---|---|---|
@@ -397,3 +484,6 @@ dates, `<field>_raw` for the stored value, and a letterhead built from the recor
 | `custom` validation executed admin JavaScript in browsers | Stored XSS across users | Retired; `expression` rules on the server |
 | Forged-token test flipped the last base64url character | Flaky (~1 in 12) because padding bits can make the forgery valid | Tampers a middle character |
 | `RateLimitedError` lived inside the auth routes | Not reusable; a second limiter would have thrown `undefined` | Moved to `utils/errors` |
+| Dashboard KPI tiles ignored the widget format | Raw numbers, and "$" in a MUR workspace | Tiles use the widget's `format`/`decimals` and the workspace currency, compacted |
+| Charts grouped by a text period sorted by value | Months out of order on a revenue trend | Keys shaped `YYYY`, `YYYY-MM`, `YYYY-MM-DD` or `YYYY-Qn` sort by time |
+| Fixed-width chart value axis | Long labels ("MUR 28M") clipped | Axis width follows the longest formatted label |

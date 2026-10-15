@@ -47,6 +47,8 @@ const SlaDashboardPage   = lazy(() => import('./pages/runtime/SlaDashboardPage')
 const ReportsPage        = lazy(() => import('./pages/runtime/ReportsPage'));
 const RemindersPage      = lazy(() => import('./pages/runtime/RemindersPage'));
 const WebFormsPage       = lazy(() => import('./pages/runtime/WebFormsPage'));
+const UploadPage         = lazy(() => import('./pages/UploadPage'));
+const WebsitePreviewPage = lazy(() => import('./pages/WebsitePreviewPage'));
 
 // ── Builder pages (admin-only — always lazy) ─────────────────────────────────
 const BuilderHome              = lazy(() => import('./pages/builder/BuilderHome'));
@@ -129,6 +131,10 @@ function App() {
             {/* Published Builder form — web-to-record intake */}
             <Route path="/f/:key" element={<PublicFormPage />} />
             <Route path="/portal/:slug" element={<PortalPage />} />
+            {/* Secure client document upload (signed, expiring link) */}
+            <Route path="/upload/:token" element={<UploadPage />} />
+            {/* What the workspace website shows when fed by the CRM */}
+            <Route path="/site/:slug" element={<WebsitePreviewPage />} />
           
           {/* Protected Routes */}
           <Route element={token ? <AppLayout /> : <Navigate to="/login" replace />}>

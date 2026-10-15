@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import clsx from 'clsx';
 import {
-  AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, Clock, Lock, ShieldCheck, Sparkles,
+  AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, Clock, Lock, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import api from '../services/api';
 import FieldRenderer from '../components/runtime/FieldRenderer';
@@ -162,6 +162,11 @@ function BrandPanel({ form, productLabel }) {
         <div className="mt-8 lg:mt-16">
           <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{form.title}</h1>
           {form.description && <p className="mt-3 text-base text-white/80">{form.description}</p>}
+          {form.expert && (
+            <p className="mt-5 mr-2 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
+              <UserRound className="h-3.5 w-3.5" /> You&apos;ll speak with {form.expert.name}
+            </p>
+          )}
           {productLabel && (
             <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
               <Check className="h-3.5 w-3.5" /> {productLabel}
@@ -225,14 +230,16 @@ export default function PublicFormPage() {
 
   // `?prod=` pre-selects a product on the website's "Request more info" links.
   const prod = useMemo(() => new URLSearchParams(window.location.search).get('prod'), []);
+  // `?expert=` — a "Talk to …" link: the request goes to that person.
+  const expert = useMemo(() => new URLSearchParams(window.location.search).get('expert'), []);
 
   useEffect(() => {
     let alive = true;
-    api.get(`/public/forms/${key}`)
+    api.get(`/public/forms/${key}`, { params: expert ? { expert } : {} })
       .then((r) => { if (alive) { setForm(r.data?.data ?? r.data); setState({ loading: false, error: null, done: null }); } })
       .catch(() => { if (alive) setState({ loading: false, error: 'This form is not available.', done: null }); });
     return () => { alive = false; };
-  }, [key]);
+  }, [key, expert]);
 
   const productField = form?.fields.find((f) => f.name === 'product_code');
   const productOption = prod && productField?.options?.find((o) => optValue(o) === prod);
@@ -263,6 +270,7 @@ export default function PublicFormPage() {
       const r = await api.post(`/public/forms/${key}`, {
         data, utm, page_url: document.referrer || window.location.href, language: navigator.language?.slice(0, 2),
         ...(_hp ? { _hp } : {}),
+        ...(form.expert ? { expert: form.expert.id } : {}),
       });
       setState({ loading: false, error: null, done: r.data?.data ?? r.data });
     } catch (err) {

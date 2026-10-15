@@ -68,6 +68,7 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 | `/api/portal` | Client & introducer portal (separate sign-in realm) | `/portal/:workspace` |
 | `/api/calendar` | Personal iCalendar feed | Calendar apps, My account ▸ Security |
 | `/api/web-forms` | Share published web forms with clients (link, email) | Tools ▸ Web forms |
+| `/api/upload-links` | Document checklist status and secure client upload links | Record Docs tab, `/upload/:token` |
 
 ---
 
@@ -97,6 +98,7 @@ the same loop. `GET /health` reports every loop under `schedulers` (`runs`, `las
 - [Portal · `/api/portal`](#portal--apiportal)
 - [Calendar · `/api/calendar`](#calendar--apicalendar)
 - [Web forms · `/api/web-forms`](#web-forms--apiweb-forms)
+- [Upload links · `/api/upload-links`](#upload-links--apiupload-links)
 
 ---
 
@@ -1332,9 +1334,11 @@ tenant. Rate limits: 20 submissions per IP and 600 per form per 10 minutes (429 
 
 | Method & Path | Purpose / Relevance |
 |---|---|
-| GET `/api/public/forms/:key` | The renderable form: `{ tenant_id, workspace, title, description, columns, consent_field, captcha, captcha_site_key, fields }`. A picklist narrowed by the form's `field_options` lists only the allowed values; `tenant_id` lets the page load the workspace's public theme |
-| POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language? }`. Creates the record through `RecordService` in the form's tenant; a value outside a narrowed picklist is refused (400). Returns `{ message, reference, results?, result_fields? }` — `result_fields: [{ name, label, format, precision }]` describes the computed results |
+| GET `/api/public/forms/:key` | Query `expert?`. The renderable form: `{ tenant_id, workspace, title, description, columns, consent_field, captcha, captcha_site_key, fields, expert }` (`expert: { id, name }` when the ID names active staff in the form's `expert_roles`, else `null`). A picklist narrowed by the form's `field_options` lists only the allowed values; `tenant_id` lets the page load the workspace's public theme |
+| POST `/api/public/forms/:key` | Submit; body `{ data, _hp?, captcha_token?, utm?: { utm_source, … }, page_url?, referrer?, language?, expert? }`. Creates the record through `RecordService` in the form's tenant, assigned to the `expert` when they are eligible (otherwise the assignment rules apply); a value outside a narrowed picklist is refused (400). Returns `{ message, reference, results?, result_fields? }` — `result_fields: [{ name, label, format, precision }]` describes the computed results |
 | GET `/api/public/feeds/:workspace/:name` | Read-only data feed configured by an object's `config.public_feed`: `{ feed, updated_at, items }`. Any origin; cached 60 s on the server and 5 min by clients; 300 requests per IP per 10 minutes. Personal or encrypted fields are never included. |
+| GET `/api/public/workspaces/:slug/forms` | The workspace's published forms for a website: `{ tenant_id, workspace, forms: [{ title, description, path }] }`. 404 unless the workspace is active. 120 requests per IP per 10 minutes |
+| GET `/api/public/email-open/:token.gif` | Email-open pixel (`geo1.` token, HMAC-signed). Always returns a 1×1 GIF; a valid token stamps `opened_at` on the email log once and recounts the opens into the tracked record field |
 
 ## Portal · `/api/portal`
 
@@ -1367,6 +1371,21 @@ Mounted from `backend/src/routes/web-forms/index.js`; `WebFormShareService`. Any
 
 | Method & Path | Purpose |
 |---|---|
-| GET `/api/web-forms` | The workspace's published forms: `[{ id, key, title, description, object, path, field_count, products, channel }]` (`products` = the options of the form's product picker, after `field_options`) |
-| POST `/api/web-forms/:id/link` | Body `{ prod? }` → `{ url }`: `/f/<key>?prod=…&utm_source=crm&utm_medium=link&utm_campaign=form_share`. The base is `APP_URL`, else the browser's origin. A product the form does not offer → 400 |
-| POST `/api/web-forms/:id/send` | Body `{ to, name?, prod?, message?, language: en\|fr, record_id? }`. Emails the link (`utm_medium=email`) through `EmailSendService.sendRaw`, logged with `related_type: 'web_form'`; user text is HTML-escaped. 30 sends per user per hour (429). Returns `{ url, status, email_log_id }` |
+| GET `/api/web-forms` | The workspace's published forms: `[{ id, key, title, description, object, path, field_count, products, channel, expert_roles, experts }]` (`experts` = `[{ value: employee_id, label }]`, the active staff whose role is in the form's `expert_roles`) (`products` = the options of the form's product picker, after `field_options`) |
+| POST `/api/web-forms/:id/link` | Body `{ prod?, expert? }` → `{ url }`: `/f/<key>?prod=…&expert=…&utm_source=crm&utm_medium=link&utm_campaign=form_share`. The base is `APP_URL`, else the browser's origin. A product the form does not offer, or an `expert` who is not eligible for it → 400 |
+| POST `/api/web-forms/:id/send` | Body `{ to, name?, prod?, expert?, message?, language: en\|fr, record_id? }`. Emails the link (`utm_medium=email`) through `EmailSendService.sendRaw`, logged with `related_type: 'web_form'`; user text is HTML-escaped. 30 sends per user per hour (429). Returns `{ url, status, email_log_id }` |
+
+## Upload links · `/api/upload-links`
+
+Mounted from `backend/src/routes/upload-links/index.js`; `DocumentChecklistService`, `UploadLinkService`.
+
+A link is `/upload/gul1.<payload>.<hmac>`. The payload holds the tenant, the record, an optional checklist and the
+expiry; it is signed with `UPLOAD_LINK_SECRET` (default: derived from `JWT_SECRET`). Nothing is stored, so a link
+cannot be revoked before it expires; keep the validity short.
+
+| Method & Path | Auth | Purpose |
+|---|---|---|
+| GET `/api/upload-links/records/:id/checklist` | JWT; the user must be able to open the record | `{ record, checklists: [{ id, label, items: [{ label, category, category_label, required, received, documents }] }], outstanding, categories }`. The checklist matching the record's product is listed first |
+| POST `/api/upload-links/records/:id` | JWT; as above | Body `{ days? (1–60, default 14), checklist_id?, email?: { to, name?, language: en\|fr } }` → `{ url, token, expires_at, email? }`. With `email`, the link is sent (logged against the record); 30 sends per user per hour |
+| GET `/api/upload-links/:token` | **Public** (token) | What the client sees: `{ tenant_id, workspace, what, reference, expires_at, items: [{ label, category, required, received }] }`. No file names or other documents. Invalid or expired token → 404. 120 requests per IP per 10 minutes |
+| POST `/api/upload-links/:token` | **Public** (token) | Body `{ filename, mime_type, data (base64), category }` → 201. The category must be one the link requests; the content must be a PDF, JPEG or PNG (checked by its first bytes) under 10 MB. Stored through `DocumentService` against the record, status *uploaded* (*under review* where the category requires review). 30 uploads per IP per 10 minutes |

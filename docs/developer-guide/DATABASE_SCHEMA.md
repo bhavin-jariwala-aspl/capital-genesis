@@ -220,7 +220,7 @@ Form definitions that organize fields for data entry and display.
 | form_type | VARCHAR(50) | NOT NULL (create, edit, view, detail) |
 | columns | INTEGER | NOT NULL, default 2 |
 | is_active | BOOLEAN | NOT NULL, default true |
-| config | JSON | nullable — `{ public: { success_message, consent_field, capture_fields, result_fields, field_options, stage, captcha, … } }` |
+| config | JSON | nullable — `{ public: { success_message, consent_field, capture_fields, result_fields, field_options, expert_roles, stage, captcha, … } }` |
 | public_key | VARCHAR(64) | nullable, UNIQUE — set only by the publish endpoint; the form is live at `/f/<key>` |
 | created_at | DATETIME(3) | NOT NULL, default CURRENT_TIMESTAMP(3) |
 | updated_at | DATETIME(3) | NOT NULL |

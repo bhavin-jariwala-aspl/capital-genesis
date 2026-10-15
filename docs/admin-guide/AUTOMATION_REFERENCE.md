@@ -56,6 +56,10 @@ Builder — `field_changed` was previously implemented but absent from the form.
 | `integration` | Invokes an integration, or publishes a domain event | `integration` or `event` |
 | `create_record` | Creates a record in another object | `object_id`, `fields` |
 | `update_related` | Bulk-updates linked records in another object | `object_id`, `link_field`, `field`, `value` |
+| `send_email` | Emails a template to the record, in its language when a `<template>_<lang>` exists; templates may use `{{upload_link}}` | `template` and a recipient (`email` field, `to_field` or `to`) |
+| `send_sms` | Texts the record through an SMS integration; skipped when `suppress_field` is true | `integration`, `message` |
+| `generate_document` | Renders a merge template and files it on the record | `template` |
+| `email_list` | Emails one template to every matching record of a list object (for example the subscribers of a publication), each in their language, skipping suppressed people, with optional open tracking (`track_field`). Accepts `match`, `active`, `email_field`, `language_field`, `suppress_field`, `limit` | `template`, `list_object`, `link_field` |
 
 The step editor shows the accepted keys, which are required, and a practice note per type, with
 **Insert a working example** to start from.

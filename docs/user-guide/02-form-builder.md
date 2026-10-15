@@ -148,6 +148,13 @@ replaces the key, and the old link stops working. **Unpublish** takes the form o
 through everything a normal save does: formulas, validation, assignment rules, SLA timers and workflows.
 Submissions are rate-limited and protected by a hidden honeypot field.
 
+Staff share published forms with clients from **Tools ▸ Web forms**: email a form (English or French), copy its
+link, or open it, optionally with a product preselected. Where a form allows it, **Talk to** picks the person the
+client will deal with: the link ends in `?expert=<staff ID>`, the form says *You'll speak with …*, and the enquiry is
+assigned to that person instead of following the assignment rules. Which roles may be named is part of the
+workspace's configuration (`expert_roles`, set by your implementation team); an inactive or unlisted person is
+ignored and normal routing applies.
+
 ## Preview mode
 
 Click the **Preview** button (eye icon) in the toolbar to switch the canvas into a runtime-style preview, hiding the

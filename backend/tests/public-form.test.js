@@ -120,3 +120,39 @@ describe('PublicFormService — narrowed picklists and calculator results', () =
     expect(res.result_fields).toEqual([{ name: 'emi', label: 'Indicative instalment', format: 'currency', precision: 0 }]);
   });
 });
+
+describe('PublicFormService — "Talk to …" links route to the named expert', () => {
+  function form(expertRoles) {
+    const findFirst = jest.fn(async ({ where }) => (where.employee_id === 'GCFX1' && where.role.in.includes('fx_dealer') ? { employee_id: 'GCFX1', employee_name: 'Deepak Mungur', role: 'fx_dealer' } : null));
+    const db = {
+      tenant: { findUnique: jest.fn(async () => ({ name: 'Genesis Capital' })) },
+      employee: { findFirst },
+      uiForm: { findUnique: jest.fn(async () => ({
+        id: 9, label: 'Request a call-back', columns: 2, is_active: true, tenant_id: 7,
+        config: { public: { enabled: true, ...(expertRoles ? { expert_roles: expertRoles } : {}) } },
+        object: { id: 3, name: 'web_event', label: 'Web Event', is_active: true },
+        field_layouts: [{ row: 0, col: 0, col_span: 1, field: { id: 1, name: 'email', label: 'Email', field_type: 'email', is_active: true } }],
+      })) },
+      uiField: { findMany: jest.fn(async () => [{ name: 'email' }]) },
+      uiPipelineStage: { findFirst: jest.fn(async () => null) },
+    };
+    const records = { createRecord: jest.fn(async () => ({ id: 1, data: {} })) };
+    return { svc: new PublicFormService(db, records), records, findFirst };
+  }
+
+  it('names the expert on the form and assigns the request to them', async () => {
+    const { svc, records } = form(['fx_dealer', 'rm']);
+    expect((await svc.describe(KEY, { expert: 'GCFX1' })).expert).toEqual({ id: 'GCFX1', name: 'Deepak Mungur' });
+    await svc.submit(KEY, { data: { email: 'a@b.mu' }, expert: 'GCFX1' });
+    expect(records.createRecord.mock.calls[0][3]).toBe('GCFX1');
+  });
+
+  it('falls back to normal routing for an unknown name, or when the form does not allow experts', async () => {
+    const a = form(['fx_dealer']);
+    await a.svc.submit(KEY, { data: { email: 'a@b.mu' }, expert: 'GCADMIN' });
+    expect(a.records.createRecord.mock.calls[0][3]).toBeNull();
+    const b = form(null);
+    expect((await b.svc.describe(KEY, { expert: 'GCFX1' })).expert).toBeNull();
+    expect(b.findFirst).not.toHaveBeenCalled();
+  });
+});

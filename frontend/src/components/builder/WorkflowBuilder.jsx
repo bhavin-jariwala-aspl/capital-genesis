@@ -28,6 +28,7 @@ const STEP_TYPES = [
   { value: 'create_record',  label: 'Create Record',  icon: FilePlus,    color: 'bg-primary-100 border-primary-400 text-primary-800 dark:bg-primary-500/20 dark:border-primary-500/40 dark:text-primary-400' },
   { value: 'update_related', label: 'Update Related', icon: RefreshCw,   color: 'bg-pink-100 border-pink-400 text-pink-800 dark:bg-pink-500/20 dark:border-pink-500/40 dark:text-pink-400' },
   { value: 'send_email',     label: 'Send Email',     icon: Mail,        color: 'bg-sky-100 border-sky-400 text-sky-800 dark:bg-sky-500/20 dark:border-sky-500/40 dark:text-sky-400' },
+  { value: 'email_list',     label: 'Email a List',   icon: Mail,        color: 'bg-sky-100 border-sky-400 text-sky-800 dark:bg-sky-500/20 dark:border-sky-500/40 dark:text-sky-400' },
   { value: 'send_sms',       label: 'Send SMS',       icon: MessageSquare, color: 'bg-emerald-100 border-emerald-400 text-emerald-800 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:text-emerald-400' },
   { value: 'generate_document', label: 'Generate Document', icon: FileText, color: 'bg-lime-100 border-lime-400 text-lime-800 dark:bg-lime-500/20 dark:border-lime-500/40 dark:text-lime-400' },
 ];
