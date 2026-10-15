@@ -87,6 +87,9 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...learn to use the Genesis Capital CRM, or look up a term"**
 → [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md)
 
+**"...follow each module's end-to-end process flow, or explain the CRM's purpose to Swan Capital"**
+→ [process-flows/README.md](process-flows/README.md) (purpose: [process-flows/00-purpose-swan-capital.md](process-flows/00-purpose-swan-capital.md))
+
 **"...present the Genesis Capital CRM to a client, and prepare for their questions"**
 → [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md)
 
