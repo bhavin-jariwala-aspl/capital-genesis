@@ -92,6 +92,7 @@ export default function Pipeline({
             onCardEdit={onCardEdit}
             onAddCard={onAddCard}
             renderCard={renderCard}
+            canMove={!!onCardMove}
           />
         ))}
       </div>
@@ -107,7 +108,7 @@ export default function Pipeline({
   );
 }
 
-function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCard, renderCard }) {
+function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCard, renderCard, canMove }) {
   const { setNodeRef } = useDroppable({
     id: stage.id,
     data: { stageId: stage.id },
@@ -159,6 +160,7 @@ function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCa
             renderCard={renderCard}
             showEditAction={!!onCardEdit}
             showActivityAction={!!onCardClick}
+            canMove={canMove}
           />
         ))}
 
@@ -187,10 +189,13 @@ function PipelineColumn({ stage, cards, isOver, onCardClick, onCardEdit, onAddCa
   );
 }
 
-function PipelineCard({ card, onClick, onEdit, renderCard, showEditAction, showActivityAction }) {
+function PipelineCard({ card, onClick, onEdit, renderCard, showEditAction, showActivityAction, canMove }) {
+  // Without onCardMove (e.g. a view-only role) the card must not lift at all —
+  // it used to drag and silently snap back to its lane.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
     data: { stageId: card.stage_id },
+    disabled: !canMove,
   });
 
   /** Prevent pointer events on action buttons from starting a drag */
@@ -204,14 +209,15 @@ function PipelineCard({ card, onClick, onEdit, renderCard, showEditAction, showA
         'hover:shadow-card hover:-translate-y-0.5 transition-all duration-150',
         isDragging
           ? 'opacity-20 scale-95 cursor-grabbing'
-          : 'cursor-grab active:cursor-grabbing',
+          : canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
       )}
+      title={canMove ? undefined : 'View only — you don\'t have permission to change stages'}
       onClick={isDragging ? undefined : onClick}
       {...attributes}
       {...listeners}
     >
       <div className="flex items-start gap-2">
-        <GripVertical className="h-3.5 w-3.5 mt-0.5 text-gray-200 flex-shrink-0" />
+        {canMove && <GripVertical className="h-3.5 w-3.5 mt-0.5 text-gray-200 flex-shrink-0" />}
 
         <div className="flex-1 min-w-0">
           {renderCard ? renderCard(card) : <DefaultCardContent card={card} />}
