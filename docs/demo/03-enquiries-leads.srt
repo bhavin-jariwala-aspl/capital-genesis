@@ -1,217 +1,217 @@
 1
-00:00:01,753 --> 00:00:10,374
+00:00:02,717 --> 00:00:11,667
 Enquiries & Leads
 From a website enquiry to a new client with a loan application — routed, scored and timed automatically.
 
 2
-00:00:10,375 --> 00:00:15,238
+00:00:11,678 --> 00:00:16,963
 A prospect calls Priya about a personal loan
 She emails the website enquiry form instead of typing the details in herself
 
 3
-00:00:15,238 --> 00:00:20,569
+00:00:16,963 --> 00:00:29,850
 Sign in as Priya Ramdin — Relationship Manager
 Relationship manager — first point of contact
 
 4
-00:00:20,569 --> 00:00:25,938
+00:00:29,850 --> 00:00:36,721
 Tools ▸ Web forms lists every form published on the website
 Email it, copy the link, or open it — answers become CRM records
 
 5
-00:00:25,938 --> 00:00:33,134
+00:00:36,721 --> 00:00:51,526
 Client email, name, language and a personal note
 Personal Loan is already chosen for her
 
 6
-00:00:33,134 --> 00:00:38,181
+00:00:51,526 --> 00:00:58,440
 The client gets a short email with a button that opens the form
 The email is recorded under Email logs
 
 7
-00:00:38,181 --> 00:00:40,888
+00:00:58,440 --> 00:01:01,618
 Aditi opens the link from the email
 Same form as on the website — no account needed
 
 8
-00:00:40,888 --> 00:00:45,849
+00:01:01,618 --> 00:01:07,274
 She gives the amount but leaves the tenure empty
 Not every client knows it yet — we will see why it matters
 
 9
-00:00:45,849 --> 00:00:53,245
+00:01:07,274 --> 00:01:17,646
 Next page: contact details and consent to be contacted
 
 10
-00:00:53,245 --> 00:00:57,074
+00:01:17,646 --> 00:01:22,825
 She gets a reference number straight away
 And an acknowledgement email in her language
 
 11
-00:00:57,074 --> 00:01:01,462
-Routing gave it to Yash Bholah in the Lending team
+00:01:22,825 --> 00:01:27,803
+Routing gave it to Sophie Lagesse in the Lending team
 Personal loans go to the loans executives in turn
 
 12
-00:01:01,462 --> 00:01:07,840
-Sign in as Yash Bholah — Loans Executive
+00:01:27,803 --> 00:01:39,119
+Sign in as Sophie Lagesse — Loans Executive
 Loans executive — owns the new enquiry
 
 13
-00:01:07,840 --> 00:01:12,315
-Yash finds it in the New column of the enquiry funnel
+00:01:39,119 --> 00:01:44,093
+Sophie finds it in the New column of the enquiry funnel
 New → Contacted → Qualified → Converted, or Nurture / Disqualified
 
 14
-00:01:12,315 --> 00:01:17,367
+00:01:44,093 --> 00:01:49,360
 Everything the client typed is on the record
 Channel: website form · consent captured with its date and wording
 
 15
-00:01:17,367 --> 00:01:24,372
+00:01:49,360 --> 00:01:56,609
 Calculated for her: entity and queue, lead score and grade, indicative rate
 Score uses amount, contact details, consent and channel — grade A to F
 
 16
-00:01:24,372 --> 00:01:30,109
+00:01:56,609 --> 00:02:04,762
 The speed-to-lead clock started too: first contact within 4 business hours
 Tools ▸ SLA Board shows it with the time remaining
 
 17
-00:01:30,109 --> 00:01:36,855
-After calling Aditi, Yash drags the card to Contacted
+00:02:04,762 --> 00:02:16,113
+After calling Aditi, Sophie drags the card to Contacted
 That stops the first-response clock
 
 18
-00:01:39,229 --> 00:01:43,538
+00:02:18,571 --> 00:02:24,333
 Need confirmed: on to Qualified
 Qualified needs an email and a product — both are there
 
 19
-00:01:45,911 --> 00:01:50,167
+00:02:26,791 --> 00:02:33,000
 Next: convert it
 A loan enquiry needs an amount and a tenure — they start the loan application
 
 20
-00:01:50,167 --> 00:01:56,534
+00:02:33,000 --> 00:02:40,861
 Blocked: the card goes back and the message says what is missing
 "Open record to complete" goes straight to the form
 
 21
-00:01:56,534 --> 00:02:00,726
+00:02:40,861 --> 00:02:53,797
 Add the tenure Aditi gave on the phone: 60 months
 
 22
-00:02:00,726 --> 00:02:05,610
+00:02:53,797 --> 00:03:00,604
 Now the move to Converted goes through
 
 23
-00:02:07,992 --> 00:02:14,554
+00:03:03,062 --> 00:03:10,518
 Converting runs the onboarding automatically
 Client record · entity relationship · KYC case · consent · loan application
 
 24
-00:02:14,554 --> 00:02:17,765
+00:03:10,518 --> 00:03:14,392
 The enquiry now points to the new client record
 Converted to party
 
 25
-00:02:17,765 --> 00:02:23,673
+00:03:14,392 --> 00:03:22,152
 Related: the loan application, started at Pre-qualified with amount and tenure
 The loans team continues there (see the Retail Lending tutorial)
 
 26
-00:02:23,673 --> 00:02:36,228
+00:03:22,152 --> 00:03:31,710
 The new client: relationship with the lending entity, KYC case and marketing consent
 Clients ▸ the client record ▸ Related
 
 27
-00:02:36,228 --> 00:02:40,559
-Yash shares a personal link with another prospect
+00:03:31,710 --> 00:03:37,282
+Sophie shares a personal link with another prospect
 Web forms ▸ Talk to: the enquiry comes straight back, skipping routing
 
 28
-00:02:40,559 --> 00:02:46,710
+00:03:37,282 --> 00:03:43,964
 Copied — pasted into a WhatsApp message to Yannick
 
 29
-00:02:46,710 --> 00:03:04,928
-The form says "You'll speak with Yash Bholah"
+00:03:43,964 --> 00:04:01,847
+The form says "You'll speak with Sophie Lagesse"
 
 30
-00:03:04,928 --> 00:03:11,911
-Sign in as Yash Bholah — Loans Executive
+00:04:01,847 --> 00:04:08,773
+Sign in as Sophie Lagesse — Loans Executive
 Back in the CRM
 
 31
-00:03:11,911 --> 00:03:21,023
+00:04:08,773 --> 00:04:18,918
 After the call: no income yet, so not eligible
 Disqualified needs a reason — the move is refused without one
 
 32
-00:03:21,023 --> 00:03:33,299
+00:04:18,918 --> 00:04:32,472
 The form opens with the missing field on top
 Reason: Not eligible
 
 33
-00:03:35,672 --> 00:03:39,448
+00:04:37,565 --> 00:04:41,473
 Disqualification reasons feed the Lead Funnel dashboard
 So marketing sees why leads are lost
 
 34
-00:03:39,448 --> 00:03:52,331
+00:04:41,473 --> 00:04:56,421
 Aditi also wants to invest — a job for Wealth Management
 Referrals pass a client from one Genesis entity to another, with credit to the referrer
 
 35
-00:03:52,331 --> 00:03:55,991
+00:04:56,421 --> 00:05:01,851
 It goes straight to the receiving RM named on it — Priya in Wealth
 She has one business day to accept it (referral SLA)
 
 36
-00:03:55,991 --> 00:04:02,568
+00:05:01,851 --> 00:05:08,847
 Sign in as Priya Ramdin — Relationship Manager
 Wealth RM receiving the referral
 
 37
-00:04:02,568 --> 00:04:07,942
+00:05:08,847 --> 00:05:13,273
 The referral is waiting in her Submitted column
 Accepting it stops the one-day clock; Won or Lost records the outcome
 
 38
-00:04:10,316 --> 00:04:24,576
+00:05:15,728 --> 00:05:30,079
 For wealth enquiries Priya uses the guided wizard
 Enquiries ▸ Wealth enquiry — qualify: contact, then needs
 
 39
-00:04:24,576 --> 00:04:39,863
+00:05:30,079 --> 00:05:41,881
 Investable assets and horizon — what the wealth team needs to qualify
 
 40
-00:04:39,863 --> 00:04:45,794
+00:05:41,881 --> 00:05:48,021
 Aditi is recognised as an existing client — no duplicate will be created
 Existing client plus a referral: the lead score jumps to grade A
 
 41
-00:04:45,794 --> 00:04:51,487
+00:05:48,021 --> 00:05:53,631
 Shalini, Head of Business Development, watches the top of the funnel
 Calculator sessions: anonymous loan-calculator visits from the website
 
 42
-00:04:51,487 --> 00:05:00,055
+00:05:53,631 --> 00:06:00,593
 Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships
 Head of BD & Strategic Partnerships
 
 43
-00:05:00,055 --> 00:05:06,521
+00:06:00,593 --> 00:06:07,285
 Product, amount and indicative instalment each visitor looked at
 Converted shows whether the visitor later left details as an enquiry
 
 44
-00:05:06,521 --> 00:05:11,376
+00:06:07,285 --> 00:06:12,304
 Newsletter sign-ups and call-back requests land here too
 A call-back request creates an enquiry for the right team automatically
 
 45
-00:05:11,376 --> 00:05:17,846
+00:06:12,304 --> 00:06:18,996
 Enquiries & Leads
