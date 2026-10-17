@@ -96,6 +96,8 @@ class ObjectAnalyticsService {
     // `stage` filters on the pipeline stage's API name.
     const valueOf = (a, field) => (field === 'stage' ? (a.pipeline_stage?.name ?? null) : values.get(a.id)[field]);
     const kept = anchors.filter((a) => (spec.filters ?? []).every((f) => matches(valueOf(a, f.field), f.op, f.value)));
+    // A lookup groups by the linked record's title ("Project Dodo"), never its id.
+    for (const [k, v] of await this.#lookupLabels(obj.id, groupBy, kept.map((a) => values.get(a.id)[groupBy]), access)) optionLabels.set(k, v);
 
     const keyOf = (a) => {
       if (groupBy === 'stage') return { key: a.pipeline_stage?.name ?? '—', label: a.pipeline_stage?.label ?? 'No stage', order: a.pipeline_stage?.order_index ?? 999 };
@@ -142,10 +144,42 @@ class ObjectAnalyticsService {
     };
   }
 
+  /**
+   * Linked record id → title for a lookup field. Only records the viewer may
+   * see are resolved, so a group never names a record behind a barrier; any
+   * other id stays as it is.
+   */
+  async #lookupLabels(objectId, fieldName, rawValues, access) {
+    if (!fieldName || fieldName === 'stage' || fieldName === 'created_month' || !this.records?.titleFieldFor) return new Map();
+    const f = await this.db.uiField.findFirst({ where: { object_id: objectId, name: fieldName }, select: { field_type: true, config: true } });
+    if (f?.field_type !== 'lookup') return new Map();
+    const ids = [...new Set(rawValues.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+    if (!ids.length) return new Map();
+    const visible = await this.db.record.findMany({ where: { id: { in: ids }, deleted_at: null, ...access }, select: { id: true, object_id: true } });
+    const out = new Map();
+    for (const targetId of new Set(visible.map((r) => r.object_id))) {
+      const titleField = await this.records.titleFieldFor(targetId);
+      if (!titleField) continue;
+      const rows = await this.db.recordFieldValue.findMany({
+        where:  { record_id: { in: visible.filter((r) => r.object_id === targetId).map((r) => r.id) }, field_name: titleField },
+        select: { record_id: true, str_value: true },
+      });
+      for (const r of rows) if (r.str_value) out.set(String(r.record_id), r.str_value);
+    }
+    return out;
+  }
+
   /** Option value → label for a select field, so groups read as the UI does. */
   async #optionLabels(objectId, fieldName) {
     if (!fieldName || fieldName === 'stage' || fieldName === 'created_month') return new Map();
-    const f = await this.db.uiField.findFirst({ where: { object_id: objectId, name: fieldName }, select: { options: true } });
+    const f = await this.db.uiField.findFirst({ where: { object_id: objectId, name: fieldName }, select: { options: true, config: true, field_type: true } });
+    // A checkbox groups as Yes / No (or the field's own wording), never "true" / "false".
+    if (f?.field_type === 'checkbox') return new Map([['true', f.config?.true_label ?? 'Yes'], ['false', f.config?.false_label ?? 'No']]);
+    // A text field that holds staff ids (`config.employee`) groups by the person's name.
+    if (f?.config?.employee && this.db.employee?.findMany) {
+      const staff = await this.db.employee.findMany({ select: { employee_id: true, employee_name: true } }).catch(() => []);
+      return new Map(staff.filter((e) => e.employee_name).map((e) => [String(e.employee_id), e.employee_name]));
+    }
     const opts = Array.isArray(f?.options) ? f.options : [];
     return new Map(opts.map((o) => (typeof o === 'string' ? [o, o] : [String(o.value), o.label ?? String(o.value)])));
   }

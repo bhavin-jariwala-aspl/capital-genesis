@@ -1,42 +1,30 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { useState } from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Searching answers at once; resolving the title of a chosen id never answers
+// (a slow server) — the picker must still show the name, not "#id".
 vi.mock('../src/services/metadata.service', () => ({
-  runtimeService: { searchLookup: vi.fn() },
+  runtimeService: {
+    searchLookup: vi.fn((obj, q, id) => (id != null
+      ? new Promise(() => {})
+      : Promise.resolve({ data: [{ id: 3083, label: 'Corinne Henry' }] }))),
+  },
 }));
-
 import RecordPicker from '../src/components/ui/RecordPicker';
-import { runtimeService } from '../src/services/metadata.service';
 
-function renderPicker(props) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <RecordPicker targetObject="party" onChange={() => {}} label="Client" {...props} />
-    </QueryClientProvider>,
-  );
+function Host() {
+  const [v, setV] = useState(null);
+  return <RecordPicker id="party" targetObject="party" value={v} onChange={setV} />;
 }
 
-describe('RecordPicker — the saved value\'s title', () => {
-  it('shows the title the server resolves', async () => {
-    runtimeService.searchLookup.mockResolvedValue({ data: [{ id: 7, label: 'Anne Lagesse' }] });
-    renderPicker({ value: 7 });
-    expect(await screen.findByText('Anne Lagesse')).toBeInTheDocument();
-  });
-
-  it('falls back to the title saved on the record when the viewer cannot search that client', async () => {
-    runtimeService.searchLookup.mockResolvedValue({ data: [] });
-    renderPicker({ value: 3080, knownLabels: { 3080: 'Anil Sookun' } });
-    await waitFor(() => expect(runtimeService.searchLookup).toHaveBeenCalled());
-    expect(await screen.findByText('Anil Sookun')).toBeInTheDocument();
-    expect(screen.queryByText('#3080')).not.toBeInTheDocument();
-  });
-
-  it('shows the id only when no title is known at all', async () => {
-    runtimeService.searchLookup.mockResolvedValue({ data: [] });
-    renderPicker({ value: 12 });
-    expect(await screen.findByText('#12')).toBeInTheDocument();
+describe('RecordPicker', () => {
+  it('shows the picked record\'s name while its title is still loading', async () => {
+    render(<QueryClientProvider client={new QueryClient()}><Host /></QueryClientProvider>);
+    fireEvent.focus(screen.getByRole('textbox'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Corinne Henry' }));
+    expect(screen.getByRole('button', { name: 'Corinne Henry' })).toBeTruthy();
+    expect(screen.queryByText('#3083')).toBeNull();
   });
 });

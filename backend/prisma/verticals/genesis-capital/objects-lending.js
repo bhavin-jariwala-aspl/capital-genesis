@@ -11,7 +11,7 @@
  * snapshots the CRM services from, never books it keeps.
  */
 
-const { o, CURRENCIES } = require('./options');
+const { o, CURRENCIES, LANGUAGES } = require('./options');
 const { helpers: { F, SEL, LK, FX, H, AUTO, LIST, EXPR, stage, showWhen } } = require('./objects');
 
 const MUR = (field, label = 'Amount (MUR)') => FX(`${field}_mur`, label,
@@ -144,7 +144,7 @@ const creditFacility = {
   label: 'Credit Facility',
   plural_label: 'Commercial Facilities',
   icon: 'Building2',
-  description: 'RM-led corporate lending: facility structure, pricing, security package, credit memo and annual review (PRD M06).',
+  description: 'RM-led corporate lending: facility structure, pricing, security package, credit memo and annual review.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('facility_no', 'Facility No.', 'CF-'),
@@ -175,11 +175,13 @@ const creditFacility = {
     FX('dscr', 'DSCR (latest year)', "LOOKUP('financial_spread', 'credit_facility', id, 'dscr', 'period_end')", { precision: 2, list: true }),
     FX('leverage', 'Net debt / EBITDA', "LOOKUP('financial_spread', 'credit_facility', id, 'net_debt_to_ebitda', 'period_end')", { precision: 2 }),
     FX('group_exposure_mur', 'Group exposure (MUR)', "IF(ISBLANK(borrower_group), amount_mur, SUM_RELATED_GROUP)", { format: 'currency', precision: 2 }),
+    FX('group_limit_mur', 'Group lending limit (MUR)', 'borrower_group.group_limit', { format: 'currency', precision: 2 }),
+    FX('group_headroom_mur', 'Group limit headroom (MUR)', 'IF(ISBLANK(borrower_group.group_limit), null, borrower_group.group_limit - group_exposure_mur)', { format: 'currency', precision: 2 }),
     FX('covenants_breached', 'Covenants in breach', "COUNT_RELATED('covenant_test', 'credit_facility', 'result', 'breach')", LIST),
     FX('days_to_review', 'Days to annual review', 'IF(ISBLANK(expiry_date), null, DAYS_BETWEEN(TODAY(), expiry_date))'),
     F('renewal_opened', 'Renewal opened', 'checkbox', { config: { always_disabled: true } }),
     SEL('credit_decision', 'Credit decision', o([['approved', 'Approved', '#10b981'], ['declined', 'Declined', '#ef4444']]), { config: { always_disabled: true } }),
-    FX('approval_level', 'Approval authority', "IF(amount_mur <= 5000000, 'Loans Manager', IF(amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee'))", { type: 'string' }),
+    FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', CONCAT('LND|', IF(amount_mur <= 5000000, '5M', IF(amount_mur <= 20000000, '20M', 'MAX'))), 'approver_label'), IF(amount_mur <= 5000000, 'Loans Manager', IF(amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
     FX('name', 'Facility', "CONCAT(borrower.display_name, ' · ', LABEL(facility_type))", { type: 'string' }),
   ],
@@ -211,7 +213,7 @@ const financialSpread = {
   label: 'Financial Spread',
   plural_label: 'Financial Spreading',
   icon: 'Table',
-  description: 'Three to five years of P&L and balance sheet per facility, with DSCR, leverage, gearing and interest cover (COM-FR-03). Import from Excel with the CSV importer.',
+  description: 'Three to five years of P&L and balance sheet per facility, with DSCR, leverage, gearing and interest cover. Import from Excel with the CSV importer.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('credit_facility', 'Facility', 'credit_facility', { required: true, config: { show_in_list: true } }),
@@ -247,7 +249,7 @@ const covenant = {
   label: 'Covenant',
   plural_label: 'Covenants',
   icon: 'FileCheck2',
-  description: 'Financial and information covenants with their test schedule (COM-FR-04/05).',
+  description: 'Financial and information covenants with their test schedule.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('credit_facility', 'Facility', 'credit_facility', { required: true, config: { show_in_list: true } }),
@@ -268,7 +270,7 @@ const covenantTest = {
   label: 'Covenant Test',
   plural_label: 'Covenant Tests',
   icon: 'ClipboardCheck',
-  description: 'Each test date: compliance certificate, actual value, result, and the breach / waiver workflow (COM-FR-05).',
+  description: 'Each test date: compliance certificate, actual value, result, and the breach / waiver workflow.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('covenant', 'Covenant', 'covenant', { required: true, config: { show_in_list: true } }),
@@ -296,7 +298,7 @@ const collateralLink = {
   label: 'Collateral Allocation',
   plural_label: 'Collateral Allocations',
   icon: 'Link2',
-  description: 'Many-to-many allocation of collateral to loans and facilities with the allocated value (COLL-FR-02).',
+  description: 'How much of each collateral secures which loan or facility — one collateral can back several.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('collateral', 'Collateral', 'collateral', { required: true, config: { show_in_list: true } }),
@@ -314,7 +316,7 @@ const collateralValuation = {
   label: 'Valuation',
   plural_label: 'Collateral Valuations',
   icon: 'Ruler',
-  description: 'Valuation history; the revaluation scheduler raises a task when one falls due (COLL-FR-03).',
+  description: 'Valuation history of each collateral — the latest valuation sets its market and lending value.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('collateral', 'Collateral', 'collateral', { required: true, config: { show_in_list: true } }),
@@ -334,7 +336,7 @@ const marginCall = {
   label: 'Margin Call',
   plural_label: 'Margin Calls',
   icon: 'Siren',
-  description: 'Investment-backed loans whose LTV crossed the margin-call threshold — client notified, cure tracked (COLL-FR-04).',
+  description: 'Raised automatically when an investment-backed loan passes its margin-call level — client notified, cure tracked.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('call_no', 'Call No.', 'MC-'),
@@ -348,15 +350,22 @@ const marginCall = {
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
     FX('party_email', 'Borrower email', 'party.email', { type: 'string' }),
     FX('party_mobile', 'Borrower mobile', 'party.mobile', { type: 'string' }),
-    FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }),
-    FX('name', 'Margin call', "CONCAT(loan_application.application_no, ' · ', call_date)", { type: 'string' }),
+    { ...FX('preferred_language', 'Language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }), options: LANGUAGES }, // English / Français, not en / fr
+    FX('current_ltv', 'Current LTV %', 'loan_application.ibl_ltv', { format: 'percent', precision: 1 }),
+    FX('cure_deadline', 'Cure deadline', 'COALESCE(cure_by, ADD_DAYS(call_date, 7))', { type: 'date', detail: false }),
+    FX('name', 'Margin call', "CONCAT(call_no, ' · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'margin_call_create', label: 'Margin call', fields: ['loan_application', 'party', 'ltv_at_call', 'shortfall', 'call_date', 'cure_by', 'cure'] }],
   pipeline: {
     name: 'margin_call_flow', label: 'Margin call',
     stages: [
       stage('issued', 'Issued', '#f59e0b'), stage('client_contacted', 'Client contacted', '#3b82f6'),
-      stage('cured', 'Cured', '#10b981'), stage('liquidation', 'Liquidation', '#ef4444'),
+      stage('cured', 'Cured', '#10b981', {
+        entry_rule: { expression: "IN(cure, 'top_up', 'repayment')", message: 'Record how the call was cured — additional collateral or a partial repayment — before closing it as Cured.' },
+      }),
+      stage('liquidation', 'Liquidation', '#ef4444', {
+        entry_rule: { expression: "cure = 'liquidation'", message: 'Set the cure to “Liquidation of pledged assets” before moving the call to Liquidation.' },
+      }),
     ],
   },
 };
@@ -378,7 +387,7 @@ const loanAccount = {
     SEL('currency_code', 'Currency', CURRENCIES, { default: 'MUR' }),
     F('original_amount', 'Original amount', 'currency'),
     F('outstanding', 'Outstanding principal', 'currency'),
-    F('rate_type', 'Variable (PLR-linked)', 'checkbox', { default: 'true' }),
+    F('rate_type', 'Variable (PLR-linked)', 'checkbox', { default: 'true', config: { true_label: 'PLR-linked', false_label: 'Fixed' } }),
     F('margin', 'Margin vs PLR (% pts)', 'decimal'),
     FX('current_rate', 'Current rate %', "IF(rate_type, LATEST('plr_rate', 'rate', 'effective_from') + COALESCE(margin, 0), fixed_rate)", { precision: 3, list: true }),
     F('fixed_rate', 'Fixed rate %', 'decimal'),
@@ -390,7 +399,8 @@ const loanAccount = {
     F('maturity_date', 'Maturity', 'date', LIST),
     FX('months_to_maturity', 'Months to maturity', 'IF(ISBLANK(maturity_date), null, MONTHS_BETWEEN(TODAY(), maturity_date))'),
     F('collateral_value', 'Collateral value (MUR)', 'currency'),
-    FX('ltv', 'Current LTV %', 'IF(COALESCE(collateral_value, 0) > 0, outstanding_mur / collateral_value * 100, null)', { format: 'percent', precision: 1, list: true }),
+    // Investment-backed loans have no LMS collateral value: the pledges' value from the collateral register is used.
+    FX('ltv', 'Current LTV %', 'IF(COALESCE(collateral_value, loan_application.pledged_value, 0) > 0, outstanding_mur / COALESCE(collateral_value, loan_application.pledged_value) * 100, null)', { format: 'percent', precision: 1, list: true }),
     FX('ltv_band', 'LTV band', "IF(ISBLANK(ltv), 'n/a', IF(ltv <= 60, '≤ 60%', IF(ltv <= 80, '60–80%', IF(ltv <= 100, '80–100%', '> 100%'))))", { type: 'string' }),
     FX('ltv_status', 'LTV status (investment-backed)', "IF(product_code != 'LND-IBL' OR ISBLANK(ltv), 'n/a', IF(ltv >= 90, 'liquidation', IF(ltv >= 80, 'margin_call', IF(ltv >= 75, 'warning', 'ok'))))", { type: 'string' }),
     SEL('status', 'Status', o([['active', 'Active', '#10b981'], ['arrears', 'In arrears', '#f59e0b'], ['restructured', 'Restructured', '#8b5cf6'], ['settled', 'Settled', '#64748b'], ['written_off', 'Written off', '#ef4444']]), { default: 'active', config: { show_in_list: true } }),
@@ -398,8 +408,9 @@ const loanAccount = {
     F('promise_to_pay_date', 'Promise to pay by', 'date'),
     F('margin_call_open', 'Margin call open', 'checkbox', { config: { always_disabled: true } }),
     F('collections_opened', 'Collections follow-up open', 'checkbox', { config: { always_disabled: true } }),
-    FX('latest_plr_event', 'Latest PLR change', "LATEST('plr_change_event', 'id', 'effective_from')"),
-    F('notified_plr_event', 'PLR change notified', 'integer', { config: { always_disabled: true } }),
+    // Superseded: PLR notices are now generated from the approved campaign (genesis_plr_notices).
+    FX('latest_plr_event', 'Latest PLR change', "LATEST('plr_change_event', 'id', 'effective_from')", { detail: false }),
+    F('notified_plr_event', 'PLR change notified', 'integer', { config: { always_disabled: true, hide_in_detail: true } }),
     F('renewal_opened', 'Maturity opportunity opened', 'checkbox', { config: { always_disabled: true } }),
     MUR('outstanding', 'Outstanding (MUR)'),
     FX('party_email', 'Borrower email', 'party.email', { type: 'string' }),
@@ -415,7 +426,7 @@ const plrChangeEvent = {
   label: 'PLR Change',
   plural_label: 'PLR Change Campaigns',
   icon: 'TrendingUp',
-  description: 'Each PLR change: the affected variable-rate book, personalised notices and their delivery log (SERV-FR-02).',
+  description: 'Each PLR change: the affected variable-rate book, personalised notices and their delivery log (SERV-FR-02). Approving a campaign generates the notices; it does not change the PLR itself (Masters ▸ Genesis PLR History).',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('plr_change_no', 'Change No.', 'PLR-'),
@@ -454,6 +465,10 @@ const plrNotification = {
     FX('preferred_language', 'Language', "COALESCE(loan_account.party.preferred_language, 'en')", { type: 'string' }),
     F('old_instalment', 'Old instalment', 'currency'),
     F('new_instalment', 'New instalment', 'currency'),
+    FX('lms_account_no', 'LMS account no.', 'loan_account.lms_account_no', { type: 'string' }),
+    FX('effective_from', 'Effective from', 'plr_change_event.effective_from', { type: 'date', format: 'date' }),
+    FX('old_loan_rate', 'Old rate %', 'plr_change_event.old_rate + COALESCE(loan_account.margin, 0)', { precision: 3 }),
+    FX('new_loan_rate', 'New rate %', 'plr_change_event.new_rate + COALESCE(loan_account.margin, 0)', { precision: 3, list: true }),
     FX('instalment_change', 'Change', 'new_instalment - old_instalment', { format: 'currency', precision: 2, list: true }),
     SEL('channel', 'Channel', o([['email', 'Email'], ['post', 'Post'], ['portal', 'Portal']]), { default: 'email' }),
     SEL('status', 'Delivery', o([['pending', 'Pending'], ['sent', 'Sent'], ['delivered', 'Delivered', '#10b981'], ['bounced', 'Bounced', '#ef4444']]), { default: 'pending', config: { show_in_list: true } }),
@@ -475,8 +490,10 @@ const collectionAction = {
     LK('loan_account', 'Loan account', 'loan_account', { required: true, config: { show_in_list: true } }),
     FX('arrears_bucket', 'Bucket', 'loan_account.arrears_bucket', { type: 'string', list: true }),
     SEL('action', 'Action', o([['call', 'Call'], ['sms', 'SMS reminder'], ['letter', 'Demand letter'], ['visit', 'Visit'], ['escalate', 'Escalate to legal']]), { required: true, config: { show_in_list: true } }),
-    F('action_date', 'Date', 'date', { required: true }),
-    SEL('outcome', 'Outcome', o([['ptp', 'Promise to pay'], ['paid', 'Paid', '#10b981'], ['no_contact', 'No contact'], ['dispute', 'Dispute'], ['refused', 'Refused', '#ef4444']]), LIST),
+    F('action_date', 'Date', 'date', { required: true, config: { show_in_list: true } }),
+    // On the outcome (a rule on a blank field is not checked): a promise without amount or date cannot be chased.
+    SEL('outcome', 'Outcome', o([['ptp', 'Promise to pay'], ['paid', 'Paid', '#10b981'], ['no_contact', 'No contact'], ['dispute', 'Dispute'], ['refused', 'Refused', '#ef4444']]),
+      { config: { show_in_list: true }, validations: [EXPR("outcome != 'ptp' OR (COALESCE(ptp_amount, 0) > 0 AND NOT(ISBLANK(ptp_date)))", 'A promise to pay needs the amount and the date it will be paid by')] }),
     F('ptp_amount', 'Promised amount', 'currency'),
     F('ptp_date', 'Promised by', 'date'),
     F('notes', 'Notes', 'textarea'),

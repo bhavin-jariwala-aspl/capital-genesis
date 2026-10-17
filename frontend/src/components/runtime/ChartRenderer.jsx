@@ -49,7 +49,8 @@ function axisWidth(data, fmt, extra = 0) {
     }
   }
   const label = String(fmt ? fmt(max) : max);
-  return Math.min(120, Math.max(40, Math.round(label.length * 6.8) + 16)) + extra;
+  // ~7.4 px a character at 11 px: capitals and digits ("MUR 80m") are wider than the average glyph.
+  return Math.min(120, Math.max(40, Math.round(label.length * 7.4) + 16)) + extra;
 }
 
 const SERIES_LIGHT = ['#6366f1', '#14b8a6', '#f59e0b', '#a855f7', '#22c55e', '#ef4444', '#0ea5e9', '#f97316'];

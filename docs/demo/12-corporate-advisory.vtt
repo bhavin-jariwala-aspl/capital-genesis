@@ -1,0 +1,191 @@
+WEBVTT
+
+00:00:01.750 --> 00:00:10.741
+Corporate Advisory
+Run a corporate finance mandate behind the advisory information barrier — from pitch to investor commitments.
+
+00:00:10.753 --> 00:00:16.706
+Sign in as Camille Rivalland — Corporate Advisor
+Corporate advisor — Genesis Corporate Advisors
+
+00:00:16.706 --> 00:00:21.483
+Corporate Advisory ▸ Advisory Mandates: every deal is known by its code name
+Only the advisory team and Compliance can open this module's records
+
+00:00:21.483 --> 00:00:36.771
+Code name, client, target and service line
+Fees: a retainer plus a success fee on the amount raised
+
+00:00:36.771 --> 00:00:46.303
+Move the mandate along its pipeline
+Origination ▸ Pitch ▸ Conflict check
+
+00:00:46.303 --> 00:00:54.304
+Pitch won — before any engagement, Compliance must check for conflicts
+Moving to Conflict check opens a conflict check for Compliance automatically
+
+00:00:54.304 --> 00:00:59.304
+Try to go straight to Engagement letter…
+The CRM checks the conflict-check result first
+
+00:00:59.304 --> 00:01:06.565
+Blocked: Compliance must clear the conflict check first
+No engagement letter can be issued on an unchecked deal
+
+00:01:06.565 --> 00:01:09.990
+The conflict check CC-2026-000011 is waiting for Compliance
+Compliance is notified and has two business days to decide
+
+00:01:09.990 --> 00:01:14.289
+Compliance reviews the conflict check
+Compliance sits inside the advisory barrier — it sees every deal
+
+00:01:14.289 --> 00:01:24.690
+Sign in as Fatima Hossenbux — Compliance Officer
+Compliance officer — decides conflict checks
+
+00:01:24.690 --> 00:01:29.312
+The CRM has already searched the group for conflicts
+The client's and target's Genesis relationships, loans outstanding and other advisory mandates
+
+00:01:29.312 --> 00:01:36.686
+…and the restricted and watch lists
+A match here would need controls — or a decline
+
+00:01:36.686 --> 00:01:44.243
+Take it into review, then record the decision
+Requested ▸ Compliance review
+
+00:01:44.243 --> 00:01:57.723
+Record the decision and the rationale
+Cleared · Cleared with controls · Declined
+
+00:01:57.723 --> 00:02:02.277
+Decided: the check moves to Decided with the date
+The decision is written back to the mandate and kept as the audit record
+
+00:02:02.277 --> 00:02:06.511
+What does the trading desk see?
+Traders are on the public side of the wall
+
+00:02:06.511 --> 00:02:12.434
+Sign in as Arvind Ramsurrun — Trader
+Trader — public side of the wall
+
+00:02:12.434 --> 00:02:18.626
+No mandates at all — not even that Project Flamboyant exists
+Deal records, documents and alerts stay inside the barrier
+
+00:02:18.626 --> 00:02:21.042
+Someone who needs inside information asks for a wall-crossing
+Tools ▸ Access & Barriers ▸ Wall-crossings
+
+00:02:21.042 --> 00:02:25.471
+Approval is time-limited and never by the requester
+Once approved, the person is added to the insider list until the crossing ends
+
+00:02:25.471 --> 00:02:29.453
+Back to the advisor: the conflict check is cleared
+Conflict check ▸ Engagement letter
+
+00:02:29.453 --> 00:02:40.614
+Sign in as Camille Rivalland — Corporate Advisor
+Corporate advisor
+
+00:02:40.614 --> 00:02:50.737
+The engagement letter is generated for you — under the code name
+Mandate ▸ Docs, ready for e-signature
+
+00:02:50.737 --> 00:03:00.245
+Execution needs the signed letter
+Try to move on before it is signed…
+
+00:03:00.245 --> 00:03:04.948
+Blocked: the engagement letter must be signed first
+
+00:03:04.948 --> 00:03:15.749
+The client has signed: tick "Engagement letter signed"
+
+00:03:15.749 --> 00:03:29.493
+Add the analyst to the deal team
+Corporate Advisory ▸ Deal Team Member ▸ New
+
+00:03:29.493 --> 00:03:34.031
+Ryan Pillay is on the insider list automatically
+With the date and the reason — the list the regulator asks for
+
+00:03:34.031 --> 00:03:50.042
+Approach an investor: Sunrise Pension Fund
+Targeted ▸ NDA ▸ IM shared ▸ Indication ▸ Committed ▸ Allocated
+
+00:03:50.042 --> 00:03:55.536
+The NDA has been sent to the investor
+Targeted ▸ NDA
+
+00:03:55.536 --> 00:03:59.804
+Share the information memorandum already?
+The CRM checks the NDA first
+
+00:03:59.804 --> 00:04:03.740
+Blocked: the IM can only be shared once the NDA is signed
+Inside information never leaves without a signed NDA
+
+00:04:03.740 --> 00:04:09.494
+The investor signs the NDA: record it with the date the IM is shared
+
+00:04:09.494 --> 00:04:21.862
+Share the IM by secure link
+Investor ▸ Docs: upload the IM, then Share link
+
+00:04:21.862 --> 00:04:33.472
+A link that expires in 14 days, view-only
+Every view is counted — you see who has opened the IM
+
+00:04:33.472 --> 00:04:37.936
+NDA signed and IM shared: the move is accepted now
+
+00:04:37.936 --> 00:04:56.793
+The investor indicates MUR 150 million, then commits MUR 120 million
+Each stage asks for its figure — indication, commitment, allocation
+
+00:04:56.793 --> 00:04:59.607
+Commitments roll up to the mandate and the dashboard
+
+00:04:59.607 --> 00:05:04.139
+The information memorandum is a deliverable with a milestone fee
+Drafting ▸ In review ▸ Approved ▸ Delivered to client
+
+00:05:04.139 --> 00:05:15.207
+Name the reviewer: approval needs one
+A second pair of eyes on everything that goes to the client
+
+00:05:15.207 --> 00:05:24.161
+Drafted, reviewed and approved
+Drafting ▸ In review ▸ Approved
+
+00:05:24.162 --> 00:05:29.315
+Delivered to the client — the milestone fee is invoiced automatically
+
+00:05:29.315 --> 00:05:33.839
+Fee invoice raised: MUR 750,000 milestone, sent to accounting
+Retainer and success-fee invoices are kept here too
+
+00:05:33.839 --> 00:05:53.244
+Log the hours spent on the mandate
+For profitability: hours × internal rate = cost
+
+00:05:53.244 --> 00:06:01.206
+The mandate adds it all up
+Deal team, insiders, investors, commitments, fees invoiced and hours logged
+
+00:06:01.206 --> 00:06:16.673
+The Corporate Advisory dashboard
+Live mandates, weighted fee pipeline, commitments and fees invoiced
+
+00:06:16.673 --> 00:06:21.174
+Mandates by stage and service line, bookbuilding and hours by mandate
+Barrier-aware: the public side sees none of it
+
+00:06:22.588 --> 00:06:30.679
+Corporate Advisory
+Deals stay discreet and controlled — the CRM enforces the wall and the gates.

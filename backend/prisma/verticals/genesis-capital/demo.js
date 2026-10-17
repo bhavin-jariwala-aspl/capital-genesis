@@ -892,7 +892,7 @@ add('rm_target', [...RMS, 'GCLOAN1', 'GCLOAN2', 'GCPM1'].flatMap((rm) => [0, 1].
   const tgt = round(int(30000000, 120000000), 1000000);
   return {
     ext_ref: `TGT-${rm}-${quarter(q)}`, rm, business_unit: rm.startsWith('GCLOAN') ? 'LND' : rm === 'GCPM1' ? 'WLT' : pick(['WLT', 'LND', 'FND']), period: quarter(q),
-    new_business_target: tgt, revenue_target: round(tgt * 0.012, 10000), meetings_target: 40, achieved_new_business: round(tgt * (q ? 0.8 + rnd() * 0.4 : 0.3 + rnd() * 0.5), 100000), achieved_revenue: round(tgt * 0.012 * (q ? 0.9 : 0.5), 10000),
+    new_business_target: tgt, revenue_target: round(tgt * 0.012, 10000), meetings_target: 40, _owner: rm, achieved_new_business: round(tgt * (q ? 0.8 + rnd() * 0.4 : 0.3 + rnd() * 0.5), 100000), achieved_revenue: round(tgt * 0.012 * (q ? 0.9 : 0.5), 10000),
   };
 })));
 

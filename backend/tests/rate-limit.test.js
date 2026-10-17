@@ -1,6 +1,6 @@
 'use strict';
 
-const { RateLimiter, MemoryStore, AUTH_LIMITS, clientIp } = require('../src/utils/rate-limit');
+const { RateLimiter, MemoryStore, AUTH_LIMITS, clientIp, trustProxySetting } = require('../src/utils/rate-limit');
 
 const silent = { warn: jest.fn() };
 
@@ -61,8 +61,9 @@ describe('RateLimiter', () => {
     expect(AUTH_LIMITS.loginIp.max).toBeGreaterThan(AUTH_LIMITS.loginAccount.max);
   });
 
-  it('reads the first X-Forwarded-For hop', () => {
-    expect(clientIp({ headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1' }, ip: '10.0.0.1' })).toBe('1.2.3.4');
+  it('uses the address Fastify resolved, not a client-supplied X-Forwarded-For', () => {
+    // A client-supplied X-Forwarded-For is never trusted here; Fastify resolves req.ip (TRUST_PROXY).
+    expect(clientIp({ headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1' }, ip: '10.0.0.1' })).toBe('10.0.0.1');
     expect(clientIp({ headers: {}, ip: '9.9.9.9' })).toBe('9.9.9.9');
   });
 });
@@ -79,5 +80,15 @@ describe('RateLimiter.peek — failure-only counters', () => {
     const s = await rl.peek('f', rule);
     expect(s.limited).toBe(true);
     expect(s.retryAfterSec).toBeGreaterThan(0);
+  });
+});
+
+describe('trustProxySetting', () => {
+  it('is off unless configured, and parses true / hop count / address list', () => {
+    expect(trustProxySetting(undefined)).toBe(false);
+    expect(trustProxySetting('false')).toBe(false);
+    expect(trustProxySetting('true')).toBe(true);
+    expect(trustProxySetting('1')).toBe(1);
+    expect(trustProxySetting('10.0.0.0/8, 127.0.0.1')).toEqual(['10.0.0.0/8', '127.0.0.1']);
   });
 });

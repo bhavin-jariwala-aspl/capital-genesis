@@ -8,6 +8,9 @@ import Checkbox from '../ui/Checkbox';
 import RadioGroup from '../ui/RadioGroup';
 import StatusTracker from '../ui/StatusTracker';
 import RecordPicker from '../ui/RecordPicker';
+import { useQuery } from '@tanstack/react-query';
+import { runtimeService } from '../../services/metadata.service';
+import { isoCode } from '../../utils/currencySource';
 
 /**
  * A money input denominated in the record's own currency when the field names
@@ -15,11 +18,24 @@ import RecordPicker from '../ui/RecordPicker';
  * `currency_code`). Until that code is known — e.g. a new order whose currency
  * comes from the share class picked — no symbol is shown rather than the
  * tenant's, which would be wrong.
+ *
+ * `source` (from `currencySource`) says where the code is read: the form's own
+ * field, or — when the record's currency field is copied from a linked record
+ * (an AUM snapshot's `base_currency` from its mandate) — the record picked in
+ * that lookup.
  */
-function RecordCurrencyInput({ control, currencyField, ...props }) {
-  const code = useWatch({ control, name: currencyField || '__no_currency_field__' });
-  const known = currencyField && typeof code === 'string' && /^[A-Z]{3}$/.test(code) ? code : undefined;
-  return <CurrencyInput {...props} currency={known} hideSymbol={!!currencyField && !known} />;
+function RecordCurrencyInput({ control, currencyField, source, ...props }) {
+  const src = source || (currencyField ? { field: currencyField } : null);
+  const own = useWatch({ control, name: src?.field || '__no_currency_field__' });
+  const linkedId = useWatch({ control, name: src?.lookup || '__no_currency_lookup__' });
+  const { data: linked } = useQuery({
+    queryKey: ['runtime-record', String(linkedId)],
+    queryFn: () => runtimeService.getRecord(linkedId),
+    enabled: !!src?.lookup && !isoCode(own) && linkedId != null && linkedId !== '',
+    staleTime: 60_000,
+  });
+  const known = src ? (isoCode(own) ?? (src.lookup ? isoCode(linked?.data?.data?.[src.target]) : undefined)) : undefined;
+  return <CurrencyInput {...props} currency={known} hideSymbol={!!src && !known} />;
 }
 
 /**
@@ -40,6 +56,7 @@ function RecordCurrencyInput({ control, currencyField, ...props }) {
  *   disabled      — override disabled state
  *   required      — override required state
  *   watchValue    — current value (for the character counter)
+ *   currencySource — where a money field reads its currency code (see utils/currencySource)
  */
 export default function FieldRenderer({
   field,
@@ -52,6 +69,7 @@ export default function FieldRenderer({
   recordId,
   watchValue,
   knownLabels,
+  currencySource,
 }) {
   const fieldName = field.field_name ?? field.name;  // normaliseFormMeta sets field_name; defensive fallback
   const error = errors?.[fieldName]?.message;
@@ -257,7 +275,7 @@ export default function FieldRenderer({
           control={control}
           rules={validationRules}
           render={({ field: f }) => (
-            <RecordCurrencyInput control={control} currencyField={cfg.currency_field} id={fieldName} label={ctl.label} value={f.value ?? ''} onChange={f.onChange} disabled={disabled} error={error} placeholder={field.placeholder} help={help} />
+            <RecordCurrencyInput control={control} currencyField={cfg.currency_field} source={currencySource} id={fieldName} label={ctl.label} value={f.value ?? ''} onChange={f.onChange} disabled={disabled} error={error} placeholder={field.placeholder} help={help} />
           )}
         />
       );

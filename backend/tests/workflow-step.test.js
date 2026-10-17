@@ -418,6 +418,27 @@ describe('email_list step — a publication to the subscribers of its topic', ()
     expect(mail.variables).toMatchObject({ first_name: 'Anne', title: 'Weekly market highlights' });
     expect(mail.append_html).toMatch(/\/api\/public\/email-open\/geo1\..+\.gif/);
   });
+
+  it('tells the user how many were emailed and skipped, and keeps it on the record timeline', async () => {
+    const db = makePrisma(makeWorkflow([step]), { publication_type: 'weekly_highlights', title: 'Weekly market highlights' });
+    db.uiObject.findFirst = jest.fn().mockResolvedValue({ id: 9 });
+    db.emailTemplate = { findMany: jest.fn().mockResolvedValue([{ id: 5, name: 'research_publication' }]) };
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => {
+      if (where.record?.object_id === 9) return SUBS.flatMap(([id, row]) => Object.entries(row).map(([field_name, str_value]) => ({ record_id: id, field_name, str_value })));
+      if (where.record_id?.in) return where.record_id.in.flatMap((pid) => Object.entries(PEOPLE[pid] ?? {}).map(([field_name, v]) => ({ record_id: pid, field_name, ...(typeof v === 'boolean' ? { bool_value: v } : { str_value: v }) })));
+      return [];
+    });
+    db.activity = { create: jest.fn().mockResolvedValue({ id: 1 }) };
+    db.emailLog = { count: jest.fn().mockResolvedValue(0) };
+    db.recordFieldValue.upsert = jest.fn().mockResolvedValue({});
+    const svc = new WorkflowEngineService(db);
+    svc.emailSender = { sendWithTemplate: jest.fn().mockResolvedValue({ id: 1, status: 'sent' }) };
+    const log = await svc.manualRun(1, { ...makeRecord(), tenant_id: 7 }, 'GCTRD1');
+    expect(db.recordFieldValue.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ field_name: 'opens', num_value: 0, tenant_id: 7 }) }));
+    const entry = log.find((l) => l.type === 'email_list');
+    expect(entry.summary).toBe('Emailed to 1 subscriber — 2 skipped (no email address or no marketing consent).');
+    expect(db.activity.create).toHaveBeenCalledWith({ data: expect.objectContaining({ record_id: 100, employee_id: 'GCTRD1', type: 'email', subject: 'Sent to 1 subscriber' }) });
+  });
 });
 
 describe('email open tracking', () => {
@@ -474,5 +495,59 @@ describe('approval and notification text — what people read', () => {
     await svc.manualRun(1, makeRecord(), 'E001');
     const body = db.notification.createMany.mock.calls[0][0].data[0].body;
     expect(body).toBe('MUR 4,500,000 · Analyst: Approve with conditions · new');
+  });
+});
+
+describe('approvals inbox', () => {
+  it('leaves out open requests whose record is in the trash', async () => {
+    const pending = (id, record_id) => ({ id, record_id, approval_token: `t${id}`, approval_status: 'pending', created_at: new Date(), actor_id: 'E001', context: { approver_ids: ['E002'], title: `Approve ${record_id}` }, workflow: { label: 'WF', object_id: 1 } });
+    const db = {
+      workflowPendingStep: { findMany: jest.fn().mockResolvedValue([pending(1, 100), pending(2, 200)]) },
+      record: { findMany: jest.fn().mockResolvedValue([{ id: 200 }]) },
+      uiObject: { findMany: jest.fn().mockResolvedValue([]) },
+      recordFieldValue: { findMany: jest.fn().mockResolvedValue([]) },
+      employee: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const svc = new WorkflowEngineService(db);
+    const list = await svc.listApprovals('E002');
+    expect(list.map((a) => a.title)).toEqual(['Approve 100']);
+  });
+});
+
+describe('create_reminder — a reminder relative to a date on the record', () => {
+  const step = (config) => ({ id: 10, name: 'Remind', step_type: 'create_reminder', order_index: 1, config, on_true_id: null, on_false_id: null });
+  const setup = (fields, open = null) => {
+    const db = makePrisma(makeWorkflow([step({ title: 'Forward maturity — {{deal_no}}', note: 'Value date {{value_date}}.', date_field: 'value_date', offset_days: -7, priority: 'high' })]), fields);
+    db.reminder = { findFirst: jest.fn().mockResolvedValue(open), create: jest.fn(async ({ data }) => ({ id: 77, ...data })) };
+    return db;
+  };
+  const inDays = (n) => new Date(Date.now() + n * 86400e3);
+
+  it('reminds the owner the given number of days before the date', async () => {
+    const value = inDays(30);
+    const db = setup({ deal_no: 'FXD-2026-000091', value_date: value });
+    const svc = new WorkflowEngineService(db);
+    const log = await svc.manualRun(1, { ...makeRecord(), assigned_to: 'GCFX1', tenant_id: 7 }, 'GCFX1');
+    const data = db.reminder.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({ record_id: 100, employee_id: 'GCFX1', title: 'Forward maturity — FXD-2026-000091', priority: 'high', status: 'pending', tenant_id: 7 });
+    expect(data.note).toBe(`Value date ${value.toISOString().slice(0, 10)}.`);
+    expect(Math.round((value - data.remind_at) / 86400e3)).toBe(7);
+    expect(log[0].result).toMatch(/^created reminder #77 for GCFX1/);
+  });
+
+  it('sets a reminder that would already be due for now', async () => {
+    const db = setup({ deal_no: 'FXD-1', value_date: inDays(3) });
+    await new WorkflowEngineService(db).manualRun(1, { ...makeRecord(), assigned_to: 'GCFX1', tenant_id: 7 }, 'GCFX1');
+    expect(Math.abs(db.reminder.create.mock.calls[0][0].data.remind_at - Date.now())).toBeLessThan(5000);
+  });
+
+  it('does nothing without the date, and never twice', async () => {
+    const empty = setup({ deal_no: 'FXD-1' });
+    const log = await new WorkflowEngineService(empty).manualRun(1, { ...makeRecord(), assigned_to: 'GCFX1' }, 'GCFX1');
+    expect(empty.reminder.create).not.toHaveBeenCalled();
+    expect(log[0].result).toBe('no-op (value_date is empty)');
+    const dup = setup({ deal_no: 'FXD-1', value_date: inDays(30) }, { id: 5 });
+    await new WorkflowEngineService(dup).manualRun(1, { ...makeRecord(), assigned_to: 'GCFX1' }, 'GCFX1');
+    expect(dup.reminder.create).not.toHaveBeenCalled();
   });
 });

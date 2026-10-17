@@ -25,6 +25,7 @@ import { useAuthStore } from '../../store/authStore';
 import { recordTitle, initials, gradientFor, apiErrorText, gateFields } from '../../utils/record';
 import clsx from 'clsx';
 import { optionLabel } from '../../utils/metadata-helpers';
+import { newRecordTarget } from '../../utils/newRecordTarget';
 import {
   Plus, LayoutList, Kanban, Wand2, Download, Upload, Trash2, X,
   History, Activity, CheckSquare, LayoutGrid, Edit, ImageOff, Mail, FileText,
@@ -47,10 +48,10 @@ function findImageField(fields) {
 
 /* ─── RecordCardGrid ─────────────────────────────────────────────────────── */
 
-function RecordCard({ record, fields, imageField, moduleId, objectId, onActivityClick, navigate, canEdit = true }) {
+function RecordCard({ record, fields, imageField, moduleId, objectId, onActivityClick, navigate, canEdit = true, titleField }) {
   const [imgError, setImgError] = useState(false);
 
-  const title    = recordTitle(record.data) || `Record #${record.id}`;
+  const title    = recordTitle(record.data, titleField) || `Record #${record.id}`;
   const imgSrc   = imageField ? record.data?.[imageField.name] : null;
   // A record without its own image gets a coloured panel, not an outside stock photo.
   const heroSrc  = (imgSrc && !imgError) ? imgSrc : null;
@@ -156,7 +157,7 @@ function RecordCard({ record, fields, imageField, moduleId, objectId, onActivity
   );
 }
 
-function RecordCardGrid({ records, fields, moduleId, objectId, onActivityClick, navigate, loading, canEdit = true }) {
+function RecordCardGrid({ records, fields, moduleId, objectId, onActivityClick, navigate, loading, canEdit = true, titleField }) {
   const imageField = useMemo(() => findImageField(fields), [fields]);
 
   if (loading) {
@@ -192,6 +193,7 @@ function RecordCardGrid({ records, fields, moduleId, objectId, onActivityClick, 
           onActivityClick={onActivityClick}
           navigate={navigate}
           canEdit={canEdit}
+          titleField={titleField}
         />
       ))}
     </div>
@@ -291,6 +293,8 @@ export default function ModulePage() {
   // View-only roles must not see create/import/delete actions, otherwise the
   // POST /records call is rejected with a 403 after the user fills the form.
   const canEdit = activeObject?._can_edit !== false;
+  // The object's title field (Builder ▸ object settings) names its records, e.g. a loan's LMS account number.
+  const titleField = activeObject?.config?.title_field;
 
   // ── 2. Pipeline (MetadataStore → fallback to API) ─────────────────────────
   const cachedObjectData = useMetadataStore((s) => activeObject?.id ? s.getObject(Number(activeObject.id)) : null);
@@ -336,15 +340,8 @@ export default function ModulePage() {
   const objectWizards = wizardsData?.data || [];
   const objectFields   = useMemo(() => resolvedObjectData?.fields ?? [], [resolvedObjectData]);
 
-  // ── Auto-redirects ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!activeObject || (!objectData && !cachedObjectData) || !wizardsData) return;
-    if (objectWizards.length > 0 && !activePipeline) {
-      navigate(`/wizard/${objectWizards[0].id}`, { replace: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeObject?.id, objectData, cachedObjectData, wizardsData]);
-
+  // The object page always lists its records (no jump to the wizard). An object
+  // whose only way to create a record is a wizard gets it on "New" instead.
   // Pick the default view when the object changes.
   useEffect(() => {
     if (!objectData && !cachedObjectData) return;
@@ -407,7 +404,7 @@ export default function ModulePage() {
     onSuccess: (result, { id, stageId }) => {
       const stage = pipelineStages.find((s) => Number(s.id) === Number(stageId));
       const rec = records.find((r) => r.id === id);
-      setMoveNotice({ tone: 'success', text: `${(rec && recordTitle(rec.data ?? {})) || 'Record'} moved to ${stage?.label ?? 'the new stage'}` });
+      setMoveNotice({ tone: 'success', text: `${(rec && recordTitle(rec.data ?? {}, titleField)) || 'Record'} moved to ${stage?.label ?? 'the new stage'}` });
       const action = result?.data?.automation?.action;
       if (action === 'lead_converted') {
         // Lead was auto-converted — navigate to Clients module
@@ -635,7 +632,7 @@ export default function ModulePage() {
       return {
         id:       r.id,
         stage_id: r.pipeline_stage_id ?? pipelineStages[0]?.id ?? null,
-        title:    recordTitle(d) || `Record #${r.id}`,
+        title:    recordTitle(d, titleField) || `Record #${r.id}`,
         subtitle: d.case_number
                 || d.product_type || d.company || d.email || '',
         // Lead grade badge (A–F) for quick triage on the board.
@@ -644,17 +641,20 @@ export default function ModulePage() {
           : null,
       };
     }),
-    [records, pipelineStages],
+    [records, pipelineStages, titleField],
   );
 
   const handleCardMove = useCallback((cardId, newStageId) => {
     moveStage.mutate({ id: cardId, stageId: newStageId });
   }, [moveStage]);
 
-  const newRecordPath = useMemo(() =>
+  const newRecordForm = useMemo(() =>
     activeObject ? `/module/${moduleId}/object/${activeObject.id}/new` : `/module/${moduleId}/new`,
     [moduleId, activeObject],
   );
+  const newTarget = newRecordTarget({ forms: resolvedObjectData?.forms, wizards: objectWizards, formPath: newRecordForm });
+  const newRecordPath = newTarget.path;
+  const newWithStage = (stageId) => (stageId && !newTarget.wizard ? `${newRecordPath}?stage_id=${stageId}` : newRecordPath);
 
   const allChecked = useMemo(() =>
     records.length > 0 && records.every(r => selectedIds.has(r.id)),
@@ -778,14 +778,14 @@ export default function ModulePage() {
               {canEdit && (
                 <Button onClick={() => {
                   const defaultStageId = viewMode === 'pipeline' && pipelineStages.length ? pipelineStages[0].id : null;
-                  navigate(defaultStageId ? `${newRecordPath}?stage_id=${defaultStageId}` : newRecordPath);
+                  navigate(newWithStage(defaultStageId));
                 }}>
                   <Plus className="w-4 h-4 mr-1.5" />
                   New {activeObject.label || activeObject.name}
                 </Button>
               )}
 
-              {canEdit && objectWizards.length > 0 && (
+              {canEdit && objectWizards.length > 0 && !newTarget.wizard && (
                 <Button variant="secondary" onClick={() => navigate(`/wizard/${objectWizards[0].id}`)}>
                   <Wand2 className="w-4 h-4 mr-1.5" />
                   {objectWizards[0].label || objectWizards[0].name}
@@ -849,7 +849,7 @@ export default function ModulePage() {
               }}
               onCardEdit={canEdit ? (card) => navigate(`/module/${moduleId}/object/${activeObject?.id}/edit/${card.id}`) : undefined}
               onCardMove={canEdit ? handleCardMove : undefined}
-              onAddCard={canEdit ? (stageId) => navigate(`${newRecordPath}?stage_id=${stageId}`) : undefined}
+              onAddCard={canEdit ? (stageId) => navigate(newWithStage(stageId)) : undefined}
             />
           ) : viewMode === 'cards' ? (
             <RecordCardGrid
@@ -857,6 +857,7 @@ export default function ModulePage() {
               fields={objectFields}
               moduleId={moduleId}
               objectId={activeObject?.id}
+              titleField={titleField}
               onActivityClick={handleActivityClick}
               navigate={navigate}
               loading={recordsLoading}
@@ -894,11 +895,11 @@ export default function ModulePage() {
                   'hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white text-sm font-bold shadow-sm ring-2 ring-white dark:ring-night-1',
                   gradientFor(activeRecord.id),
                 )}>
-                  {initials(recordTitle(activeRecord.data) || `#${activeRecord.id}`)}
+                  {initials(recordTitle(activeRecord.data, titleField) || `#${activeRecord.id}`)}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-800 dark:text-white/90 truncate">
-                    {recordTitle(activeRecord.data) || `Record #${activeRecord.id}`}
+                    {recordTitle(activeRecord.data, titleField) || `Record #${activeRecord.id}`}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-white/30 truncate flex items-center gap-1.5">
                     {activeStage?.label ? (
@@ -924,7 +925,12 @@ export default function ModulePage() {
                     Convert to Prospect
                   </Button>
                 )}
-                {canEdit && <RecordActions objectId={activeObject?.id} recordId={activeRecord.id} />}
+                {canEdit && (
+                  <RecordActions
+                    objectId={activeObject?.id} recordId={activeRecord.id} record={activeRecord}
+                    onDone={() => runtimeService.getRecord(activeRecord.id).then((res) => setActiveRecord(res?.data ?? res)).catch(() => {})}
+                  />
+                )}
                 {canEdit && <RecordMerge objectName={activeObject?.name} recordId={activeRecord.id} onMerged={() => setActiveRecord?.(null)} />}
                 {canEdit && (
                   <Button
@@ -1019,7 +1025,7 @@ export default function ModulePage() {
               Convert Lead to Client
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              This will convert <strong>{recordTitle(activeRecord.data) || `Record #${activeRecord.id}`}</strong> into:
+              This will convert <strong>{recordTitle(activeRecord.data, titleField) || `Record #${activeRecord.id}`}</strong> into:
             </p>
             <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5 mb-6 ml-4 list-disc">
               <li>A <strong>Client Account</strong> (company/household)</li>
@@ -1059,7 +1065,7 @@ export default function ModulePage() {
               Convert Lead to Prospect
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              This qualifies <strong>{recordTitle(activeRecord.data) || `Record #${activeRecord.id}`}</strong> and
+              This qualifies <strong>{recordTitle(activeRecord.data, titleField) || `Record #${activeRecord.id}`}</strong> and
               creates a <strong>Prospect</strong> in the sales pipeline. The lead is marked converted.
             </p>
             {convertToProspect.isError && (

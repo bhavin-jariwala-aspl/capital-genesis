@@ -212,19 +212,22 @@ export default async function run(S) {
   await S.tab('Related');
   await p.getByRole('button', { name: 'Related', exact: true }).last().evaluate((e) => e.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   await p.waitForTimeout(1000);
-  await hl(p.getByText(/^Loan Applications$/i).last().locator('xpath=../..'), 3500);
+  { const row = p.getByText(`${A.first} ${A.last} · Personal Loan`).first();
+    if (await row.count()) await row.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    await p.waitForTimeout(600);
+    await hl(row.locator('xpath=..'), 3500); }
   await S.say('The new client: relationship with the lending entity, KYC case and marketing consent', 'Clients ▸ the client record ▸ Related');
   await S.openRecord('party', conv.data.party);
   await S.waitCut(() => p.getByRole('button', { name: 'Related', exact: true }).last().waitFor({ timeout: 90000 }));
   await S.tab('Related');
   await p.getByRole('button', { name: 'Related', exact: true }).last().evaluate((e) => e.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   await p.waitForTimeout(3000);
-  for (const sec of [/^KYC Cases$/i, /^Loan Applications$/i]) {
+  for (const sec of [`KYC · ${A.first} ${A.last}`, `${A.first} ${A.last} · Personal Loan`]) {
     const h = p.getByText(sec).first();
     if (!(await h.count())) { S.log('party related: missing', String(sec)); continue; }
     await h.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' }));
     await p.waitForTimeout(700);
-    await hl(h.locator('xpath=../..'), 2600);
+    await hl(h.locator('xpath=..'), 2600);
   }
 
   // ── 7. Talk to + disqualify ──

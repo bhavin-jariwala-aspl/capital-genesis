@@ -47,6 +47,16 @@ describe('Genesis pack — objects', () => {
     expect(objects.fund_order.fields.find((f) => f.name === 'amount').config.currency_field).toBe('currency_code');
   });
 
+  it('shows wealth amounts in the mandate\'s base currency, not the tenant\'s', () => {
+    const cur = (obj, name) => objects[obj].fields.find((f) => f.name === name).config?.currency_field;
+    for (const n of ['aum', 'minimum_fee']) expect(cur('wealth_mandate', n)).toBe('base_currency');
+    for (const n of ['market_value', 'equities', 'bonds', 'cash', 'alternatives', 'net_flows']) expect(cur('aum_snapshot', n)).toBe('base_currency');
+    expect(cur('wealth_mandate', 'net_flows_ytd')).toBe('base_currency');
+    expect(cur('mandate_review', 'aum_at_review')).toBe('base_currency');
+    // The snapshot's base currency is copied from its mandate, which the form reads while the snapshot is new.
+    expect(objects.aum_snapshot.fields.find((f) => f.name === 'base_currency').config.expression).toBe('wealth_mandate.base_currency');
+  });
+
   it('points every lookup at an object in the pack', () => {
     for (const o of Object.values(objects)) {
       for (const f of o.fields.filter((x) => x.type === 'lookup')) {
@@ -118,11 +128,24 @@ describe('Genesis pack — automation', () => {
     const emailNames = new Set(pack.emailTemplates.map((t) => t.name));
     const docNames = new Set(pack.documentTemplates.map((t) => t.name));
     for (const wf of pack.workflows) {
-      const own = fieldsOf(wf.object);
+      const wfFields = fieldsOf(wf.object);
       const keys = new Set(wf.steps.map((s) => s.key));
       for (const s of wf.steps) {
         const c = s.config ?? {};
         const at = `${wf.name}/${s.key}`;
+        // A for_each step runs on each looped record: its fields, plus source_<field> of the workflow's record.
+        const fe = c.for_each;
+        if (fe && !objects[fe.object]) { problems.push(`${at}: for_each object ${fe.object}`); continue; }
+        const own = fe ? new Set([...fieldsOf(fe.object), ...[...wfFields, ...WORKFLOW_CONTEXT].map((f) => `source_${f}`)]) : wfFields;
+        const stepObject = fe ? fe.object : wf.object;
+        if (fe) {
+          for (const f of Object.keys(fe.match ?? {})) if (!fieldsOf(fe.object).has(f)) problems.push(`${at}: for_each match ${f}`);
+          for (const v of Object.values(fe.match ?? {})) for (const m of String(v).matchAll(/\{\{(\w+)\}\}/g)) if (!wfFields.has(m[1]) && !WORKFLOW_CONTEXT.has(m[1])) problems.push(`${at}: for_each placeholder ${m[1]}`);
+          if (fe.where) {
+            if (check(fe.where)) problems.push(`${at}: ${check(fe.where)}`);
+            for (const r of references(fe.where)) if (!own.has(r) && !WORKFLOW_CONTEXT.has(r)) problems.push(`${at}: for_each unknown field ${r}`);
+          }
+        }
         if (s.on_true && !keys.has(s.on_true)) problems.push(`${at}: on_true ${s.on_true}`);
         if (s.on_false && !keys.has(s.on_false)) problems.push(`${at}: on_false ${s.on_false}`);
         if (s.step_type === 'condition') {
@@ -133,11 +156,11 @@ describe('Genesis pack — automation', () => {
           if (c.field === 'stage' && !stagesOf(wf.object).has(c.value)) problems.push(`${at}: unknown stage ${c.value}`);
         }
         if (s.step_type === 'action') {
-          if (c.field === 'stage') { if (!stagesOf(wf.object).has(c.value)) problems.push(`${at}: unknown stage ${c.value}`); }
+          if (c.field === 'stage') { if (!stagesOf(stepObject).has(c.value)) problems.push(`${at}: unknown stage ${c.value}`); }
           else if (String(c.field).includes('.')) {
             // Write-through: `lookup.field` on the linked record.
             const [head, tail] = String(c.field).split('.');
-            const lk = objects[wf.object].fields.find((f) => f.name === head);
+            const lk = objects[stepObject].fields.find((f) => f.name === head);
             if (lk?.type !== 'lookup') problems.push(`${at}: ${head} is not a lookup`);
             else if (!fieldsOf(lk.config.target_object).has(tail)) problems.push(`${at}: ${lk.config.target_object} has no ${tail}`);
           } else if (!own.has(c.field) && !['assigned_to', 'pipeline_stage_id'].includes(c.field)) problems.push(`${at}: unknown field ${c.field}`);
@@ -150,7 +173,14 @@ describe('Genesis pack — automation', () => {
           if (!objects[c.object]) { problems.push(`${at}: unknown object ${c.object}`); continue; }
           const target = fieldsOf(c.object);
           for (const f of Object.keys(c.fields)) if (!target.has(f)) problems.push(`${at}: ${c.object} has no ${f}`);
-          for (const v of Object.values(c.fields)) for (const m of String(v).matchAll(/\{\{(\w+)\}\}/g)) if (!own.has(m[1]) && !WORKFLOW_CONTEXT.has(m[1])) problems.push(`${at}: placeholder ${m[1]}`);
+          for (const v of Object.values(c.fields)) {
+            if (v && typeof v === 'object' && v.expr) {
+              if (check(v.expr)) problems.push(`${at}: ${check(v.expr)}`);
+              for (const r of references(v.expr)) if (!own.has(r) && !WORKFLOW_CONTEXT.has(r)) problems.push(`${at}: expr unknown field ${r}`);
+              continue;
+            }
+            for (const m of String(v).matchAll(/\{\{(\w+)\}\}/g)) if (!own.has(m[1]) && !WORKFLOW_CONTEXT.has(m[1])) problems.push(`${at}: placeholder ${m[1]}`);
+          }
           if (c.link_field && !target.has(c.link_field)) problems.push(`${at}: link_field ${c.link_field}`);
           if (c.store_as && !own.has(c.store_as)) problems.push(`${at}: store_as ${c.store_as}`);
           if (c.stage && !stagesOf(c.object).has(c.stage)) problems.push(`${at}: stage ${c.stage}`);
@@ -166,9 +196,28 @@ describe('Genesis pack — automation', () => {
           if (c.language_field && !own.has(c.language_field)) problems.push(`${at}: language_field ${c.language_field}`);
         }
         if (s.step_type === 'generate_document' && !docNames.has(c.template)) problems.push(`${at}: document template ${c.template}`);
+        if (s.step_type === 'create_reminder') {
+          if (!own.has(c.date_field)) problems.push(`${at}: date_field ${c.date_field}`);
+          for (const m of `${c.title ?? ''} ${c.note ?? ''}`.matchAll(/\{\{(\w+)\}\}/g)) if (!own.has(m[1]) && !WORKFLOW_CONTEXT.has(m[1])) problems.push(`${at}: placeholder ${m[1]}`);
+        }
       }
     }
     expect(problems).toEqual([]);
+  });
+
+  it('checks FX rate alerts as soon as the dealer publishes a board rate, and reminds dealers of forwards', () => {
+    // Hourly alone, a client could wait an hour after the board moved past the target.
+    const board = pack.workflows.find((w) => w.name === 'genesis_fx_rate_alert_board');
+    expect(board).toMatchObject({ object: 'fx_rate', trigger_type: 'on_create' });
+    expect(board.steps.filter((s) => s.config?.for_each).every((s) => s.config.for_each.object === 'fx_rate_alert')).toBe(true);
+    // The alert is stamped (which refreshes its current rate) before any message quotes that rate.
+    const order = board.steps.map((s) => s.key);
+    expect(order.indexOf('a1')).toBeLessThan(order.indexOf('m1'));
+    const hourly = pack.workflows.find((w) => w.name === 'genesis_fx_rate_alert').steps.map((s) => s.key);
+    expect(hourly.indexOf('a1')).toBeLessThan(hourly.indexOf('m1'));
+    expect(pack.permissions.some((p) => p.object === 'fx_rate' && [].concat(p.roles).includes('fx_dealer') && p.can_edit)).toBe(true);
+    const fwd = pack.workflows.find((w) => w.name === 'genesis_fx_forward_reminder');
+    expect(fwd.steps.find((s) => s.step_type === 'create_reminder').config).toMatchObject({ date_field: 'value_date', offset_days: -7 });
   });
 
   it('pairs every English email template with a French one', () => {

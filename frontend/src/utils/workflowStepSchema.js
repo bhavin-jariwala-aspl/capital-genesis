@@ -314,6 +314,23 @@ export const STEP_SCHEMAS = {
     ],
     example: { object_id: 5, link_field: 'account_id', field: 'status', value: 'active' },
   },
+
+  create_reminder: {
+    summary: 'Schedules a personal reminder on this record, a number of days before or after one of its dates.',
+    standard:
+      'The reminder appears on the record\'s Reminders tab and in My Reminders, and notifies the person when it '
+      + 'falls due. Use it for dates someone must act on ahead of time — a forward\'s value date, a review, an '
+      + 'expiry. A reminder that would already be due is set for now, and the same open reminder is never created twice.',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true, help: 'Supports {{field}} placeholders, e.g. Forward maturity — {{deal_no}}.' },
+      { key: 'date_field', label: 'Date field', type: 'field', required: true, help: 'The date the reminder is counted from.' },
+      { key: 'offset_days', label: 'Days after (negative = before)', type: 'number', help: 'e.g. -7 for a week before.' },
+      { key: 'employee_field', label: 'Who is reminded (field)', type: 'field', help: 'Defaults to assigned_to (the owner).' },
+      { key: 'note', label: 'Note', type: 'text', help: 'Supports {{field}} placeholders.' },
+      { key: 'priority', label: 'Priority', type: 'text', help: 'low · normal · high · urgent' },
+    ],
+    example: { title: 'Forward maturity — {{deal_no}}', date_field: 'value_date', offset_days: -7, priority: 'high' },
+  },
 };
 
 /** Step types in the order the canvas offers them. */

@@ -299,6 +299,7 @@ jobs:
 | Variable           | Description                      | Example                              |
 | ------------------ | -------------------------------- | ------------------------------------ |
 | `DATABASE_URL`     | MySQL connection string          | `mysql://user:pass@host:3306/genesis`|
+| `TRUST_PROXY`      | Proxy hops to trust for the client IP (rate limits, audit). Unset = none | `1` (behind one ALB) |
 | `JWT_SECRET`       | Token signing key (32+ chars)    | Random secure string                 |
 | `JWT_EXPIRY`       | Token expiry duration            | `8h`                                 |
 | `REDIS_HOST`       | ElastiCache endpoint             | `redis-cluster.xxx.cache.amazonaws.com` |

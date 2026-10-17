@@ -9,7 +9,7 @@ import Modal from '../ui/Modal';
 
 import Alert from '../ui/Alert';
 import {
-  Plus, Trash2, ArrowDown, Play, GitBranch, Bell,
+  Plus, Trash2, ArrowDown, Play, GitBranch, Bell, BellRing,
   Clock, CheckSquare, Settings, Globe, FilePlus, RefreshCw, Plug, AlertTriangle, Mail, FileText, MessageSquare,
 } from 'lucide-react';
 import {
@@ -31,6 +31,7 @@ const STEP_TYPES = [
   { value: 'email_list',     label: 'Email a List',   icon: Mail,        color: 'bg-sky-100 border-sky-400 text-sky-800 dark:bg-sky-500/20 dark:border-sky-500/40 dark:text-sky-400' },
   { value: 'send_sms',       label: 'Send SMS',       icon: MessageSquare, color: 'bg-emerald-100 border-emerald-400 text-emerald-800 dark:bg-emerald-500/20 dark:border-emerald-500/40 dark:text-emerald-400' },
   { value: 'generate_document', label: 'Generate Document', icon: FileText, color: 'bg-lime-100 border-lime-400 text-lime-800 dark:bg-lime-500/20 dark:border-lime-500/40 dark:text-lime-400' },
+  { value: 'create_reminder', label: 'Create Reminder', icon: BellRing, color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-400' },
 ];
 
 const stepTypeMap = Object.fromEntries(STEP_TYPES.map(t => [t.value, t]));

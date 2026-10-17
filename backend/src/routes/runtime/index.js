@@ -19,6 +19,7 @@ const { ok }                 = require('../../utils/response');
 // instead of 400. Throwing the app's own operational errors runs them through
 // the error handler in app.js, which maps them properly.
 const { ValidationError, NotFoundError } = require('../../utils/errors');
+const { actionAvailable, actionInputs, pickInputs } = require('../../utils/record-action');
 const EntitlementService = require('../../services/platform/entitlement.service');
 const { FEATURE_KEYS } = require('../../services/platform/feature-catalogue');
 
@@ -425,10 +426,13 @@ module.exports = async function runtimeRoutes(fastify) {
   fastify.get('/objects/:id/actions', { preHandler: [authenticate] }, async (req) => {
     const rows = await fastify.prisma.uiWorkflow.findMany({
       where:   { object_id: Number(req.params.id), trigger_type: 'manual', is_active: true },
-      select:  { id: true, name: true, label: true, description: true },
+      select:  { id: true, name: true, label: true, description: true, trigger_config: true },
       orderBy: { id: 'asc' },
     });
-    return ok(rows);
+    // Only what the button needs: when it shows and what it asks for.
+    return ok(rows.map(({ trigger_config: tc, ...wf }) => ({
+      ...wf, show_when: tc?.show_when ?? null, inputs: actionInputs(tc), success_message: tc?.success_message ?? null,
+    })));
   });
 
   // POST /api/runtime/records/:id/actions/:workflowId — run a record action.
@@ -438,15 +442,25 @@ module.exports = async function runtimeRoutes(fastify) {
     const record = await recSvc.getRecord(req.params.id, req.user);           // access + barrier check
     await recSvc.assertCanEdit(record.object_id, req.user);
     const wf = await fastify.prisma.uiWorkflow.findUnique({
-      where: { id: Number(req.params.workflowId) }, select: { id: true, object_id: true, trigger_type: true, is_active: true, label: true },
+      where: { id: Number(req.params.workflowId) }, select: { id: true, object_id: true, trigger_type: true, trigger_config: true, is_active: true, label: true },
     });
     if (!wf || !wf.is_active || wf.trigger_type !== 'manual' || wf.object_id !== record.object_id) {
       throw new NotFoundError('Action');
     }
+    if (!actionAvailable(wf.trigger_config, record.data)) {
+      throw new ValidationError(`${wf.label} is not available for this record`);
+    }
+    // Values the action asks for (e.g. a dismiss reason) are saved first, through
+    // the record service, so field validation and the audit trail apply.
+    const { values, missing } = pickInputs(wf.trigger_config, req.body?.values);
+    if (missing.length) throw new ValidationError(`${wf.label}: ${missing.join(', ')} required`);
+    if (Object.keys(values).length) await recSvc.updateRecord(record.id, req.user?.employee_id, req.user, undefined, values);
     const anchor = await fastify.prisma.record.findUnique({ where: { id: record.id } });
     const log = await wfEngine.manualRun(wf.id, anchor, req.user?.employee_id);
     const failed = log.find((l) => l.error);
-    return ok({ action: wf.label, steps: log.length, error: failed?.error ?? null, log });
+    // A step may say what it did in plain words (e.g. "Emailed to 6 subscribers").
+    const summary = log.map((l) => l.summary).filter(Boolean).join(' ') || null;
+    return ok({ action: wf.label, steps: log.length, error: failed?.error ?? null, summary, log });
   });
 
   // POST /api/runtime/records

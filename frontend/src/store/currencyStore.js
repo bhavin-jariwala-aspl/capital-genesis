@@ -61,13 +61,19 @@ export const useCurrencyStore = create((set, get) => ({
    * Never rejects: on failure the store keeps the USD defaults so the UI still
    * renders amounts rather than blanking them out.
    */
-  initCurrency: async () => {
-    try {
-      const res = await settingsService.getEffective();
-      get().applySettings(res?.data ?? res ?? {});
-    } catch {
-      set({ loaded: true });
+  initCurrency: async ({ attempts = 3, waitMs = 2000 } = {}) => {
+    // A busy or restarting server must not leave every amount in USD for the
+    // whole session: retry a few times before settling on the defaults.
+    for (let i = 1; i <= attempts; i += 1) {
+      try {
+        const res = await settingsService.getEffective();
+        get().applySettings(res?.data ?? res ?? {});
+        return;
+      } catch {
+        if (i < attempts) await new Promise((r) => setTimeout(r, waitMs * i));
+      }
     }
+    set({ loaded: true });
   },
 }));
 

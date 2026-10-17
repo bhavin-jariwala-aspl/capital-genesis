@@ -393,6 +393,8 @@ const permissions = [
   ...perm(['restricted_list_entry'], ['compliance_officer', 'mlro'], true),
   ...perm(['restricted_list_entry'], [...FRONT, ...CREDIT, 'coo', 'operations_checker'], false),
   ...perm(['financial_product', 'product_routing', 'plr_rate', 'country', 'fx_rate', 'model_portfolio'], ALL, false),
+  // The dealer publishes the daily TT board (process flow 13 ▸ C).
+  ...perm(['fx_rate'], ['fx_dealer'], true),
 ];
 
 module.exports = { workflows, assignmentRules, businessHours, slaPolicies, permissions };

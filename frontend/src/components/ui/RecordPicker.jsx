@@ -15,6 +15,9 @@ export default function RecordPicker({ targetObject, value, onChange, label, err
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [debounced, setDebounced] = useState('');
+  // The option just picked: its title is shown at once, not "#id" while the
+  // title lookup for the new value is still on its way.
+  const [picked, setPicked] = useState(null);
   const box = useRef(null);
 
   useEffect(() => {
@@ -44,7 +47,8 @@ export default function RecordPicker({ targetObject, value, onChange, label, err
   // The saved record already carries the title of the record it points to
   // (`knownLabels`), which a viewer may not be able to search for themselves —
   // e.g. a Loans executive editing a request for an RM's client.
-  const selectedLabel = (current.data?.data ?? [])[0]?.label ?? knownLabels?.[String(value)] ?? (value ? `#${value}` : '');
+  const pickedLabel = picked && String(picked.id) === String(value) ? picked.label : undefined;
+  const selectedLabel = (current.data?.data ?? [])[0]?.label ?? pickedLabel ?? knownLabels?.[String(value)] ?? (value ? `#${value}` : '');
   const options = results.data?.data ?? [];
 
   return (
@@ -86,7 +90,7 @@ export default function RecordPicker({ targetObject, value, onChange, label, err
             {options.map((o) => (
               <li key={o.id}>
                 <button type="button" className="w-full px-3 py-2 text-left text-sm hover:bg-primary-50 dark:hover:bg-white/5"
-                  onClick={() => { onChange(o.id); setOpen(false); setQ(''); }}>
+                  onClick={() => { setPicked({ id: o.id, label: o.label }); onChange(o.id); setOpen(false); setQ(''); }}>
                   {o.label}
                 </button>
               </li>

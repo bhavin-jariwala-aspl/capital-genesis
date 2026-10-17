@@ -76,6 +76,9 @@ async function buildApp() {
       ? { level: 'info' }
       : { level: 'warn' },
     bodyLimit: 50 * 1024 * 1024, // 50 MB — accommodates base64-encoded 25 MB file uploads
+    // Behind a load balancer set TRUST_PROXY (e.g. 1) so req.ip is the client's
+    // address; without it X-Forwarded-For is ignored and cannot be spoofed.
+    trustProxy: require('./utils/rate-limit').trustProxySetting(),
   });
 
   // ── Prisma ────────────────────────────────────────────

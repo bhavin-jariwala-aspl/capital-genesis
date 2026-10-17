@@ -1,0 +1,188 @@
+WEBVTT
+
+00:00:10.696 --> 00:00:19.992
+Wealth Management
+Take a discretionary mandate from the first meeting to an active, reviewed portfolio — with suitability built in.
+
+00:00:19.998 --> 00:00:22.941
+Nathalie Ramdin, an existing client, wants Genesis to manage her portfolio
+Natasha, her relationship manager, opens a discretionary mandate
+
+00:00:22.941 --> 00:00:34.067
+Sign in as Natasha Appadoo — Senior Relationship Manager
+Senior Relationship Manager — owns the client and the mandate
+
+00:00:34.067 --> 00:00:38.128
+Wealth Management ▸ Wealth Mandates: one card per mandate
+Prospect ▸ Discovery ▸ Risk profiling ▸ Proposal ▸ Signed ▸ Funded ▸ Active ▸ Closed
+
+00:00:38.128 --> 00:00:47.023
+The “Wealth mandate” button opens a two-step onboarding wizard
+Client & profile, then the terms
+
+00:00:47.023 --> 00:00:52.148
+No risk profile yet — she has not done the questionnaire
+We leave it empty for now
+
+00:00:52.148 --> 00:01:14.460
+The terms: base currency, benchmark, custodian and the portfolio manager
+Review cycle and fees
+
+00:01:14.460 --> 00:01:18.054
+Mandate created at Prospect
+The agreement and the IPS are generated later from its Docs tab
+
+00:01:18.054 --> 00:01:27.919
+The discovery meeting is held — move the card on
+Drag it on the board
+
+00:01:27.919 --> 00:01:33.580
+Next: profile her risk
+Move to Risk profiling and run the investor questionnaire
+
+00:01:33.580 --> 00:01:40.199
+Wealth Management ▸ Risk Profiles: every client's profile
+Model portfolio, score and when each profile must be refreshed
+
+00:01:40.199 --> 00:01:50.786
+“Investor Questionnaire” opens a three-step wizard
+Done together with the client
+
+00:01:50.786 --> 00:01:55.676
+Horizon and objectives
+When will she need the money, what is she investing for
+
+00:01:55.676 --> 00:02:11.837
+Attitude to risk and experience
+If the portfolio fell 20% in a year, she would hold
+
+00:02:11.837 --> 00:02:21.121
+Scored 55: model portfolio C — Balanced
+Highest suitable product risk 3 on a 1–5 scale · valid two years, until 2028-10-16
+
+00:02:21.121 --> 00:02:28.063
+Prospects can take the same questionnaire on the website
+They see their profile at once, and a Wealth enquiry is created for an adviser
+
+00:02:28.063 --> 00:02:42.988
+Every recommendation is recorded with its rationale and the risks disclosed
+Wealth Management ▸ Suitability Records ▸ New
+
+00:02:42.988 --> 00:02:47.844
+Discretionary management is rated risk 3 — within her ceiling of 3
+It saves straight away
+
+00:02:47.844 --> 00:03:04.905
+She also asks about the Emerging Markets Equity Fund
+Rated risk 5 — above her ceiling
+
+00:03:04.905 --> 00:03:14.453
+Refused: the product is riskier than her profile allows
+Above the ceiling, an override reason and the client's signed acknowledgement are required
+
+00:03:14.453 --> 00:03:19.442
+Override reason recorded and the client's acknowledgement ticked
+Now the recommendation can be saved — flagged as a mismatch
+
+00:03:19.442 --> 00:03:31.092
+Back to the mandate: prepare the proposal (IPS)
+Move it to Proposal
+
+00:03:31.092 --> 00:03:40.533
+Blocked: a proposal needs the client's risk profile on the mandate
+Open the record to complete it
+
+00:03:40.533 --> 00:03:54.398
+Link the risk profile she just completed
+The mandate takes its model portfolio from it: C
+
+00:03:54.398 --> 00:04:00.332
+The IPS is agreed and the mandate signed
+Agreement and IPS are signed electronically from the Docs tab
+
+00:04:00.332 --> 00:04:07.962
+The client transfers her assets — Account funded
+Funding is allowed only once the client's KYC is approved
+
+00:04:07.962 --> 00:04:13.785
+Nathalie Ramdin's KYC is approved, so the move goes through
+For a client whose KYC is still in progress, the board refuses: “Fund the account only after KYC approval.”
+
+00:04:13.785 --> 00:04:16.021
+Laurent, the portfolio manager, takes over
+He runs the portfolio from here
+
+00:04:16.021 --> 00:04:27.445
+Sign in as Laurent Koenig — Portfolio Manager
+Portfolio Manager — manages the mandate and its reviews
+
+00:04:27.445 --> 00:04:37.162
+Investments are in place: the mandate becomes Active
+
+00:04:37.162 --> 00:04:59.036
+Each month-end the portfolio system sends an AUM snapshot
+Market value by asset class, performance and net flows
+
+00:04:59.036 --> 00:05:07.383
+Amounts are in the mandate's base currency — US dollars here
+Snapshots feed the mandate's performance and the net flows on the Wealth dashboard
+
+00:05:07.383 --> 00:05:19.461
+The mandate's AUM is updated from the same feed
+It rolls up to the client's Client 360
+
+00:05:19.461 --> 00:05:28.186
+Mandate WM-2026-000019: model portfolio, AUM in USD and MUR, YTD performance, next review
+Attrition risk is watched daily: falling AUM, missed reviews or a complaint
+
+00:05:28.186 --> 00:05:47.486
+Reviews follow the mandate's cycle — here quarterly
+14 days before one is due, the system opens it at Scheduled; here Laurent opens one now
+
+00:05:47.486 --> 00:05:54.267
+Scheduled ▸ Pack prepared ▸ Meeting held ▸ Completed
+The pack is ready: the client is invited to the meeting
+
+00:05:54.267 --> 00:05:59.953
+The meeting took place — move to Meeting held
+
+00:05:59.953 --> 00:06:25.433
+Blocked: Meeting held needs the date it was held
+Open the record to complete it
+
+00:06:25.433 --> 00:06:45.228
+Record the outcome and the minutes
+Completed needs both — and the client's suitability re-confirmed
+
+00:06:45.228 --> 00:06:53.587
+Blocked: re-confirm the client's profile and suitability before closing the review
+A rule on the Completed stage
+
+00:06:53.587 --> 00:07:08.290
+Profile and suitability re-confirmed with the client
+
+00:07:08.290 --> 00:07:11.775
+Review completed — the next one is due in three months
+Overdue reviews show on the Wealth dashboard and the RM workbench
+
+00:07:11.775 --> 00:07:24.531
+The Strategic Asset Allocation Committee changes the house view
+Wealth Management ▸ SAAC Decisions ▸ New
+
+00:07:24.531 --> 00:07:31.510
+Saved — every portfolio manager is notified to brief the clients in the affected models
+
+00:07:31.510 --> 00:07:46.468
+The Wealth dashboard
+Active mandates, AUM, overdue reviews, attrition risk
+
+00:07:46.468 --> 00:07:50.549
+AUM by model portfolio, the mandate pipeline and net flows by month
+Each widget opens the records behind it
+
+00:07:50.549 --> 00:07:54.626
+Reviews by status, suitability mismatches that were overridden, profiles by model
+
+00:07:54.627 --> 00:08:02.743
+Wealth Management
+Suitability and the regulator's controls are built into every step.

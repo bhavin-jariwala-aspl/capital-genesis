@@ -228,6 +228,17 @@ class RecordService {
     const changed = names.filter((n) => String(before[n] ?? '') !== String(data[n] ?? ''));
     if (changed.length) {
       await this.#upsertCustomFieldValues(rec.id, Object.fromEntries(changed.map((n) => [n, data[n]])), rec.object_id, rec.tenant_id);
+      // A derived value moved without its record being saved (a pledge revalued →
+      // the loan's LTV). Published under its own name so only the workflows that
+      // opt in (`trigger_config.derived`) react — never webhooks or SLA clocks.
+      if (this.eventBus && !this.deferredParents) {
+        const row = await this.db.record.findUnique({
+          where:  { id: Number(rec.id) },
+          select: { id: true, object_id: true, tenant_id: true, assigned_to: true, created_by: true, pipeline_stage_id: true },
+        }).catch(() => null);
+        const diff = Object.fromEntries(changed.map((n) => [n, { old: before[n] ?? null, new: data[n] ?? null }]));
+        this.#emit('record.derived_changed', { objectId: rec.object_id, record: row ?? rec, changed: diff, actorId: null });
+      }
     }
     return changed.length > 0;
   }
@@ -1085,22 +1096,48 @@ class RecordService {
       .filter((f) => f.targetObjectId);
   }
 
+  /**
+   * Text fields that hold a staff member's employee id (`config.employee`):
+   * the payload carries the person's name in `labels[field]`, so lists and the
+   * record panel never show a bare id such as "GCRM1".
+   */
+  async #employeeFields(objectId) {
+    if (typeof this.db.uiField?.findMany !== 'function') return [];
+    const fields = await this.db.uiField.findMany({
+      where:  { object_id: Number(objectId), is_active: true, field_type: { not: 'lookup' } },
+      select: { name: true, config: true },
+    }).catch(() => []);
+    return (fields ?? []).filter((f) => f.config?.employee).map((f) => f.name);
+  }
+
+  async #employeeNames(ids) {
+    if (!ids.length || typeof this.db.employee?.findMany !== 'function') return new Map();
+    const rows = await this.db.employee.findMany({ where: { employee_id: { in: ids } }, select: { employee_id: true, employee_name: true } }).catch(() => []);
+    return new Map((rows ?? []).filter((e) => e.employee_name).map((e) => [e.employee_id, e.employee_name]));
+  }
+
   async #attachLookupLabels(objectId, records) {
     if (!records.length) return records;
-    const lookups = await this.#lookupFields(objectId);
-    if (!lookups.length) return records;
+    const [lookups, staffFields] = await Promise.all([this.#lookupFields(objectId), this.#employeeFields(objectId)]);
+    if (!lookups.length && !staffFields.length) return records;
     const labelsByField = new Map();
     for (const lf of lookups) {
       const ids = [...new Set(records.map((r) => Number(r.data?.[lf.name])).filter((n) => Number.isInteger(n) && n > 0))];
       labelsByField.set(lf.name, await this.#titlesFor(lf.targetObjectId, ids));
     }
+    const staffIds = [...new Set(records.flatMap((r) => staffFields.map((f) => r.data?.[f])).filter((v) => typeof v === 'string' && v))];
+    const names = await this.#employeeNames(staffIds);
     return records.map((r) => {
       const labels = {};
       for (const [field, titles] of labelsByField) {
         const id = Number(r.data?.[field]);
         if (Number.isInteger(id) && id > 0) labels[field] = titles.get(id) ?? `#${id}`;
       }
-      return Object.keys(labels).length ? { ...r, labels } : r;
+      for (const f of staffFields) {
+        const name = names.get(r.data?.[f]);
+        if (name) labels[f] = name;
+      }
+      return Object.keys(labels).length ? { ...r, labels: { ...(r.labels ?? {}), ...labels } } : r;
     });
   }
 
@@ -1272,6 +1309,7 @@ class RecordService {
       if (out[f.name] !== undefined) continue;
       const raw = String(f.default_value);
       if (raw === '{{today}}') out[f.name] = new Date().toISOString().slice(0, 10);
+      else if (raw === '{{now}}') out[f.name] = new Date().toISOString().slice(0, 16).replace('T', ' ');
       else if (['checkbox', 'boolean', 'toggle'].includes(f.field_type)) out[f.name] = ['true', '1', 'yes'].includes(raw.toLowerCase());
       else if (['number', 'integer', 'decimal', 'currency', 'percent', 'percentage'].includes(f.field_type) && Number.isFinite(Number(raw))) out[f.name] = Number(raw);
       else out[f.name] = raw;
@@ -1397,7 +1435,9 @@ class RecordService {
     }
     // ── Re-score leads/prospects when their CRM data changes ──────────────
     if (crmData) this.#maybeScoreLead(Number(id), existing.object_id, tenantId);
-    if (crmData) await this.#refreshParents(existing.object_id, crmData);
+    // A partial patch (one field edited inline, or through the API) still has
+    // parents: their lookups are in the stored values, not in the patch.
+    if (crmData) await this.#refreshParents(existing.object_id, { ...before, ...crmData });
     // Children that read this record's fields through a lookup follow the change.
     if (crmData) await this.#refreshChildren(existing.object_id, Number(id));
     return this.#hydrateCrm(updated);
@@ -1616,13 +1656,18 @@ class RecordService {
     // the entry stays meaningful even after a hard delete nulls record_id.
     await this.#audit(id, deletedBy, 'delete',
       { mode, record_id: Number(id), object_id: existing.object_id }, tenantId);
-    if (mode === 'hard') {
-      return this.db.record.delete({ where: { id: Number(id) } });
-    }
-    return this.db.record.update({
-      where: { id: Number(id) },
-      data:  { deleted_at: new Date(), deleted_by: deletedBy ?? null },
-    });
+    // The parents' roll-ups over this record (a loan's security value over its
+    // collateral, a collateral's market value over its latest valuation) must
+    // drop it: read the lookups before the row goes, refresh after.
+    const values = await this.#loadData(id).catch(() => null);
+    const result = mode === 'hard'
+      ? await this.db.record.delete({ where: { id: Number(id) } })
+      : await this.db.record.update({
+        where: { id: Number(id) },
+        data:  { deleted_at: new Date(), deleted_by: deletedBy ?? null },
+      });
+    if (values) await this.#refreshParents(existing.object_id, values);
+    return result;
   }
 
   // ── Bulk operations ────────────────────────────────────────────────────────

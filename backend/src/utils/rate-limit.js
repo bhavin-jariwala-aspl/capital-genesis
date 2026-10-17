@@ -153,10 +153,26 @@ const AUTH_LIMITS = {
 };
 
 /** Client IP, honouring the first hop of X-Forwarded-For behind a proxy. */
+/**
+ * The caller's address for rate limiting. Uses Fastify's `req.ip`, which honours
+ * X-Forwarded-For only when the server trusts its proxy (TRUST_PROXY). Reading
+ * the header directly let any client pick its own address and dodge the limits.
+ */
 function clientIp(req) {
-  const fwd = req.headers?.['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.trim()) return fwd.split(',')[0].trim();
-  return req.ip || 'unknown';
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-module.exports = { RateLimiter, MemoryStore, AUTH_LIMITS, clientIp };
+/**
+ * Fastify `trustProxy` from TRUST_PROXY: unset/"false" → off (direct exposure);
+ * "true" → trust every hop; a number → that many hops (e.g. 1 behind one ALB);
+ * anything else → a comma-separated list of trusted proxy addresses/CIDRs.
+ */
+function trustProxySetting(value = process.env.TRUST_PROXY) {
+  const v = String(value ?? '').trim();
+  if (!v || v === 'false' || v === '0') return false;
+  if (v === 'true') return true;
+  if (/^\d+$/.test(v)) return Number(v);
+  return v.split(',').map((x) => x.trim()).filter(Boolean);
+}
+
+module.exports = { RateLimiter, MemoryStore, AUTH_LIMITS, clientIp, trustProxySetting };

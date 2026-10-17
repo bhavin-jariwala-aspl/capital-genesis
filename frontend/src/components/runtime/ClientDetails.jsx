@@ -37,7 +37,7 @@ const SKIP_NAMES = new Set(['full_name', 'id', 'tenant_id', 'created_at', 'updat
 
 export default function ClientDetails({ record, fields = [], object, stage: stageProp }) {
   const data = useMemo(() => record?.data ?? {}, [record]);
-  const title = recordTitle(data) || `Record #${record?.id}`;
+  const title = recordTitle(data, object?.config?.title_field) || `Record #${record?.id}`;
   const stage = stageProp ?? record?.pipeline_stage;
 
   // Sort fields by their configured order for a stable, form-like layout.

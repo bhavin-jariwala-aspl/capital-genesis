@@ -28,7 +28,8 @@ const mandateReview = {
     F('due_date', 'Due', 'date', { required: true, config: { show_in_list: true } }),
     F('held_on', 'Held on', 'date', LIST),
     SEL('review_type', 'Type', o([['quarterly', 'Quarterly'], ['semi_annual', 'Semi-annual'], ['annual', 'Annual'], ['ad_hoc', 'Ad hoc']]), { default: 'annual' }),
-    FX('aum_at_review', 'AUM at preparation', 'wealth_mandate.aum', { format: 'currency', precision: 2 }),
+    FX('aum_at_review', 'AUM at preparation', 'wealth_mandate.aum', { format: 'currency', precision: 2, currency: 'base_currency' }),
+    FX('base_currency', 'Base currency', 'wealth_mandate.base_currency', { type: 'string' }),
     FX('ytd_performance', 'YTD performance %', 'wealth_mandate.ytd_return_pct', { precision: 2 }),
     F('suitability_confirmed', 'Profile and suitability re-confirmed', 'checkbox'),
     F('minutes', 'Minutes', 'textarea'),
@@ -59,12 +60,12 @@ const aumSnapshot = {
   fields: [
     LK('wealth_mandate', 'Mandate', 'wealth_mandate', { required: true, config: { show_in_list: true } }),
     F('as_of', 'As of', 'date', { required: true, config: { show_in_list: true } }),
-    F('market_value', 'Market value (base ccy)', 'currency', LIST),
-    F('equities', 'Equities', 'currency'),
-    F('bonds', 'Bonds', 'currency'),
-    F('cash', 'Cash', 'currency'),
-    F('alternatives', 'Alternatives', 'currency'),
-    F('net_flows', 'Net flows in month', 'currency', { config: { show_in_list: true, allow_negative: true }, help: 'Top-ups minus withdrawals; negative when money left the mandate.' }),
+    F('market_value', 'Market value (base ccy)', 'currency', { config: { show_in_list: true, currency_field: 'base_currency' } }),
+    F('equities', 'Equities', 'currency', { config: { currency_field: 'base_currency' } }),
+    F('bonds', 'Bonds', 'currency', { config: { currency_field: 'base_currency' } }),
+    F('cash', 'Cash', 'currency', { config: { currency_field: 'base_currency' } }),
+    F('alternatives', 'Alternatives', 'currency', { config: { currency_field: 'base_currency' } }),
+    F('net_flows', 'Net flows in month', 'currency', { config: { show_in_list: true, allow_negative: true, currency_field: 'base_currency' }, help: 'Top-ups minus withdrawals; negative when money left the mandate.' }),
     F('mtd_return_pct', 'MTD %', 'decimal'),
     F('ytd_return_pct', 'YTD %', 'decimal', LIST),
     F('since_inception_pct', 'Since inception %', 'decimal'),
@@ -327,10 +328,11 @@ const researchPublication = {
     F('summary', 'Summary', 'textarea'),
     F('sem_index', 'SEMDEX close', 'decimal'),
     F('sem_change_pct', 'SEMDEX change %', 'decimal'),
+    // Kept by "Send to subscribers" and the open tracking — not typed in, so not on the form.
     F('sent', 'Distributed', 'checkbox', LIST),
     F('opens', 'Opens', 'integer'),
   ],
-  forms: [{ name: 'research_publication_create', label: 'Publication', fields: ['title', 'publication_type', 'published_on', 'sem_index', 'sem_change_pct', 'sent', 'opens', { field: 'summary', span: 2 }] }],
+  forms: [{ name: 'research_publication_create', label: 'Publication', fields: ['title', 'publication_type', 'published_on', 'sem_index', 'sem_change_pct', { field: 'summary', span: 2 }] }],
 };
 
 module.exports = {

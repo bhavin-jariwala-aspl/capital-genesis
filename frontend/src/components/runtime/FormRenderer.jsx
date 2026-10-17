@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import { buildValidationRules, computeFieldStates } from '../../utils/helpers';
 import { computeField } from '../../utils/fieldFunctions';
 import { useMetadataStore } from '../../store/metadataStore';
+import { currencySource } from '../../utils/currencySource';
 
 /**
  * FormRenderer — renders a complete form from metadata.
@@ -87,6 +88,10 @@ export default function FormRenderer({
 
   // Use pre-compiled validation rules from MetadataStore when available
   const cachedValidation = useMetadataStore((s) => formMeta?.id ? s.getCompiledValidation(formMeta.id) : null);
+  // The object's fields, to find where a money field's currency comes from (its own
+  // currency field on the form, or the record linked through a lookup).
+  const objectFields = useMetadataStore((s) => formMeta?.object_id ? s.getObject(formMeta.object_id)?.fields : null);
+  const fieldNames = fields.map((f) => f.field_name ?? f.name);
 
   // Execute computed fields whenever relevant field values change
   useEffect(() => {
@@ -201,6 +206,7 @@ export default function FormRenderer({
                     knownLabels={lookupLabels?.[fieldKey] && defaultValues?.[fieldKey] != null
                       ? { [String(defaultValues[fieldKey])]: lookupLabels[fieldKey] } : undefined}
                     watchValue={field.config?.show_count ? formValues[fieldKey] : undefined}
+                    currencySource={field.field_type === 'currency' ? currencySource(field.config?.currency_field, objectFields, fieldNames) : undefined}
                   />
                 </div>
               );

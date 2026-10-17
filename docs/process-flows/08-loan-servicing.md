@@ -43,8 +43,6 @@ flowchart TD
     L --> R{"In arrears?"}
     R -- Yes --> R1["Collections follow-up opened for the RM"]
     R -- "Back to current" --> R2["Follow-up closed"]
-    L --> P{"New PLR change<br/>not yet notified?"}
-    P -- Yes --> P1["Personalised notice emailed and logged"]
     L --> M{"Matures within<br/>6 months?"}
     M -- Yes --> M1["Retention suggestion for the RM"]
 ```
@@ -60,10 +58,10 @@ flowchart TD
 
 | Step | Who | What to do | What the CRM does |
 |---|---|---|---|
-| 1 | Administrator | Add the new rate in **Masters ▸ PLR history** | Product **Rate from** and new loan pricing update at once |
-| 2 | Loans Manager | **New** PLR Change Campaign with old rate, new rate, effective date ▸ **Approved** (approver required) | — |
-| 3 | — | Daily sweep | Every variable-rate, unsettled account not yet notified gets a **PLR Notice** (old and new instalment) by email in its language, logged with date and channel |
-| 4 | Loans Manager | ▸ **Notices generated** ▸ **Distributed** | Delivery log available on the campaign |
+| 1 | Loans executive | **New** PLR Change Campaign with old rate, new rate and effective date (stays in **Draft**) | — |
+| 2 | Loans Manager | Fill **Approved by** (the ALCO decision) ▸ **Approved** — refused without it | Every variable-rate, unsettled account gets a **PLR Notice** with its old and new rate and instalment (same balance and remaining term) and a personalised letter on the notice's Docs tab; the campaign moves itself to **Notices generated** and the loans manager is notified |
+| 3 | Loans Manager | ▸ **Distributed** | Each pending notice is emailed to the borrower in their language, logged on its Activity, marked **Sent** with the date |
+| 4 | Administrator | On the effective date, add the new rate in **Masters ▸ PLR history** | Product **Rate from**, new loan pricing and the loans' current rate follow. The campaign never changes the PLR itself |
 
 ### C. Instalments and arrears
 
@@ -71,7 +69,7 @@ flowchart TD
 |---|---|---|---|
 | 1 | — | 3 days before each instalment | Sends the borrower an SMS reminder |
 | 2 | — | Account enters arrears | Opens a **collections** follow-up (call) for the RM with the arrears bucket |
-| 3 | RM | Call, log the outcome, record a **promise to pay** with amount and date, escalate if needed | — |
+| 3 | RM | Call, log the outcome, record a **promise to pay** with amount and date (refused without both), escalate if needed | The promised date is written on the loan account (**Promise to pay by**); an escalation to legal alerts the loans manager |
 | 4 | — | Account back to current | Closes the follow-up |
 
 ### D. Maturity

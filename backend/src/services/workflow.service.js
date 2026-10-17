@@ -48,6 +48,10 @@ const {
  *   integration     — invoke a registered integration by name, or publish a custom domain event
  *   create_record   — creates a new record in another object
  *   update_related  — bulk-updates records in another object linked by a field value
+ *   create_reminder — schedules a personal reminder relative to a date on the record
+ *
+ * Any step may carry `config.for_each` to run once per matching record of
+ * another object (see #execForEach).
  *
  * Field access is storage-aware. A record's data lives either in a first-class
  * CRM table or in the typed EAV table (record_field_values), and `assigned_to` /
@@ -81,6 +85,10 @@ class WorkflowEngineService {
     eventBus.subscribe('record.updated',       (_e, p) => this.trigger('on_update', p.objectId, p.record, p.actorId));
     eventBus.subscribe('record.deleted',       (_e, p) => this.trigger('on_delete', p.objectId, p.record, p.actorId));
     eventBus.subscribe('record.field_changed', (_e, p) => this.triggerFieldChanged(p.objectId, p.record, p.changed ?? {}, p.actorId));
+    // Formula values recomputed because a related record changed (roll-ups,
+    // lookups through a parent): only `field_changed` workflows that opt in
+    // with `trigger_config.derived: true` run on these.
+    eventBus.subscribe('record.derived_changed', (_e, p) => this.triggerFieldChanged(p.objectId, p.record, p.changed ?? {}, p.actorId, { derived: true }));
     return this;
   }
 
@@ -166,8 +174,11 @@ class WorkflowEngineService {
    * @param {Object} record    – the updated record (with id, object_id, etc.)
    * @param {Object} changedFields – { fieldName: { old, new } } map of changed fields
    * @param {string} actorId   – employee ID of the user who made the change
+   * @param {{derived?: boolean}} [opts] – `derived`: the values were recomputed
+   *   because a related record changed (no save of this record). Only workflows
+   *   with `trigger_config.derived: true` run then; they also run on saves.
    */
-  async triggerFieldChanged(objectId, record, changedFields, actorId) {
+  async triggerFieldChanged(objectId, record, changedFields, actorId, { derived = false } = {}) {
     let workflows;
     try {
       workflows = await this.db.uiWorkflow.findMany({
@@ -181,6 +192,7 @@ class WorkflowEngineService {
 
     // Filter workflows whose trigger_config.field matches one of the changed fields
     const matched = workflows.filter(wf => {
+      if (derived && wf.trigger_config?.derived !== true) return false;
       const triggerField = wf.trigger_config?.field;
       if (!triggerField) return true; // no field filter → fires on any change
       return changedFields[triggerField] !== undefined;
@@ -391,7 +403,16 @@ class WorkflowEngineService {
       include: { workflow: { select: { label: true, object_id: true } } },
     });
     const me = String(employeeId ?? '');
-    const mine = rows.filter((r) => {
+    // A request about a record that has since been moved to the trash cannot be
+    // acted on meaningfully — keep it out of the open inbox (history keeps it).
+    let trashed = new Set();
+    if (scope !== 'decided' && typeof this.db.record?.findMany === 'function') {
+      const ids = [...new Set(rows.map((r) => r.record_id).filter(Boolean))];
+      if (ids.length) {
+        trashed = new Set((await this.db.record.findMany({ where: { id: { in: ids }, deleted_at: { not: null } }, select: { id: true } }).catch(() => [])).map((r) => r.id));
+      }
+    }
+    const mine = rows.filter((r) => !trashed.has(r.record_id)).filter((r) => {
       const c = r.context ?? {};
       if (scope === 'mine') return Array.isArray(c.approver_ids) && c.approver_ids.map(String).includes(me);
       if (scope === 'decided') return String(c.decided_by ?? '') === me;
@@ -526,7 +547,9 @@ class WorkflowEngineService {
       const logEntry = { step: current.id, name: current.name, type: current.step_type };
       let nextId;
       try {
-        nextId = await this.#execStep(current, record, actorId, logEntry, crmCache, defaultNextId);
+        nextId = current.config?.for_each
+          ? await this.#execForEach(current, record, actorId, logEntry, crmCache, defaultNextId)
+          : await this.#execStep(current, record, actorId, logEntry, crmCache, defaultNextId);
       } catch (err) {
         // One bad step must not abort the rest of the workflow. Log it, then
         // continue linearly to the next step.
@@ -539,6 +562,65 @@ class WorkflowEngineService {
       log.push(logEntry);
       current = nextId ? (stepsById[nextId] ?? null) : null;
     }
+  }
+
+  /**
+   * Run one step once for every matching record of another object — the
+   * "loop" of a Salesforce Flow. A PLR change creates a notice for every
+   * variable-rate loan; distributing it emails each of its notices.
+   *
+   * Config: step.config.for_each = { object, match?: { field: value }, where?, limit? = 2000 }
+   *   match — lookup / value filters on the looped records; values may be
+   *           {{placeholders}} from this record (e.g. { plr_change_event: '{{id}}' })
+   *   where — a formula each looped record must satisfy
+   * Inside the loop the step runs on the looped record: {{field}} reads that
+   * record and {{source_<field>}} the record the workflow runs on.
+   */
+  async #execForEach(step, record, actorId, logEntry, crmCache, defaultNextId) {
+    const { for_each: fe, ...cfg } = step.config ?? {};
+    const target = fe?.object && typeof this.db.uiObject?.findFirst === 'function'
+      ? await this.db.uiObject.findFirst({ where: { name: String(fe.object) }, select: { id: true } })
+      : null;
+    if (!target) {
+      logEntry.result = `no-op (for_each object '${fe?.object}' not found)`;
+      return step.on_true_id ?? defaultNextId;
+    }
+    if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+    const source = Object.fromEntries(Object.entries(crmCache.fields).map(([k, v]) => [`source_${k}`, v]));
+    const take = Math.min(Number(fe.limit) || 2000, 5000);
+    const where = { object_id: target.id, deleted_at: null };
+    const match = Object.entries(fe.match ?? {}).map(([f, v]) => [f, typeof v === 'string' ? this.#interpolate(v, crmCache.fields) : v]);
+    if (match.length) {
+      const rows = await this.db.recordFieldValue.findMany({
+        where:  { field_name: { in: match.map(([f]) => f) }, record: { object_id: target.id, deleted_at: null } },
+        select: { record_id: true, field_name: true, str_value: true, num_value: true, bool_value: true },
+      });
+      const byRecord = new Map();
+      for (const r of rows) {
+        const v = r.str_value ?? (r.num_value != null ? String(r.num_value) : r.bool_value != null ? String(r.bool_value) : null);
+        (byRecord.get(r.record_id) ?? byRecord.set(r.record_id, {}).get(r.record_id))[r.field_name] = v;
+      }
+      where.id = { in: [...byRecord].filter(([, vals]) => match.every(([f, v]) => String(vals[f] ?? '') === String(v ?? ''))).map(([id]) => id) };
+    }
+    const looped = await this.db.record.findMany({
+      where, orderBy: { id: 'asc' }, take,
+      select: { id: true, object_id: true, tenant_id: true, assigned_to: true, created_by: true, pipeline_stage_id: true },
+    });
+    const inner = { ...step, config: cfg };
+    let ran = 0;
+    for (const rec of looped) {
+      const fields = { ...source, ...(await this.#loadFields(rec)) };
+      if (fe.where && !(await this.#evaluateExpression(fe.where, fields, rec.id))) continue;
+      // One record that fails must not stop the others.
+      try {
+        await this.#execStep(inner, rec, actorId, { step: step.id }, { fields }, null);
+        ran += 1;
+      } catch (err) {
+        logger.error(`[workflow] for_each step ${step.id} failed on record ${rec.id}`, { error: err.message });
+      }
+    }
+    logEntry.result = `ran on ${ran} of ${looped.length} ${fe.object} records`;
+    return step.on_true_id ?? defaultNextId;
   }
 
   async #execStep(step, record, actorId, logEntry, crmCache = { fields: null }, defaultNextId = null) {
@@ -882,7 +964,9 @@ class WorkflowEngineService {
         const fieldCtx   = { ...crmCache.fields, id: record?.id ?? '' };
         const entityData = {};
         for (const [k, v] of Object.entries(cfg.fields ?? cfg.data ?? {})) {
-          entityData[k] = typeof v === 'string' ? this.#interpolate(v, fieldCtx) : v;
+          // `{ expr }` — a formula over this record (a repriced instalment).
+          if (v && typeof v === 'object' && typeof v.expr === 'string') entityData[k] = await this.#evaluateValue(v.expr, fieldCtx, record?.id ?? null);
+          else entityData[k] = typeof v === 'string' ? this.#interpolate(v, fieldCtx) : v;
         }
         if (cfg.link_field && record?.id) entityData[cfg.link_field] = Number(record.id);
 
@@ -1175,6 +1259,31 @@ class WorkflowEngineService {
           }).then(() => { sent += 1; }, () => { skipped += 1; });
         }
         logEntry.result = `emailed ${sent} of ${recipients.length} on the list (${skipped} skipped: no email, no consent or failed)`;
+        // Opens start at the number already counted (0 on a first send), so the
+        // record shows "Opens: 0" rather than nothing until someone reads it.
+        if (sent && cfg.track_field && tenantId && /^[a-z_][a-z0-9_]{0,99}$/.test(cfg.track_field) && this.db.emailLog?.count) {
+          const opens = await this.db.emailLog.count({ where: { related_record_id: record.id, related_type: `distribution:${cfg.track_field}`, opened_at: { not: null } } });
+          await this.db.recordFieldValue.upsert({
+            where: { record_id_field_name: { record_id: record.id, field_name: cfg.track_field } },
+            create: { record_id: record.id, field_name: cfg.track_field, num_value: opens, tenant_id: tenantId },
+            update: { num_value: opens },
+          }).catch(() => { /* the count is refreshed again on the first open */ });
+        }
+        // What the person who pressed the button is told, and what the record's
+        // Activity timeline keeps: how many were emailed and how many skipped.
+        logEntry.summary = `Emailed to ${sent} subscriber${sent === 1 ? '' : 's'}`
+          + (skipped ? ` — ${skipped} skipped (no email address or no marketing consent).` : '.');
+        const by = actorId ?? record?.created_by ?? record?.assigned_to ?? null;
+        if (record?.id && by && this.db.activity?.create) {
+          await this.db.activity.create({
+            data: {
+              record_id: record.id, employee_id: String(by), type: 'email',
+              subject: `Sent to ${sent} subscriber${sent === 1 ? '' : 's'}`.slice(0, 200),
+              description: logEntry.summary,
+              completed_at: new Date(),
+            },
+          }).catch(() => { /* best-effort, like a single send */ });
+        }
         return step.on_true_id ?? defaultNextId;
       }
 
@@ -1256,6 +1365,59 @@ class WorkflowEngineService {
           uploadedBy: actorId ?? null,
         });
         logEntry.result = `generated document #${doc?.id} from '${tpl.name}'`;
+        return step.on_true_id ?? defaultNextId;
+      }
+
+      // ── Create reminder ───────────────────────────────────────────────────
+      // Schedules a personal reminder (the record's Reminders tab and My
+      // Reminders) relative to a date on the record — e.g. a forward's value
+      // date minus 7 days. A reminder that would already be due is set for now.
+      // The same open reminder is never created twice for a record.
+      //
+      // Config: { title, note?, date_field, offset_days? = 0, employee_field? = 'assigned_to',
+      //           employee_id?, priority? = 'normal' }
+      case 'create_reminder': {
+        if (!record?.id || !cfg.title || !cfg.date_field) {
+          logEntry.result = 'no-op (missing title, date_field or record)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        if (!crmCache.fields) crmCache.fields = await this.#loadFields(record);
+        const base = crmCache.fields[cfg.date_field];
+        const at = base ? new Date(base) : null;
+        if (!at || Number.isNaN(at.getTime())) {
+          logEntry.result = `no-op (${cfg.date_field} is empty)`;
+          return step.on_true_id ?? defaultNextId;
+        }
+        at.setUTCDate(at.getUTCDate() + (Number(cfg.offset_days) || 0));
+        const remindAt = at < new Date() ? new Date() : at;
+        const employeeId = cfg.employee_id ?? crmCache.fields[cfg.employee_field ?? 'assigned_to'] ?? actorId ?? null;
+        if (!employeeId) {
+          logEntry.result = 'no-op (nobody to remind)';
+          return step.on_true_id ?? defaultNextId;
+        }
+        const days = Object.fromEntries(Object.entries(crmCache.fields)
+          .map(([k, v]) => [k, v instanceof Date ? (Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)) : v]));
+        const ctx = await this.#readable(record, days);
+        const title = this.#interpolate(String(cfg.title), ctx).slice(0, 200);
+        const open = await this.db.reminder.findFirst({ where: { record_id: Number(record.id), title, status: { in: ['pending', 'notified'] } }, select: { id: true } });
+        if (open) {
+          logEntry.result = `no-op (reminder #${open.id} already open)`;
+          return step.on_true_id ?? defaultNextId;
+        }
+        const reminder = await this.db.reminder.create({
+          data: {
+            record_id:   Number(record.id),
+            employee_id: String(employeeId),
+            created_by:  String(actorId ?? employeeId),
+            title,
+            note:        cfg.note ? this.#interpolate(String(cfg.note), ctx) : null,
+            remind_at:   remindAt,
+            priority:    ['low', 'normal', 'high', 'urgent'].includes(cfg.priority) ? cfg.priority : 'normal',
+            status:      'pending',
+            tenant_id:   record.tenant_id ?? tenantContext.getStore()?.tenantId,
+          },
+        });
+        logEntry.result = `created reminder #${reminder.id} for ${employeeId} at ${remindAt.toISOString()}`;
         return step.on_true_id ?? defaultNextId;
       }
 
@@ -1399,6 +1561,19 @@ class WorkflowEngineService {
     }
   }
 
+  /** The value of a formula over a record's values; a broken formula is null. */
+  async #evaluateValue(expression, values, recordId) {
+    try {
+      const ctx = this.recordService?.compute
+        ? this.recordService.compute.context({ ...values }, recordId)
+        : { values: { ...values } };
+      return (await evaluateFormula(String(expression ?? ''), ctx)) ?? null;
+    } catch (err) {
+      logger?.warn?.('[WorkflowEngine] value expression failed', { error: err.message });
+      return null;
+    }
+  }
+
   /**
    * The record's values as people should read them in an approval card or a
    * notification: picklist labels instead of stored codes ("Approve with
@@ -1416,7 +1591,7 @@ class WorkflowEngineService {
     for (const f of fields ?? []) {
       const v = values[f.name];
       if (v === null || v === undefined || v === '') continue;
-      if (['select', 'radio', 'multi_select'].includes(f.field_type) && Array.isArray(f.options)) {
+      if (Array.isArray(f.options) && f.options.length) {
         const label = (x) => f.options.find((o) => String(o?.value ?? o) === String(x))?.label ?? x;
         out[f.name] = Array.isArray(v) ? v.map(label).join(', ') : label(v);
       } else if (f.field_type === 'currency' || f.config?.format === 'currency') {

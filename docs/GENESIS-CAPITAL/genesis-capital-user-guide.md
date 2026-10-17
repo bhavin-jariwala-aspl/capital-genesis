@@ -355,10 +355,12 @@ Start any client conversation here: the **Related** tab shows everything Genesis
 ### Cross-sell & RM Workbench
 
 - **Opportunities**: *Identified → Qualified → Proposal → Negotiation → Won / Lost*, with probability, forecast category
-  and weighted value; the referring RM can share the credit.
+  and weighted value; each stage sets the default probability and forecast category, *Lost* needs a loss reason, and the
+  referring RM can share the credit.
 - **Next-Best Actions** — suggestions raised daily by rules (fund holder without a loan → Investment-Backed Loan;
   borrower → wealth or money market; corporate with foreign-currency revenue → FX hedging; HNW without a mandate → wealth
-  discovery; FMB 2029 holders near maturity → reinvestment). **Accept** opens an opportunity; **Dismiss** asks for a reason.
+  discovery; FMB 2029 holders near maturity → reinvestment). The **Accept** and **Dismiss** buttons sit on each open
+  suggestion: Accept opens an opportunity; Dismiss asks for a reason.
 - **Meeting Notes** — structured notes (discovery, review, credit visit, call, event follow-up).
 - **RM Targets & Quotas** — quarterly targets and attainment.
 
@@ -388,6 +390,14 @@ Start any client conversation here: the **Related** tab shows everything Genesis
   insurance and expiry, revaluation date, pledge status.
 - **Collateral Allocations** (one collateral to several loans), **Collateral Valuations**, **Margin Calls**
   (*Issued → Client contacted → Cured / Liquidation*), raised when an investment-backed loan's LTV passes the call level.
+- Haircut, revaluation frequency and LTV warning / margin-call / liquidation levels come from **Masters ▸ Collateral
+  types**. The latest recorded valuation sets the market value and the next revaluation date; a pledge of fund units
+  can cover only part of a holding (*Units pledged*). Owner left empty = the loan applicant.
+- Investment-backed loans show **LTV monitoring** on the application (drawn exposure ÷ registered pledges, shortfall to
+  restore cover). The margin call — with its notice letter, email and SMS — is raised the moment a revaluation pushes
+  the LTV past the call level. *Cured* needs the cure recorded (additional collateral or partial repayment);
+  *Liquidation* needs the cure set to liquidation. Reminders: 30 days before collateral insurance lapses, and when a
+  revaluation falls due.
 
 ### Loan Servicing
 

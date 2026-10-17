@@ -97,7 +97,7 @@ export const runtimeService = {
   revealField:      (id, field)        => wrap(api.post(`/runtime/records/${id}/reveal`, { field })),
   searchLookup:     (objectName, q, id) => wrap(api.get(`/runtime/lookup/${encodeURIComponent(objectName)}`, { params: id ? { id } : { q } })),
   getObjectActions: (objectId)         => wrap(api.get(`/runtime/objects/${objectId}/actions`)),
-  runRecordAction:  (id, workflowId)   => wrap(api.post(`/runtime/records/${id}/actions/${workflowId}`)),
+  runRecordAction:  (id, workflowId, values) => wrap(api.post(`/runtime/records/${id}/actions/${workflowId}`, values ? { values } : {})),
 
   // Lead conversion (accepts record ID, not CRM lead ID)
   convertLead: (recordId, options = {}) => wrap(api.post(`/runtime/records/${recordId}/convert-lead`, options)),

@@ -185,7 +185,8 @@ export default async function run(S) {
   const screened = await S.waitCut(() => poll(async () => {
     const r = await api('GCRM1', 'GET', `/runtime/records/${kyc.id}`);
     const d = r.data?.data ?? {};
-    return d.screening_result ? d : null;
+    // The result is written first, then the hit is logged: wait for both.
+    return d.screening_result && Number(d.screening_hits_open) > 0 ? d : null;
   }, { what: 'screening result' }));
   S.log('screening', screened.screening_result, screened.screening_reference);
   await openPanel(S, 'kyc_case', kyc.id, 'Sanctions / PEP screening');

@@ -4,9 +4,14 @@
  * title, initials and accent colour are derived identically everywhere.
  */
 
-/** Derive a human display title from a record's data blob. */
-export function recordTitle(data) {
+/**
+ * Derive a human display title from a record's data blob. `titleField` — the
+ * object's configured title field (`config.title_field`) — wins when set.
+ */
+export function recordTitle(data, titleField) {
+  const own = titleField ? data?.[titleField] : null;
   return (
+    (own != null && own !== '' && typeof own !== 'object' ? String(own) : null) ||
     data?.full_name ||
     `${data?.first_name || ''} ${data?.last_name || ''}`.trim() ||
     data?.client_name ||

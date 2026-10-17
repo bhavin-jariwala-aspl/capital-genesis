@@ -49,7 +49,7 @@ export async function token(id) {
 }
 export async function api(id, method, p, body) {
   const r = await fetch(API + p, {
-    method, headers: { 'content-type': 'application/json', authorization: `Bearer ${await token(id)}` },
+    method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), authorization: `Bearer ${await token(id)}` },
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(120000),
   });
   const txt = await r.text();
@@ -95,6 +95,8 @@ export async function obj(name) {
 
 // ── In-page overlay: captions, step chip, title cards, cursor ─────────────────────────────────────────────────────
 function overlayScript() {
+  // Only the top page gets captions and the cursor — not PDF previews or other iframes.
+  if (window.top !== window.self) return;
   const css = `
   #__st_cap{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483646;max-width:1180px;min-width:420px;
     background:rgba(15,23,42,.93);color:#fff;font:600 21px/1.38 Inter,system-ui,-apple-system,sans-serif;padding:13px 24px 14px;
@@ -228,7 +230,9 @@ export async function session({ slug, title, rawDir }) {
       await p.waitForLoadState('domcontentloaded').catch(() => {});
       await p.waitForFunction(() => {
         const t = document.body?.innerText || '';
-        return !/Loading\.\.\.|Loading…|Searching…/.test(t) && !document.querySelector('main .animate-spin, [role=dialog] .animate-spin');
+        // The app shell (main) must be up — the full-page boot spinner sits outside it.
+        return !!document.querySelector('main, form, [data-public]') && !/Loading\.\.\.|Loading…|Searching…/.test(t)
+          && !document.querySelector('main .animate-spin, [role=dialog] .animate-spin');
       }, null, { timeout: 60000, polling: 200 }).catch(() => log('settle timeout'));
       const e = now(); if (e - s > 2.5) cuts.push([s + 0.8, e - 0.3]);
       await p.waitForTimeout(extra);
@@ -304,7 +308,9 @@ export async function session({ slug, title, rawDir }) {
     },
     async view(v) {
       const btn = p.locator(`button[title="${v}"]`).first();
-      if (await btn.count()) { await S.moveTo(btn); await S.settle(800); }
+      // The view toggle appears once the object's metadata has loaded.
+      if (await btn.waitFor({ timeout: 20000 }).then(() => true).catch(() => false)) { await S.moveTo(btn); await S.settle(800); }
+      if (v === 'Pipeline') await p.locator('div.min-w-\\[260px\\]').first().waitFor({ timeout: 30000 }).catch(() => {});
     },
     async openRecord(name, id) {
       const o = await obj(name);
@@ -323,7 +329,10 @@ export async function session({ slug, title, rawDir }) {
     async drag(cardText, from, to, { expectFail = false, after = 1800 } = {}) {
       const src = S.column(from), dst = S.column(to);
       await src.waitFor({ timeout: 30000 });
-      await src.evaluate((col) => { const c = col.parentElement; c.scrollBy({ left: col.getBoundingClientRect().left - c.getBoundingClientRect().left - 8, behavior: 'smooth' }); });
+      // Scroll the board so the leftmost of the two columns is at the left edge —
+      // both stay visible whether the move goes forward or backward.
+      const sl = (await src.boundingBox()).x, dl = (await dst.boundingBox()).x;
+      await (dl < sl ? dst : src).evaluate((col) => { const c = col.parentElement; c.scrollBy({ left: col.getBoundingClientRect().left - c.getBoundingClientRect().left - 8, behavior: 'smooth' }); });
       await p.waitForTimeout(700);
       const card = src.getByText(cardText).first();
       await card.waitFor({ timeout: 30000 });
@@ -331,10 +340,23 @@ export async function session({ slug, title, rawDir }) {
       const cb = await card.boundingBox(); const db = await dst.boundingBox();
       const sx = cb.x + Math.min(cb.width / 2, 120), sy = cb.y + cb.height / 2;
       await p.mouse.move(sx, sy, { steps: 12 }); await p.waitForTimeout(300);
-      const resp = p.waitForResponse((r) => r.url().includes('/stage') && r.request().method() === 'PATCH', { timeout: 60000 });
+      const resp = p.waitForResponse((r) => r.url().includes('/stage') && r.request().method() === 'PATCH', { timeout: 240000 });
       await p.mouse.down();
       await p.mouse.move(sx + 20, sy + 6, { steps: 5 });
-      await p.mouse.move(db.x + db.width / 2, Math.min(db.y + 120, db.y + db.height - 20), { steps: 28 });
+      // A destination beyond the visible board: hold the card at the edge until
+      // the board auto-scrolls it into view, then re-measure.
+      let target = db;
+      const vw = p.viewportSize().width;
+      if (target.x + target.width / 2 > vw - 20 || target.x + target.width / 2 < 260) {
+        const edge = target.x > sx ? vw - 12 : 250;
+        await p.mouse.move(edge, sy, { steps: 20 });
+        for (let i = 0; i < 40; i++) {
+          await p.waitForTimeout(150);
+          target = await dst.boundingBox();
+          if (target && target.x > 240 && target.x + target.width < vw - 4) break;
+        }
+      }
+      await p.mouse.move(target.x + target.width / 2, Math.min(target.y + 120, target.y + target.height - 20), { steps: 28 });
       await p.waitForTimeout(350);
       await p.mouse.up();
       const r = await S.waitCut(() => resp);
@@ -399,11 +421,12 @@ export async function session({ slug, title, rawDir }) {
     /** Click the form's submit button and wait for the save request. */
     async submit({ expectFail = false } = {}) {
       const btn = p.locator('form button[type=submit]').last();
-      const resp = p.waitForResponse((r) => /\/runtime\/records(\/\d+)?$/.test(new URL(r.url()).pathname) && ['POST', 'PUT', 'PATCH'].includes(r.request().method()), { timeout: 60000 });
+      const resp = p.waitForResponse((r) => /\/runtime\/records(\/\d+)?$/.test(new URL(r.url()).pathname) && ['POST', 'PUT', 'PATCH'].includes(r.request().method()), { timeout: 240000 });
       await S.moveTo(btn);
       // Either the save request goes out, or client-side validation shows errors.
-      const invalid = p.locator('.form-error').first().waitFor({ state: 'visible', timeout: 60000 }).then(() => 'invalid').catch(() => null);
+      const invalid = p.locator('.form-error').first().waitFor({ state: 'visible', timeout: 240000 }).then(() => 'invalid').catch(() => null);
       const first = await Promise.race([resp.then(() => 'sent'), invalid]);
+      if (first === 'invalid' && expectFail) { log('save refused by form validation (expected)'); await p.waitForTimeout(1200); return null; }
       if (first === 'invalid' && !expectFail) {
         const errs = await p.locator('.form-error').evaluateAll((es) => es.map((e) => {
           const box = e.closest('div.flex.flex-col, div');
@@ -437,12 +460,14 @@ export async function session({ slug, title, rawDir }) {
       await card.waitFor({ timeout: 30000 });
       await S.highlight(card, 1800);
       if (comment) { await S.moveTo(card.getByPlaceholder(/Comment/)); await S.type(comment, 22); }
-      const resp = p.waitForResponse((r) => r.url().includes('/workflows/approval') && r.request().method() === 'POST', { timeout: 60000 });
+      const resp = p.waitForResponse((r) => r.url().includes('/workflows/approval') && r.request().method() === 'POST', { timeout: 240000 });
       await S.moveTo(card.getByRole('button', { name: action === 'approve' ? 'Approve' : 'Reject' }));
       const r = await S.waitCut(() => resp);
       log(action, r.status());
       if (r.status() >= 300) throw new Error(`${action} failed ${r.status()} ${(await r.text()).slice(0, 300)}`);
       await S.settle(1500);
+      const done = p.getByRole('button', { name: 'Done', exact: true });
+      if (await done.count()) { await p.waitForTimeout(1200); await S.moveTo(done.first()); }
     },
 
     issue(text) { issues.push(text); log('ISSUE', text); },

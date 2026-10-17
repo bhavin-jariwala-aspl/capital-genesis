@@ -124,6 +124,11 @@ export default function FieldValue({ field, value, label = null, compact = false
     );
   }
 
+  // A staff-id field (`config.employee`): the API sends the person's name as its label.
+  if (field.config?.employee && label) {
+    return <span className={clsx(text, 'font-medium text-gray-900 dark:text-white/90')} title={String(value)}>{label}</span>;
+  }
+
   // Any field with an option list (e.g. a formula returning a unit code) shows the option's label.
   if (type !== 'select' && type !== 'radio' && type !== 'multi_select' && options.length && !Array.isArray(value)
     && options.some((o) => String(typeof o === 'object' ? o?.value : o) === String(value))) {

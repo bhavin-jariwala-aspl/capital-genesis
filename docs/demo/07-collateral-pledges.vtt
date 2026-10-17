@@ -1,0 +1,153 @@
+WEBVTT
+
+00:00:02.739 --> 00:00:10.368
+Collateral & Pledges
+The security behind every loan — what it is worth, what it lends, and what happens when its value falls.
+
+00:00:10.371 --> 00:00:13.876
+Jean-Marc Lagesse is borrowing MUR 9.45M to buy a construction lot
+The lot itself will secure the loan — the loans executive registers it
+
+00:00:13.876 --> 00:00:21.795
+Sign in as Sophie Lagesse — Loans Executive
+The loans executive handles the loan and its security
+
+00:00:21.795 --> 00:00:28.672
+Collateral & Pledges ▸ Collateral Register ▸ New
+Link it to the loan application — leave Owner empty when the borrower owns it
+
+00:00:28.672 --> 00:00:39.158
+The value from the sale agreement — the bank's own valuation follows
+Leave Haircut empty: the standard haircut for the type applies
+
+00:00:39.158 --> 00:00:45.099
+Land carries a standard 10% haircut, from Masters ▸ Collateral types
+The master also sets the revaluation frequency and the LTV levels
+
+00:00:45.099 --> 00:00:49.441
+Lending value = market value less the haircut: MUR 9.45M
+Exactly the loan amount
+
+00:00:49.441 --> 00:01:07.878
+Collateral Allocations: how much of the security backs which loan
+One property can secure several loans or facilities — each gets its share
+
+00:01:07.878 --> 00:01:16.133
+On the loan application, the security lending value now shows MUR 9.45M
+It adds up the lending value of every collateral registered for the loan
+
+00:01:16.133 --> 00:01:20.497
+At Security & insurance the team completes valuation, notary, charge and insurance
+Ready for disbursement stays blocked until “Security complete” is Yes
+
+00:01:20.497 --> 00:01:25.126
+The bank's panel valuer reports — the credit analyst records it
+Collateral Valuations ▸ New: date, market value, forced-sale value, valuer
+
+00:01:25.126 --> 00:01:46.098
+Sign in as Nadia Peerbux — Credit Analyst
+The credit analyst checks the security
+
+00:01:46.098 --> 00:01:54.256
+The latest valuation becomes the market value — lending value is now MUR 9.72M
+The loan stays covered with room to spare
+
+00:01:54.256 --> 00:02:01.062
+Next revaluation: three years for land, from the master
+A reminder goes to the owner of the record on the day it falls due
+
+00:02:01.062 --> 00:02:08.586
+Insured property: 30 days before the cover lapses, a reminder goes out
+Here the building policy expires on 1 November — flagged as lapsing
+
+00:02:08.586 --> 00:02:17.902
+Investment-backed loan: Lina Chan borrowed against her fund units
+MUR 1.14M outstanding — secured by a pledge of Genesis Foreign Equity Fund units
+
+00:02:17.902 --> 00:02:22.560
+LTV = drawn exposure ÷ market value of the registered pledges
+Today 7.3% — her whole holding is pledged
+
+00:02:22.560 --> 00:02:27.746
+Margin-call level 80%, liquidation 90% — per asset class, from the master
+Checked again every time a pledge is revalued
+
+00:02:27.746 --> 00:02:37.449
+Sign in as Ritesh Seewoo — Operations Checker
+Operations registers and releases pledges with the transfer agent
+
+00:02:37.449 --> 00:02:46.609
+Lina is redeeming most of her units — the pledge keeps only 3,600
+Enough to cover the loan after the 30% haircut
+
+00:02:46.609 --> 00:02:50.425
+3,600 units at the latest NAV: MUR 1.62M
+The loan's LTV is recalculated at once: 70.8% — still within limits
+
+00:02:50.425 --> 00:03:07.803
+A month later equity markets fall — the units lose 14%
+Operations records the monthly market-price valuation of the pledge
+
+00:03:07.803 --> 00:03:18.996
+The LTV is now above 80% — the CRM raises a margin call by itself
+No one has to spot it: the check runs the moment the pledge is revalued
+
+00:03:18.996 --> 00:03:30.802
+LTV 82.2% — margin call, with the shortfall to restore cover
+Shortfall = drawn exposure less the pledges' lending value
+
+00:03:30.802 --> 00:03:40.763
+Margin call MC-2026-000009: LTV at call, shortfall, cure within five business days
+Assigned to the loans manager · Lina is emailed and texted
+
+00:03:40.763 --> 00:03:45.150
+Docs: the margin-call notice letter, generated in Lina's language
+The same notice was emailed to her
+
+00:03:45.150 --> 00:03:49.956
+The loans manager calls Lina
+Margin Calls pipeline: Issued ▸ Client contacted ▸ Cured / Liquidation
+
+00:03:49.956 --> 00:04:01.326
+Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
+Margin calls are routed to the loans manager
+
+00:04:01.326 --> 00:04:04.521
+Lina will pledge more units rather than repay — try closing the call now…
+Cured needs to know how the call was cured
+
+00:04:04.521 --> 00:04:08.012
+Blocked: record how the call was cured first
+Additional collateral or a partial repayment
+
+00:04:08.012 --> 00:04:12.338
+Operations registers the extra pledge: units of her money-market fund
+Collateral Register ▸ New — fund units, pledge registered with the transfer agent
+
+00:04:12.338 --> 00:04:19.762
+Sign in as Ritesh Seewoo — Operations Checker
+Operations registers the new pledge
+
+00:04:19.762 --> 00:04:36.030
+Collateral Register ▸ New: fund units, linked to Lina's loan
+4,000 units of her money-market fund, pledge registered
+
+00:04:36.030 --> 00:04:44.148
+LTV back to 63% — within limits, no shortfall
+The extra units restored the cover
+
+00:04:44.148 --> 00:04:51.714
+Operations records the cure on the margin call
+Cure: Additional collateral
+
+00:04:51.714 --> 00:04:56.025
+Now the call can move to Cured
+The cure is recorded, so the gate lets it through
+
+00:04:56.025 --> 00:05:00.191
+Cured within the deadline — the call is closed
+A new call is raised if the LTV passes the call level again
+
+00:05:00.191 --> 00:05:07.832
+Collateral & Pledges
+Staff register and value the security — the CRM keeps lending value and LTV current and raises the alarms.

@@ -1,5 +1,5 @@
 // Retail Lending: a home loan from the client's enquiry to disbursement (user guide §10 journey A).
-import { records, poll, obj, PEOPLE } from '../lib/studio.mjs';
+import { records, poll, obj, api, PEOPLE } from '../lib/studio.mjs';
 
 export const title = 'Retail Lending — enquiry to disbursed home loan';
 
@@ -11,7 +11,7 @@ const EMAIL = `${FIRST}.${LAST}`.toLowerCase().normalize('NFD').replace(/[^a-z.]
 
 export default async function run(S) {
   const { p } = S;
-  const [enqObj, la, kyc] = await Promise.all([obj('enquiry'), obj('loan_application'), obj('kyc_case')]);
+  const [enqObj, la, kyc] = await S.waitCut(() => Promise.all([obj('enquiry'), obj('loan_application'), obj('kyc_case')]));
 
   // Lookups only (ids to open, automation to wait for) — every change happens in the UI.
   const find = async (o, pred, as = 'GCADMIN') => (await records(as, o.id, { limit: 500 })).filter(pred).sort((a, b) => b.id - a.id)[0];
@@ -33,9 +33,26 @@ export default async function run(S) {
   };
   // Approve in Tools ▸ Approvals and close the confirmation the page shows afterwards.
   const approve = async (match, comment) => {
+    // The request is raised by a workflow just after the stage move — wait until it is in the approver's inbox.
+    await S.waitCut(() => poll(async () => {
+      const r = await api(S.who, 'GET', '/runtime/workflows/approvals?scope=mine');
+      return (Array.isArray(r.data) ? r.data : []).some((x) => String(x.title).includes(match));
+    }, { timeout: 400000, what: `approval ${match}` }));
     await S.approve(match, comment);
     const ok = p.getByRole('button', { name: 'Got it' });
     if (await ok.isVisible().catch(() => false)) await S.moveTo(ok);
+  };
+  // Sign out (the wait for the sign-in page is trimmed), then the visible sign-in as the next persona.
+  const signIn = async (id, why) => {
+    await S.waitCut(async () => {
+      const out = p.locator('button[aria-label="Sign out"]');
+      if (await out.count()) {
+        await out.first().click();
+        await p.waitForURL((u) => u.pathname.startsWith('/login'), { timeout: 60000 }).catch(() => {});
+      }
+      await p.waitForSelector('input[name=employee_id]', { timeout: 60000 });
+    });
+    await S.login(id, why);
   };
   const board = (name) => S.waitCut(async () => { await S.openObject(name); await pipeline(); });
   const openRec = (name, id) => S.waitCut(() => S.openRecord(name, id));
@@ -61,11 +78,11 @@ export default async function run(S) {
       'Disbursement checker, LMS booking and loan account',
     ],
     foot: 'Sophie Lagesse (Loans Executive) · Nadia Peerbux (Credit) · Rajiv Doorgakant (Loans Manager) · Fatima Hossenbux (Compliance) · Ritesh Seewoo (Operations)',
-  }, 9000);
+  }, 8000);
 
   // ── 1. The enquiry ────────────────────────────────────────────────────────
   await S.step(1, 'Enquiry', `${CLIENT} calls about a home loan`, 'The loans executive logs the enquiry while on the phone', 3200);
-  await S.login('GCLOAN1', 'Loans executive — takes the client’s call');
+  await signIn('GCLOAN1', 'Loans executive — takes the client’s call');
   await S.waitCut(() => S.newRecord('enquiry'));
   await S.fill('enquiry', { party_type: 'individual', channel: 'phone', first_name: FIRST, last_name: LAST, email: EMAIL, mobile: '+230 5791 4826' });
   await S.say('What she wants: a real-estate loan of MUR 4.5 million over 20 years');
@@ -78,11 +95,11 @@ export default async function run(S) {
   S.log('owner', OWNER);
   if (OWNER !== 'GCLOAN1') {
     await S.say(`Routing gives the enquiry to the next loans executive in the pool: ${ownerName}`, 'Lending enquiries go round the loans team; the SLA clock starts now');
-    await p.waitForTimeout(6500);
-    await S.login(OWNER, 'Loans executive — now owns the enquiry and the loan that follows');
+    await p.waitForTimeout(5500);
+    await signIn(OWNER, 'Loans executive — now owns the enquiry and the loan that follows');
   } else {
     await S.say('Routing assigns lending enquiries round the loans team — this one stays with Sophie', 'The first-contact SLA clock starts now');
-    await p.waitForTimeout(6500);
+    await p.waitForTimeout(5500);
   }
   await board('enquiry');
   await S.say('She qualifies on the call — drag the enquiry to Qualified, then Converted', 'Converting creates the client, the KYC case and the loan application');
@@ -143,7 +160,7 @@ export default async function run(S) {
 
   // ── 4. Credit appraisal ───────────────────────────────────────────────────
   await S.step(4, 'Credit appraisal', 'The credit analyst picks up the application', 'Same record — another person, another form', 3200);
-  await S.login('GCCRED1', 'Credit analyst — appraises the risk and recommends a decision');
+  await signIn('GCCRED1', 'Credit analyst — appraises the risk and recommends a decision');
   await openRec('loan_application', appId);
   await S.say('The MCIB credit report is already on the application', 'Score, rating and reference came back from the credit bureau');
   await showSection('Income & obligations', 3500);
@@ -154,28 +171,30 @@ export default async function run(S) {
   await S.fill('loan_application', { risk_grade: 'B', analyst_recommendation: 'approve_conditions' });
   await S.fill('loan_application', { conditions: 'First-rank fixed charge on the property. Life and building insurance assigned to Genesis Life before disbursement.' }, { delay: 8 });
   await S.submit();
-  await board('loan_application');
   await S.say('Credit approval: the request goes to the right authority for the amount');
+  await board('loan_application');
   await S.drag(CLIENT, 'Credit appraisal', 'Credit approval');
 
   // ── 5. Credit approval ────────────────────────────────────────────────────
   await S.step(5, 'Credit approval', 'MUR 4.5 million: the Loans Manager decides', 'Four eyes — whoever sent it can never approve it', 3200);
-  await S.login('GCLMGR', 'Manager, Loans & Fixed Income — approves loans up to MUR 5 million');
+  await signIn('GCLMGR', 'Manager, Loans & Fixed Income — approves loans up to MUR 5 million');
   await S.say('Tools ▸ Approvals: grade, DSR, LTV and the analyst\'s recommendation on one card');
   await approve(`Credit approval: ${CARD}`, 'Approved on the conditions proposed by credit.');
   await S.waitCut(() => poll(async () => (await data(la, appId, 'GCLMGR')).credit_decision === 'approved', { timeout: 400000, what: 'credit decision' }));
   await openRec('loan_application', appId);
   await S.say('Approved — the application moved itself to Offer issued', 'Decision, date and the PLR the offer is priced on are recorded');
-  await p.waitForTimeout(3000);
+  await p.waitForTimeout(1800);
   await S.tab('Docs');
   await S.say('The offer letter was generated and filed here', 'The client is emailed; an offer not accepted in 30 days lapses');
   const letter = p.getByText(/Offer letter/).first();
   await letter.waitFor({ timeout: 30000 }).catch(() => S.issue('offer letter not on the Docs tab'));
+  await letter.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' })).catch(() => {});
+  await p.waitForTimeout(900);
   await S.highlight(letter.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 3500);
 
   // ── 6. Offer accepted, security & insurance ───────────────────────────────
   await S.step(6, 'Offer & security', 'The client signs the offer — back to the loans executive', 'Record the signature, the security and the amount to disburse', 3200);
-  await S.login(OWNER, 'Loans executive');
+  await signIn(OWNER, 'Loans executive');
   await editRec('loan_application', appId, 'Credit appraisal workbench');
   await S.fill('loan_application', { offer_accepted: true });
   await S.say('Valuation, notary, fixed charge, life and building insurance');
@@ -206,20 +225,20 @@ export default async function run(S) {
   await S.drag(CLIENT, 'Screening', 'Pending approval');
 
   await S.say('Compliance signs off the KYC case', 'Four eyes again: the loans executive cannot approve her own client', 3000);
-  await S.login('GCCOMP1', 'Compliance officer — signs off KYC');
+  await signIn('GCCOMP1', 'Compliance officer — signs off KYC');
   await S.say('Tools ▸ Approvals: the KYC case with its risk score and rating');
   await approve(`KYC approval: KYC · ${CLIENT}`, 'Clear screening, low risk. Approved.');
   await S.waitCut(() => poll(async () => (await data(la, appId, 'GCCOMP1')).kyc_status === 'approved', { timeout: 400000, what: 'KYC approved on the application' }));
 
   // ── 8. Disbursement ───────────────────────────────────────────────────────
   await S.step(8, 'Disbursement', 'KYC approved — the loans executive tries again', 'Now the gate lets it through', 3200);
-  await S.login(OWNER, 'Loans executive');
+  await signIn(OWNER, 'Loans executive');
   await board('loan_application');
   await S.drag(CLIENT, 'Security & insurance', 'Ready for disbursement');
   await S.say('An approval request goes to the operations checker', 'Maker-checker: whoever requests a disbursement cannot approve it');
   await p.waitForTimeout(2500);
 
-  await S.login('GCOPS1', 'Operations checker — the second pair of eyes before money moves');
+  await signIn('GCOPS1', 'Operations checker — the second pair of eyes before money moves');
   await S.say('Tools ▸ Approvals: the disbursement request, with security and KYC status');
   await approve(`Disbursement check: ${CARD}`, 'Security and KYC verified. Disburse.');
   const lms = await S.waitCut(() => poll(async () => (await data(la, appId, 'GCOPS1')).lms_reference, { timeout: 400000, what: 'LMS reference' }));
@@ -230,7 +249,7 @@ export default async function run(S) {
 
   // ── 9. Disbursed ──────────────────────────────────────────────────────────
   await S.step(9, 'Disbursed', 'The loans executive closes the application as Disbursed', '', 3000);
-  await S.login(OWNER, 'Loans executive');
+  await signIn(OWNER, 'Loans executive');
   await board('loan_application');
   await S.drag(CLIENT, 'Ready for disbursement', 'Disbursed');
   await S.waitCut(() => poll(async () => (await data(la, appId, OWNER)).outcome === 'disbursed', { timeout: 400000, what: 'outcome' }));
@@ -251,5 +270,5 @@ export default async function run(S) {
       'Offer letter, LMS booking and loan account automatic',
       'Disbursement only with security and approved KYC',
     ],
-  }, 7000);
+  }, 6000);
 }

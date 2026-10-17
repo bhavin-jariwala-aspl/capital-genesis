@@ -37,6 +37,9 @@ export default async function run(S) {
     S.log('approve', r.status());
     if (r.status() >= 300) throw new Error(`approve failed ${r.status()} ${(await r.text()).slice(0, 300)}`);
     await S.settle(1500);
+    // The inbox confirms the decision in a dialog — read it, then close it.
+    const gotIt = p.getByRole('button', { name: 'Got it' });
+    if (await gotIt.isVisible().catch(() => false)) { await p.waitForTimeout(1800); await S.moveTo(gotIt); await p.waitForTimeout(600); }
   };
   const capture = async (expectFail) => {
     const resp = p.waitForResponse((r) => new URL(r.url()).pathname.endsWith('/runtime/records') && r.request().method() === 'POST', { timeout: 300000 });
@@ -180,7 +183,11 @@ export default async function run(S) {
   await S.openRecord('fund_order', mine.id);
   await S.say(`The transfer agent's reference is on the order: ${done.data.ta_reference}`, 'Units allotted are worked out at the latest NAV');
   const ta = p.getByText(done.data.ta_reference).first();
-  if (await ta.count()) await S.highlight(ta, 3500); else await p.waitForTimeout(3500);
+  if (await ta.count()) {
+    // Keep it above the caption box.
+    await ta.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' })).catch(() => {});
+    await S.highlight(ta, 3500);
+  } else await p.waitForTimeout(3500);
   await S.tab('Activity');
   await S.say('The client was emailed a confirmation', 'In her own language — logged on the order\'s activity');
   await p.waitForTimeout(3500);

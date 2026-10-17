@@ -8,6 +8,12 @@
 const NO_DEFAULT = new Set(['formula', 'auto_number', 'heading', 'lookup', 'file', 'image']);
 const NUMERIC = new Set(['number', 'integer', 'decimal', 'currency', 'percent', 'percentage']);
 
+/** 'YYYY-MM-DD HH:MM' in the browser's local time. */
+export function localNow(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function builderDefaults(fields = []) {
   const out = {};
   for (const f of fields) {
@@ -16,6 +22,8 @@ export function builderDefaults(fields = []) {
     if (!name || raw == null || raw === '' || NO_DEFAULT.has(f.field_type)) continue;
     const s = String(raw);
     if (s === '{{today}}') out[name] = new Date().toISOString().slice(0, 10);
+    // A time stamp the person can still correct, in their own local time.
+    else if (s === '{{now}}') out[name] = localNow();
     else if (s.includes('{{')) continue;
     else if (['checkbox', 'boolean', 'toggle'].includes(f.field_type)) out[name] = ['true', '1', 'yes'].includes(s.toLowerCase());
     else if (NUMERIC.has(f.field_type) && Number.isFinite(Number(s))) out[name] = Number(s);

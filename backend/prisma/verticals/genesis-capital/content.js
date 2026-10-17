@@ -160,8 +160,14 @@ const documentTemplates = [
 <p>Under the Data Protection Act 2017 you may ask what information we used. Your relationship manager will gladly discuss alternatives.</p>`),
   },
   {
-    name: 'plr_change_notice', entity_type: 'loan_application', output_category: 'correspondence', description: 'Notice of a Genesis PLR change to a variable-rate borrower (SERV-FR-02).',
-    body: letter('<h2>Change in the Genesis Prime Lending Rate</h2><p>Dear {{party_name}},</p><p>The Genesis PLR is now <strong>{{plr_rate}}%</strong>. The rate on loan {{application_no}} becomes <strong>{{interest_rate}}%</strong>, and your monthly instalment <strong>MUR {{emi}}</strong>.</p>'),
+    name: 'plr_change_notice', entity_type: 'plr_notification', output_category: 'correspondence', description: 'Personalised notice of a Genesis PLR change to a variable-rate borrower (SERV-FR-02) — generated for each PLR notice.',
+    body: letter(`<h2>Change in the Genesis Prime Lending Rate</h2><p>Dear {{party_name}},</p>
+<p>Following the decision of our Asset and Liability Committee, the Genesis Prime Lending Rate changes from <strong>{{effective_from}}</strong>. Your loan <strong>{{lms_account_no}}</strong> is linked to the PLR, so its rate and instalment change on that date:</p>
+<table style="border-collapse:collapse" cellpadding="6">
+<tr><td></td><td><strong>Until now</strong></td><td><strong>From {{effective_from}}</strong></td></tr>
+<tr><td>Interest rate</td><td>{{old_loan_rate}}%</td><td>{{new_loan_rate}}%</td></tr>
+<tr><td>Monthly instalment</td><td>MUR {{old_instalment}}</td><td>MUR {{new_instalment}}</td></tr></table>
+<p>The term of your loan does not change. Your instalment will be collected as usual; please contact your relationship manager if you have any question.</p>`),
   },
   {
     name: 'kyc_refresh_letter', entity_type: 'party', output_category: 'correspondence', description: 'KYC refresh request.',

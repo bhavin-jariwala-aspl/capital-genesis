@@ -86,3 +86,46 @@ describe('ObjectAnalyticsService — periods sort by time', () => {
     expect(data.map((r) => r.key)).toEqual(['2026-05', '2026-06', '2026-07']);
   });
 });
+
+describe('ObjectAnalyticsService — staff-id fields', () => {
+  it('labels groups of a `config.employee` field with the person\'s name', async () => {
+    const { svc, db } = fixture();
+    const owners = { 1: 'GCRM1', 2: 'GCRM2', 3: 'GCRM1' };
+    db.uiField.findFirst = jest.fn(async () => ({ options: null, config: { employee: true } }));
+    db.employee = { findMany: jest.fn(async () => [{ employee_id: 'GCRM1', employee_name: 'Priya Ramdin' }, { employee_id: 'GCRM2', employee_name: 'Natasha Appadoo' }]) };
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => where.record_id.in.map((id) => ({ record_id: id, field_name: 'owner_rm', str_value: owners[id] })));
+    const { data } = await svc.run({ object: 'fs_opportunity', group_by: 'owner_rm' }, null);
+    expect(data).toEqual([{ name: 'Priya Ramdin', key: 'GCRM1', value: 2 }, { name: 'Natasha Appadoo', key: 'GCRM2', value: 1 }]);
+  });
+});
+
+describe('ObjectAnalyticsService — checkbox fields', () => {
+  it('labels the groups of a checkbox Yes / No, or with the field\'s own wording', async () => {
+    const { svc, db } = fixture();
+    const linked = { 1: true, 2: false, 3: true };
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => where.record_id.in.map((id) => ({ record_id: id, field_name: 'rate_type', bool_value: linked[id] })));
+    db.uiField.findFirst = jest.fn(async () => ({ field_type: 'checkbox', options: null, config: {} }));
+    expect((await svc.run({ object: 'loan_account', group_by: 'rate_type' }, null)).data.map((r) => r.name)).toEqual(['Yes', 'No']);
+    db.uiField.findFirst = jest.fn(async () => ({ field_type: 'checkbox', options: null, config: { true_label: 'PLR-linked', false_label: 'Fixed' } }));
+    expect((await svc.run({ object: 'loan_account', group_by: 'rate_type' }, null)).data.map((r) => r.name)).toEqual(['PLR-linked', 'Fixed']);
+  });
+});
+
+describe('ObjectAnalyticsService — lookup fields', () => {
+  it('labels groups of a lookup with the linked record\'s title — only for records the viewer may see', async () => {
+    const { svc, db, recordService } = fixture();
+    const mandate = { 1: 501, 2: 502, 3: 501 };
+    db.uiField.findFirst = jest.fn(async () => ({ field_type: 'lookup', options: null, config: { target_object: 'advisory_mandate' } }));
+    // Anchors first, then the linked records the viewer can see (502 sits behind a wall the viewer is outside).
+    db.record.findMany = jest.fn()
+      .mockResolvedValueOnce(fixture().db.record.findMany.getMockImplementation()())
+      .mockResolvedValueOnce([{ id: 501, object_id: 204 }]);
+    db.recordFieldValue.findMany = jest.fn(async ({ where }) => (where.field_name === 'code_name'
+      ? where.record_id.in.map((id) => ({ record_id: id, str_value: `Project ${id === 501 ? 'Dodo' : 'Secret'}` }))
+      : where.record_id.in.map((id) => ({ record_id: id, field_name: 'advisory_mandate', num_value: mandate[id] }))));
+    recordService.titleFieldFor = jest.fn(async () => 'code_name');
+    const { data } = await svc.run({ object: 'time_entry', group_by: 'advisory_mandate' }, { employee_id: 'U1' });
+    expect(data).toEqual([{ name: 'Project Dodo', key: '501', value: 2 }, { name: '502', key: '502', value: 1 }]);
+    expect(db.record.findMany.mock.calls[1][0].where).toMatchObject({ id: { in: [501, 502] }, deleted_at: null, AND: [{ barrier_zone_id: null }] });
+  });
+});

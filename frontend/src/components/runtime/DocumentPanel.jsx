@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentService } from '../../services/document.service';
 import {
   FileText, Upload, Download, Trash2, File,
-  Image, FileSpreadsheet, Presentation, FileSearch,
+  Image, FileSpreadsheet, Presentation, FileSearch, Share2,
 } from 'lucide-react';
 import clsx from 'clsx';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import DocumentChecklist from './DocumentChecklist';
+import DocumentShareModal from './DocumentShareModal';
 import { useDocumentPreviewEnabled } from '../../hooks/useDocumentPreviewEnabled';
 import { showError, confirmDialog } from '../../utils/dialog';
 
@@ -66,6 +67,7 @@ export default function DocumentPanel({ recordId, relatedType, clientEmail, clie
   const [workspaceCategories, setWorkspaceCategories] = useState([]);
   const CATEGORIES = workspaceCategories.length ? workspaceCategories.map((c) => ({ value: c.code, label: c.label })) : FALLBACK_CATEGORIES;
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [shareDoc, setShareDoc] = useState(null);
   const showPreview = useDocumentPreviewEnabled();
 
   // ── Fetch documents for this record ────────────────────────
@@ -254,6 +256,16 @@ export default function DocumentPanel({ recordId, relatedType, clientEmail, clie
                   </button>
                 )}
                 <button
+                  onClick={() => setShareDoc(doc)}
+                  className="shrink-0 p-1 rounded text-gray-300
+                             hover:text-primary-500 transition-colors
+                             opacity-0 group-hover:opacity-100"
+                  title="Share link"
+                  aria-label="Share link"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                </button>
+                <button
                   onClick={() => handleDownload(doc)}
                   className="shrink-0 p-1 rounded text-gray-300
                              hover:text-primary-500 transition-colors
@@ -290,6 +302,8 @@ export default function DocumentPanel({ recordId, relatedType, clientEmail, clie
         fetchBlob={previewDoc ? () => documentService.preview(previewDoc.id) : undefined}
         onDownload={handleDownload}
       />
+      {/* Secure share link (e.g. an information memorandum for an investor), with view analytics. */}
+      <DocumentShareModal open={!!shareDoc} onClose={() => setShareDoc(null)} doc={shareDoc} />
     </div>
   );
 }

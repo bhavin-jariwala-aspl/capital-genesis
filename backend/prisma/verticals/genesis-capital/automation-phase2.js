@@ -32,6 +32,8 @@ const approval = (key, name, role, title, message, onApprove, onReject, extra = 
 const sms = (key, name, message, message_fr, extra = {}, links = {}) => ({ key, name, step_type: 'send_sms', config: { integration: 'genesis_sms', message, message_fr, to_field: 'party_mobile', language_field: 'preferred_language', ...extra }, ...links });
 const doc = (key, name, template, filename) => ({ key, name, step_type: 'generate_document', config: { template, filename } });
 const end = (key = 'end') => cond(key, 'End', 'record_id', 'empty');
+/** Run a step once per matching record of another object (`config.for_each`). */
+const each = (step, forEach) => ({ ...step, config: { ...step.config, for_each: forEach } });
 
 /** A next-best-action rule: daily per party, deduplicated by rule. */
 const nba = (name, label, rule, when, bu, product, reason) => ({
@@ -43,6 +45,12 @@ const nba = (name, label, rule, when, bu, product, reason) => ({
     notify('n1', 'Tell the RM', { field: 'assigned_to', title: 'Next-best action — {{display_name}}', message: reason }),
   ],
 });
+
+// FX rate alerts: the client's message, and which alerts a newly published board rate reaches.
+const FX_ALERT_SMS = 'Genesis Forex: {{currency_code}} is at {{current_rate}} MUR, your target was {{target_rate}}. Call your dealer to book.';
+const FX_ALERT_SMS_FR = 'Genesis Forex : le {{currency_code}} est à {{current_rate}} MUR, votre objectif était {{target_rate}}. Appelez votre cambiste.';
+const FX_ALERT_REACHED = "stage = 'active' AND ISBLANK(triggered_on) AND IF(direction = 'below', source_rate_to_mur <= target_rate, source_rate_to_mur >= target_rate)";
+const FX_ALERT_STAMPED = "stage = 'active' AND NOT(ISBLANK(triggered_on))";
 
 const workflows = [
   // ── M01 Enquiries ───────────────────────────────────────────────────────────
@@ -184,6 +192,8 @@ const workflows = [
       create('l1', 'Create the loan account view', 'loan_account', {
         lms_account_no: '{{lms_reference}}', party: '{{party}}', product_code: '{{product_code}}', currency_code: '{{currency_code}}', original_amount: '{{loan_amount}}',
         outstanding: '{{loan_amount}}', rate_type: 'true', margin: '{{margin}}', instalment: '{{emi}}', status: 'active', synced_at: '{{today}}', ext_ref: 'LAC-{{lms_reference}}',
+        // The schedule until the next LMS snapshot: first instalment in a month, maturity at the end of the tenure.
+        next_instalment_date: { expr: 'ADD_MONTHS(TODAY(), 1)' }, maturity_date: { expr: 'ADD_MONTHS(TODAY(), tenure_months)' },
       }, { link_field: 'loan_application' }),
     ],
   },
@@ -241,7 +251,7 @@ const workflows = [
     steps: [
       trig('A covenant test recorded'),
       cond('c1', 'Breach', 'result', 'eq', 'breach'),
-      notify('n1', 'Alert RM and credit', { field: 'assigned_to', role: 'loans_manager', title: 'Covenant breach — {{name}}', message: 'Actual {{actual_value}} vs threshold {{threshold}}. Decide on a waiver or remedy.' }),
+      notify('n1', 'Alert RM and credit', { field: 'assigned_to', notify_actor: true, role: 'loans_manager', title: 'Covenant breach — {{name}}', message: 'Actual {{actual_value}} vs threshold {{threshold}}. Decide on a waiver or remedy.' }),
     ],
   },
 
@@ -256,45 +266,89 @@ const workflows = [
     ],
   },
   {
+    object: 'collateral', name: 'genesis_collateral_owner_default', label: 'Collateral — owner defaults to the borrower',
+    description: 'Collateral registered for a loan application without an owner belongs to the applicant (lending staff need not open the client record to pick them).', ...ONCREATE,
+    steps: [
+      trig('Collateral registered'),
+      expr('c1', 'No owner, linked to a loan', 'ISBLANK(owner) AND NOT(ISBLANK(loan_borrower))'),
+      set('a1', 'Owner = the applicant', 'owner', '{{loan_borrower}}'),
+    ],
+  },
+  {
     object: 'collateral', name: 'genesis_collateral_revaluation', label: 'Collateral — revaluation due',
     description: 'Collateral due for revaluation by its type\'s frequency raises a reminder (COLL-FR-03).', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Revaluation due today', "NOT(ISBLANK(next_revaluation)) AND DAYS_BETWEEN(TODAY(), next_revaluation) = 0 AND NOT(IN(collateral_type, 'fund_units', 'securities'))"),
-      notify('n1', 'Tell the RM', { field: 'assigned_to', title: 'Revaluation due — {{description}}', message: 'Last valued {{valuation_date}}. Instruct an approved valuer.' }),
+      notify('n1', 'Tell the RM', { field: 'assigned_to', title: 'Revaluation due — {{description}}', message: 'Last valued {{last_valued_on}}. Instruct an approved valuer.' }),
     ],
   },
-  {
-    object: 'loan_account', name: 'genesis_ltv_monitor', label: 'Loan — LTV monitoring and margin calls',
-    description: 'Investment-backed loans whose LTV reaches the margin-call threshold get a margin call, the client is notified and the RM alerted (COLL-FR-04).', ...DAILY,
+  // The margin call on an investment-backed loan. The LTV lives on the loan
+  // application (drawn exposure ÷ registered pledges) and is recalculated the
+  // moment a pledge is revalued, so the call is raised then — not at the next
+  // daily sweep. `derived` makes the trigger fire on that recalculation.
+  ...[
+    { name: 'genesis_ibl_margin_call', label: 'Loan — margin call when LTV passes the call level', trigger: { trigger_type: 'field_changed', trigger_config: { field: 'ibl_ltv_status', derived: true } }, t: 'LTV status changed' },
+    { name: 'genesis_ltv_monitor', label: 'Loan — daily LTV check (safety net)', trigger: DAILY, t: 'Daily LTV check' },
+  ].map(({ name, label, trigger, t }) => ({
+    object: 'loan_application', name, label,
+    description: 'An investment-backed loan whose LTV reaches the margin-call level of its pledged asset class (Masters ▸ Collateral types) gets a margin call with the shortfall; the client is notified and the loans executive and loans manager alerted (COLL-FR-04).',
+    ...trigger,
     steps: [
-      trig('Daily LTV check'),
-      expr('c1', 'Margin call or liquidation threshold', "IN(ltv_status, 'margin_call', 'liquidation') AND NOT(margin_call_open)"),
-      create('m1', 'Issue the margin call', 'margin_call', { loan_application: '{{loan_application}}', party: '{{party}}', ltv_at_call: '{{ltv}}', call_date: '{{today}}', cure: 'none' }, { stage: 'issued' }),
-      set('a1', 'Mark margin call open', 'margin_call_open', 'true'),
-      notify('n1', 'Alert the RM', { field: 'assigned_to', title: 'Margin call — {{lms_account_no}}', message: 'LTV {{ltv}}% ({{ltv_status}}).' }),
+      trig(t),
+      expr('c1', 'Margin call or liquidation level, no call open', "IN(ibl_ltv_status, 'margin_call', 'liquidation') AND NOT(margin_call_open)"),
+      create('m1', 'Issue the margin call', 'margin_call', { loan_application: '{{id}}', party: '{{party}}', ltv_at_call: '{{ibl_ltv}}', shortfall: '{{margin_shortfall}}', call_date: '{{today}}', cure: 'none' }, { stage: 'issued' }),
+      notify('n1', 'Alert the loans executive and manager', { field: 'assigned_to', role: 'loans_manager', title: 'Margin call — {{application_no}} ({{party_name}})', message: 'LTV {{ibl_ltv}}% passed the call level of {{ltv_call_level}}%. Shortfall MUR {{margin_shortfall}}.' }),
     ],
-  },
+  })),
   {
     object: 'margin_call', name: 'genesis_margin_call_notice', label: 'Margin call — notify the client',
     description: 'A margin call letter is generated and emailed to the borrower in their language (DOC-FR-03).', ...ONCREATE,
     steps: [
       trig('A new margin call'),
+      set('a1', 'Cure within five business days', 'cure_by', '{{cure_deadline}}'),
       doc('d1', 'Generate the margin call notice', 'margin_call_notice', 'Margin call {{call_no}}'),
       email('m1', 'Email the borrower', 'margin_call', { to_field: 'party_email' }),
       sms('s1', 'Text the borrower', 'Genesis: a margin call {{call_no}} has been issued on your investment-backed loan. Please check your email or call your RM.',
         'Genesis : un appel de marge {{call_no}} a été émis sur votre prêt adossé. Consultez vos courriels ou appelez votre chargé.'),
     ],
   },
+  // PLR change (SERV-FR-02): approving a campaign generates one personalised notice per variable-rate loan, with the
+  // instalment repriced on the remaining term and balance; distributing it emails every notice. The campaign never
+  // writes the PLR itself — that is Masters ▸ Genesis PLR History, on the effective date.
   {
-    object: 'loan_account', name: 'genesis_plr_notices', label: 'Loan — PLR change notice',
-    description: 'When the Genesis PLR changes, every variable-rate account gets a personalised notice and a delivery-log entry (SERV-FR-02).', ...DAILY,
+    object: 'plr_change_event', name: 'genesis_plr_notices', label: 'PLR change — generate the borrower notices',
+    description: 'On approval, every variable-rate, unsettled loan gets a personalised notice with its old and new instalment; the campaign moves to Notices generated (SERV-FR-02).', ...STAGE,
     steps: [
-      trig('Daily sweep'),
-      expr('c1', 'Variable rate, not yet notified of the latest change', "rate_type AND NOT(ISBLANK(latest_plr_event)) AND COALESCE(notified_plr_event, 0) != latest_plr_event AND status != 'settled'"),
-      create('p1', 'Log the notice', 'plr_notification', { plr_change_event: '{{latest_plr_event}}', loan_account: '{{id}}', new_instalment: '{{instalment}}', channel: 'email', status: 'sent', sent_on: '{{today}}' }),
-      email('m1', 'Email the notice', 'plr_change', { to_field: 'party_email' }),
-      set('a1', 'Mark notified', 'notified_plr_event', '{{latest_plr_event}}'),
+      trig('Stage change'),
+      cond('c1', 'Moved to Approved', 'stage', 'eq', 'approved'),
+      expr('c2', 'No notices generated yet', "COUNT_RELATED('plr_notification', 'plr_change_event') = 0"),
+      each(create('n1', 'A notice for every variable-rate loan', 'plr_notification', {
+        plr_change_event: '{{source_id}}', loan_account: '{{id}}', old_instalment: '{{instalment}}', channel: 'email', status: 'pending',
+        // Same balance and remaining term, new rate: the LMS instalment scaled by the ratio of the two annuities.
+        new_instalment: { expr: 'IF(COALESCE(months_to_maturity, 0) > 0 AND COALESCE(outstanding, 0) > 0 AND COALESCE(instalment, 0) > 0, ROUND(instalment * PMT((source_new_rate + COALESCE(margin, 0)) / 1200, months_to_maturity, outstanding) / PMT((source_old_rate + COALESCE(margin, 0)) / 1200, months_to_maturity, outstanding), 2), instalment)' },
+      }), { object: 'loan_account', where: "rate_type AND status != 'settled' AND COALESCE(outstanding, 0) > 0" }),
+      set('a1', 'Move to Notices generated', 'stage', 'notices_generated'),
+      notify('m1', 'Tell the loans team', { role: 'loans_manager', title: 'PLR notices generated — {{plr_change_no}}', message: '{{name}}: review the notices, then move the campaign to Distributed to send them.' }),
+    ],
+  },
+  {
+    object: 'plr_notification', name: 'genesis_plr_notice_letter', label: 'PLR notice — generate the letter',
+    description: 'Each notice gets its personalised letter on the Docs tab (DOC-FR-03, SERV-FR-02).', ...ONCREATE,
+    steps: [
+      trig('A new PLR notice'),
+      doc('d1', 'Generate the PLR change letter', 'plr_change_notice', 'PLR change notice {{lms_account_no}}'),
+    ],
+  },
+  {
+    object: 'plr_change_event', name: 'genesis_plr_distribute', label: 'PLR change — distribute the notices',
+    description: 'Moving a campaign to Distributed emails every pending notice to its borrower in their language and logs the date (SERV-FR-02).', ...STAGE,
+    steps: [
+      trig('Stage change'),
+      cond('c1', 'Moved to Distributed', 'stage', 'eq', 'distributed'),
+      each(email('m1', 'Email each notice', 'plr_change', { to_field: 'party_email' }), { object: 'plr_notification', match: { plr_change_event: '{{id}}' }, where: "status = 'pending' AND channel = 'email' AND NOT(ISBLANK(party_email))" }),
+      each(set('a1', 'Stamp the sent date', 'sent_on', '{{today}}'), { object: 'plr_notification', match: { plr_change_event: '{{id}}' }, where: "status = 'pending'" }),
+      each(set('a2', 'Mark the notices sent', 'status', 'sent'), { object: 'plr_notification', match: { plr_change_event: '{{id}}' }, where: "status = 'pending'" }),
     ],
   },
   {
@@ -309,6 +363,24 @@ const workflows = [
       cond('guard', 'Guard: stop', 'collections_opened', 'eq', 'false'),
       expr('c2', 'Back to current', 'COALESCE(arrears_days, 0) = 0 AND collections_opened'),
       set('b1', 'Close the follow-up', 'collections_opened', 'false'),
+    ],
+  },
+  {
+    object: 'collection_action', name: 'genesis_collections_ptp', label: 'Collections — promise to pay on the loan',
+    description: 'A promise to pay is written on the loan account, so everyone sees the date it is due (SERV-FR-04).', ...changed('outcome'),
+    steps: [
+      trig('Outcome changed'),
+      cond('c1', 'Promise to pay', 'outcome', 'eq', 'ptp'),
+      set('a1', 'Record the date on the loan account', 'loan_account.promise_to_pay_date', '{{ptp_date}}'),
+    ],
+  },
+  {
+    object: 'collection_action', name: 'genesis_collections_escalate', label: 'Collections — escalation to legal',
+    description: 'Escalating an account to legal alerts the loans manager (SERV-FR-04).', ...ONCREATE,
+    steps: [
+      trig('A new collections action'),
+      cond('c1', 'Escalated to legal', 'action', 'eq', 'escalate'),
+      notify('n1', 'Alert the loans manager', { role: 'loans_manager', title: 'Escalated to legal — {{name}}', message: '{{arrears_bucket}} days in arrears. {{notes}}' }),
     ],
   },
   {
@@ -516,13 +588,28 @@ const workflows = [
       trig('Hourly check'),
       cond('c1', 'Active', 'stage', 'eq', 'active'),
       expr('c2', 'Target reached', "IF(direction = 'below', LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date') <= target_rate, LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date') >= target_rate)"),
-      cond('ch', 'Client asked for SMS', 'channel', 'eq', 'sms', { on_false: 'm1' }),
-      sms('s1', 'Text the client', 'Genesis Forex: {{currency_code}} is at {{current_rate}} MUR, your target was {{target_rate}}. Call your dealer to book.',
-        'Genesis Forex : le {{currency_code}} est à {{current_rate}} MUR, votre objectif était {{target_rate}}. Appelez votre cambiste.', {}, { on_true: 'a1' }),
-      email('m1', 'Tell the client', 'fx_rate_alert', { to_field: 'party_email' }),
+      // Stamped first: the write refreshes the alert's current board rate, which the messages quote.
       set('a1', 'Triggered on', 'triggered_on', '{{today}}'),
+      cond('ch', 'Client asked for SMS', 'channel', 'eq', 'sms', { on_false: 'm1' }),
+      sms('s1', 'Text the client', FX_ALERT_SMS, FX_ALERT_SMS_FR, {}, { on_true: 'a2' }),
+      email('m1', 'Tell the client', 'fx_rate_alert', { to_field: 'party_email' }),
       set('a2', 'Move to Triggered', 'stage', 'triggered'),
       notify('n1', 'Tell the dealer', { field: 'assigned_to', title: 'Rate alert hit — {{name}}', message: 'Call the client to deal.' }),
+    ],
+  },
+  {
+    object: 'fx_rate', name: 'genesis_fx_rate_alert_board', label: 'FX — rate alerts on a new board rate',
+    description: 'Publishing a board rate checks the active alerts in that currency at once: each one reached is sent to the client (email or SMS), closed as Triggered and handed to its dealer (FX-FR-04).', ...ONCREATE,
+    steps: [
+      trig('A new board rate'),
+      // A back-dated rate (history being filled in) is not today's board.
+      expr('c1', 'Today\'s board (not back-dated)', 'DAYS_BETWEEN(TODAY(), rate_date) >= 0'),
+      // Stamping refreshes each alert's current rate; the rest of the loop then picks the alerts stamped just now.
+      each(set('a1', 'Stamp the alerts reached', 'triggered_on', '{{today}}'), { object: 'fx_rate_alert', match: { currency_code: '{{currency_code}}' }, where: FX_ALERT_REACHED }),
+      each(email('m1', 'Email the clients', 'fx_rate_alert', { to_field: 'party_email' }), { object: 'fx_rate_alert', match: { currency_code: '{{currency_code}}' }, where: `${FX_ALERT_STAMPED} AND channel != 'sms' AND NOT(ISBLANK(party_email))` }),
+      each(sms('s1', 'Text the clients', FX_ALERT_SMS, FX_ALERT_SMS_FR), { object: 'fx_rate_alert', match: { currency_code: '{{currency_code}}' }, where: `${FX_ALERT_STAMPED} AND channel = 'sms'` }),
+      each(notify('n1', 'Tell the dealers', { field: 'assigned_to', title: 'Rate alert hit — {{name}}', message: 'Call the client to deal.' }), { object: 'fx_rate_alert', match: { currency_code: '{{currency_code}}' }, where: FX_ALERT_STAMPED }),
+      each(set('a2', 'Move them to Triggered', 'stage', 'triggered'), { object: 'fx_rate_alert', match: { currency_code: '{{currency_code}}' }, where: FX_ALERT_STAMPED }),
     ],
   },
   {
@@ -534,6 +621,16 @@ const workflows = [
       email('m1', 'Remind the client', 'fx_forward_maturity', { to_field: 'party_email' }),
       set('a1', 'Mark roll-over offered', 'rollover_offered', 'true'),
       notify('n1', 'Tell the dealer', { field: 'assigned_to', title: 'Forward maturing — {{name}}', message: 'Value date {{value_date}}. Offer a roll-over.' }),
+    ],
+  },
+  {
+    object: 'fx_deal', name: 'genesis_fx_forward_reminder', label: 'FX — forward maturity on the dealer\'s reminders',
+    description: 'Booking a forward or swap puts a reminder for its dealer a week before the value date (FX-FR-05).', ...ONCREATE,
+    steps: [
+      trig('A new deal'),
+      cond('c1', 'Forward or swap', 'product', 'neq', 'spot'),
+      cond('c2', 'Has a value date', 'value_date', 'notempty'),
+      { key: 'r1', name: 'Remind the dealer', step_type: 'create_reminder', config: { title: 'Forward maturity — {{deal_no}}', note: 'Value date {{value_date}}: confirm settlement with the client or offer a roll-over.', date_field: 'value_date', offset_days: -7, priority: 'high' } },
     ],
   },
 
@@ -556,8 +653,55 @@ const workflows = [
     steps: [
       trig('Status changed'),
       cond('c1', 'Accepted', 'status', 'eq', 'accepted'),
-      create('o1', 'Open the opportunity', 'fs_opportunity', { party: '{{party}}', business_unit: '{{business_unit}}', product_code: '{{product_code}}', amount: '1000000', currency_code: 'MUR', probability: '25', forecast_category: 'pipeline', nba_suggestion: '{{id}}' }, { stage: 'identified' }),
+      create('o1', 'Open the opportunity', 'fs_opportunity', { party: '{{party}}', business_unit: '{{business_unit}}', product_code: '{{product_code}}', amount: '1000000', currency_code: 'MUR', probability: '25', forecast_category: 'pipeline', owner_rm: '{{assigned_to}}', nba_suggestion: '{{id}}' }, { stage: 'identified' }),
     ],
+  },
+  {
+    object: 'fs_opportunity', name: 'genesis_opp_stage_defaults', label: 'Opportunity — stage sets probability and forecast',
+    description: 'Each stage sets the default probability and forecast category, so the weighted value follows the deal; the RM can still adjust them (XS-FR-01, XS-FR-04).', ...STAGE,
+    steps: [
+      trig('Stage change'),
+      cond('c_identified', 'Identified?', 'stage', 'eq', 'identified', { on_false: 'c_qualified' }),
+      set('p_identified', 'Probability 25%', 'probability', 25),
+      set('f_identified', 'Forecast: pipeline', 'forecast_category', 'pipeline', { on_true: 'stop' }),
+      cond('c_qualified', 'Qualified?', 'stage', 'eq', 'qualified', { on_false: 'c_proposal' }),
+      set('p_qualified', 'Probability 40%', 'probability', 40),
+      set('f_qualified', 'Forecast: pipeline', 'forecast_category', 'pipeline', { on_true: 'stop' }),
+      cond('c_proposal', 'Proposal?', 'stage', 'eq', 'proposal', { on_false: 'c_negotiation' }),
+      set('p_proposal', 'Probability 60%', 'probability', 60),
+      set('f_proposal', 'Forecast: best_case', 'forecast_category', 'best_case', { on_true: 'stop' }),
+      cond('c_negotiation', 'Negotiation?', 'stage', 'eq', 'negotiation', { on_false: 'c_won' }),
+      set('p_negotiation', 'Probability 80%', 'probability', 80),
+      set('f_negotiation', 'Forecast: commit', 'forecast_category', 'commit', { on_true: 'stop' }),
+      cond('c_won', 'Won?', 'stage', 'eq', 'won', { on_false: 'c_lost' }),
+      set('p_won', 'Probability 100%', 'probability', 100),
+      set('f_won', 'Forecast: closed', 'forecast_category', 'closed', { on_true: 'stop' }),
+      cond('c_lost', 'Lost?', 'stage', 'eq', 'lost'),
+      set('p_lost', 'Probability 0%', 'probability', 0),
+      set('f_lost', 'Forecast: closed', 'forecast_category', 'closed', { on_true: 'stop' }),
+      end('stop'),
+    ],
+  },
+  // The Accept and Dismiss buttons on an open suggestion (record actions). The
+  // field writes inside a workflow do not re-trigger genesis_nba_accept, so
+  // Accept opens the opportunity itself — exactly once.
+  {
+    object: 'nba_suggestion', name: 'genesis_nba_accept_action', label: 'Accept',
+    description: 'Accept the suggestion: opens an opportunity at Identified for the client (XS-FR-02).',
+    trigger_type: 'manual',
+    trigger_config: { show_when: { field: 'status', op: 'eq', value: 'open' }, success_message: 'Accepted — an opportunity is open at Identified. It is on the Related tab.' },
+    steps: [
+      trig('Accept'),
+      set('a1', 'Mark accepted', 'status', 'accepted'),
+      create('o1', 'Open the opportunity', 'fs_opportunity', { party: '{{party}}', business_unit: '{{business_unit}}', product_code: '{{product_code}}', amount: '1000000', currency_code: 'MUR', probability: '25', forecast_category: 'pipeline', owner_rm: '{{assigned_to}}', nba_suggestion: '{{id}}' }, { stage: 'identified' }),
+    ],
+  },
+  {
+    object: 'nba_suggestion', name: 'genesis_nba_dismiss_action', label: 'Dismiss',
+    description: 'Dismiss the suggestion with a reason; the rule will not suggest it again for this client (XS-FR-02).',
+    trigger_type: 'manual',
+    trigger_config: { show_when: { field: 'status', op: 'eq', value: 'open' }, inputs: [{ field: 'dismiss_reason', label: 'Why are you dismissing it?', required: true, type: 'textarea' }], success_message: 'Dismissed — this rule will not suggest it again for this client.' },
+    steps: [trig('Dismiss'), set('a1', 'Mark dismissed', 'status', 'dismissed')],
   },
 
   // ── M16 Service ────────────────────────────────────────────────────────────

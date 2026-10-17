@@ -58,10 +58,10 @@ flowchart TD
 |---|---|---|---|
 | 1 | — | Daily | Runs the rules above; raises a suggestion once per rule per client and notifies the RM |
 | 2 | RM | Review suggestions on **My Workbench** or the client's Related tab | — |
-| 3a | RM | **Accept** | Opens an **Opportunity** at *Identified* with probability 25% and the referrer credited |
-| 3b | RM | **Dismiss** with a reason | The rule does not suggest it again for this client |
+| 3a | RM | **Accept** (button on an open suggestion) | Opens an **Opportunity** at *Identified* for the client, owned by the RM, with probability 25% |
+| 3b | RM | **Dismiss** (button) — the CRM asks for the reason | The rule does not suggest it again for this client |
 | 4 | RM | Meet the client; add a **Meeting Note** from the right template | Meeting appears in the RM's calendar feed |
-| 5 | RM | Move the opportunity through *Qualified → Proposal → Negotiation* and update value and probability | Calculates weighted value (value × probability) |
+| 5 | RM | Set the real value; move the opportunity through *Qualified → Proposal → Negotiation* | Each stage sets the default probability and forecast (Identified 25%, Qualified 40%, Proposal 60% Best case, Negotiation 80% Commit, Won 100% Closed, Lost 0%); calculates weighted value (value × probability). The RM can still adjust the probability |
 | 6 | RM | Close as **Won**, or **Lost** with a loss reason | Won business counts toward the RM's target; credit can be split with the referrer |
 | 7 | Manager | Set **RM Targets** each quarter | Calculates attainment |
 
