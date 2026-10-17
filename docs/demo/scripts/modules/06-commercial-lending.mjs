@@ -140,7 +140,7 @@ export default async function run(S) {
     await S.fill('financial_spread', v, { delay: 3 });
     await S.submit();
   };
-  await spread(year - 2, { revenue: '612000000', ebitda: '64000000', interest_expense: '9500000', tax: '7200000', total_debt: '150000000', cash: '38000000', equity: '230000000', annual_debt_service: '31000000' });
+  await spread(year - 2, { revenue: '612000000', ebitda: '64000000', tax: '7200000', total_debt: '150000000', cash: '38000000', annual_debt_service: '31000000' });
   await S.say(`FY ${year - 1}: the latest audited year`);
   await spread(year - 1, { revenue: '655000000', ebitda: '73500000', interest_expense: '9800000', tax: '8900000', total_debt: '142000000', cash: '45000000', equity: '262000000', annual_debt_service: '33500000' });
   const sp = await S.waitCut(() => poll(() => find(fs, (r) => String(r.data?.credit_facility) === String(fac.id) && r.data?.dscr != null && String(r.data?.period_end).startsWith(String(year - 1)), 'GCCRED1'), { what: 'spread ratios' }));

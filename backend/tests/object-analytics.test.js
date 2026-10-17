@@ -125,7 +125,7 @@ describe('ObjectAnalyticsService — lookup fields', () => {
       : where.record_id.in.map((id) => ({ record_id: id, field_name: 'advisory_mandate', num_value: mandate[id] }))));
     recordService.titleFieldFor = jest.fn(async () => 'code_name');
     const { data } = await svc.run({ object: 'time_entry', group_by: 'advisory_mandate' }, { employee_id: 'U1' });
-    expect(data).toEqual([{ name: 'Project Dodo', key: '501', value: 2 }, { name: '502', key: '502', value: 1 }]);
+    expect(data).toEqual([{ name: 'Project Dodo', key: '501', value: 2 }, { name: 'Restricted', key: '502', value: 1 }]);
     expect(db.record.findMany.mock.calls[1][0].where).toMatchObject({ id: { in: [501, 502] }, deleted_at: null, AND: [{ barrier_zone_id: null }] });
   });
 });

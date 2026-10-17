@@ -228,11 +228,13 @@ export default async function run(S) {
   await openPanel(S, 'advisory_mandate', mandate.id, 'Conflict check');
   await S.tab('Docs');
   await p.waitForTimeout(1200);
-  const letter = p.getByText('Signed engagement letter', { exact: true }).locator('xpath=../..');
-  await letter.waitFor({ timeout: 30000 }).catch(() => S.issue('engagement letter not on the Docs tab'));
-  await letter.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' })).catch(() => {});
-  await p.waitForTimeout(600);
-  await S.highlight(letter, 3500);
+  // The Advisory engagement checklist ticks "Signed engagement letter" as soon as the generated letter is filed.
+  const letter = p.getByText('Checklist', { exact: true }).first().locator('xpath=../..');
+  if (await letter.waitFor({ timeout: 15000 }).then(() => true).catch(() => false)) {
+    await letter.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' })).catch(() => {});
+    await p.waitForTimeout(600);
+    await S.highlight(letter, 3500);
+  } else { S.issue('Docs checklist not shown on the mandate'); await p.waitForTimeout(2500); }
   await S.say('Execution needs the signed letter', 'Try to move on before it is signed…');
   await S.openObject('advisory_mandate', { view: 'Pipeline' });
   await S.drag(CODE, 'Engagement letter', 'Execution', { expectFail: true, after: 600 });

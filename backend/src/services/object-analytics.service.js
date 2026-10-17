@@ -147,7 +147,7 @@ class ObjectAnalyticsService {
   /**
    * Linked record id → title for a lookup field. Only records the viewer may
    * see are resolved, so a group never names a record behind a barrier; any
-   * other id stays as it is.
+   * other is labelled "Restricted" (an internal id means nothing to a reader).
    */
   async #lookupLabels(objectId, fieldName, rawValues, access) {
     if (!fieldName || fieldName === 'stage' || fieldName === 'created_month' || !this.records?.titleFieldFor) return new Map();
@@ -166,6 +166,7 @@ class ObjectAnalyticsService {
       });
       for (const r of rows) if (r.str_value) out.set(String(r.record_id), r.str_value);
     }
+    for (const id of ids) if (!out.has(String(id)) && !visible.some((r) => r.id === id)) out.set(String(id), 'Restricted');
     return out;
   }
 

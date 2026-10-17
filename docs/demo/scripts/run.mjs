@@ -35,7 +35,7 @@ for (const slug of list) {
     if (!ok) continue;
   }
   const r = assemble({ rawDir: RAW, slug, outDir: OUT });
-  console.log(`✔ ${slug}.mp4 ${Math.floor(r.duration / 60)}:${String(r.duration % 60).padStart(2, '0')} · ${r.cues} captions · ${r.chapters.length} chapters`);
+  console.log(`✔ ${slug}.mp4 ${Math.floor(r.duration / 60)}:${String(r.duration % 60).padStart(2, '0')} · ${r.cues} captions (${r.synced} frame-synced) · ${r.chapters.length} chapters`);
   if (r.issues?.length) console.log('  issues:', r.issues);
 }
 process.exit(failed ? 1 : 0);

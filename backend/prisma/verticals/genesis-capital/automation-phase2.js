@@ -729,7 +729,35 @@ const workflows = [
   {
     object: 'event_registration', name: 'genesis_event_follow_up', label: 'Event — follow up attendees',
     description: 'An attended registration reminds the RM to follow up (MKT-FR-05).', ...changed('attended'),
-    steps: [trig('Attendance recorded'), cond('c1', 'Attended', 'attended', 'eq', 'true'), cond('c2', 'Not followed up', 'follow_up_done', 'empty'), notify('n1', 'Tell the RM', { field: 'assigned_to', title: 'Event follow-up — {{name}}', message: 'Thank the guest and book a meeting.' })],
+    steps: [trig('Attendance recorded'), cond('c1', 'Attended', 'attended', 'eq', 'true'), cond('c2', 'Not followed up', 'follow_up_done', 'empty'), notify('n1', 'Tell the RM', { field: 'guest_rm', title: 'Event follow-up — {{name}}', message: 'Thank the guest and book a meeting.' })],
+  },
+  {
+    // A campaign is a financial promotion: Compliance signs it off before it goes out.
+    object: 'campaign', name: 'genesis_campaign_signoff', label: 'Campaign — Compliance sign-off',
+    description: 'Moving a campaign to Compliance review asks Compliance to sign it off in Approvals; approval moves it to Approved, a return sends it back to Planning (MKT-FR-03).', ...STAGE,
+    steps: [
+      trig('Stage change'),
+      cond('c1', 'Moved to Compliance review', 'stage', 'eq', 'compliance_review'),
+      set('p1', 'Sign-off pending', 'compliance_decision', 'pending'),
+      approval('ap', 'Compliance sign-off', 'compliance_officer', 'Campaign sign-off: {{name}}', 'Budget MUR {{budget}} · {{start_date}} to {{end_date}} · {{content}}', 'ok1', 'no1'),
+      set('ok1', 'Signed off', 'compliance_decision', 'approved'),
+      set('ok2', 'Move to Approved', 'stage', 'approved'),
+      notify('ok3', 'Tell the owner', { field: 'assigned_to', title: 'Campaign approved — {{name}}', message: 'Compliance signed it off. Move it to Live when it goes out.' }),
+      cond('guard', 'Guard: stop the approved path', 'compliance_decision', 'eq', 'returned'),
+      set('no1', 'Returned', 'compliance_decision', 'returned'),
+      set('no2', 'Back to Planning', 'stage', 'planning'),
+      notify('no3', 'Tell the owner', { field: 'assigned_to', title: 'Campaign returned — {{name}}', message: 'Compliance returned the campaign. See the comment in its Audit tab.' }),
+    ],
+  },
+  {
+    object: 'enquiry', name: 'genesis_enquiry_campaign_attribution', label: 'Enquiry — attribute to the campaign',
+    description: 'A web enquiry whose link carried a campaign\'s tracking code (utm_campaign) is attributed to that campaign, so its enquiries, loans and ROI count it (MKT-FR-03).', ...ONCREATE,
+    steps: [
+      trig('A new enquiry'),
+      cond('c1', 'Not already attributed', 'campaign', 'empty'),
+      cond('c2', 'Tracking code matches a campaign', 'tracked_campaign', 'notempty'),
+      set('a1', 'Attribute to the campaign', 'campaign', '{{tracked_campaign}}'),
+    ],
   },
 
   // ── Website touchpoints (I-01) ─────────────────────────────────────────────
@@ -814,6 +842,9 @@ const assignmentRules = [
   { object: 'fs_opportunity', name: 'Opportunities — wealth', rule_type: 'rule_based', conditions: [{ field: 'business_unit', operator: 'equals', value: 'WLT' }], pool: ['GCRM2', 'GCPM1'], fallback: 'GCRM2', order_index: 2 },
   { object: 'credit_facility', name: 'Commercial facilities', rule_type: 'round_robin', pool: ['GCRM3'], fallback: 'GCRM3' },
   { object: 'fx_quote', name: 'FX quotes', rule_type: 'round_robin', pool: ['GCFX1'], fallback: 'GCFX1' },
+  // Profiles and rate alerts (often opened by an RM) belong to the desk: the dealer is told when an alert is hit.
+  { object: 'fx_profile', name: 'FX client profiles', rule_type: 'round_robin', pool: ['GCFX1'], fallback: 'GCFX1' },
+  { object: 'fx_rate_alert', name: 'FX rate alerts', rule_type: 'round_robin', pool: ['GCFX1'], fallback: 'GCFX1' },
   { object: 'fund_order', name: 'Fund orders', rule_type: 'round_robin', pool: ['GCPM2'], fallback: 'GCPM1' },
   { object: 'client_order', name: 'Client orders', rule_type: 'round_robin', pool: ['GCTRD1'], fallback: 'GCTRD1' },
   { object: 'data_subject_request', name: 'Data subject requests', rule_type: 'round_robin', pool: ['GCCOMP1'], fallback: 'GCCOMP1' },
@@ -926,7 +957,10 @@ const permissions = [
   ...perm(['fx_quote', 'fx_deal', 'fx_rate_alert'], ['rm', ...CONTROL], false),
   // Marketing, partners, revenue
   ...perm(['campaign', 'campaign_member', 'segment', 'marketing_event', 'event_registration', 'subscription'], ['marketing', 'bu_head'], true),
-  ...perm(['campaign', 'campaign_member', 'segment', 'marketing_event', 'event_registration', 'subscription'], [...FRONT, 'coo', 'compliance_officer', 'auditor'], false),
+  ...perm(['campaign', 'campaign_member', 'segment', 'marketing_event'], [...FRONT, 'coo', 'compliance_officer', 'auditor'], false),
+  // The guest's RM follows up an event attendee and records a client's newsletter or research opt-in.
+  ...perm(['event_registration', 'subscription'], FRONT, true),
+  ...perm(['event_registration', 'subscription'], ['coo', 'compliance_officer', 'auditor'], false),
   ...perm(['introducer', 'introducer_referral', 'commission_entry'], ['bu_head', 'marketing'], true),
   ...perm(['introducer', 'introducer_referral', 'commission_entry'], [...FRONT, ...CONTROL], false),
   ...perm(['revenue_entry'], ['coo', 'bu_head'], true),

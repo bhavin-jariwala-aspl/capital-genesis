@@ -350,7 +350,7 @@ const dashboards = [
     description: 'Campaign ROI, audience engagement, events and subscriptions (RPT-11).',
     widgets: [
       W('metric', 'Live campaigns', 'kpi', { object: 'campaign', filters: [{ field: 'stage', op: 'eq', value: 'live' }] }),
-      W('metric', 'Attributed enquiries', 'kpi', { object: 'enquiry', filters: [{ field: 'utm_campaign', op: 'notempty' }] }),
+      W('metric', 'Attributed enquiries', 'kpi', { object: 'enquiry', filters: [{ field: 'campaign', op: 'notempty' }] }),
       W('metric', 'Event attendance', 'kpi', { object: 'event_registration', filters: [{ field: 'attended', op: 'eq', value: 'true' }] }),
       W('metric', 'Newsletter subscribers', 'kpi', { object: 'subscription', filters: [{ field: 'status', op: 'eq', value: 'subscribed' }] }),
       W('chart', 'ROI by campaign (%)', 'half', { object: 'campaign', metric: 'avg', field: 'roi_pct', group_by: 'name' }, { chart: 'bar' }),

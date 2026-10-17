@@ -128,8 +128,16 @@ class PortalService {
       return row ? { id: row.record_id, kind: 'client' } : null;
     }
     const intro = await this.#objectId('introducer');
+    // `config.portal_signin_stages` on the introducer object: only records in one of these stages may sign in
+    // (an applicant or a suspended introducer cannot). Unset → any stage.
+    const cfg = intro && await this.db.uiObject.findUnique({ where: { id: intro }, select: { config: true } });
+    const stages = Array.isArray(cfg?.config?.portal_signin_stages) && cfg.config.portal_signin_stages.length ? cfg.config.portal_signin_stages : null;
     const row = intro && await this.db.recordFieldValue.findFirst({
-      where: { field_name: 'portal_email', str_value: em, record: { object_id: intro, deleted_at: null } }, select: { record_id: true },
+      where: {
+        field_name: 'portal_email', str_value: em,
+        record: { object_id: intro, deleted_at: null, ...(stages ? { pipeline_stage: { name: { in: stages } } } : {}) },
+      },
+      select: { record_id: true },
     });
     return row ? { id: row.record_id, kind: 'introducer' } : null;
   }

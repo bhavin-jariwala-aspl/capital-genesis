@@ -134,8 +134,9 @@ export default async function run(S) {
   await p.waitForTimeout(2500);
 
   // ── 2. Quote request ──
-  await S.step(2, 'Quote request', 'The client calls: sell EUR 300,000 forward, in six weeks', 'FX Quotes ▸ New — client, profile, product, side, currency, amount');
+  await S.clear();
   await S.newRecord('fx_quote');
+  await S.step(2, 'Quote request', 'The client calls: sell EUR 300,000 forward, in six weeks', 'FX Quotes ▸ New — client, profile, product, side, currency, amount', 2500);
   await fill('fx_quote', { party: 'Le Morne Resorts' });
   await fill('fx_quote', { fx_profile: 'Le Morne Resorts' });
   await fill('fx_quote', { product: 'forward', side: 'sells', currency_code: 'EUR' });
@@ -154,8 +155,9 @@ export default async function run(S) {
   else { S.issue('SLA Board: FX quote timer not listed'); await p.waitForTimeout(3000); }
 
   // ── 3. Quoted (gate) ──
-  await S.step(3, 'Quote the rate', 'FX Quotes on the pipeline board', 'Requested ▸ Quoted ▸ Accepted / Rejected / Expired');
+  await S.clear();
   await board('fx_quote', 'Requested');
+  await S.step(3, 'Quote the rate', 'FX Quotes on the pipeline board', 'Requested ▸ Quoted ▸ Accepted / Rejected / Expired', 3000);
   await S.say('Move the quote to Quoted…', 'before entering a rate');
   await S.drag(qno, 'Requested', 'Quoted', { expectFail: true, after: 600 });
   await blocked('Blocked: a quote needs the quoted rate and the time it was given', 'No rate, no quote — the audit trail stays complete');
@@ -208,8 +210,9 @@ export default async function run(S) {
   await p.waitForTimeout(3500);
 
   // ── 7. Rate alert ──
-  await S.step(7, 'Rate alert', 'The client also wants to sell more euros if EUR/MUR rises to 53.60', 'FX Rate Alerts ▸ New — the client is told by email when the board reaches it');
+  await S.clear();
   await S.newRecord('fx_rate_alert');
+  await S.step(7, 'Rate alert', 'The client also wants to sell more euros if EUR/MUR rises to 53.60', 'FX Rate Alerts ▸ New — the client is told by email when the board reaches it', 2500);
   await fill('fx_rate_alert', { party: 'Le Morne Resorts' });
   await fill('fx_rate_alert', { currency_code: 'EUR', direction: 'above', target_rate: '53.60', channel: 'email', expires_on: mu(60) });
   await save();
@@ -220,8 +223,9 @@ export default async function run(S) {
   await showField('Current board rate', 3500);
 
   // ── 8. Daily board ──
-  await S.step(8, 'Publish the board', 'Next morning\'s board: the euro is stronger', 'Masters ▸ FX Reference Rates — the dealer publishes the TT buying and selling rates');
+  await S.clear();
   await S.newRecord('fx_rate');
+  await S.step(8, 'Publish the board', 'Next morning\'s board: the euro is stronger', 'Masters ▸ FX Reference Rates — the dealer publishes the TT buying and selling rates', 2500);
   await fill('fx_rate', { currency_code: 'EUR', rate_to_mur: '53.65', buy_tt: '52.86', sell_tt: '54.44', rate_date: mu() });
   await S.say('The board feeds every MUR conversion, the rate alerts and the website', 'Save it…');
   await p.waitForTimeout(1500);
@@ -237,9 +241,14 @@ export default async function run(S) {
   await showField('Triggered on', 3000);
   await S.tab('Activity');
   await p.waitForTimeout(1500);
-  const mail = p.getByText(/rate alert has been reached/i).first();
-  await S.say('The email to the client is on the alert\'s timeline', 'Sent in the client\'s language — SMS when the client prefers it');
-  if (await mail.waitFor({ timeout: 15000 }).then(() => true).catch(() => false)) await S.highlight(mail.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 4000);
+  const mail = p.getByText(/rate alert has been reached|alerte de change/i).first();
+  await S.say('The email to the client is on the alert\'s timeline', 'Sent in the client\'s language (French here) — SMS when the client prefers it');
+  if (await mail.waitFor({ timeout: 15000 }).then(() => true).catch(() => false)) {
+    await mail.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    await p.waitForTimeout(2500);
+    await S.clear(); // the timeline entry sits where the caption is
+    await S.highlight(mail.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 3500);
+  }
   else { S.issue('rate alert email not on the alert timeline'); await p.waitForTimeout(3000); }
   await S.say('Deepak is notified to call the client and deal', 'Notifications bell');
   await S.moveTo(p.locator('button[title=Notifications]'));
@@ -262,6 +271,7 @@ export default async function run(S) {
   await S.clear();
 
   await S.logout();
+  await p.waitForSelector('input[name=employee_id]', { timeout: 60000 }).catch(() => {});
   await S.card({
     eyebrow: 'Summary',
     title: 'Forex Desk',

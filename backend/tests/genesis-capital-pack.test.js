@@ -272,6 +272,36 @@ describe('Genesis pack — automation', () => {
     expect(problems).toEqual([]);
   });
 
+  it('has Compliance sign off a campaign before it is approved or goes live (MKT-FR-03)', () => {
+    const stages = objects.campaign.pipeline.stages;
+    expect(stages.map((st) => st.name)).toEqual(['planning', 'compliance_review', 'approved', 'live', 'completed', 'cancelled']);
+    // Neither Approved nor Live can be reached by a drag without the sign-off.
+    for (const n of ['approved', 'live']) expect(stages.find((st) => st.name === n).config.entry_rule.expression).toBe("compliance_decision = 'approved'");
+    const wf = pack.workflows.find((w) => w.name === 'genesis_campaign_signoff');
+    const ap = wf.steps.find((st) => st.step_type === 'approval');
+    expect(ap.config).toMatchObject({ role: 'compliance_officer', exclude_actor: true });
+    const keys = wf.steps.map((st) => st.key);
+    // The decision is written before the move, or the Approved gate refuses the workflow's own move.
+    expect(keys.indexOf('ok1')).toBeLessThan(keys.indexOf('ok2'));
+    expect(wf.steps.find((st) => st.key === 'ok2').config).toEqual({ field: 'stage', value: 'approved' });
+    expect(wf.steps.find((st) => st.key === 'no2').config).toEqual({ field: 'stage', value: 'planning' });
+  });
+
+  it('attributes a web enquiry to the campaign whose tracking code it carries, and tells the guest\'s RM to follow up an event', () => {
+    const wf = pack.workflows.find((w) => w.name === 'genesis_enquiry_campaign_attribution');
+    expect(wf).toMatchObject({ object: 'enquiry', trigger_type: 'on_create' });
+    expect(wf.steps.find((st) => st.config?.field === 'campaign' && st.step_type === 'action').config.value).toBe('{{tracked_campaign}}');
+    expect(objects.enquiry.fields.find((f) => f.name === 'tracked_campaign').config.expression).toContain("LOOKUP('campaign', 'utm_code', utm_campaign, 'id')");
+    // The dashboard counts attributed enquiries, not every enquiry with a UTM tag (a shared form link has one too).
+    const kpi = pack.dashboards.find((d) => d.name === 'genesis_marketing').widgets.find((w) => w.title === 'Attributed enquiries');
+    expect(JSON.stringify(kpi)).toContain('"field":"campaign"');
+    // Converting the enquiry carries the campaign to the loan application, so attributed loans count it.
+    const conv = pack.workflows.flatMap((w) => w.steps).find((st) => st.step_type === 'create_record' && st.config.object === 'loan_application' && st.config.link_field === 'enquiry');
+    expect(conv.config.fields.campaign).toEqual({ expr: 'campaign' });
+    const fu = pack.workflows.find((w) => w.name === 'genesis_event_follow_up');
+    expect(fu.steps.find((st) => st.step_type === 'notification').config.field).toBe('guest_rm');
+  });
+
   it('books a confirmed subscription\'s units to a fund holding (FND-FR-03)', () => {
     const wf = pack.workflows.find((w) => w.name === 'genesis_fund_order_checker');
     const keys = wf.steps.map((s) => s.key);

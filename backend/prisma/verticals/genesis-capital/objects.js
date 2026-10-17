@@ -267,6 +267,7 @@ const enquiry = {
     LK('referred_by', 'Referred by (client)', 'party'),
     LK('party', 'Converted to party', 'party', { config: { always_disabled: true } }),
     LK('risk_profile', 'Risk profile', 'risk_profile', { config: { always_disabled: true } }),
+    FX('tracked_campaign', 'Campaign from the tracking code', "IF(ISBLANK(utm_campaign), null, LOOKUP('campaign', 'utm_code', utm_campaign, 'id'))", { detail: false, help: 'The campaign whose tracking code the website link carried (utm_campaign).' }),
     FX('mobile_e164', 'Mobile (E.164)', "IF(ISBLANK(mobile), null, IF(CONTAINS(mobile, '+'), mobile, CONCAT('+230', mobile)))", { type: 'string', help: 'Normalised for duplicate detection.' }),
     FX('existing_party_by_mobile', 'Existing client by mobile', "LOOKUP('party', 'mobile', mobile_e164, 'id')", { detail: false }),
 
@@ -1238,5 +1239,6 @@ module.exports = {
   loanApplication, collateral, serviceRequest,
   financialProduct, productRouting, plrRate, country, fxRate, modelPortfolio,
   wealthMandate, fundOrder, securitiesAccount, advisoryMandate, fxProfile,
+  KYC_STATUS,
   helpers: { F, SEL, LK, FX, H, AUTO, LIST, EXPR, stage, showWhen },
 };

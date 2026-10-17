@@ -66,6 +66,8 @@ const workflows = [
       create('loan', 'Start the loan application', 'loan_application', {
         party: '{{party}}', product_code: '{{product_code}}', loan_amount: '{{estimated_amount}}', currency_code: '{{currency_code}}',
         tenure_months: '{{requested_tenure_months}}', purpose: 'other',
+        // The enquiry's campaign follows it, so the campaign's attributed loans and ROI count the application.
+        campaign: { expr: 'campaign' },
       }, { link_field: 'enquiry', stage: 'pre_qualified' }),
       notify('n1', 'Tell the owner', { field: 'assigned_to', title: 'Enquiry converted — {{display_name}}', message: 'Party, relationship, KYC case and (for loans) the application are open.' }),
     ],

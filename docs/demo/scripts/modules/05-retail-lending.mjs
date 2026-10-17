@@ -95,7 +95,7 @@ export default async function run(S) {
   S.log('owner', OWNER);
   if (OWNER !== 'GCLOAN1') {
     await S.say(`Routing gives the enquiry to the next loans executive in the pool: ${ownerName}`, 'Lending enquiries go round the loans team; the SLA clock starts now');
-    await p.waitForTimeout(5500);
+    await p.waitForTimeout(4500);
     await signIn(OWNER, 'Loans executive — now owns the enquiry and the loan that follows');
   } else {
     await S.say('Routing assigns lending enquiries round the loans team — this one stays with Sophie', 'The first-contact SLA clock starts now');
@@ -130,7 +130,7 @@ export default async function run(S) {
   await S.say('The CRM prices the loan and checks eligibility by itself', 'Genesis PLR + product margin = interest rate · monthly instalment · total interest');
   await showSection('Pricing & eligibility (calculated)', 4200);
   await S.say('Loan-to-value, debt-service ratio and eligibility', 'And the approval authority — up to MUR 5 million, the Loans Manager');
-  await S.highlight(p.getByText('Pricing & eligibility (calculated)', { exact: true }).first().locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 4500);
+  await p.waitForTimeout(3500);
 
   await board('loan_application');
   await S.say('Now Application captured is accepted', 'The MCIB report is pulled and the client gets a status email');
@@ -149,7 +149,7 @@ export default async function run(S) {
   await S.moveTo(p.getByRole('button', { name: 'Send link' }));
   await S.settle(1200);
   await S.say('Her uploads land on this application and tick off the checklist');
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(1500);
   const done = p.getByRole('button', { name: 'Done' });
   if (await done.count()) await S.moveTo(done);
 
@@ -203,6 +203,7 @@ export default async function run(S) {
   await S.submit();
 
   await board('loan_application');
+  await S.say('Signed offer: move to Offer accepted, then Security & insurance', 'The client gets a status email at each milestone');
   await S.drag(CLIENT, 'Offer issued', 'Offer accepted', { after: 900 });
   await S.drag(CLIENT, 'Offer accepted', 'Security & insurance', { after: 900 });
   await S.say('Ready for disbursement needs perfected security and an approved KYC', 'Her KYC case is still open — the move is refused');
@@ -256,7 +257,7 @@ export default async function run(S) {
   await openRec('loan_application', appId);
   await S.tab('Related');
   await S.say('Related: the new loan account, the KYC case and the insurance referral', 'Loan Servicing now follows instalments, arrears and the balance');
-  await p.waitForTimeout(4500);
+  await p.waitForTimeout(3500);
 
   await S.card({
     eyebrow: 'Summary',

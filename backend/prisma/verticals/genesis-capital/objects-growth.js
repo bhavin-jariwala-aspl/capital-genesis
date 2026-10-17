@@ -9,7 +9,7 @@
  */
 
 const { o, BUSINESS_UNITS, PRODUCTS, CURRENCIES, CHANNELS } = require('./options');
-const { helpers: { F, SEL, LK, FX, AUTO, LIST, EXPR, stage, showWhen } } = require('./objects');
+const { KYC_STATUS, helpers: { F, SEL, LK, FX, AUTO, LIST, EXPR, stage, showWhen } } = require('./objects');
 
 const toMur = (amount) => `IF(ISBLANK(currency_code) OR currency_code = 'MUR', ${amount}, ${amount} * LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date'))`;
 
@@ -177,7 +177,7 @@ const campaign = {
   label: 'Campaign',
   plural_label: 'Campaigns',
   icon: 'Megaphone',
-  description: 'Objective, audience, budget, channels and ROI — attributed enquiries, opportunities and revenue (MKT-FR-03, RPT-11).',
+  description: 'Objective, audience, budget, channels and ROI — attributed enquiries, loans and revenue. Compliance signs a campaign off before it goes live.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('campaign_no', 'Campaign No.', 'CMPN-'),
@@ -192,6 +192,8 @@ const campaign = {
     F('start_date', 'Starts', 'date', LIST),
     F('end_date', 'Ends', 'date'),
     F('content', 'Message / content', 'textarea'),
+    F('utm_code', 'Tracking code', 'text', { placeholder: 'e.g. first-home-2026', help: 'Put it in website links as utm_campaign=… — web enquiries that carry it are attributed to this campaign.' }),
+    SEL('compliance_decision', 'Compliance sign-off', o([['pending', 'Pending', '#f59e0b'], ['approved', 'Approved', '#10b981'], ['returned', 'Returned', '#ef4444']]), { config: { always_disabled: true, show_in_list: true }, help: 'Recorded by the Compliance sign-off in Approvals when the campaign is moved to Compliance review.' }),
     FX('members', 'Audience', "COUNT_RELATED('campaign_member', 'campaign')", LIST),
     FX('responses', 'Responses', "COUNT_RELATED('campaign_member', 'campaign', 'responded', 'true')"),
     FX('enquiries', 'Attributed enquiries', "COUNT_RELATED('enquiry', 'campaign')", LIST),
@@ -199,10 +201,19 @@ const campaign = {
     FX('revenue_attributed', 'Attributed revenue (MUR)', "SUM_RELATED('revenue_entry', 'campaign', 'amount_mur')", { format: 'currency', list: true }),
     FX('roi_pct', 'ROI %', 'IF(COALESCE(actual_cost, budget, 0) > 0, (revenue_attributed - COALESCE(actual_cost, budget)) / COALESCE(actual_cost, budget) * 100, null)', { format: 'percent', precision: 1, list: true }),
   ],
-  forms: [{ name: 'campaign_create', label: 'Campaign', fields: ['name', 'objective', 'business_unit', 'product_code', 'channels', 'segment', 'budget', 'actual_cost', 'start_date', 'end_date', { field: 'content', span: 2 }] }],
+  forms: [{ name: 'campaign_create', label: 'Campaign', fields: ['name', 'objective', 'business_unit', 'product_code', 'channels', 'segment', 'budget', 'actual_cost', 'start_date', 'end_date', 'utm_code', { field: 'content', span: 2 }] }],
+  // A campaign is a financial promotion: Compliance signs it off before it goes out (FSC). Moving it to Compliance
+  // review sends the sign-off to Approvals; the decision moves it to Approved or back to Planning.
   pipeline: {
     name: 'campaign_flow', label: 'Campaign',
-    stages: [stage('planning', 'Planning', '#94a3b8'), stage('approved', 'Approved', '#6366f1'), stage('live', 'Live', '#10b981'), stage('completed', 'Completed', '#3b82f6'), stage('cancelled', 'Cancelled', '#64748b')],
+    stages: [
+      stage('planning', 'Planning', '#94a3b8'),
+      stage('compliance_review', 'Compliance review', '#f59e0b', { required_fields: ['segment', 'budget', 'start_date', 'end_date', 'content'] }),
+      stage('approved', 'Approved', '#6366f1', { entry_rule: { expression: "compliance_decision = 'approved'", message: 'Compliance signs off a campaign before it is approved — move it to Compliance review.' } }),
+      stage('live', 'Live', '#10b981', { entry_rule: { expression: "compliance_decision = 'approved'", message: 'Only a campaign Compliance has signed off can go live.' } }),
+      stage('completed', 'Completed', '#3b82f6'),
+      stage('cancelled', 'Cancelled', '#64748b'),
+    ],
   },
 };
 
@@ -211,7 +222,7 @@ const campaignMember = {
   label: 'Campaign Member',
   plural_label: 'Campaign Members',
   icon: 'UserCheck',
-  description: 'Audience with suppression applied: no marketing without consent, to do-not-contact clients or clients with an open complaint (MKT-FR-06).',
+  description: 'Audience with suppression applied: no marketing without consent, to do-not-contact clients or clients with an open complaint.',
   config: { title_field: 'name' },
   fields: [
     LK('campaign', 'Campaign', 'campaign', { required: true, config: { show_in_list: true } }),
@@ -235,7 +246,7 @@ const segment = {
   label: 'Segment',
   plural_label: 'Segments',
   icon: 'Filter',
-  description: 'Dynamic audiences defined by filters over the party master (MKT-FR-02). Build the matching list with the report builder on the same criteria.',
+  description: 'Dynamic audiences defined by filters over the client master. Build the matching list with the report builder on the same criteria.',
   config: { title_field: 'name' },
   fields: [
     F('name', 'Segment', 'text', { required: true, config: { show_in_list: true } }),
@@ -253,7 +264,7 @@ const marketingEvent = {
   label: 'Event',
   plural_label: 'Events & Seminars',
   icon: 'CalendarDays',
-  description: 'Seminars and investor briefings with registration, attendance and follow-up (MKT-FR-05).',
+  description: 'Seminars and investor briefings with registration, attendance and follow-up by the guest\'s RM.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     F('name', 'Event', 'text', { required: true, config: { show_in_list: true } }),
@@ -282,6 +293,7 @@ const eventRegistration = {
     F('registered_on', 'Registered on', 'date'),
     F('attended', 'Attended', 'checkbox', LIST),
     F('follow_up_done', 'Follow-up done', 'checkbox', LIST),
+    FX('guest_rm', "Guest's RM", 'party.primary_rm', { type: 'string', help: 'The relationship manager told to follow up an attendee.' }),
     FX('name', 'Registration', "CONCAT(marketing_event.name, ' · ', party.display_name)", { type: 'string' }),
   ],
   forms: [{ name: 'event_registration_create', label: 'Register guest', fields: ['marketing_event', 'party', 'registered_on', 'attended', 'follow_up_done'] }],
@@ -292,7 +304,7 @@ const subscription = {
   label: 'Subscription',
   plural_label: 'Newsletter & Research Subscriptions',
   icon: 'Rss',
-  description: 'Opt-in per publication (weekly highlights, market statistics, research, notices) — MKT-FR-04, SEC-FR-05.',
+  description: 'Opt-in per publication (weekly highlights, market statistics, research, notices). Send to subscribers skips anyone suppressed from marketing.',
   config: { title_field: 'name' },
   fields: [
     LK('party', 'Subscriber', 'party', { required: true, config: { show_in_list: true } }),
@@ -313,7 +325,8 @@ const introducer = {
   plural_label: 'Introducers & Partners',
   icon: 'Handshake',
   description: 'Introducer onboarding: KYC, agreement, allowed products and commission plan (INT-FR-01). Includes Genesis insurance agents (INT-FR-04).',
-  config: { title_field: 'name' },
+  // Portal sign-in is for active introducers only: an applicant or a suspended partner cannot submit referrals.
+  config: { title_field: 'name', portal_signin_stages: ['active'] },
   fields: [
     AUTO('introducer_no', 'Introducer No.', 'INT-'),
     LK('party', 'Party', 'party', { required: true }),
@@ -321,14 +334,15 @@ const introducer = {
     F('agreement_signed_on', 'Agreement signed', 'date'),
     F('agreement_expires_on', 'Agreement expires', 'date'),
     F('allowed_products', 'Allowed products', 'multi_select', { options: PRODUCTS }),
-    F('commission_pct', 'Commission % of funded / disbursed volume', 'percent', LIST),
+    F('commission_pct', 'Commission % of funded / disbursed volume', 'percent', { config: { show_in_list: true, precision: 2 } }),
     F('clawback_months', 'Clawback period (months)', 'integer', { default: '12' }),
     F('protection_days', 'Attribution protection window (days)', 'integer', { default: '90' }),
     F('portal_email', 'Portal login email', 'email'),
-    FX('kyc_status', 'KYC', 'party.kyc_status', { type: 'string', list: true }),
+    { ...FX('kyc_status', 'KYC', 'party.kyc_status', { type: 'string', list: true }), options: KYC_STATUS },
     FX('referrals', 'Referrals', "COUNT_RELATED('introducer_referral', 'introducer')", LIST),
-    FX('commission_earned', 'Commission earned (MUR)', "SUM_RELATED('commission_entry', 'introducer', 'amount')", { format: 'currency', list: true }),
-    FX('name', 'Introducer', 'party.display_name', { type: 'string' }),
+    // A clawed-back commission is no longer earned.
+    FX('commission_earned', 'Commission earned (MUR)', "COALESCE(SUM_RELATED('commission_entry', 'introducer', 'amount'), 0) - COALESCE(SUM_RELATED('commission_entry', 'introducer', 'amount', 'status', 'clawed_back'), 0)", { format: 'currency', list: true }),
+    FX('name', 'Introducer', 'party.display_name', { type: 'string', list: true }),
   ],
   forms: [{ name: 'introducer_create', label: 'Introducer', fields: ['party', 'introducer_type', 'agreement_signed_on', 'agreement_expires_on', 'allowed_products', 'commission_pct', 'clawback_months', 'protection_days', 'portal_email'] }],
   pipeline: {

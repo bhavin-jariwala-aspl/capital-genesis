@@ -123,14 +123,14 @@ export default async function run(S) {
       'Send research to subscribers — sent and opens',
     ],
     foot: 'Persona: Arvind Ramsurrun (Trader)',
-  }, 8000);
+  }, 7000);
 
   // ── 1. Open the account ─────────────────────────────────────────────────────────────────────────────────────────
   await S.step(1, 'Account request', `${CLIENT} wants to trade on the SEM and abroad`, 'The trader opens a securities account for her');
   await S.login('GCTRD1', 'Trader — opens accounts, takes and executes orders');
   await S.openObject('securities_account');
   await S.say('Investments ▸ Trading Solutions ▸ Securities Accounts', 'Each account: client, markets, custodian, CDS and OMS numbers, limits');
-  await p.waitForTimeout(3500);
+  await p.waitForTimeout(2500);
   await S.moveTo(p.getByRole('button', { name: 'Trading account opening' }));
   await S.settle(1200);
   await S.say('The account-opening wizard: three short steps', 'Client & account → custody & settlement → controls');
@@ -145,7 +145,7 @@ export default async function run(S) {
   await S.moveTo(p.getByRole('button', { name: /^Continue/ })); await p.waitForTimeout(900);
   await S.say('A trading limit — the agreement and appropriateness come later', 'They are ticked once the client has signed and been assessed');
   await S.fill('securities_account', { trading_limit: '5000000' });
-  await p.waitForTimeout(1500);
+  await p.waitForTimeout(800);
   const create = p.waitForResponse((r) => new URL(r.url()).pathname.endsWith('/runtime/records') && r.request().method() === 'POST', { timeout: 240000 });
   await S.moveTo(p.getByRole('button', { name: 'Open account' }));
   const cr = await S.waitCut(() => create);
@@ -155,7 +155,7 @@ export default async function run(S) {
   const card = acct.data.name;
   S.log('account', acct.id, card);
   await S.say('Account request created at Requested', 'An account number is given automatically');
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(2000);
 
   // ── 2. Through the gates ────────────────────────────────────────────────────────────────────────────────────────
   await S.step(2, 'KYC & appropriateness', 'On the pipeline, move the account to KYC & appropriateness', 'Check the client\'s KYC and that she understands the products');
@@ -185,11 +185,11 @@ export default async function run(S) {
   await S.openObject('securities_account', { view: 'Pipeline' });
   await S.say('Activate again', `${CLIENT}'s KYC is approved, so the account goes live`);
   await S.drag(card, 'CDS opening', 'Active');
-  await p.waitForTimeout(1500);
+  await p.waitForTimeout(600);
 
   // ── 3. Restricted list ──────────────────────────────────────────────────────────────────────────────────────────
   await S.step(4, 'Restricted list', 'Before taking orders: the restricted list', 'KYC & Compliance ▸ Restricted list — kept by Compliance, read by traders');
-  await S.openObject('restricted_list_entry', { view: 'Table' });
+  await S.openObject('restricted_list_entry');
   const rs = p.locator('input[placeholder="Search…"]').first();
   if (await rs.waitFor({ timeout: 30000 }).then(() => true).catch(() => false)) { await S.moveTo(rs); await S.type('Island Agro', 60); await S.settle(1500); await ready(S); }
   await S.say(`${RESTRICTED} is on the restricted list`, 'Genesis advises on a deal for this issuer — no orders, no trade ideas');
@@ -230,7 +230,7 @@ export default async function run(S) {
   await S.openRecord('client_order', order.id);
   await S.say('Executed — consideration and estimated brokerage are calculated', 'Quantity × executed price; the client\'s account counts the order');
   const cons = p.getByText('Consideration', { exact: true }).locator('visible=true').first();
-  if (await cons.count()) { await scrollTo(S, cons); await S.highlight(cons.locator('xpath=..'), 3500); } else await p.waitForTimeout(3500);
+  if (await cons.count()) { await scrollTo(S, cons); await S.highlight(cons.locator('xpath=..'), 3000); } else await p.waitForTimeout(3500);
   await p.keyboard.press('Escape');
 
   // ── 5. Restricted issuer ────────────────────────────────────────────────────────────────────────────────────────
@@ -241,7 +241,7 @@ export default async function run(S) {
   await submit(S, { expectFail: true });
   await p.waitForTimeout(800);
   await S.say('Refused: this issuer is on the restricted list', 'The order cannot be taken — the check runs on the server, no one can skip it');
-  const msg = p.getByText(/restricted list/).locator('visible=true').last();
+  const msg = p.locator('.form-error').filter({ hasText: /restricted list/ }).first();
   if (await msg.count()) { await scrollTo(S, msg); await S.highlight(msg, 4000); } else { S.issue('Restricted-list refusal message not visible on the order form'); await p.waitForTimeout(4000); }
 
   // ── 6. IPO / bond book ──────────────────────────────────────────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export default async function run(S) {
   await pick(S, 'party', CLIENT);
   await S.fill('ioi_entry', { instrument: 'notes', indicated_amount: '2000000', indicated_on: today() });
   await S.say('Allocated is filled in when the book closes', 'Demand per issue shows on the Trading dashboard');
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(1500);
   await submit(S);
   await ready(S);
   await S.say('The book for every issue', 'Indicated and allocated amounts per investor');
@@ -289,7 +289,9 @@ export default async function run(S) {
   await S.say('The distribution is kept on the note\'s Activity timeline', 'Who sent it, when, and to how many subscribers');
   const act = p.getByText(/^Sent to \d+ subscribers?$/).locator('visible=true').first();
   if (await act.waitFor({ timeout: 20000 }).then(() => true).catch(() => false)) {
-    await scrollTo(S, act); await S.highlight(act.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 4000);
+    await scrollTo(S, act); await p.waitForTimeout(2800);
+    // The entry sits at the foot of the page: lift the caption while it is highlighted.
+    await S.clear(); await S.highlight(act.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 3000);
   } else { S.issue('Distribution activity not shown on the research note'); await p.waitForTimeout(4000); }
   await S.clear();
   const older = (await records('GCTRD1', resObj.id, { limit: 500 })).find((r) => r.data?.title === 'Banking sector outlook' && Number(r.data?.opens) > 0);
@@ -316,12 +318,12 @@ export default async function run(S) {
   const opt = await sel.locator('option').evaluateAll((os) => os.map((o) => [o.value, o.textContent.trim()]));
   const hit = opt.find(([, l]) => l === 'Trading');
   if (hit) { await sel.selectOption(hit[0]); await S.settle(2500); } else S.issue('Trading dashboard not in the dashboard menu for GCTRD1');
-  await p.waitForTimeout(3500);
-  await S.scroll(450, 3000);
+  await p.waitForTimeout(2500);
+  await S.scroll(450, 2500);
   await S.say('Orders by market and consideration per month', 'Each widget opens the records behind it');
-  await S.scroll(450, 3000);
+  await S.scroll(450, 2500);
   await S.say('The IPO / bond book by issue', 'Including today\'s indication');
-  await S.scroll(450, 3000);
+  await S.scroll(450, 2500);
   await S.clear();
 
   await S.logout();
@@ -338,5 +340,5 @@ export default async function run(S) {
       'Research emailed to consenting subscribers, opens counted',
     ],
     foot: 'Genesis CRM · Trading Solutions',
-  }, 7000);
+  }, 6000);
 }

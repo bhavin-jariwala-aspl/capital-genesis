@@ -264,7 +264,7 @@ const clientOrder = {
   fields: [
     AUTO('order_ref', 'Order ref.', 'OL-'),
     LK('securities_account', 'Account', 'securities_account', { required: true, config: { show_in_list: true } }),
-    F('instrument', 'Instrument', 'text', { required: true, config: { show_in_list: true }, validations: [EXPR("restricted_hit != 'restricted'", 'This issuer is on the restricted list — the order cannot be taken (CMP-FR-03)')] }),
+    F('instrument', 'Instrument', 'text', { required: true, config: { show_in_list: true }, validations: [EXPR("restricted_hit != 'restricted'", 'This issuer is on the restricted list — the order cannot be taken.')] }),
     SEL('market', 'Market', o([['sem', 'SEM'], ['dem', 'DEM'], ['international', 'International']]), { default: 'sem' }),
     SEL('side', 'Side', o([['buy', 'Buy', '#10b981'], ['sell', 'Sell', '#ef4444']]), { required: true, config: { show_in_list: true } }),
     F('quantity', 'Quantity', 'decimal', { required: true, config: { show_in_list: true } }),

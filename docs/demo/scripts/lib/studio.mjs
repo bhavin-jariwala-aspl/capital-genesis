@@ -146,6 +146,20 @@ function overlayScript() {
         (c.foot ? `<div class="foot">${esc(c.foot)}</div>` : '') + '</div>';
       if (cd.innerHTML !== html) cd.innerHTML = html;
     } else cd?.remove();
+    // Sync code: the current caption's number as 10 tiny black/white cells in the
+    // bottom-left corner. assemble.mjs reads it back to time the subtitle files.
+    let code = document.getElementById('__st_code');
+    if (!code) {
+      code = document.createElement('div'); code.id = '__st_code';
+      code.style.cssText = 'position:fixed;left:0;bottom:0;width:80px;height:6px;display:flex;z-index:2147483647;pointer-events:none';
+      for (let i = 0; i < 10; i++) { const c = document.createElement('i'); c.style.cssText = 'display:block;width:8px;height:6px'; code.appendChild(c); }
+      document.body.appendChild(code);
+    }
+    const n = Number(get('__st_n')) || 0;
+    if (code.dataset.n !== String(n)) {
+      code.dataset.n = String(n);
+      [...code.children].forEach((c, i) => { c.style.background = (n >> i) & 1 ? '#fff' : '#000'; });
+    }
     if (!document.getElementById('__st_cursor')) {
       const cur = document.createElement('div'); cur.id = '__st_cursor';
       cur.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.6-7.6L21 10.8z" fill="#111827" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
@@ -182,9 +196,14 @@ export async function session({ slug, title, rawDir }) {
   const t0 = Date.now();
   const p = await ctx.newPage();
   p.setDefaultTimeout(30000);
+  // Chrome sizes the first document's screencast before the viewport is applied
+  // (the bottom ~90 px came out grey); apply it and start from a blank page.
+  await p.setViewportSize({ width: 1440, height: 900 });
+  await p.goto('about:blank');
   const now = () => (Date.now() - t0) / 1000;
   const cues = [], chapters = [], cuts = [], issues = [];
   let open = null;
+  let cueNo = 0;
   const log = (...a) => console.log(`[${slug} ${now().toFixed(1)}s]`, ...a);
 
   async function store(kv) {
@@ -198,15 +217,15 @@ export async function session({ slug, title, rawDir }) {
     /** Show a caption (and log it as a subtitle cue). `sub` is a smaller second line. */
     async say(text, sub = '', hold = 0) {
       closeCue();
-      open = { start: now(), text, sub };
-      await store({ __st_cap: text, __st_sub: sub });
+      open = { start: now(), text, sub, n: ++cueNo };
+      await store({ __st_cap: text, __st_sub: sub, __st_n: String(open.n) });
       if (hold) await p.waitForTimeout(hold);
     },
-    async clear() { closeCue(); await store({ __st_cap: '', __st_sub: '' }); },
+    async clear() { closeCue(); await store({ __st_cap: '', __st_sub: '', __st_n: '' }); },
 
     /** Start a numbered chapter: top-right chip plus a caption. */
     async step(n, name, text, sub = '', hold = 0) {
-      chapters.push({ t: now(), n, name });
+      chapters.push({ t: now(), n, name, cue: cueNo + 1 });
       await store({ __st_chip: `Step ${n}|${name}` });
       log('STEP', n, name);
       await S.say(text, sub, hold);
@@ -215,10 +234,10 @@ export async function session({ slug, title, rawDir }) {
     /** Full-screen title card (also captioned). */
     async card({ eyebrow, title: t, text, bullets, foot }, ms = 6000) {
       closeCue();
-      open = { start: now(), text: t, sub: text || '' };
-      await store({ __st_card: JSON.stringify({ eyebrow, title: t, text, bullets, foot }), __st_cap: '', __st_sub: '', __st_chip: '' });
+      open = { start: now(), text: t, sub: text || '', n: ++cueNo };
+      await store({ __st_card: JSON.stringify({ eyebrow, title: t, text, bullets, foot }), __st_cap: '', __st_sub: '', __st_chip: '', __st_n: String(open.n) });
       await p.waitForTimeout(ms);
-      await store({ __st_card: '' });
+      await store({ __st_card: '', __st_n: '' });
       closeCue();
     },
 
