@@ -4,139 +4,139 @@ WEBVTT
 Commercial Lending
 A corporate facility from the RM's request to an active, monitored loan — memo, spreading, approval and covenants on one record.
 
-00:00:11.760 --> 00:00:15.480
+00:00:11.760 --> 00:00:20.040
 Port Louis Logistics Ltd needs a MUR 15 million working-capital line
 A bigger fleet and new contracts — the corporate RM opens the request
 
-00:00:15.480 --> 00:00:21.080
+00:00:20.040 --> 00:00:26.520
 Sign in as Bruno Chan — Relationship Manager (Corporate)
 Corporate relationship manager — owns the facility
 
-00:00:21.080 --> 00:00:31.960
+00:00:26.520 --> 00:00:37.400
 Commercial Lending ▸ Commercial facility request
 A two-step guided form for the RM
 
-00:00:31.960 --> 00:00:43.640
+00:00:37.400 --> 00:00:49.080
 Amount, tenor and pricing
 Margin over the Genesis PLR, arrangement and commitment fees
 
-00:00:43.640 --> 00:00:49.120
+00:00:49.080 --> 00:01:00.360
 CF-2026-000024 is created at Origination and assigned to the corporate RM
 Interest rate = Genesis PLR + margin · approval authority from the amount
 
-00:00:49.120 --> 00:00:57.772
+00:01:00.360 --> 00:01:09.012
 Group exposure: every facility of the Doorga Group — now including this one
 Checked against the group lending limit before credit takes it on
 
-00:00:57.772 --> 00:01:06.840
+00:01:09.012 --> 00:01:18.080
 The RM moves the request to RM assessment
 Then tries to send it on to Credit memo…
 
-00:01:06.840 --> 00:01:11.360
+00:01:18.080 --> 00:01:22.600
 Blocked: the credit memo needs the company background and the security package
 The board says exactly what is missing
 
-00:01:11.400 --> 00:01:20.800
+00:01:24.320 --> 00:01:33.720
 Write the memo on its own form
 Edit ▸ Credit memo tab — the same record, a focused form
 
-00:01:20.800 --> 00:01:25.440
+00:01:33.720 --> 00:01:38.360
 Memo written — Credit memo now accepts the facility
 
-00:01:25.440 --> 00:01:29.480
+00:01:38.360 --> 00:01:45.040
 The credit analyst spreads two years of audited accounts
 Commercial Lending ▸ Financial Spread ▸ New — one row per financial year
 
-00:01:29.480 --> 00:01:44.280
+00:01:45.040 --> 00:01:59.840
 Sign in as Nadia Peerbux — Credit Analyst
 Credit analyst — spreads the financials and grades the risk
 
-00:01:44.280 --> 00:01:57.680
+00:01:59.840 --> 00:02:13.240
 FY 2025: the latest audited year
 
-00:01:57.680 --> 00:02:02.063
+00:02:13.240 --> 00:02:17.623
 The ratios are calculated for every year
 EBITDA margin · DSCR · net debt / EBITDA · gearing · interest cover
 
-00:02:02.114 --> 00:02:07.828
+00:02:21.354 --> 00:02:28.868
 Back on the facility: the latest DSCR and leverage are read from the spread
 The analyst sets the internal risk grade and writes the recommendation
 
-00:02:07.828 --> 00:02:22.377
+00:02:28.868 --> 00:02:43.417
 Credit approval needs a recommendation and a risk grade
 Try it first…
 
-00:02:22.377 --> 00:02:30.243
+00:02:43.417 --> 00:02:53.563
 Who approves? Masters ▸ Approval Matrices
 Lending bands: up to MUR 5m Loans Manager · up to MUR 20m Credit Committee · above, the Board Credit Committee
 
-00:02:30.243 --> 00:02:35.043
+00:02:53.563 --> 00:02:59.483
 MUR 15 million falls in the Credit Committee band
 Moving to Credit approval raises the approval request
 
-00:02:35.043 --> 00:02:39.083
+00:02:59.483 --> 00:03:05.003
 The Credit Committee decides
 Tools ▸ Approvals — the request carries amount, grade and DSCR
 
-00:02:39.083 --> 00:02:52.503
+00:03:05.003 --> 00:03:18.423
 Sign in as Jean-Marc Desvaux — Credit Committee Member
 Credit committee member — approves facilities up to MUR 20 million
 
-00:02:52.503 --> 00:02:59.183
+00:03:18.423 --> 00:03:25.103
 Approved — the facility moved itself to Term sheet / offer
 Credit decision: Approved
 
-00:02:59.183 --> 00:03:02.503
+00:03:25.103 --> 00:03:33.143
 The term sheet was generated and filed on the Docs tab
 Amount, tenor, pricing, fees and the security package — ready to send to the borrower
 
-00:03:02.503 --> 00:03:09.718
+00:03:33.143 --> 00:03:40.358
 Preview the term sheet
 Facility, amount, tenor, pricing and fees — filled in from the record
 
-00:03:09.718 --> 00:03:13.878
+00:03:40.358 --> 00:03:45.998
 The borrower signs the term sheet
 The RM registers the charges and guarantee — Security perfection
 
-00:03:13.878 --> 00:03:25.158
+00:03:45.998 --> 00:03:57.278
 Sign in as Bruno Chan — Relationship Manager (Corporate)
 Corporate relationship manager
 
-00:03:25.158 --> 00:03:30.598
+00:03:57.278 --> 00:04:02.718
 Active: the CRM checks the borrower's KYC is approved
 Port Louis Logistics Ltd's KYC is approved — the facility goes live
 
-00:03:30.638 --> 00:03:40.798
+00:04:04.438 --> 00:04:14.598
 Record the covenants the committee set
 Commercial Lending ▸ Covenant ▸ New
 
-00:03:40.798 --> 00:03:52.958
+00:04:14.598 --> 00:04:26.758
 A year on: management accounts show DSCR at 1.08x
 Covenant Test ▸ New — record the actual value
 
-00:03:52.958 --> 00:03:59.078
+00:04:26.758 --> 00:04:33.838
 1.08 is below the 1.25 threshold: the result is Breach
 The RM and the Loans Manager are alerted at once
 
-00:03:59.078 --> 00:04:04.078
+00:04:33.838 --> 00:04:39.518
 The facility counts its covenants in breach
 Watch-list reporting and the Loan Book dashboard read the same figure
 
-00:04:04.078 --> 00:04:08.198
+00:04:39.518 --> 00:04:43.638
 The Loans Manager gets the breach alert
 He decides on a waiver or a remedy
 
-00:04:08.198 --> 00:04:15.918
+00:04:43.638 --> 00:04:51.558
 Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
 Manager, Loans & Fixed Income — decides covenant waivers
 
-00:04:15.918 --> 00:04:24.792
+00:04:51.558 --> 00:05:00.432
 Notifications: “Covenant breach” with the actual value and threshold
 
-00:04:24.792 --> 00:04:30.283
+00:05:00.432 --> 00:05:06.003
 Waiver granted and the terms recorded on the test
 The next test date stays in the calendar for the RM
 
-00:04:30.283 --> 00:04:37.872
+00:05:06.003 --> 00:05:13.592
 Commercial Lending
 Four people worked one facility — the CRM checked every gate and routed every decision.

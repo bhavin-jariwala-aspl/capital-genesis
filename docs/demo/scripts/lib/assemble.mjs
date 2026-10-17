@@ -1,10 +1,12 @@
 // Turns a raw recording + timeline.json into the published tutorial:
-//   <slug>.mp4  H.264, long waits trimmed, English subtitle track (mov_text) and chapter markers embedded
+//   <slug>.mp4  H.264, long waits trimmed, spoken narration (lib/narrate.mjs), English subtitle track (mov_text)
+//               and chapter markers embedded
 //   <slug>.srt / <slug>.vtt  the same captions as sidecar files
 // The captions are also drawn on screen during recording, so they show in any player.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { narrate } from './narrate.mjs';
 
 const FFMPEG = process.env.FFMPEG || 'ffmpeg';
 const FFPROBE = process.env.FFPROBE || 'ffprobe';
@@ -108,6 +110,7 @@ export function assemble({ rawDir, slug, outDir }) {
     '-c:s', 'mov_text', '-metadata:s:s:0', 'language=eng', '-metadata:s:s:0', 'title=English',
     '-movflags', '+faststart', mp4,
   ], { stdio: 'inherit' });
+  narrate({ mp4, srt: srtPath });
   const synced = tl.cues.filter((c) => c.n && sync.has(c.n)).length;
   const out = { slug, title: tl.title, synced, duration: Math.round(duration(mp4)), chapters: chapters.map((c) => ({ t: Math.round(c.t), title: c.title })), cues: cues.length, issues: tl.issues };
   fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(out, null, 2));

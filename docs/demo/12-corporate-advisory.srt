@@ -4,255 +4,255 @@ Corporate Advisory
 Run a corporate finance mandate behind the advisory information barrier — from pitch to investor commitments.
 
 2
-00:00:10,560 --> 00:00:16,240
+00:00:10,560 --> 00:00:16,440
 Sign in as Camille Rivalland — Corporate Advisor
 Corporate advisor — Genesis Corporate Advisors
 
 3
-00:00:16,240 --> 00:00:20,560
+00:00:16,440 --> 00:00:24,600
 Corporate Advisory ▸ Advisory Mandates: every deal is known by its code name
 Only the advisory team and Compliance can open this module's records
 
 4
-00:00:20,560 --> 00:00:35,160
+00:00:24,600 --> 00:00:39,200
 Code name, client, target and service line
 Fees: a retainer plus a success fee on the amount raised
 
 5
-00:00:35,200 --> 00:00:42,680
+00:00:39,240 --> 00:00:46,720
 Move the mandate along its pipeline
 Origination ▸ Pitch ▸ Conflict check
 
 6
-00:00:42,680 --> 00:00:46,640
+00:00:46,720 --> 00:00:54,960
 Pitch won — before any engagement, Compliance must check for conflicts
 Moving to Conflict check opens a conflict check for Compliance automatically
 
 7
-00:00:46,640 --> 00:00:50,080
+00:00:54,960 --> 00:00:59,760
 Try to go straight to Engagement letter…
 The CRM checks the conflict-check result first
 
 8
-00:00:50,080 --> 00:00:56,360
+00:00:59,760 --> 00:01:06,040
 Blocked: Compliance must clear the conflict check first
 No engagement letter can be issued on an unchecked deal
 
 9
-00:00:56,360 --> 00:01:00,680
+00:01:06,040 --> 00:01:15,600
 The conflict check CC-2026-000015 is waiting for Compliance
 Compliance is notified and has two business days to decide
 
 10
-00:01:00,680 --> 00:01:04,720
+00:01:15,600 --> 00:01:21,440
 Compliance reviews the conflict check
 Compliance sits inside the advisory barrier — it sees every deal
 
 11
-00:01:04,720 --> 00:01:10,600
+00:01:21,440 --> 00:01:27,640
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance officer — decides conflict checks
 
 12
-00:01:10,600 --> 00:01:14,800
+00:01:27,640 --> 00:01:35,760
 The CRM has already searched the group for conflicts
 The client's and target's Genesis relationships, loans outstanding and other advisory mandates
 
 13
-00:01:14,800 --> 00:01:21,560
+00:01:35,760 --> 00:01:42,520
 …and the restricted and watch lists
 A match here would need controls — or a decline
 
 14
-00:01:21,600 --> 00:01:29,080
+00:01:42,560 --> 00:01:50,040
 Take it into review, then record the decision
 Requested ▸ Compliance review
 
 15
-00:01:29,120 --> 00:01:37,160
+00:01:50,080 --> 00:01:58,120
 Record the decision and the rationale
 Cleared · Cleared with controls · Declined
 
 16
-00:01:37,160 --> 00:01:41,320
+00:01:58,120 --> 00:02:04,440
 Decided: the check moves to Decided with the date
 The decision is written back to the mandate and kept as the audit record
 
 17
-00:01:41,320 --> 00:01:45,160
+00:02:04,440 --> 00:02:08,280
 What does the trading desk see?
 Traders are on the public side of the wall
 
 18
-00:01:45,160 --> 00:01:50,640
+00:02:08,280 --> 00:02:13,760
 Sign in as Arvind Ramsurrun — Trader
 Trader — public side of the wall
 
 19
-00:01:50,640 --> 00:01:56,320
+00:02:13,760 --> 00:02:20,880
 No mandates at all — not even that Project Trochetia exists
 Deal records, documents and alerts stay inside the barrier
 
 20
-00:01:56,320 --> 00:02:00,400
+00:02:20,880 --> 00:02:26,560
 Someone who needs inside information asks for a wall-crossing
 Tools ▸ Access & Barriers ▸ Wall-crossings
 
 21
-00:02:00,400 --> 00:02:04,480
+00:02:26,560 --> 00:02:33,360
 Approval is time-limited and never by the requester
 Once approved, the person is added to the insider list until the crossing ends
 
 22
-00:02:04,480 --> 00:02:08,320
+00:02:33,360 --> 00:02:39,800
 Compliance decides the request
 Compliance runs the control room — it approves crossings without seeing behind the wall
 
 23
-00:02:08,320 --> 00:02:17,280
+00:02:39,800 --> 00:02:48,760
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance officer — decides wall-crossings
 
 24
-00:02:17,280 --> 00:02:21,880
+00:02:48,760 --> 00:02:56,720
 Approve for 30 days — the trader joins the advisory insider list until then
 Nobody can approve their own request, or a crossing for themselves
 
 25
-00:02:21,880 --> 00:02:24,400
+00:02:56,720 --> 00:03:02,120
 The crossing is recorded on the tamper-evident audit trail
 It ends automatically on its expiry date
 
 26
-00:02:24,400 --> 00:02:28,360
+00:03:02,120 --> 00:03:06,880
 Back to the advisor: the conflict check is cleared
 Conflict check ▸ Engagement letter
 
 27
-00:02:28,360 --> 00:02:39,320
+00:03:06,880 --> 00:03:17,840
 Sign in as Camille Rivalland — Corporate Advisor
 Corporate advisor
 
 28
-00:02:39,400 --> 00:02:48,840
+00:03:17,920 --> 00:03:27,360
 The engagement letter is generated for you — under the code name
 Mandate ▸ Docs, ready for e-signature
 
 29
-00:02:48,880 --> 00:02:55,200
+00:03:27,400 --> 00:03:33,720
 Execution needs the signed letter
 Try to move on before it is signed…
 
 30
-00:02:55,200 --> 00:02:59,520
+00:03:33,720 --> 00:03:38,040
 Blocked: the engagement letter must be signed first
 
 31
-00:02:59,520 --> 00:03:10,280
+00:03:38,040 --> 00:03:48,800
 The client has signed: tick "Engagement letter signed"
 
 32
-00:03:10,360 --> 00:03:20,080
+00:03:48,880 --> 00:03:58,600
 Add the analyst to the deal team
 Corporate Advisory ▸ Deal Team Member ▸ New
 
 33
-00:03:20,080 --> 00:03:24,280
+00:03:58,600 --> 00:04:04,400
 Ryan Pillay is on the insider list automatically
 With the date and the reason — the list the regulator asks for
 
 34
-00:03:24,280 --> 00:03:35,960
+00:04:04,400 --> 00:04:16,080
 Approach an investor: Sunrise Pension Fund
 Targeted ▸ NDA ▸ IM shared ▸ Indication ▸ Committed ▸ Allocated
 
 35
-00:03:35,960 --> 00:03:40,560
+00:04:16,080 --> 00:04:20,680
 The NDA has been sent to the investor
 Targeted ▸ NDA
 
 36
-00:03:40,560 --> 00:03:44,200
+00:04:20,680 --> 00:04:25,040
 Share the information memorandum already?
 The CRM checks the NDA first
 
 37
-00:03:44,200 --> 00:03:48,680
+00:04:25,040 --> 00:04:29,520
 Blocked: the IM can only be shared once the NDA is signed
 Inside information never leaves without a signed NDA
 
 38
-00:03:48,720 --> 00:03:53,040
+00:04:31,520 --> 00:04:35,840
 The investor signs the NDA: record it with the date the IM is shared
 
 39
-00:03:53,080 --> 00:04:04,040
+00:04:35,880 --> 00:04:46,840
 Share the IM by secure link
 Investor ▸ Docs: upload the IM, then Share link
 
 40
-00:04:04,040 --> 00:04:14,160
+00:04:46,840 --> 00:04:56,960
 A link that expires in 14 days, view-only
 Every view is counted — you see who has opened the IM
 
 41
-00:04:14,160 --> 00:04:18,880
+00:04:56,960 --> 00:05:01,680
 NDA signed and IM shared: the move is accepted now
 
 42
-00:04:18,920 --> 00:04:36,080
+00:05:01,720 --> 00:05:18,880
 The investor indicates MUR 150 million, then commits MUR 120 million
 Each stage asks for its figure — indication, commitment, allocation
 
 43
-00:04:36,080 --> 00:04:38,600
+00:05:18,880 --> 00:05:21,400
 Commitments roll up to the mandate and the dashboard
 
 44
-00:04:38,600 --> 00:04:42,720
+00:05:21,400 --> 00:05:27,240
 The information memorandum is a deliverable with a milestone fee
 Drafting ▸ In review ▸ Approved ▸ Delivered to client
 
 45
-00:04:42,720 --> 00:04:53,480
+00:05:27,240 --> 00:05:38,000
 Name the reviewer: approval needs one
 A second pair of eyes on everything that goes to the client
 
 46
-00:04:53,480 --> 00:05:02,960
+00:05:38,000 --> 00:05:47,480
 Drafted, reviewed and approved
 Drafting ▸ In review ▸ Approved
 
 47
-00:05:02,960 --> 00:05:08,120
+00:05:47,480 --> 00:05:52,640
 Delivered to the client — the milestone fee is invoiced automatically
 
 48
-00:05:08,120 --> 00:05:12,280
+00:05:52,640 --> 00:06:00,760
 Fee invoice raised: MUR 750,000 milestone, sent to accounting
 Retainer and success-fee invoices are kept here too
 
 49
-00:05:12,280 --> 00:05:22,720
+00:06:00,760 --> 00:06:11,200
 Log the hours spent on the mandate
 For profitability: hours × internal rate = cost
 
 50
-00:05:22,720 --> 00:05:30,040
+00:06:11,200 --> 00:06:18,520
 The mandate adds it all up
 Deal team, insiders, investors, commitments, fees invoiced and hours logged
 
 51
-00:05:30,080 --> 00:05:42,880
+00:06:18,560 --> 00:06:31,360
 The Corporate Advisory dashboard
 Live mandates, weighted fee pipeline, commitments and fees invoiced
 
 52
-00:05:42,880 --> 00:05:46,840
+00:06:31,360 --> 00:06:35,320
 Mandates by stage and service line, bookbuilding and hours by mandate
 Barrier-aware: the public side sees none of it
 
 53
-00:05:47,796 --> 00:05:55,400
+00:06:38,036 --> 00:06:45,640
 Corporate Advisory
 Deals stay discreet and controlled — the CRM enforces the wall and the gates.

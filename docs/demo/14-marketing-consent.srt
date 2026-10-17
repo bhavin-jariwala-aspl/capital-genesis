@@ -4,216 +4,216 @@ Marketing & Consent
 Plan campaigns, reach only clients who agreed to it, and measure what each campaign brings in.
 
 2
-00:00:10,880 --> 00:00:14,120
+00:00:10,880 --> 00:00:15,560
 Emilie plans a first-home campaign for young professionals
 Growth ▸ Marketing & Consent
 
 3
-00:00:14,120 --> 00:00:39,760
+00:00:15,560 --> 00:00:41,200
 Sign in as Emilie Fanchette — Marketing Executive
 Marketing Executive — plans and runs campaigns
 
 4
-00:00:39,760 --> 00:00:52,080
+00:00:41,200 --> 00:00:53,520
 A segment describes the audience: who should hear about the offer
 Existing segments: HNW without a mandate, FMB 2029 holders, Francophone affluent…
 
 5
-00:00:52,080 --> 00:00:56,400
+00:00:53,520 --> 00:00:59,040
 The criteria are a filter over the client master
 Build the matching list with the same filter in Reports
 
 6
-00:00:56,400 --> 00:01:06,640
+00:00:59,040 --> 00:01:09,280
 New campaign: objective, product, channels, audience
 It starts in Planning
 
 7
-00:01:06,640 --> 00:01:09,320
+00:01:09,280 --> 00:01:15,600
 Budget and dates — the budget is the cost ROI is measured against
 Actual cost is entered when the invoices come in
 
 8
-00:01:09,320 --> 00:01:16,640
+00:01:15,600 --> 00:01:22,920
 The tracking code goes into every website link of the campaign
 An enquiry arriving through such a link is credited to this campaign
 
 9
-00:01:16,640 --> 00:01:26,400
+00:01:22,920 --> 00:01:32,680
 Add the clients who will receive it
 Marketing & Consent ▸ Campaign Members ▸ New
 
 10
-00:01:26,400 --> 00:01:29,520
+00:01:32,680 --> 00:01:36,040
 Deepak Seegoolam has given marketing consent — accepted
 
 11
-00:01:29,520 --> 00:01:37,440
+00:01:36,040 --> 00:01:43,960
 Now Corinne Henry…
 A client with a complaint that is still open
 
 12
-00:01:37,440 --> 00:01:43,000
+00:01:43,960 --> 00:01:51,960
 Refused: the client is suppressed from marketing
 No consent, “do not contact”, or an open complaint — the CRM never lets these through
 
 13
-00:01:43,000 --> 00:01:49,760
+00:01:51,960 --> 00:01:58,720
 A campaign is a financial promotion
 Compliance signs it off before it can be approved or go live
 
 14
-00:01:49,760 --> 00:01:54,400
+00:01:58,720 --> 00:02:03,360
 Try to approve it straight away…
 
 15
-00:01:54,400 --> 00:02:03,080
+00:02:03,360 --> 00:02:12,040
 Blocked: Compliance must sign it off first
 Move it to Compliance review instead
 
 16
-00:02:03,080 --> 00:02:06,560
+00:02:12,040 --> 00:02:20,480
 Compliance review: the sign-off request is now in Compliance's Approvals inbox
 Segment, budget, dates and the message must be filled before this move
 
 17
-00:02:06,560 --> 00:02:10,760
+00:02:20,480 --> 00:02:26,200
 Fatima checks the message and approves it
 Tools ▸ Approvals — the requester can never approve her own campaign
 
 18
-00:02:10,760 --> 00:02:15,040
+00:02:26,200 --> 00:02:30,480
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance Officer — signs off marketing material
 
 19
-00:02:15,120 --> 00:02:24,800
+00:02:32,520 --> 00:02:42,200
 The request shows the budget, the dates and the message
 Open the record to review it, comment, then Approve or Reject
 
 20
-00:02:24,800 --> 00:02:27,880
+00:02:42,200 --> 00:02:48,000
 Approved: the campaign moves to Approved by itself
 Rejecting it would send it back to Planning with the comment
 
 21
-00:02:27,880 --> 00:02:32,080
+00:02:48,000 --> 00:02:52,200
 Emilie launches the campaign
 She is told it was approved
 
 22
-00:02:32,080 --> 00:02:49,080
+00:02:52,200 --> 00:03:09,200
 Sign in as Emilie Fanchette — Marketing Executive
 Marketing Executive
 
 23
-00:02:49,080 --> 00:02:52,080
+00:03:09,200 --> 00:03:15,080
 Live: the emails and the social posts go out
 Each member's sent date, opens and responses are tracked
 
 24
-00:02:52,080 --> 00:03:10,434
+00:03:15,080 --> 00:03:33,434
 Kevin Rampersad clicks the campaign ad
 The link opens the website enquiry form with the campaign's tracking code
 
 25
-00:03:10,434 --> 00:03:17,291
+00:03:33,434 --> 00:03:40,291
 Sent — he has a reference number and his consent to be contacted is recorded
 
 26
-00:03:17,291 --> 00:03:25,571
+00:03:40,291 --> 00:03:48,571
 The enquiry kept the tracking code and is credited to the campaign
 Routing and scoring work as for any enquiry — the Lending team calls him back
 
 27
-00:03:25,571 --> 00:03:31,691
+00:03:48,571 --> 00:03:57,531
 Across campaigns: budget, audience, enquiries, revenue and ROI
 Home loans Q3 earned more than it cost; a negative ROI means no revenue yet
 
 28
-00:03:31,691 --> 00:03:36,251
+00:03:57,531 --> 00:04:05,051
 Our campaign: its audience and 1 attributed enquiry
 Loans that follow and their revenue roll up here too — that is what ROI is measured on
 
 29
-00:03:36,251 --> 00:03:50,251
+00:04:05,051 --> 00:04:19,051
 A seminar for the campaign's audience
 Events & Seminars ▸ New
 
 30
-00:03:50,251 --> 00:03:52,902
+00:04:19,051 --> 00:04:24,342
 Guests register — from the website or added by staff
 Event Registrations ▸ Register guest
 
 31
-00:03:52,902 --> 00:04:03,301
+00:04:24,342 --> 00:04:34,741
 On the evening, Shamim Noël attends — tick Attended
 Her relationship manager is told to follow up
 
 32
-00:04:03,301 --> 00:04:07,261
+00:04:34,741 --> 00:04:38,701
 The event counts registrations, attendance and the attendance rate
 
 33
-00:04:07,261 --> 00:04:17,021
+00:04:38,701 --> 00:04:48,461
 At the event Shamim asks for the research notes
 Newsletter & Research Subscriptions ▸ New
 
 34
-00:04:17,021 --> 00:04:20,661
+00:04:48,461 --> 00:04:55,421
 Subscribers of a topic receive each publication when it is sent
 “Send to subscribers” on a research note emails them in their language
 
 35
-00:04:20,661 --> 00:04:24,821
+00:04:55,421 --> 00:05:00,381
 Priya, her RM, was notified to follow up
 Signed in as the relationship manager
 
 36
-00:04:24,821 --> 00:04:30,052
+00:05:00,381 --> 00:05:06,172
 Sign in as Priya Ramdin — Relationship Manager
 Relationship Manager — follows up event guests
 
 37
-00:04:30,052 --> 00:04:35,873
+00:05:06,172 --> 00:05:11,993
 She calls to thank her and records the follow-up
 Tick “Follow-up done” on the registration
 
 38
-00:04:35,873 --> 00:04:43,685
+00:05:11,993 --> 00:05:19,805
 On the call Shamim says: no more marketing, please
 Open her marketing consent and record the withdrawal
 
 39
-00:04:43,685 --> 00:04:48,245
+00:05:19,805 --> 00:05:27,045
 Marketing consent: No — she is now suppressed from marketing
 The withdrawal takes effect at once, as in the Clients tutorial
 
 40
-00:04:48,245 --> 00:04:52,405
+00:05:27,045 --> 00:05:31,325
 Emilie tries to add Shamim Noël to the campaign
 Signed in as Marketing
 
 41
-00:04:52,405 --> 00:05:04,645
+00:05:31,325 --> 00:05:43,565
 Sign in as Emilie Fanchette — Marketing Executive
 Marketing Executive
 
 42
-00:05:04,645 --> 00:05:09,685
+00:05:43,565 --> 00:05:48,605
 Refused — she withdrew her consent
 Research mailings sent to subscribers skip her too
 
 43
-00:05:09,685 --> 00:05:25,205
+00:05:48,605 --> 00:06:04,125
 The Marketing dashboard sums it all up
 Live campaigns, attributed enquiries, attendance, subscribers, ROI
 
 44
-00:05:25,205 --> 00:05:31,483
+00:06:04,125 --> 00:06:10,403
 ROI and attributed revenue by campaign, engagement, subscriptions by topic
 
 45
-00:05:31,483 --> 00:05:38,685
+00:06:10,403 --> 00:06:17,605
 Marketing & Consent
 Campaigns reach only clients who agreed, and every result is credited back to them.

@@ -4,247 +4,247 @@ Service Requests & Complaints
 Log a client request or complaint, route it to the right team and resolve it within the service level.
 
 2
-00:00:10,040 --> 00:00:13,280
+00:00:10,040 --> 00:00:14,680
 Every request type comes from the service catalogue
 Masters ▸ Service Request Catalogue
 
 3
-00:00:13,280 --> 00:00:40,400
+00:00:14,680 --> 00:00:41,800
 Sign in as Priya Ramdin — Relationship Manager
 Relationship manager — logs requests for her clients
 
 4
-00:00:40,400 --> 00:00:44,880
+00:00:41,800 --> 00:00:52,600
 Each type has its business unit, a service level in business hours and an approval flag
 Statement request: 16 hours, no approval · Partial prepayment: 40 hours, needs approval
 
 5
-00:00:44,880 --> 00:00:48,360
+00:00:52,600 --> 00:01:01,800
 Complaints get 120 business hours — 15 working days for a final response
 Acknowledged within 1 business day, in line with FSC expectations
 
 6
-00:00:48,360 --> 00:01:00,600
+00:01:01,800 --> 00:01:14,040
 Rohan Beeharry phones to ask for the last six months of statements
 Service & Complaints ▸ New
 
 7
-00:01:00,600 --> 00:01:04,040
+00:01:14,040 --> 00:01:17,480
 Pick the client, the business unit and the request type
 The form only shows complaint fields when the type is Complaint
 
 8
-00:01:04,120 --> 00:01:08,280
+00:01:20,160 --> 00:01:28,200
 Saved: the request is numbered, acknowledged and routed automatically
 The client gets an acknowledgement email; Lending requests go to the Loans team
 
 9
-00:01:08,280 --> 00:01:13,480
+00:01:28,200 --> 00:01:35,360
 Stage Acknowledged · Catalogue SLA 16 business hours · Needs approval: No
 Owner: Yash Bholah, Loans team
 
 10
-00:01:13,480 --> 00:01:17,000
+00:01:35,360 --> 00:01:38,880
 Activity: the acknowledgement email the client received
 Sent automatically when the request was logged
 
 11
-00:01:20,080 --> 00:01:24,400
+00:01:41,960 --> 00:01:46,640
 The Loans executive who owns the request works it
 Hand-off from the RM to the Loans team
 
 12
-00:01:24,400 --> 00:01:32,400
+00:01:46,640 --> 00:01:54,640
 Sign in as Yash Bholah — Loans Executive
 Owner of the request — Loans team
 
 13
-00:01:32,400 --> 00:01:36,800
+00:01:54,640 --> 00:01:59,920
 The board: one column per stage, from New to Closed
 Drag the card when the work moves on
 
 14
-00:01:36,800 --> 00:01:41,440
+00:01:59,920 --> 00:02:05,840
 Statements prepared — try to mark it Resolved
 A request cannot be resolved without the date it was resolved
 
 15
-00:01:41,440 --> 00:01:46,600
+00:02:05,840 --> 00:02:12,080
 Blocked: the Resolved stage needs the "Resolved on" date
 The card goes back to its column and the board says what is missing
 
 16
-00:01:46,600 --> 00:01:57,960
+00:02:12,080 --> 00:02:23,440
 Enter the date the request was resolved and save
 Then go back to the board
 
 17
-00:01:57,960 --> 00:02:05,040
+00:02:23,440 --> 00:02:32,960
 Resolved — the client is emailed a short satisfaction survey
 One question on satisfaction (1–5), one on likelihood to recommend (0–10)
 
 18
-00:02:05,040 --> 00:02:07,560
+00:02:32,960 --> 00:02:38,320
 Closed. The service level was met on time
 The SLA timer stopped when the request was resolved
 
 19
-00:02:07,560 --> 00:02:11,720
+00:02:38,320 --> 00:02:43,760
 Bhavish Dabee wants to prepay part of a home loan
 Partial prepayment needs the business-unit head's approval
 
 20
-00:02:11,720 --> 00:02:17,080
+00:02:43,760 --> 00:02:49,120
 Sign in as Priya Ramdin — Relationship Manager
 The RM logs the request
 
 21
-00:02:17,080 --> 00:02:29,000
+00:02:49,120 --> 00:03:01,040
 Same form, request type Partial prepayment
 The catalogue marks this type as needing approval
 
 22
-00:02:29,000 --> 00:02:32,480
+00:03:01,040 --> 00:03:07,480
 Needs approval: Yes — the catalogue sent it to the business-unit head
 An approval request is waiting in Tools ▸ Approvals
 
 23
-00:02:32,480 --> 00:02:36,720
+00:03:07,480 --> 00:03:13,480
 The BD head reviews and approves the request
 Tools ▸ Approvals — the requester can never approve their own request
 
 24
-00:02:36,720 --> 00:02:40,880
+00:03:13,480 --> 00:03:17,640
 Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships
 Head of BD — approves requests the catalogue flags
 
 25
-00:02:40,960 --> 00:02:50,600
+00:03:20,600 --> 00:03:30,240
 The request waits in her Approvals inbox
 Open the linked record to review it, add a comment, then Approve or Reject
 
 26
-00:02:50,600 --> 00:02:53,720
+00:03:30,240 --> 00:03:36,200
 Approved: the owner is notified to go ahead
 The decision and comment are kept on the request's Audit tab
 
 27
-00:02:53,720 --> 00:02:57,920
+00:03:36,200 --> 00:03:42,200
 Stéphanie Montocchio writes in to complain about a fee
 Anyone can log a complaint — request type Complaint
 
 28
-00:02:57,920 --> 00:03:03,240
+00:03:42,200 --> 00:03:47,520
 Sign in as Priya Ramdin — Relationship Manager
 The RM receives the complaint letter
 
 29
-00:03:03,240 --> 00:03:07,520
+00:03:47,520 --> 00:03:51,800
 New request: the client, the business unit — and request type Complaint
 
 30
-00:03:07,520 --> 00:03:19,960
+00:03:51,800 --> 00:04:04,240
 Choosing Complaint shows the complaint-handling fields
 Category, root cause, final response, redress and Ombudsperson referral
 
 31
-00:03:19,960 --> 00:03:25,160
+00:04:04,240 --> 00:04:11,920
 Acknowledged automatically and routed to Compliance
 Owner: Fatima Hossenbux, whatever the business unit · the complaints timer has started
 
 32
-00:03:25,160 --> 00:03:28,680
+00:04:11,920 --> 00:04:15,440
 The client already has the complaint acknowledgement
 In the client's language, with the reference number and the next steps
 
 33
-00:03:31,720 --> 00:03:35,800
+00:04:18,480 --> 00:04:23,000
 Compliance owns the complaint and is notified
 Signed in as the Compliance Officer
 
 34
-00:03:35,800 --> 00:03:46,520
+00:04:23,000 --> 00:04:33,720
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance Officer — oversees the complaints register
 
 35
-00:03:46,520 --> 00:03:50,160
+00:04:33,720 --> 00:04:37,360
 The SLA Board shows the complaint's timers
 First response met · resolution due within 15 business days
 
 36
-00:03:50,200 --> 00:03:58,600
+00:04:39,800 --> 00:04:48,200
 Compliance investigates
 Move the complaint to In progress
 
 37
-00:03:58,600 --> 00:04:06,120
+00:04:48,200 --> 00:04:55,720
 A statement copy is needed from the client — Awaiting client
 While the client has the ball, the SLA clock is paused
 
 38
-00:04:06,120 --> 00:04:09,720
+00:04:55,720 --> 00:04:59,320
 Paused: the waiting time does not count against the target
 The clock restarts when the complaint moves on
 
 39
-00:04:09,760 --> 00:04:18,200
+00:05:01,200 --> 00:05:09,640
 The client sent the statement — back to In progress
 The fee was charged in error
 
 40
-00:04:18,200 --> 00:04:22,600
+00:05:09,640 --> 00:05:14,040
 Try to resolve it straight away…
 
 41
-00:04:22,600 --> 00:04:28,560
+00:05:14,040 --> 00:05:20,000
 Blocked: a complaint needs a root cause and a final response before it is resolved
 And the date it was resolved
 
 42
-00:04:28,560 --> 00:04:34,680
+00:05:20,000 --> 00:05:26,120
 Record the root cause and the final response sent to the client
 Here: a system error applied the fee — it is refunded
 
 43
-00:04:34,680 --> 00:04:40,480
+00:05:26,120 --> 00:05:31,920
 Root cause, final response, redress — and the Ombudsperson box
 Tick it if the client refers the complaint to the Ombudsperson for Financial Services
 
 44
-00:04:40,520 --> 00:04:48,800
+00:05:34,960 --> 00:05:43,240
 Saved — now move the complaint to Resolved
 
 45
-00:04:48,800 --> 00:04:55,880
+00:05:43,240 --> 00:05:50,320
 Resolved: the timer stops and the satisfaction survey goes to the client
 
 46
-00:04:55,920 --> 00:05:02,480
+00:05:50,360 --> 00:05:56,920
 Everything is on the complaint record
 Final response, dates, emails and the full audit trail
 
 47
-00:05:02,480 --> 00:05:05,960
+00:05:56,920 --> 00:06:00,400
 Activity: the acknowledgement and the satisfaction survey
 Sent automatically — nobody had to remember
 
 48
-00:05:11,640 --> 00:05:17,200
+00:06:06,080 --> 00:06:12,160
 Audit: every stage change, who made it and when
 The evidence the FSC complaints register asks for
 
 49
-00:05:17,200 --> 00:05:24,600
+00:06:12,160 --> 00:06:19,560
 When the client answers the survey, the scores are recorded on the request
 They feed the CSAT and NPS figures on the Service dashboard
 
 50
-00:05:24,640 --> 00:05:29,938
+00:06:19,680 --> 00:06:24,978
 The SLA Board: on-time compliance across requests and complaints
 Tools ▸ SLA Board
 
 51
-00:05:29,938 --> 00:05:37,400
+00:06:24,978 --> 00:06:32,440
 Service & Complaints
 Requests and complaints are acknowledged, routed and timed by the system.
