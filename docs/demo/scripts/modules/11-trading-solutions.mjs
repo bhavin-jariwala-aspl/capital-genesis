@@ -242,7 +242,7 @@ export default async function run(S) {
   await p.waitForTimeout(800);
   await S.say('Refused: this issuer is on the restricted list', 'The order cannot be taken — the check runs on the server, no one can skip it');
   const msg = p.getByText(/restricted list/).locator('visible=true').last();
-  if (await msg.count()) await S.highlight(msg, 4000); else { S.issue('Restricted-list refusal message not visible on the order form'); await p.waitForTimeout(4000); }
+  if (await msg.count()) { await scrollTo(S, msg); await S.highlight(msg, 4000); } else { S.issue('Restricted-list refusal message not visible on the order form'); await p.waitForTimeout(4000); }
 
   // ── 6. IPO / bond book ──────────────────────────────────────────────────────────────────────────────────────────
   await S.step(9, 'Bond book', `Genesis is placing the ${ISSUE}`, 'IPO / Bond Book: record each client\'s indication of interest');
@@ -287,7 +287,11 @@ export default async function run(S) {
   await S.tab('Activity');
   await ready(S);
   await S.say('The distribution is kept on the note\'s Activity timeline', 'Who sent it, when, and to how many subscribers');
-  await p.waitForTimeout(4000);
+  const act = p.getByText(/^Sent to \d+ subscribers?$/).locator('visible=true').first();
+  if (await act.waitFor({ timeout: 20000 }).then(() => true).catch(() => false)) {
+    await scrollTo(S, act); await S.highlight(act.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 4000);
+  } else { S.issue('Distribution activity not shown on the research note'); await p.waitForTimeout(4000); }
+  await S.clear();
   const older = (await records('GCTRD1', resObj.id, { limit: 500 })).find((r) => r.data?.title === 'Banking sector outlook' && Number(r.data?.opens) > 0);
   if (older) {
     await S.openRecord('research_publication', older.id);

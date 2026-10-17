@@ -451,8 +451,9 @@ Start any client conversation here: the **Related** tab shows everything Genesis
 - **FX Client Profiles** — purpose, volumes, currency pairs, approved products, limits, settlement accounts.
 - **FX Quotes**: *Requested → Quoted → Accepted / Rejected / Expired* — accepting books an **FX Deal** with the dealing
   system's reference and the improvement against the board rate.
-- **FX Rate Alerts** (*Active → Triggered → Expired*) — the client is told by email or SMS when the target is reached.
-- **FX Reference Rates** (Masters) — the daily TT buying and selling board.
+- **FX Rate Alerts** (*Active → Triggered → Expired*) — the client is told by email or SMS when the target is reached;
+  alerts are checked as soon as a new board rate is published, and every hour.
+- **FX Reference Rates** (Masters) — the daily TT buying and selling board, published by the dealer.
 
 ### Marketing & Consent
 
@@ -533,7 +534,8 @@ PLR) takes effect without any release.
 
 1. Dealer: **Forex Desk ▸ FX Quotes ▸ New** — client, profile, product, side, currency, amount.
 2. Enter the quoted rate ▸ *Quoted*; when the client agrees ▸ *Accepted*.
-3. An **FX Deal** is created and booked in the dealing system with its reference; forwards get a maturity reminder.
+3. An **FX Deal** is created and booked in the dealing system with its reference and the improvement against the board
+   rate; forwards get a maturity reminder on the dealer's **Reminders** a week before the value date.
 
 ### D. Advisory mandate
 

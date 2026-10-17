@@ -278,7 +278,8 @@ const clientOrder = {
     FX('consideration', 'Consideration', 'quantity * COALESCE(executed_price, limit_price)', { format: 'currency', precision: 2, list: true }),
     FX('brokerage', 'Brokerage (est. 1%)', 'consideration * 0.01', { format: 'currency', precision: 2 }),
     FX('restricted_hit', 'Restricted list', "COALESCE(LOOKUP('restricted_list_entry', 'issuer', instrument, 'list_type'), 'clear')", { type: 'string' }),
-    FX('party', 'Client', 'securities_account.party', { type: 'number' }),
+    // The client's record id, for Client 360 roll-ups — the Account already names the client on the panel.
+    FX('party', 'Client', 'securities_account.party', { type: 'number', detail: false }),
     FX('business_unit', 'Business unit', "'SEC'", { type: 'string' }),
     FX('name', 'Order', "CONCAT(LABEL(side), ' ', quantity, ' ', instrument)", { type: 'string' }),
   ],

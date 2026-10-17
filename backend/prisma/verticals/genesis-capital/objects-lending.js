@@ -183,6 +183,7 @@ const creditFacility = {
     SEL('credit_decision', 'Credit decision', o([['approved', 'Approved', '#10b981'], ['declined', 'Declined', '#ef4444']]), { config: { always_disabled: true } }),
     FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', CONCAT('LND|', IF(amount_mur <= 5000000, '5M', IF(amount_mur <= 20000000, '20M', 'MAX'))), 'approver_label'), IF(amount_mur <= 5000000, 'Loans Manager', IF(amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
+    FX('borrower_name', 'Borrower name', 'borrower.display_name', { type: 'string' }),
     FX('name', 'Facility', "CONCAT(borrower.display_name, ' · ', LABEL(facility_type))", { type: 'string' }),
   ],
   forms: [

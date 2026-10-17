@@ -184,7 +184,17 @@ export default async function run(S) {
   if (await S.waitCut(() => ts.waitFor({ timeout: 60000 }).then(() => true).catch(() => false))) {
     await ts.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' }));
     await p.waitForTimeout(700);
-    await S.highlight(ts.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 3500);
+    await S.highlight(ts.locator('xpath=ancestor::div[contains(@class,"rounded")][1]'), 2000);
+    // Open it: the preview shows the PDF above the caption.
+    const prev = ts.locator('xpath=ancestor::div[contains(@class,"rounded")][1]').locator('button[title="Preview"]').first();
+    if (await prev.count()) {
+      await S.say('Preview the term sheet', 'Facility, amount, tenor, pricing and fees — filled in from the record');
+      await S.moveTo(prev);
+      await S.waitCut(() => p.waitForTimeout(7000)); // the PDF viewer takes a few seconds to render
+      await p.waitForTimeout(5000);
+      await p.keyboard.press('Escape');
+      await p.waitForTimeout(600);
+    }
   } else S.issue('term sheet not on the Docs tab');
 
   // ── 7. Security perfection and Active ────────────────────────────────────

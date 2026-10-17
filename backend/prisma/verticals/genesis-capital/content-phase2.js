@@ -105,7 +105,7 @@ const documentTemplates = [
     body: letter('Genesis Life Ltd — Loans business line', 'Regulated by the Financial Services Commission (FSC IS10000013)', '<h2>Margin call {{call_no}}</h2><p>The loan-to-value on your investment-backed loan has reached <strong>{{ltv_at_call}}%</strong>. Please restore cover by <strong>{{cure_by}}</strong> by pledging additional investments or making a partial repayment (shortfall MUR {{shortfall}}). If cover is not restored, the pledged assets may be realised under the pledge agreement.</p>') },
   { name: 'commercial_term_sheet', entity_type: 'credit_facility', output_category: 'offer_letters', description: 'Indicative term sheet for a commercial facility.',
     body: letter('Genesis Life Ltd — Loans business line', 'Regulated by the Financial Services Commission (FSC IS10000013)', `<h2>Term sheet — {{facility_no}}</h2><table cellpadding="6" style="border-collapse:collapse">
-<tr><td>Borrower</td><td>{{name}}</td></tr><tr><td>Facility</td><td>{{facility_type}} {{tranche}}</td></tr><tr><td>Amount</td><td>{{currency_code}} {{amount}}</td></tr>
+<tr><td>Borrower</td><td>{{borrower_name}}</td></tr><tr><td>Facility</td><td>{{facility_type}} {{tranche}}</td></tr><tr><td>Amount</td><td>{{currency_code}} {{amount}}</td></tr>
 <tr><td>Tenor</td><td>{{tenor_months}} months</td></tr><tr><td>Pricing</td><td>Genesis PLR + {{margin}}% ({{interest_rate}}%)</td></tr>
 <tr><td>Fees</td><td>Arrangement {{arrangement_fee_pct}}%; commitment {{commitment_fee_pct}}%</td></tr><tr><td>Security</td><td>{{security_package}}</td></tr>
 <tr><td>Covenants</td><td>Minimum DSCR, maximum net debt / EBITDA, audited accounts within 120 days</td></tr></table>`) },

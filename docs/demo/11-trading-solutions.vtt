@@ -1,173 +1,173 @@
 WEBVTT
 
-00:00:03.857 --> 00:00:12.801
+00:00:04.124 --> 00:00:13.198
 Trading Solutions
 Open a client's trading account, take and execute an order, run the bond book and distribute research.
 
-00:00:12.856 --> 00:00:21.896
+00:00:13.213 --> 00:00:22.939
 Sign in as Arvind Ramsurrun — Trader
 Trader — opens accounts, takes and executes orders
 
-00:00:21.896 --> 00:00:28.405
+00:00:22.939 --> 00:00:29.317
 Investments ▸ Trading Solutions ▸ Securities Accounts
 Each account: client, markets, custodian, CDS and OMS numbers, limits
 
-00:00:28.405 --> 00:00:36.325
+00:00:29.317 --> 00:00:38.973
 The account-opening wizard: three short steps
 Client & account → custody & settlement → controls
 
-00:00:36.325 --> 00:00:43.340
+00:00:38.973 --> 00:00:46.396
 Where the securities are held and where the money settles
 And who may give instructions on the account
 
-00:00:43.340 --> 00:00:50.329
+00:00:46.396 --> 00:00:53.652
 A trading limit — the agreement and appropriateness come later
 They are ticked once the client has signed and been assessed
 
-00:00:50.329 --> 00:00:53.125
+00:00:53.652 --> 00:00:56.517
 Account request created at Requested
 An account number is given automatically
 
-00:00:53.125 --> 00:01:04.039
+00:00:56.517 --> 00:01:11.806
 On the pipeline, move the account to KYC & appropriateness
 Check the client's KYC and that she understands the products
 
-00:01:04.039 --> 00:01:08.527
+00:01:11.806 --> 00:01:16.841
 Next, Agreement…
 The CRM checks the signed agreement and the appropriateness test
 
-00:01:08.527 --> 00:01:12.436
+00:01:16.841 --> 00:01:20.923
 Blocked: the agreement must be signed and appropriateness assessed
 A stage gate — the account cannot go further without them
 
-00:01:12.436 --> 00:01:25.915
+00:01:20.923 --> 00:01:45.794
 She has signed and passed the appropriateness test — tick both
 Edit the account
 
-00:01:25.915 --> 00:01:37.236
+00:01:45.794 --> 00:02:08.060
 Move to Agreement again — this time it goes through
 Then CDS opening: Operations requests the CDS account
 
-00:01:37.236 --> 00:01:41.345
+00:02:08.060 --> 00:02:12.136
 Try to activate the account
 Trading needs a CDS account number and approved KYC
 
-00:01:41.345 --> 00:01:45.256
+00:02:12.136 --> 00:02:16.109
 Blocked: the CDS account number is missing
 Activation also checks that the client's KYC is approved
 
-00:01:45.256 --> 00:02:00.055
+00:02:16.109 --> 00:02:34.203
 The CDS has opened the account — enter its number and the OMS account
 Edit the account
 
-00:02:00.055 --> 00:02:07.987
+00:02:34.203 --> 00:02:43.121
 Activate again
 Corinne Henry's KYC is approved, so the account goes live
 
-00:02:07.987 --> 00:02:38.104
+00:02:43.121 --> 00:03:14.317
 Before taking orders: the restricted list
 KYC & Compliance ▸ Restricted list — kept by Compliance, read by traders
 
-00:02:38.104 --> 00:02:43.135
+00:03:14.317 --> 00:03:19.426
 Island Agro Industries Ltd is on the restricted list
 Genesis advises on a deal for this issuer — no orders, no trade ideas
 
-00:02:43.135 --> 00:02:57.862
+00:03:19.426 --> 00:03:37.626
 Corinne Henry phones in an order
 Order Intake Log ▸ New: every instruction is time-stamped
 
-00:02:57.862 --> 00:03:05.867
+00:03:37.626 --> 00:03:54.153
 A limit order, received by phone
 The time received and the voice recording reference are best-execution evidence
 
-00:03:05.867 --> 00:03:15.520
+00:03:54.153 --> 00:04:12.892
 On the pipeline, move the order to Sent to OMS
 The CRM hands it to the order management system
 
-00:03:15.520 --> 00:03:18.873
-The OMS answered with its reference: OMS-1904233
+00:04:12.892 --> 00:04:16.300
+The OMS answered with its reference: OMS-9828032
 Written on the order automatically
 
-00:03:18.873 --> 00:03:24.057
+00:04:16.300 --> 00:04:21.275
 The order is filled — move it to Executed
 The CRM wants the OMS reference and the executed price
 
-00:03:24.057 --> 00:03:30.943
+00:04:21.275 --> 00:04:28.011
 Blocked: the executed price is missing
 An order is never marked executed without the fill details
 
-00:03:30.943 --> 00:03:46.977
+00:04:28.011 --> 00:04:51.115
 Enter the executed price from the OMS fill
 The OMS reference is already there
 
-00:03:46.977 --> 00:03:51.441
+00:04:51.115 --> 00:04:55.775
 Executed — consideration and estimated brokerage are calculated
 Quantity × executed price; the client's account counts the order
 
-00:03:51.441 --> 00:04:19.220
+00:04:55.775 --> 00:05:12.729
 Another client call: buy Island Agro Industries Ltd
 Let's see what the CRM does
 
-00:04:19.220 --> 00:04:23.721
+00:05:12.729 --> 00:05:18.076
 Refused: this issuer is on the restricted list
 The order cannot be taken — the check runs on the server, no one can skip it
 
-00:04:23.721 --> 00:04:35.494
+00:05:18.076 --> 00:05:33.909
 Genesis is placing the MCB Group 2031 Notes
 IPO / Bond Book: record each client's indication of interest
 
-00:04:35.494 --> 00:04:41.169
+00:05:33.909 --> 00:05:46.878
 Allocated is filled in when the book closes
 Demand per issue shows on the Trading dashboard
 
-00:04:41.169 --> 00:04:45.088
+00:05:46.878 --> 00:05:50.883
 The book for every issue
 Indicated and allocated amounts per investor
 
-00:04:45.088 --> 00:04:58.135
+00:05:50.883 --> 00:06:12.198
 Publish a research note
 Research & Market Statistics ▸ New
 
-00:04:58.135 --> 00:05:00.120
+00:06:12.198 --> 00:06:15.872
 Send to subscribers: one click
 Every active subscriber of research notes is emailed, in English or French
 
-00:05:00.120 --> 00:05:15.834
+00:06:15.872 --> 00:06:27.529
 The CRM reports how many were emailed and how many skipped
 Clients who unsubscribed, or have no marketing consent, are never emailed
 
-00:05:15.834 --> 00:05:24.137
+00:06:27.529 --> 00:06:35.192
 Distributed is ticked and Opens starts at 0
 Opens counts up as recipients read it — an estimate, some mail apps block images
 
-00:05:24.137 --> 00:05:35.704
+00:06:35.192 --> 00:06:40.328
 The distribution is kept on the note's Activity timeline
 Who sent it, when, and to how many subscribers
 
-00:05:35.704 --> 00:05:40.095
+00:06:46.819 --> 00:06:51.422
 An earlier note: 271 opens so far
 A simple read on which research clients find useful
 
-00:05:40.095 --> 00:05:42.622
+00:06:51.422 --> 00:06:55.106
 Corporate Advisory sits behind the advisory wall
 Traders cannot see deals Genesis is advising on
 
-00:05:42.622 --> 00:05:47.647
+00:06:55.106 --> 00:07:00.230
 The trader sees no advisory mandates
 That is why the restricted list exists: Compliance tells the desk what not to trade
 
-00:05:47.647 --> 00:06:01.702
+00:07:00.230 --> 00:07:16.026
 The Trading dashboard
 Accounts, portfolio value, orders by market, consideration and the bond book
 
-00:06:01.702 --> 00:06:05.056
+00:07:16.026 --> 00:07:19.441
 Orders by market and consideration per month
 Each widget opens the records behind it
 
-00:06:05.056 --> 00:06:08.456
+00:07:19.441 --> 00:07:22.862
 The IPO / bond book by issue
 Including today's indication
 
-00:06:09.338 --> 00:06:17.164
+00:07:24.967 --> 00:07:33.009
 Trading Solutions
 The CRM keeps the evidence and enforces the rules — the trader serves the client.

@@ -41,7 +41,8 @@ async function submit(S, attempt = 1) {
   const resp = p.waitForResponse((r) => /\/runtime\/records(\/\d+)?$/.test(new URL(r.url()).pathname) && ['POST', 'PUT', 'PATCH'].includes(r.request().method()), { timeout: 240000 });
   await S.moveTo(btn);
   const invalid = p.locator('.form-error').first().waitFor({ state: 'visible', timeout: 240000 }).then(() => 'invalid').catch(() => null);
-  if (await Promise.race([resp.then(() => 'sent'), invalid]) === 'invalid') {
+  // The race ends when the response arrives: a slow save is a wait to trim, like the rest.
+  if (await S.waitCut(() => Promise.race([resp.then(() => 'sent'), invalid])) === 'invalid') {
     throw new Error(`form validation: ${(await p.locator('.form-error').allTextContents()).join('; ')}`);
   }
   const failed = p.waitForEvent('requestfailed', { predicate: (q) => /\/runtime\/records/.test(q.url()) && q.method() !== 'GET', timeout: 240000 })
