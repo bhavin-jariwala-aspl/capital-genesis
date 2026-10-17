@@ -340,6 +340,7 @@ const dashboards = [
     widgets: [
       W('chart', 'Meetings by RM', 'half', { object: 'meeting_note', group_by: 'rm' }, { chart: 'bar' }),
       W('chart', 'Revenue credited by RM (MUR)', 'half', { object: 'revenue_entry', metric: 'sum', field: 'rm_credit_mur', group_by: 'rm' }, { chart: 'bar', ...CUR }),
+      W('chart', 'Referral credit by referring RM (MUR)', 'half', { object: 'revenue_entry', metric: 'sum', field: 'referrer_credit_mur', group_by: 'referrer_rm', filters: [{ field: 'referrer_split_pct', op: 'gt', value: '0' }] }, { chart: 'bar', ...CUR }),
       W('chart', 'Open pipeline by RM (MUR)', 'half', { object: 'fs_opportunity', metric: 'sum', field: 'weighted_mur', group_by: 'owner_rm', filters: [{ field: 'stage', op: 'nin', value: 'won,lost' }] }, { chart: 'bar', ...CUR }),
       W('chart', 'Won opportunities by RM', 'half', { object: 'fs_opportunity', group_by: 'owner_rm', filters: [{ field: 'stage', op: 'eq', value: 'won' }] }, { chart: 'bar' }),
       W('chart', 'Target attainment %', 'full', { object: 'rm_target', metric: 'avg', field: 'attainment_pct', group_by: 'rm' }, { chart: 'bar' }),

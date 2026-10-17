@@ -7,6 +7,7 @@ import WizardStepper from './WizardStepper';
 import Spinner from '../ui/Spinner';
 import Alert from '../ui/Alert';
 import { getStepValidation, evaluateStepRules } from '../../utils/wizardValidation';
+import { builderDefaults } from '../../utils/fieldDefaults';
 import { ChevronLeft, AlertTriangle, ShieldAlert, Sparkles, PartyPopper } from 'lucide-react';
 
 /** Same normaliser as RecordFormPage — converts raw field_layouts to FormRenderer shape */
@@ -55,6 +56,9 @@ function StepForm({ step, currentStepIdx, totalSteps: _totalSteps, stepData, def
 
   const normalisedForm = useMemo(() => normaliseFormMeta(data?.data), [data]);
   const formMeta = cachedForm ?? normalisedForm;
+  // The Builder defaults of this step's fields (e.g. Clawback period = 12), so the step shows — and saves — them
+  // instead of empty inputs, exactly as a new record's form does.
+  const builtInDefaults = useMemo(() => builderDefaults(formMeta?.fields), [formMeta]);
 
   // Track when user attempted to submit (for showing validation summary)
   const handleInvalid = useCallback((errors) => {
@@ -106,6 +110,7 @@ function StepForm({ step, currentStepIdx, totalSteps: _totalSteps, stepData, def
       <FormRenderer
         formMeta={formMeta}
         defaultValues={{
+          ...builtInDefaults,
           // If defaultValues has numeric keys, use step-indexed; otherwise treat as flat (field names)
           ...(defaultValues[currentStepIdx] || {}),
           // Flat defaults: spread all fields — FormRenderer only uses fields in the form

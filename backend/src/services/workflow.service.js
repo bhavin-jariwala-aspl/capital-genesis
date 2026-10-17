@@ -954,6 +954,10 @@ class WorkflowEngineService {
       //                this record's related list.
       //   store_as   — field on THIS record that receives the new record's id
       //                (e.g. an Enquiry's `party`), linking the other way.
+      //   route      — true: leave the new record unassigned so the target
+      //                object's assignment rules route it (an introducer's
+      //                referral becomes an enquiry for the right desk, not for
+      //                the referral's owner). Default: inherit this record's owner.
       // Values support {{field}} and {{id}} (this record's id).
       case 'create_record': {
         if (!cfg.object_id) {
@@ -986,7 +990,7 @@ class WorkflowEngineService {
             Number(cfg.object_id),
             startStageId,
             actorId ?? null,
-            cfg.assigned_to ?? record?.assigned_to ?? null,
+            cfg.assigned_to ?? (cfg.route ? null : record?.assigned_to) ?? null,
             { tenant_id: record?.tenant_id ?? null },
             entityData,
             { draft: true },

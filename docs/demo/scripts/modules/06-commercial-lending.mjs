@@ -31,6 +31,22 @@ export default async function run(S) {
     S.log('trashed previous take', old.id);
   }
 
+  // Text and number fields typed briskly: a short visible move, a click, then the value (keeps the take within
+  // length on a busy machine; lookups and selects still go through S.fill).
+  const quick = async (values) => {
+    for (const [name, value] of Object.entries(values)) {
+      const el = p.locator(`[id="${name}"]`).first();
+      await el.waitFor({ state: 'visible', timeout: 30000 });
+      const b0 = await el.boundingBox();
+      if (b0 && (b0.y < 70 || b0.y + b0.height > 750)) { await el.evaluate((e) => e.scrollIntoView({ block: 'center' })); await p.waitForTimeout(150); }
+      const b = await el.boundingBox();
+      await p.mouse.move(b.x + Math.min(b.width / 2, 160), b.y + b.height / 2, { steps: 5 });
+      await el.click();
+      await p.keyboard.press('Meta+A'); await p.keyboard.press('Backspace');
+      await p.keyboard.insertText(String(value));
+      await p.waitForTimeout(260);
+    }
+  };
   const showSection = async (text, ms = 3500) => {
     const h = p.getByText(text, { exact: true }).locator('visible=true').last();
     await S.waitCut(() => h.waitFor({ timeout: 120000 }));
@@ -120,12 +136,12 @@ export default async function run(S) {
 
   await S.step(3, 'Credit memo', 'Write the memo on its own form', 'Edit ▸ Credit memo tab — the same record, a focused form');
   await editRec('credit_facility', fac.id, 'Credit memo');
-  await S.fill('credit_facility', {
+  await quick({
     company_background: 'Port haulage since 1998; 64 trucks, 310 staff; experienced management. Part of the Doorga Group.',
     swot: 'S: long-term port contracts. W: top 3 clients = 44%. O: two new contracts. T: fuel prices, MUR/USD.',
     projections: 'Revenue +8%; EBITDA margin 11–12%; DSCR above 1.6x.',
     security_package: 'Fixed charge on 18 new trucks; floating charge on receivables; guarantee from Doorga Trading Ltd.',
-  }, { delay: 2 });
+  });
   await S.submit();
   await board('credit_facility');
   await S.say('Memo written — Credit memo now accepts the facility');
@@ -137,7 +153,7 @@ export default async function run(S) {
   const spread = async (fy, v) => {
     await S.waitCut(() => S.newRecord('financial_spread'));
     await S.fill('financial_spread', { credit_facility: PICK, period_end: `${fy}-06-30`, basis: 'audited' });
-    await S.fill('financial_spread', v, { delay: 3 });
+    await quick(v);
     await S.submit();
   };
   await spread(year - 2, { revenue: '612000000', ebitda: '64000000', tax: '7200000', total_debt: '150000000', cash: '38000000', annual_debt_service: '31000000' });
@@ -158,7 +174,7 @@ export default async function run(S) {
   await showRefusal(4000);
   await editRec('credit_facility', fac.id, 'Credit memo');
   await S.fill('credit_facility', { risk_grade: '2' });
-  await S.fill('credit_facility', { recommendation: 'Approve MUR 15m for 12 months at PLR + 2. DSCR 1.93x. Covenant: DSCR ≥ 1.25x, tested annually.' }, { delay: 3 });
+  await quick({ recommendation: 'Approve MUR 15m for 12 months at PLR + 2. DSCR 1.93x. Covenant: DSCR ≥ 1.25x, tested annually.' });
   await S.submit();
 
   await S.say('Who approves? Masters ▸ Approval Matrices', 'Lending bands: up to MUR 5m Loans Manager · up to MUR 20m Credit Committee · above, the Board Credit Committee');
@@ -239,7 +255,7 @@ export default async function run(S) {
   await p.keyboard.press('Escape');
   await editRec('covenant_test', t1.id);
   await S.fill('covenant_test', { waiver: 'granted' });
-  await S.fill('covenant_test', { waiver_terms: 'One-off waiver: fleet ramp-up. 25% cash sweep until DSCR is back above 1.25x; retest at half-year.' }, { delay: 3 });
+  await quick({ waiver_terms: 'One-off waiver: fleet ramp-up. 25% cash sweep until DSCR is back above 1.25x; retest at half-year.' });
   await S.submit();
   await openRec('covenant_test', t1.id);
   await S.say('Waiver granted and the terms recorded on the test', 'The next test date stays in the calendar for the RM');

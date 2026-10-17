@@ -227,6 +227,30 @@ describe('WorkflowEngineService — create_record routing', () => {
   });
 });
 
+describe('WorkflowEngineService — create_record assignee', () => {
+  const run = async (extra) => {
+    const db = makeDb({ record: eavRecord([]) });
+    db.uiWorkflow.findUnique.mockResolvedValue(wf([
+      { id: 1, name: 'Create enquiry', step_type: 'create_record', order_index: 1,
+        config: { object_id: 9, fields: { first_name: 'Ann' }, ...extra }, on_true_id: null, on_false_id: null },
+    ]));
+    const svc = new WorkflowEngineService(db);
+    const createRecord = jest.fn().mockResolvedValue({ id: 900 });
+    svc.setRecordService({ createRecord, recompute: jest.fn().mockResolvedValue(null) });
+    await svc.manualRun(1, { id: 100, assigned_to: 'GCBDH', tenant_id: 7 });
+    return createRecord.mock.calls[0][3];
+  };
+  it('inherits the source record\'s owner by default', async () => {
+    expect(await run({})).toBe('GCBDH');
+  });
+  it('leaves the new record to the target\'s assignment rules with route: true', async () => {
+    expect(await run({ route: true })).toBeNull();
+  });
+  it('an explicit assigned_to still wins', async () => {
+    expect(await run({ route: true, assigned_to: 'GCRM1' })).toBe('GCRM1');
+  });
+});
+
 describe('WorkflowEngineService — scheduled per-record sweeps', () => {
   const sweepSteps = [
     { id: 1, name: 'Gate', step_type: 'condition', order_index: 1,

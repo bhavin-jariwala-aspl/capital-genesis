@@ -84,7 +84,7 @@ const workflows = [
         first_name: '{{prospect_first_name}}', last_name: '{{prospect_last_name}}', email: '{{prospect_email}}', mobile: '{{prospect_mobile}}',
         product_code: '{{product_code}}', estimated_amount: '{{estimated_amount}}', currency_code: 'MUR', channel: 'introducer', introducer: '{{introducer}}',
         message: 'Referred by an introducer ({{referral_no}}).',
-      }, { store_as: 'enquiry', stage: 'new' }),
+      }, { store_as: 'enquiry', stage: 'new', route: true }),
     ],
   },
   {
@@ -561,6 +561,20 @@ const workflows = [
       set('a1', 'Mark invoiced', 'invoice_raised', 'true'),
     ],
   },
+  {
+    object: 'fee_invoice', name: 'genesis_fee_invoice_revenue', label: 'Advisory — paid fee to the Revenue Ledger',
+    description: 'A paid retainer, milestone or success fee invoice posts the fee to the Revenue Ledger, credited to the advisor and linked to the invoice (REV-FR-03).', ...changed('status'),
+    steps: [
+      trig('Status change'),
+      expr('c1', 'Paid fee, not yet posted', "status = 'paid' AND fee_type != 'expenses' AND NOT(revenue_posted)"),
+      create('r1', 'Post the revenue line', 'revenue_entry', {
+        party: { expr: 'advisory_mandate.client' }, business_unit: 'ADV', revenue_type: { expr: "CASE(fee_type, 'success', 'success_fee', 'advisory_retainer')" },
+        amount: '{{amount}}', currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: '{{assigned_to}}', referrer_split_pct: '0',
+        source: 'fee_invoice', fee_invoice: '{{id}}',
+      }),
+      set('a1', 'Mark posted', 'revenue_posted', 'true'),
+    ],
+  },
 
   // ── M13 Forex ──────────────────────────────────────────────────────────────
   {
@@ -579,6 +593,19 @@ const workflows = [
       trig('A new deal'),
       cond('c1', 'No reference yet', 'dealing_reference', 'empty'),
       integrate('i1', 'Book in the dealing system', 'genesis_fx_dealing', { deal_no: '{{deal_no}}', currency_code: '{{currency_code}}', amount: '{{amount}}' }, { dealing_reference: 'dealing_reference' }),
+    ],
+  },
+  {
+    object: 'fx_deal', name: 'genesis_fx_deal_revenue', label: 'FX deal — post the spread income',
+    description: 'A new deal posts its spread income over the mid rate to the Revenue Ledger, credited to the dealer and linked to the deal (REV-FR-01/03).', ...ONCREATE,
+    steps: [
+      trig('A new deal'),
+      expr('c1', 'Earns a spread', 'COALESCE(spread_income, 0) > 0'),
+      create('r1', 'Post the revenue line', 'revenue_entry', {
+        party: '{{party}}', business_unit: 'FX', product_code: { expr: "CASE(product, 'forward', 'FX-FWD', 'swap', 'FX-SWAP', 'FX-SPOT')" }, revenue_type: 'fx_spread',
+        amount: { expr: 'ROUND(spread_income, 2)' }, currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: '{{assigned_to}}', referrer_split_pct: '0',
+        source: 'fx_deal', fx_deal: '{{id}}',
+      }),
     ],
   },
   {

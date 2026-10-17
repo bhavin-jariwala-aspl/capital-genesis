@@ -187,7 +187,7 @@ function overlayScript() {
 export async function session({ slug, title, rawDir }) {
   const out = path.join(rawDir, slug);
   fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch({ channel: 'chrome', args: ['--hide-scrollbars', '--disable-features=Translate'] });
+  const browser = await chromium.launch({ channel: 'chrome', args: ['--hide-scrollbars', '--disable-features=Translate', '--window-size=1440,900'] });
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, locale: 'en-GB', timezoneId: 'Indian/Mauritius',
     recordVideo: { dir: out, size: { width: 1440, height: 900 } },
