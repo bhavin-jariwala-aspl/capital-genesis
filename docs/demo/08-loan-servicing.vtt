@@ -1,179 +1,179 @@
 WEBVTT
 
-00:00:03.506 --> 00:00:12.086
+00:00:01.790 --> 00:00:10.347
 Loan Servicing
 Looking after loans once they are booked: the loan book, PLR changes and early-warning collections.
 
-00:00:12.102 --> 00:00:15.577
+00:00:10.600 --> 00:00:13.920
 The loan book is a daily snapshot from the loan system (LMS)
 The LMS stays the system of record — the CRM services from it
 
-00:00:15.577 --> 00:00:24.821
+00:00:13.920 --> 00:00:20.360
 Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
 Loans manager — reviews the book every morning
 
-00:00:24.821 --> 00:00:28.558
+00:00:20.360 --> 00:00:24.000
 Lending ▸ Loan Servicing ▸ Loan Book: one row per loan account
 Rate, days in arrears, arrears bucket, maturity and LTV for every account
 
-00:00:28.558 --> 00:00:37.498
+00:00:24.000 --> 00:00:31.400
 Show only the accounts in arrears: search for “In arrears”
 Sort by any column — e.g. days in arrears
 
-00:00:37.498 --> 00:00:39.693
+00:00:31.400 --> 00:00:33.080
 Open LMS-100202 — a home loan 45 days in arrears
 
-00:00:39.693 --> 00:00:43.329
+00:00:33.080 --> 00:00:36.560
 Outstanding principal and the current rate: PLR minus the product margin
 Variable (PLR-linked) loans follow every PLR change
 
-00:00:43.329 --> 00:00:49.455
+00:00:36.560 --> 00:00:42.320
 Monthly instalment and the next due date
 Borrowers get an SMS reminder three days before each instalment, in their language
 
-00:00:49.455 --> 00:00:56.163
+00:00:42.320 --> 00:00:48.520
 Days and amount in arrears, the bucket, maturity and the current LTV
 An account entering arrears opens a collections follow-up for its RM automatically
 
-00:00:56.163 --> 00:01:01.659
+00:00:48.520 --> 00:00:53.400
 ALCO has decided to cut the Genesis PLR by 25 bps, from 6.825% to 6.575%
 The loans executive drafts the campaign that tells every variable-rate borrower
 
-00:01:01.659 --> 00:01:09.121
+00:00:53.400 --> 00:00:59.080
 Sign in as Sophie Lagesse — Loans Executive
 Loans executive — prepares the campaign
 
-00:01:09.121 --> 00:01:11.975
+00:00:59.080 --> 00:01:01.840
 Loan Servicing ▸ PLR Change ▸ New: old rate, new rate, effective date
 
-00:01:11.975 --> 00:01:17.531
+00:01:01.840 --> 00:01:07.373
 “Approved by” stays empty — the campaign is only a draft
 A small, realistic change keeps the demo book sensible
 
-00:01:17.531 --> 00:01:20.299
+00:01:07.373 --> 00:01:10.013
 The campaign starts in Draft
 Draft ▸ Approved ▸ Notices generated ▸ Distributed
 
-00:01:20.299 --> 00:01:23.773
+00:01:10.013 --> 00:01:13.413
 Try to move it to Approved…
 
-00:01:23.773 --> 00:01:28.073
-Blocked: an approval must name the approver (the ALCO decision)
-The loans manager signs the campaign off — not the person who drafted it
+00:01:13.413 --> 00:01:17.613
+Blocked: the person who drafted a campaign cannot approve it
+Four eyes — the loans manager signs it off and records the ALCO approval
 
-00:01:28.073 --> 00:01:33.613
+00:01:17.613 --> 00:01:22.013
 Meanwhile, the RM works the early-warning follow-ups
 Each account in arrears got a call to make, opened by the daily arrears check
 
-00:01:33.613 --> 00:01:42.012
+00:01:22.013 --> 00:01:28.213
 Sign in as Bruno Chan — Relationship Manager (Corporate)
 Relationship manager — owns the borrowers in arrears
 
-00:01:42.012 --> 00:01:45.776
+00:01:28.213 --> 00:01:31.773
 Loan Servicing ▸ Collections: arrears bucket, action, date and outcome
 History stays on the list: earlier calls, demand letters, disputes
 
-00:01:45.776 --> 00:01:56.175
+00:01:31.773 --> 00:01:37.093
 Log the call on LMS-100202: the borrower promises to pay
 Edit the follow-up the CRM opened and record the outcome
 
-00:01:56.175 --> 00:01:57.347
+00:01:37.093 --> 00:01:37.613
 Save without the promised date…
 
-00:01:57.347 --> 00:02:01.303
+00:01:37.613 --> 00:01:41.133
 Refused: a promise to pay needs the amount and the date
 So nobody chases a promise without knowing when it is due
 
-00:02:01.303 --> 00:02:06.209
+00:01:41.133 --> 00:01:43.573
 Add the date she gave and save again
 
-00:02:06.209 --> 00:02:13.324
+00:01:43.573 --> 00:01:49.973
 The promise is written on the loan account
 Promise to pay by: the date everyone sees on the loan
 
-00:02:13.324 --> 00:02:28.966
+00:01:50.013 --> 00:01:58.253
 LMS-08810: 95 days, no contact, and the demand letter is disputed
 Time to escalate — log a new collections action
 
-00:02:28.966 --> 00:02:32.007
+00:01:58.253 --> 00:02:01.133
 Escalated — the loans manager is alerted at once
 Bucket 90+: the case now follows the legal recovery route
 
-00:02:32.007 --> 00:02:37.923
+00:02:01.133 --> 00:02:05.293
 The loans manager signs the PLR change off
 Four eyes: drafted by the executive, approved by the manager
 
-00:02:37.923 --> 00:03:02.349
+00:02:05.293 --> 00:02:10.493
 Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
 Loans manager — approves the PLR change campaign
 
-00:03:02.349 --> 00:03:16.747
+00:02:10.493 --> 00:02:16.173
 His notifications: the escalation from collections is already there
 
-00:03:16.747 --> 00:03:31.899
+00:02:16.173 --> 00:02:22.693
 Record who approved it — here the ALCO meeting he chaired
 
-00:03:31.899 --> 00:03:38.661
+00:02:22.693 --> 00:02:26.653
 Now move it to Approved
 This time the gate lets it through
 
-00:03:38.661 --> 00:03:43.545
+00:02:26.653 --> 00:02:31.089
 Approving changes no rate by itself
 The PLR, the website “Rate from” and new loan pricing change when the new rate is entered in Masters ▸ Genesis PLR History
 
-00:03:43.545 --> 00:03:45.908
+00:02:31.089 --> 00:02:32.529
 The CRM now writes a notice for every variable-rate borrower
 Same balance and remaining term, new rate: the new instalment is calculated for each loan
 
-00:03:45.908 --> 00:03:49.802
+00:02:32.529 --> 00:02:36.209
 Done: the campaign moved itself to Notices generated
 Notices counted on the campaign; the loans manager is told they are ready
 
-00:03:49.802 --> 00:03:53.606
+00:02:36.249 --> 00:02:40.849
 Open Loan Servicing ▸ PLR Notices
 
-00:03:53.606 --> 00:03:57.868
+00:02:40.849 --> 00:02:44.849
 PLR Notices: one per loan — borrower, new rate, change in instalment
 Fixed-rate and settled loans are left out
 
-00:03:57.868 --> 00:03:59.345
+00:02:44.849 --> 00:02:46.289
 Open the notice for LMS-08821
 
-00:03:59.345 --> 00:04:12.889
+00:02:46.289 --> 00:02:59.729
 Old and new rate, old and new instalment
 The loan's margin is kept: only the PLR part of the rate moves
 
-00:04:12.889 --> 00:04:19.579
+00:02:59.729 --> 00:03:06.027
 The personalised letter was generated and filed on the notice
 Docs tab — ready to email, print or post
 
-00:04:19.579 --> 00:04:28.668
+00:03:06.027 --> 00:03:14.027
 Rate and instalment before and after the effective date
 The term of the loan does not change
 
-00:04:28.668 --> 00:04:36.846
+00:03:14.067 --> 00:03:20.787
 Notices checked: move the campaign to Distributed
 Every notice is emailed to its borrower, in English or French
 
-00:04:36.846 --> 00:04:42.190
+00:03:20.787 --> 00:03:27.267
 Distributed: the emails go out and each notice is marked Sent
 
-00:04:42.190 --> 00:04:49.602
+00:03:27.267 --> 00:03:34.627
 Every notice is now Sent, with the date
 The delivery log: bounces are flagged for a call or a letter by post
 
-00:04:49.602 --> 00:04:53.367
+00:03:34.627 --> 00:03:38.067
 The email is on the notice's Activity timeline
 What the borrower was told, and when
 
-00:04:53.367 --> 00:05:07.592
+00:03:38.067 --> 00:03:51.107
 Dashboard ▸ Loan Book
 Outstanding by product, arrears buckets, LTV bands, PLR-linked share and collections outcomes
 
-00:05:07.592 --> 00:05:12.348
+00:03:51.107 --> 00:03:55.667
 The promise to pay just logged is in the collections outcomes
 Click any chart to open the accounts behind it
 
-00:05:12.348 --> 00:05:19.829
+00:03:55.921 --> 00:04:03.427
 Loan Servicing
 The LMS keeps the books; the CRM services the borrowers.

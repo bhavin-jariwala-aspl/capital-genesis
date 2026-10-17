@@ -3,11 +3,25 @@ import { records, poll, obj, api, PEOPLE } from '../lib/studio.mjs';
 
 export const title = 'Retail Lending — enquiry to disbursed home loan';
 
-// RL_CLIENT="First Last" lets test runs use a fresh client; the published video uses the default.
-const [FIRST, LAST] = (process.env.RL_CLIENT || 'Kavita Ramchurn').split(' ');
+// Each take needs a client who does not exist yet: conversion links an existing client by email, and an earlier
+// take's client already has approved KYC, which would skip the KYC gate. RL_CLIENT="First Last" forces a name.
+const NAMES = ['Kavita Ramchurn', 'Anika Gopaul', 'Meera Jugnauth', 'Divya Boolell', 'Leena Ramgoolam', 'Shreya Bissoon',
+  'Nisha Dookhee', 'Priscilla Lamy', 'Varsha Seewoosurrun', 'Anjali Nundloll', 'Ritika Beedassy', 'Sarita Ramdewar'];
+const emailOf = (name) => name.split(' ').join('.').toLowerCase().normalize('NFD').replace(/[^a-z.]/g, '') + '@example.com';
+const parties = await (async () => {
+  for (let i = 0; ; i++) {
+    try { return await records('GCADMIN', 157, { limit: 2000 }); } catch (e) { if (i >= 4) throw e; await new Promise((r) => setTimeout(r, 3000)); }
+  }
+})();
+const taken = new Set(parties.map((r) => r.data?.email));
+const CHOSEN = process.env.RL_CLIENT || NAMES.find((n) => !taken.has(emailOf(n)));
+if (!CHOSEN) throw new Error('every client name in NAMES already exists — add more');
+const [FIRST, LAST] = CHOSEN.split(' ');
 const CLIENT = `${FIRST} ${LAST}`;
 const CARD = `${CLIENT} · Real Estate Loan`;
-const EMAIL = `${FIRST}.${LAST}`.toLowerCase().normalize('NFD').replace(/[^a-z.]/g, '') + '@example.com';
+const EMAIL = emailOf(CLIENT);
+// Each client gets her own mobile number (a shared one would match a different client).
+const MOBILE = `+230 57${String(NAMES.indexOf(CLIENT) + 10).padStart(2, '0')} ${String(4826 + NAMES.indexOf(CLIENT) * 37).slice(-4)}`;
 
 export default async function run(S) {
   const { p } = S;
@@ -84,7 +98,7 @@ export default async function run(S) {
   await S.step(1, 'Enquiry', `${CLIENT} calls about a home loan`, 'The loans executive logs the enquiry while on the phone', 3200);
   await signIn('GCLOAN1', 'Loans executive — takes the client’s call');
   await S.waitCut(() => S.newRecord('enquiry'));
-  await S.fill('enquiry', { party_type: 'individual', channel: 'phone', first_name: FIRST, last_name: LAST, email: EMAIL, mobile: '+230 5791 4826' });
+  await S.fill('enquiry', { party_type: 'individual', channel: 'phone', first_name: FIRST, last_name: LAST, email: EMAIL, mobile: MOBILE });
   await S.say('What she wants: a real-estate loan of MUR 4.5 million over 20 years');
   await S.fill('enquiry', { preferred_language: 'en', country_of_residence: 'MU', product_code: 'LND-RE', estimated_amount: '4500000', currency_code: 'MUR', requested_tenure_months: '240' });
   await S.submit();

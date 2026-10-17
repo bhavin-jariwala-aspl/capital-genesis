@@ -110,6 +110,8 @@ describe('four eyes on a stage (maker-checker)', () => {
   it('stops the creator moving the record to the stage', async () => {
     const { s, db } = fourEyes({ approved_by: 'Rajiv Doorgakant — ALCO' });
     await expect(s.updateRecordStage(1, 20, 'U', null)).rejects.toThrow(/Four eyes/);
+    // Nothing on the record can fix it, so the board offers no "Open record to complete".
+    await expect(s.updateRecordStage(1, 20, 'U', null)).rejects.toMatchObject({ code: 'FOUR_EYES' });
     expect(db.record.update).not.toHaveBeenCalled();
   });
 

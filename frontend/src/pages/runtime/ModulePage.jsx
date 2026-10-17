@@ -433,7 +433,9 @@ export default function ModulePage() {
       // A stage gate lists the fields it needs; the edit form is told to show
       // them even when the object's usual form does not carry them.
       const need = gateFields(err);
-      setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: id, need });
+      // A four-eyes refusal cannot be completed on the record, so no "Open record to complete" link.
+      const completable = err?.response?.data?.error?.code !== 'FOUR_EYES';
+      setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: completable ? id : null, need });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] }),
   });

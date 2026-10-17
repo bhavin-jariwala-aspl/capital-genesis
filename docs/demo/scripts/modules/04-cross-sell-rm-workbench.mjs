@@ -90,8 +90,22 @@ function detail(S, label) {
   return S.p.locator('dl dt').filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\%]/g, '\\$&')}$`) }).first().locator('xpath=..');
 }
 
+// Undo earlier takes of this video (only what they created or changed since the first take on 16 Oct 2026):
+// opportunities opened by Accept go to the Trash, and the suggestions they accepted or dismissed reopen.
+const FIRST_TAKE = '2026-10-16';
+async function resetTakes() {
+  const opps = (await records('GCADMIN', OPP, { limit: 500 }))
+    .filter((r) => r.created_by === 'GCRM1' && r.created_at >= FIRST_TAKE && r.data?.product_code === 'LND-IBL');
+  for (const o of opps) await api('GCADMIN', 'DELETE', `/runtime/records/${o.id}`, {});
+  const nbas = (await records('GCADMIN', NBA, { limit: 500 }))
+    .filter((r) => r.assigned_to === 'GCRM1' && ['accepted', 'dismissed'].includes(r.data?.status)
+      && ['ibl_for_fund_holder', 'wealth_for_borrower'].includes(r.data?.rule) && (r.updated_at ?? '') >= FIRST_TAKE);
+  for (const n of nbas) await api('GCADMIN', 'PUT', `/runtime/records/${n.id}`, { data: { status: 'open' } });
+}
+
 export default async function run(S) {
   const { p } = S;
+  await S.waitCut(() => resetTakes());
 
   // ── Data for this take (lookups only) ──
   const nbas = (await records('GCRM1', NBA, { limit: 500 })).filter((r) => r.assigned_to === 'GCRM1' && r.data?.status === 'open');

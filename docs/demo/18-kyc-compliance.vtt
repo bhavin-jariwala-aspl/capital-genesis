@@ -1,172 +1,172 @@
 WEBVTT
 
-00:00:01.920 --> 00:00:10.769
+00:00:01.722 --> 00:00:10.491
 KYC & Compliance
 Risk-based client due diligence and the compliance registers — from a new client to an approved KYC.
 
-00:00:10.779 --> 00:00:21.283
+00:00:10.520 --> 00:00:16.000
 Sign in as Priya Ramdin — Relationship Manager
 The relationship manager onboards the client
 
-00:00:21.283 --> 00:00:34.140
+00:00:16.000 --> 00:00:28.760
 Clients ▸ Parties ▸ New: the client's identity and contact details
 Tick PEP when the client holds a prominent public function
 
-00:00:34.140 --> 00:00:37.523
+00:00:28.760 --> 00:00:32.840
 KYC & Compliance ▸ KYC Cases ▸ New
 A case from a converted enquiry is opened for you automatically — here we open one by hand
 
-00:00:37.523 --> 00:00:39.598
+00:00:32.840 --> 00:00:35.160
 Answer the risk questions
 Product, onboarding channel, occupation, ownership structure and expected activity
 
-00:00:39.598 --> 00:00:46.687
+00:00:35.160 --> 00:00:41.840
 Add the tax status for FATCA and CRS reporting
 Group-level scope: one approved KYC can be relied on by every Genesis entity
 
-00:00:46.687 --> 00:00:51.257
+00:00:41.840 --> 00:00:46.160
 The risk score is calculated for you
 Country + PEP + product + channel + occupation + ownership + activity — weights from the risk-factor master
 
-00:00:51.257 --> 00:00:55.130
+00:00:46.160 --> 00:00:49.640
 A PEP is always high risk: enhanced due diligence is now required
 High-risk cases are approved by the MLRO and reviewed every year
 
-00:00:55.130 --> 00:01:12.664
+00:00:49.640 --> 00:01:06.600
 Docs tab: the Individual KYC pack lists what is still missing
 Upload what the client gave you — or email the client a secure upload link
 
-00:01:12.664 --> 00:01:16.016
+00:01:06.600 --> 00:01:09.640
 All three items are in — the checklist shows nothing outstanding
 Identity and address documents are reviewed and kept seven years (AML)
 
-00:01:16.016 --> 00:01:20.275
+00:01:09.680 --> 00:01:13.960
 Edit the case and tick “Document checklist complete”
 Under verification will not accept the case without it
 
-00:01:20.275 --> 00:01:31.731
+00:01:14.080 --> 00:01:26.440
 Move the case along the KYC pipeline
 Initiated ▸ Documents pending ▸ Under verification ▸ Screening
 
-00:01:31.731 --> 00:01:36.719
+00:01:26.440 --> 00:01:32.120
 Entering Screening checks the client against sanctions, PEP and adverse-media lists
 The provider answers in seconds and the result is written on the case
 
-00:01:36.719 --> 00:01:41.654
+00:01:32.120 --> 00:01:36.800
 Screening result: potential match — with the provider reference and date
 The PEP hit is logged for Compliance to triage and Compliance is alerted
 
-00:01:41.654 --> 00:01:45.558
+00:01:36.800 --> 00:01:40.400
 The hit itself sits behind the compliance barrier
 The RM only sees that one is open — Compliance triages it
 
-00:01:45.558 --> 00:01:53.870
+00:01:40.440 --> 00:01:48.040
 Screening done: move the case to Risk assessed
 This stage needs a screening result and date — the automation already filled them
 
-00:01:53.870 --> 00:01:59.242
+00:01:48.040 --> 00:01:51.720
 Now try Pending approval…
 For a high-risk client the CRM checks the enhanced due diligence first
 
-00:01:59.242 --> 00:02:03.115
+00:01:51.720 --> 00:01:55.200
 Blocked: high risk needs verified source of wealth and EDD notes
 The message tells the RM exactly what is missing
 
-00:02:03.115 --> 00:02:13.633
+00:01:55.240 --> 00:02:05.120
 Record the enhanced due diligence on the case
 Source of funds verified + EDD notes (source of wealth, senior management approval)
 
-00:02:13.633 --> 00:02:18.404
+00:02:05.120 --> 00:02:09.880
 Move to Pending approval again
 This time the gate lets it through
 
-00:02:18.404 --> 00:02:21.728
+00:02:09.880 --> 00:02:12.840
 An approval request is raised automatically
 Standard or medium risk → Compliance Officer · High risk or PEP → MLRO
 
-00:02:21.728 --> 00:02:30.161
+00:02:12.880 --> 00:02:21.560
 Staff declare gifts and hospitality in the Gifts & Hospitality Register
 Anything above MUR 5,000 needs a compliance decision
 
-00:02:30.161 --> 00:02:33.261
+00:02:21.560 --> 00:02:24.320
 8,500 is above the threshold, so the declaration goes to Compliance for approval
 
-00:02:33.261 --> 00:02:34.426
+00:02:24.320 --> 00:02:25.520
 Compliance reviews the screening hit
 True match · False positive · Escalated to MLRO — with a rationale
 
-00:02:34.426 --> 00:02:39.984
+00:02:25.520 --> 00:02:31.200
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance officer: screening triage, registers, approvals
 
-00:02:39.984 --> 00:02:45.372
+00:02:31.200 --> 00:02:36.920
 Set the disposition and record why
 A domestic PEP is not a sanctions match — escalate it to the MLRO for sign-off
 
-00:02:45.372 --> 00:02:48.138
+00:02:36.920 --> 00:02:39.480
 An escalation alerts the MLRO
 A true match would also stop the case reaching approval
 
-00:02:48.138 --> 00:02:55.950
+00:02:39.480 --> 00:02:47.240
 Tools ▸ Approvals: the gift declaration is waiting for Compliance
 Standard-risk KYC sign-offs arrive here too
 
-00:02:55.951 --> 00:03:03.131
+00:02:47.240 --> 00:02:54.880
 Add an issuer to the restricted list
 For example while Genesis advises on a deal and holds inside information
 
-00:03:03.131 --> 00:03:07.006
+00:02:54.880 --> 00:02:58.360
 Traders and portfolio managers are alerted at once
 Personal-dealing requests in this issuer are refused automatically · watch-list entries stay with Compliance
 
-00:03:07.006 --> 00:03:17.183
+00:02:58.360 --> 00:03:09.360
 A client asks for a copy of their personal data (DPA 2017)
 Data Subject Requests: Received ▸ Verifying identity ▸ In progress ▸ Completed — 30 days to respond
 
-00:03:17.183 --> 00:03:21.758
+00:03:09.360 --> 00:03:13.920
 Acknowledged and assigned to Compliance; respond-by date = received + 30 days
 First step: verify the requester's identity
 
-00:03:21.758 --> 00:03:40.043
+00:03:13.960 --> 00:03:32.680
 Verify identity, prepare the response, record the completion date
 In progress needs identity verified · Completed needs the response and date
 
-00:03:40.043 --> 00:03:41.197
+00:03:32.720 --> 00:03:34.120
 Suspicious transaction reports sit behind the MLRO barrier
 Anyone may raise one — only the MLRO sees them (no tipping-off)
 
-00:03:41.197 --> 00:03:45.624
+00:03:34.120 --> 00:03:38.080
 Even the compliance officer sees no reports here
 The records are concealed: not listed, not searchable, not counted
 
-00:03:45.624 --> 00:03:46.738
+00:03:38.080 --> 00:03:39.040
 High-risk and PEP cases are signed off by the MLRO
 Tools ▸ Approvals
 
-00:03:46.738 --> 00:03:50.973
+00:03:39.040 --> 00:03:43.320
 Sign in as Olivier Maurel — MLRO
 Money Laundering Reporting Officer
 
-00:03:50.973 --> 00:03:59.962
+00:03:43.400 --> 00:03:51.520
 The request shows the risk score and the EDD notes
 Open the case from the link if more detail is needed — then approve or reject
 
-00:03:59.962 --> 00:04:14.908
+00:03:51.520 --> 00:04:03.200
 The case moves to Approved by itself
 Outcome, decision date and next review (1 year for high risk) are recorded
 
-00:04:14.908 --> 00:04:21.597
+00:04:03.240 --> 00:04:09.440
 On the client record, KYC status is now approved
 Loans can be disbursed, accounts funded and relationships activated
 
-00:04:21.597 --> 00:04:29.375
+00:04:09.480 --> 00:04:16.800
 The MLRO sees the STR register
 Raised ▸ MLRO review ▸ Filed with FIU (needs the FIU reference and date) / Closed — no filing
 
-00:04:29.375 --> 00:04:33.670
+00:04:16.800 --> 00:04:20.833
 Who may see which zone is managed in Tools ▸ Access & Barriers
 Covered in its own tutorial
 
-00:04:33.670 --> 00:04:41.439
+00:04:20.833 --> 00:04:28.520
 KYC & Compliance
 The CRM screens, scores and routes — staff answer the questions and make the decisions.

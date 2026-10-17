@@ -125,8 +125,8 @@ export default async function run(S) {
   await p.waitForTimeout(2600);
   await S.say('Try to move it to Approved…');
   await S.drag(CARD, 'Draft', 'Approved', { expectFail: true, after: 600 });
-  await S.say('Blocked: an approval must name the approver (the ALCO decision)', 'The loans manager signs the campaign off — not the person who drafted it');
-  const refusal = p.getByText(/before moving to Approved/).first();
+  await S.say('Blocked: the person who drafted a campaign cannot approve it', 'Four eyes — the loans manager signs it off and records the ALCO approval');
+  const refusal = p.getByText(/Four eyes|before moving to Approved/).first();
   if (await refusal.count()) await S.highlight(refusal.locator('xpath=ancestor::div[contains(@class,"gap-3")][1]'), 4000); else { S.issue('no visible message for the refused move'); await p.waitForTimeout(4000); }
 
   // ── 3. Collections (RM) ────────────────────────────────────────────────────────────────────────────────────

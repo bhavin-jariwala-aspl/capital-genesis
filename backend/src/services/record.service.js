@@ -1497,7 +1497,12 @@ class RecordService {
     const creator = rec?.created_by ? String(rec.created_by) : null;
     if (!creator) return;
     const message = rule.message || `Four eyes: someone other than the person who created this record must move it to ${stage.label}.`;
-    if (actorId && String(actorId) === creator) throw new ValidationError(message);
+    if (actorId && String(actorId) === creator) {
+      // Nothing on the record can fix this — someone else has to make the move.
+      const err = new ValidationError(message);
+      err.code = 'FOUR_EYES';
+      throw err;
+    }
     if (rule.field && data[rule.field] != null && data[rule.field] !== '') {
       const named = String(data[rule.field]).trim().toLowerCase();
       const emp = typeof this.db.employee?.findUnique === 'function'

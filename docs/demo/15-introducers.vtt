@@ -1,162 +1,166 @@
 WEBVTT
 
-00:00:09.088 --> 00:00:14.699
+00:00:01.870 --> 00:00:09.200
 Introducers & Partners
 Brokers, agents and professionals who refer clients for a commission — from onboarding to the commission they earn.
 
-00:00:14.699 --> 00:00:18.259
-Kavish Doorgah, a notary in Port Louis, wants to refer clients to Genesis
+00:00:09.200 --> 00:00:11.960
+Anil Bhugaloo, a notary in Port Louis, wants to refer clients to Genesis
 Every introducer is first a party — the same record KYC is run on
 
-00:00:18.259 --> 00:00:28.575
+00:00:11.960 --> 00:00:17.680
 Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships
 Head of BD — onboards and manages introducers
 
-00:00:28.575 --> 00:00:42.048
+00:00:17.680 --> 00:00:26.240
 Clients ▸ Parties ▸ New: identity and contact details
 
-00:00:42.088 --> 00:00:51.728
+00:00:26.240 --> 00:00:33.760
 Growth ▸ Introducers ▸ Introducer onboarding
 A two-step wizard: who the introducer is, then the agreement and commission plan
 
-00:00:51.728 --> 00:00:55.328
+00:00:33.760 --> 00:00:37.240
 The portal email is how the introducer will sign in to the introducer portal
 
-00:00:55.328 --> 00:01:01.968
+00:00:37.240 --> 00:00:42.920
 Agreement & commission: the agreement is not signed yet
 Choose the products the introducer may refer; clawback and protection window keep their defaults
 
-00:01:01.968 --> 00:01:05.648
+00:00:42.920 --> 00:00:46.240
 Introducer created at Applied — complete KYC to activate
 An introducer number is given automatically
 
-00:01:05.728 --> 00:01:12.795
+00:00:46.320 --> 00:00:51.468
 Onboarding pipeline: Applied ▸ KYC ▸ Agreement ▸ Active
 Move the new introducer to KYC while the documents are collected
 
-00:01:12.795 --> 00:01:21.595
+00:00:51.468 --> 00:00:59.548
 Now try Agreement…
 The agreement stage needs the signature date and the commission rate
 
-00:01:21.675 --> 00:01:34.156
+00:00:59.588 --> 00:01:08.108
 The agreement is signed: record the date, expiry and commission rate
 0.4% of the funded or disbursed volume
 
-00:01:34.156 --> 00:01:37.948
+00:01:08.108 --> 00:01:12.068
 Move to Agreement again — this time it goes through
 
-00:01:37.948 --> 00:01:48.788
+00:01:12.068 --> 00:01:20.068
 Activate the introducer…
 The CRM checks the introducer’s own KYC first
 
-00:01:48.788 --> 00:01:50.228
+00:01:20.068 --> 00:01:21.548
 Blocked: KYC is not approved yet
 The legitimate way: a KYC case on the introducer, signed off by Compliance
 
-00:01:50.308 --> 00:01:58.268
+00:01:21.588 --> 00:01:27.868
 KYC & Compliance ▸ KYC Cases ▸ New
 Group-level KYC on the introducer — the same process as for a client (Tutorial 18)
 
-00:01:58.268 --> 00:02:26.833
+00:01:27.868 --> 00:01:35.588
 ID, proof of address and source of funds are on file
 Tick the checks and the FATCA status
 
-00:02:26.833 --> 00:02:40.250
+00:01:35.588 --> 00:01:42.948
 Move it to Screening: sanctions and PEP lists are checked automatically
 
-00:02:40.250 --> 00:03:04.871
+00:01:42.948 --> 00:01:46.988
 Screening is clear — Pending approval sends the case to Compliance
 
-00:03:05.191 --> 00:03:30.048
+00:01:47.228 --> 00:02:00.588
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance officer — signs off KYC
 
-00:03:30.088 --> 00:03:48.118
+00:02:00.628 --> 00:02:00.948
+Back to the Head of BD: activate the introducer
+KYC approved and agreement signed — the gate lets it through
+
+00:02:00.948 --> 00:02:11.935
 Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships
 Head of BD
 
-00:03:48.118 --> 00:03:52.438
-Kavish Doorgah is active: KYC approved, agreement and commission on file
+00:02:11.935 --> 00:02:16.375
+Anil Bhugaloo is active: KYC approved, agreement and commission on file
 Only an active introducer can sign in to the introducer portal
 
-00:03:52.438 --> 00:03:56.638
+00:02:16.375 --> 00:02:20.615
 Meanwhile, Hemraj Ah-Kye — an active broker — has a client to refer
 He uses the introducer portal: /portal/genesis-capital
 
-00:03:56.638 --> 00:04:01.958
+00:02:20.615 --> 00:02:22.855
 Choose Introducer and enter the portal email Genesis holds
 No password: a one-time code is sent by email
 
-00:04:01.958 --> 00:04:09.238
+00:02:22.855 --> 00:02:28.295
 Outside production the code is shown on screen
 In production it arrives by email and expires after 10 minutes
 
-00:04:09.238 --> 00:04:12.238
+00:02:28.295 --> 00:02:31.375
 His referrals and commissions — only his own
 A referral’s status is shown only where the prospect agreed to share it
 
-00:04:12.238 --> 00:04:18.912
-Refer a client: Aurélie Lagesse needs a personal loan
+00:02:31.375 --> 00:02:40.415
+Refer a client: Mélanie Rault needs a personal loan
 
-00:04:18.912 --> 00:04:23.284
+00:02:40.415 --> 00:02:44.695
 She agreed that Hemraj may follow her application
 So the portal will show him its status
 
-00:04:23.284 --> 00:04:28.444
+00:02:44.695 --> 00:02:48.372
 The referral is in — Submitted
 It lands in the CRM at once
 
-00:04:28.444 --> 00:04:31.209
+00:02:48.372 --> 00:02:50.513
 Back in the CRM, the Head of BD sees the referral
 Growth ▸ Introducers ▸ Introducer Referrals
 
-00:04:31.209 --> 00:04:40.689
+00:02:50.513 --> 00:02:59.177
 The CRM created an enquiry for the prospect, credited to the introducer
 Attribution is protected for 90 days from submission
 
-00:04:40.689 --> 00:04:47.249
+00:02:59.177 --> 00:03:06.017
 The enquiry: channel Introducer, linked to Hemraj
 Credited to him for the attribution window
 
-00:04:47.249 --> 00:04:51.729
+00:03:06.017 --> 00:03:10.377
 Routed by product like any other enquiry: Retail Loans, to Yash Bholah
 Loans Executive — the speed-to-lead clock starts now
 
-00:04:51.849 --> 00:05:06.835
+00:03:10.377 --> 00:03:19.277
 As the desk works the enquiry, BD moves the referral along
 Submitted ▸ Accepted ▸ In progress ▸ Funded / disbursed
 
-00:05:06.835 --> 00:05:18.715
+00:03:19.277 --> 00:03:28.677
 The loan is disbursed — try Funded / disbursed…
 The CRM needs the funded amount to work out the commission
 
-00:05:18.715 --> 00:05:31.908
+00:03:28.677 --> 00:03:36.903
 Record the amount actually disbursed: MUR 1,400,000
 
-00:05:31.908 --> 00:05:37.173
+00:03:37.023 --> 00:03:41.863
 Funded: the commission is accrued automatically
 Hemraj Ah-Kye’s rate 0.5% × MUR 1,400,000 = MUR 7,000
 
-00:05:37.173 --> 00:05:40.133
+00:03:41.863 --> 00:03:44.863
 Status Accrued — Finance approves and pays it, then marks it Paid
 The introducer sees it under Commissions in the portal
 
-00:05:40.213 --> 00:05:47.253
+00:03:44.863 --> 00:03:49.579
 A client repaid a referred personal loan early, within the 12-month clawback period
 The commission paid to Hemraj Ah-Kye in June is clawed back
 
-00:05:47.253 --> 00:05:51.733
+00:03:49.579 --> 00:03:54.139
 Clawed-back commission no longer counts as earned
 Commission earned on the introducer is recalculated
 
-00:05:51.773 --> 00:05:58.813
+00:03:54.179 --> 00:04:00.219
 Dashboard ▸ Marketing: the introducer channel at a glance
 Referrals by stage and commission by status
 
-00:05:58.813 --> 00:06:02.893
+00:04:00.219 --> 00:04:04.299
 Referrals by stage — from submitted to funded
 Commission by status: accrued, approved, paid and clawed back
 
-00:06:12.751 --> 00:06:21.053
+00:04:08.745 --> 00:04:16.419
 Introducers & Partners
 Partners are onboarded with the same rigour as clients, and every referral is traceable to the commission it earns.

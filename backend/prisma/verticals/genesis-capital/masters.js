@@ -17,7 +17,7 @@ const businessUnits = [
 ];
 
 const barrierZones = [
-  { code: 'ADV_PRIVATE', name: 'Advisory — private side', description: 'Advisory mandates and deal documents holding price-sensitive information (PRD CMP-FR-01). Public side (Securities, Wealth) must wall-cross to see them.' },
+  { code: 'ADV_PRIVATE', name: 'Advisory — private side', description: 'Advisory mandates and deal documents holding price-sensitive information. Public side (Securities, Wealth) must wall-cross to see them.' },
   { code: 'MLRO_STR', name: 'STR register', description: 'Suspicious transaction reports — the MLRO only ("no tipping off").' },
   { code: 'COMPLIANCE_ONLY', name: 'Compliance only', description: 'Watch-list entries, screening hits, personal-dealing requests and other Compliance-only records.' },
   { code: 'VIP_CLIENTS', name: 'VIP / sensitive clients', description: 'Parties flagged VIP (staff, PEPs, public figures, board members) — visible only to named users.' },

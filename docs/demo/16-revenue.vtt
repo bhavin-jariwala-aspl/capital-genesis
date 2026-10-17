@@ -1,109 +1,109 @@
 WEBVTT
 
-00:00:03.581 --> 00:00:12.151
+00:00:01.971 --> 00:00:10.426
 Revenue Ledger
 One ledger of the revenue every Genesis entity earns: credited to the RM and any referrer, and reconciled to the finance figures.
 
-00:00:12.360 --> 00:00:15.840
+00:00:10.520 --> 00:00:13.920
 Most revenue lines are posted by the business that earns them
 An FX deal, a paid advisory fee invoice…
 
-00:00:15.840 --> 00:00:21.160
+00:00:13.920 --> 00:00:19.720
 Sign in as Deepak Mungur — Forex Dealer
 Forex dealer — books client deals
 
-00:00:21.160 --> 00:00:33.280
+00:00:19.720 --> 00:00:31.800
 Rodrigues Seafood Exports Ltd sells USD 50,000 of export proceeds
 Booked at 47.61 — a quarter of a rupee under today's mid rate
 
-00:00:33.280 --> 00:00:41.360
+00:00:31.800 --> 00:00:39.640
 Saved: the deal works out its spread over the mid rate
 That spread is the desk's income — and it is posted to the Revenue Ledger
 
-00:00:41.360 --> 00:00:45.520
+00:00:39.640 --> 00:00:44.120
 Growth ▸ Revenue: every fee and income line, by entity, type and month
 Finance and the Head of BD post and reconcile it
 
-00:00:45.520 --> 00:00:51.840
+00:00:44.120 --> 00:00:50.520
 Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships
 Head of BD — posts and reconciles revenue
 
-00:00:51.840 --> 00:00:54.560
+00:00:50.520 --> 00:00:53.160
 One line per client, product and month — with its source and reconciliation status
 Monthly summaries come from the loan system, the funds and the brokerage
 
-00:00:54.560 --> 00:01:01.280
+00:00:53.160 --> 00:00:59.880
 Further right: the amount in rupees, the source and the reconciliation status
 Every column can be sorted
 
-00:01:01.280 --> 00:01:17.440
+00:00:59.880 --> 00:01:14.527
 The line the dealer's deal just posted
 Source: FX deal (automatic)
 
-00:01:17.440 --> 00:01:30.320
+00:01:14.527 --> 00:01:27.727
 A commercial facility for Moka Textiles Ltd has been arranged
 The arrangement fee is posted by hand: Revenue ▸ New Revenue
 
-00:01:30.320 --> 00:01:38.280
+00:01:27.727 --> 00:01:36.527
 Bruno Chan manages the client; Priya Ramdin referred the deal
 Credit is split: 25% to the referring RM
 
-00:01:38.280 --> 00:01:51.360
+00:01:36.527 --> 00:01:49.647
 The fee is converted to rupees and the credit split automatically
 MUR 318,750 to Bruno Chan · MUR 106,250 to Priya Ramdin
 
-00:01:51.360 --> 00:02:03.480
+00:01:49.647 --> 00:02:01.887
 Month end: enter the figure booked in the accounting system
 Reconciliation: Awaiting finance figure
 
-00:02:03.480 --> 00:02:09.400
+00:02:01.887 --> 00:02:07.807
 Accounting booked MUR 420,000 — a variance of MUR 5,000
 Reconciliation: Variance to investigate
 
-00:02:09.400 --> 00:02:19.000
+00:02:07.807 --> 00:02:17.167
 Finance finds the missing MUR 5,000 posting and corrects its figure
 Edit the line again
 
-00:02:19.000 --> 00:02:22.280
+00:02:17.167 --> 00:02:20.487
 Ledger and accounts agree
 Reconciliation: Reconciled
 
-00:02:22.280 --> 00:02:31.680
+00:02:20.487 --> 00:02:29.807
 Narrow the ledger by entity, type and month
 Type any words from the columns — every word must match
 
-00:02:31.680 --> 00:02:42.280
+00:02:29.807 --> 00:02:40.607
 Lending · arrangement fees · 2026-10
 The count shows how many lines match
 
-00:02:42.280 --> 00:02:50.400
+00:02:40.607 --> 00:02:48.807
 Forex · 2026-10: the desk's monthly summary and the deals posted automatically
 Entity names, revenue types and months all work
 
-00:02:50.400 --> 00:02:52.880
+00:02:48.807 --> 00:02:51.567
 Export gives the lines shown as a spreadsheet
 For incentive calculations — with names and labels, not codes
 
-00:02:52.880 --> 00:02:56.880
+00:02:51.567 --> 00:02:55.767
 The ledger feeds the management dashboards
 Group Executive and RM League Table
 
-00:02:56.880 --> 00:03:05.680
+00:02:55.767 --> 00:03:04.487
 Sign in as Anjali Gopee — Chief Operating Officer
 Chief Operating Officer — reads group revenue
 
-00:03:05.680 --> 00:03:12.280
+00:03:04.487 --> 00:03:11.167
 Group Executive: revenue by entity and by month
 Lending leads; Forex includes today's deal
 
-00:03:12.280 --> 00:03:18.440
+00:03:11.167 --> 00:03:17.327
 Next: the RM League Table
 Pick it from the dashboard menu
 
-00:03:18.440 --> 00:03:24.581
+00:03:17.327 --> 00:03:23.723
 RM League Table: the revenue each RM is credited with
 Referring RMs get their split in the next chart
 
-00:03:24.581 --> 00:03:32.080
+00:03:23.723 --> 00:03:31.127
 Summary
 Revenue is posted where it is earned, credited fairly and reconciled before anyone reports on it.

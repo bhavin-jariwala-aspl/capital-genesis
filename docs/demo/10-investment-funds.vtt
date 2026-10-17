@@ -1,144 +1,144 @@
 WEBVTT
 
-00:00:05.290 --> 00:00:13.973
+00:00:02.502 --> 00:00:11.005
 Investment Funds
 Capture a fund subscription and follow it to the transfer agent, with the controls the regulator expects.
 
-00:00:14.009 --> 00:00:22.224
+00:00:11.040 --> 00:00:16.720
 Sign in as Vanessa Ah-Kee — Fund Manager
 Fund Manager — captures and follows client fund orders
 
-00:00:22.224 --> 00:00:27.612
+00:00:16.720 --> 00:00:21.480
 Funds: the Genesis Global Funds range
 Asset class, horizon, AUM held by our clients and number of share classes
 
-00:00:27.612 --> 00:00:34.100
+00:00:21.480 --> 00:00:27.720
 Share classes: what the client actually buys
 Currency, risk rating 1–5, minimum investment and the latest NAV
 
-00:00:34.100 --> 00:00:42.857
+00:00:27.720 --> 00:00:34.960
 Each share class holds the dealing rules
 ISIN, entry and exit fees, dealing frequency and the cut-off time
 
-00:00:42.857 --> 00:00:46.659
+00:00:34.960 --> 00:00:38.560
 NAV History: one price per share class per dealing date
 Synced from the transfer agent — holdings are valued at the latest NAV
 
-00:00:46.659 --> 00:00:51.870
+00:00:38.560 --> 00:00:43.520
 Fund Orders ▸ Fund subscription opens a three-step wizard
 Investor & fund → amount & payment → suitability
 
-00:00:51.870 --> 00:01:05.314
+00:00:43.520 --> 00:00:53.240
 First, a client whose KYC is still in progress
 Amit Lebrasse — let's see what the system does
 
-00:01:05.314 --> 00:01:07.198
+00:00:53.240 --> 00:00:55.200
 The amount is in the share class currency — here US dollars
 Minimum subscription USD 50,000 for the FMB 2029
 
-00:01:07.198 --> 00:01:13.497
+00:00:55.200 --> 00:01:01.800
 Payment not received yet, so "Payment proof received" stays unticked
 We come back to it before the checks
 
-00:01:13.497 --> 00:01:17.321
+00:01:01.800 --> 00:01:05.400
 Refused: orders are accepted only for clients with approved KYC
 The rule is checked on the server — no one can skip it
 
-00:01:17.321 --> 00:01:27.028
+00:01:05.400 --> 00:01:14.800
 Switch to Natacha Hardy — KYC approved, conservative profile
 Her risk profile allows products up to risk 1; the FMB 2029 is rated 2
 
-00:01:27.028 --> 00:01:35.862
+00:01:14.800 --> 00:01:23.560
 Refused again: the fund is riskier than her profile
 Record why the client still wants it, and that she acknowledged the higher risk
 
-00:01:35.862 --> 00:01:37.424
+00:01:23.560 --> 00:01:25.320
 With the override documented, capture the order
 The fund manager is recorded as the maker
 
-00:01:37.424 --> 00:01:41.122
+00:01:25.320 --> 00:01:28.640
 Order captured — an operations checker will authorise it
 It starts in the Captured stage
 
-00:01:41.122 --> 00:01:50.923
+00:01:28.640 --> 00:01:36.400
 On the pipeline, move the order to Checks complete
 This is the hand-off to Operations
 
-00:01:50.923 --> 00:01:54.736
+00:01:36.400 --> 00:01:39.960
 Blocked: the payment proof must be received first
 A stage gate — the order cannot reach Operations without it
 
-00:01:54.736 --> 00:02:05.913
+00:01:40.000 --> 00:01:48.040
 The client's transfer has arrived — tick "Payment proof received"
 Edit the order
 
-00:02:05.913 --> 00:02:10.558
+00:01:48.040 --> 00:01:52.760
 Move it again
 Now the gate lets it through and an approval is raised
 
-00:02:10.558 --> 00:02:15.843
+00:01:52.760 --> 00:01:57.720
 An approval request goes to the operations checkers
 Maker-checker: the person who captured the order can never approve it
 
-00:02:15.843 --> 00:02:19.642
+00:01:57.720 --> 00:02:01.320
 Vanessa has nothing to approve here
 Her own order is routed to Operations, not to her
 
-00:02:19.642 --> 00:02:20.462
+00:02:01.320 --> 00:02:02.240
 The operations checker reviews and approves
 Tools ▸ Approvals
 
-00:02:20.462 --> 00:02:29.629
+00:02:02.240 --> 00:02:09.080
 Sign in as Ritesh Seewoo — Operations Checker
 Operations Checker — authorises fund orders
 
-00:02:29.629 --> 00:02:47.591
+00:02:09.080 --> 00:02:26.760
 He opens the order first: payment proof, amount, suitability override
 The checker sees everything the maker recorded — but cannot change it
 
-00:02:47.591 --> 00:02:50.546
+00:02:26.760 --> 00:02:28.800
 Approved — the system does the rest
 Sends the order to the transfer agent, records its reference, confirms, emails the client and books the units
 
-00:02:50.546 --> 00:02:51.524
+00:02:28.800 --> 00:02:29.680
 Back with the fund manager: the order is Confirmed
 Sent to TA → Confirmed, without anyone typing it in
 
-00:02:51.524 --> 00:03:00.782
+00:02:29.680 --> 00:02:35.480
 Sign in as Vanessa Ah-Kee — Fund Manager
 Fund Manager — checks the outcome
 
-00:03:00.782 --> 00:03:06.098
-The transfer agent's reference is on the order: TA-2299356
+00:02:35.480 --> 00:02:40.840
+The transfer agent's reference is on the order: TA-6175483
 Units allotted are worked out at the latest NAV
 
-00:03:06.098 --> 00:03:11.738
+00:02:40.840 --> 00:02:46.280
 The client was emailed a confirmation
 In her own language — logged on the order's activity
 
-00:03:11.738 --> 00:03:15.541
+00:02:46.280 --> 00:02:49.760
 The audit trail: who captured, who approved, every stage change
 Maker and checker are always two different people
 
-00:03:15.541 --> 00:03:26.613
+00:02:49.800 --> 00:03:00.760
 Fund Holdings: her new FMB 2029 units
 Units × latest NAV = value, with the gain against book cost
 
-00:03:26.613 --> 00:03:32.738
+00:03:00.760 --> 00:03:06.400
 Fund Campaigns: the FMB 2029 series
 Planned → Window open → Allocating → Closed
 
-00:03:32.738 --> 00:03:37.678
+00:03:06.400 --> 00:03:10.920
 Series 2 is open: target, amount subscribed and progress
 Every subscription linked to the campaign counts, converted to rupees
 
-00:03:37.678 --> 00:03:50.997
+00:03:10.960 --> 00:03:23.600
 The Investment Funds dashboard
 Holdings value, investors, orders awaiting the TA and the campaign raise
 
-00:03:50.997 --> 00:03:56.994
+00:03:23.600 --> 00:03:28.678
 Subscriptions vs redemptions, orders by fund and per month
 Each widget opens the records behind it
 
-00:03:56.996 --> 00:04:04.592
+00:03:28.678 --> 00:03:36.120
 A fund subscription, end to end

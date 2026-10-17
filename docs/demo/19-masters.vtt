@@ -1,146 +1,146 @@
 WEBVTT
 
-00:00:02.820 --> 00:00:11.311
+00:00:01.626 --> 00:00:10.085
 Masters — reference data
 The tables the CRM's calculations read: routing, rates, risk weights, approval limits and service levels.
 
-00:00:11.360 --> 00:00:20.291
+00:00:10.400 --> 00:00:16.600
 Sign in as Kevin Lam — CRM Administrator
 The CRM administrator maintains the masters
 
-00:00:20.291 --> 00:00:23.731
+00:00:16.600 --> 00:00:20.080
 One tab per master — each row is an ordinary record
 Edit, import, export and audit them like any other data
 
-00:00:23.731 --> 00:00:27.771
+00:00:20.080 --> 00:00:24.160
 Masters are data: change a row and the next calculation uses it
 The Builder is configuration: fields, forms, stages and workflows
 
-00:00:27.771 --> 00:00:36.571
+00:00:24.160 --> 00:00:32.280
 Website Product Routing: what the client picks on the website
 Each product goes to a business unit and a queue, with a first-contact target
 
-00:00:36.571 --> 00:00:41.531
+00:00:32.280 --> 00:00:36.000
 Personal loans get a faster first call from today
 Edit the Personal Loan rule
 
-00:00:41.531 --> 00:00:46.451
+00:00:36.000 --> 00:00:39.120
 New queue name and first contact within 2 business hours
 The business unit stays Lending, so the same team still gets the enquiries
 
-00:00:46.451 --> 00:00:49.331
+00:00:39.120 --> 00:00:41.880
 Saved — no release, no restart
 The next enquiry for a personal loan reads the new rule
 
-00:00:49.331 --> 00:01:07.131
-Nadine Thénard asks about a personal loan on the website
+00:00:41.880 --> 00:00:58.000
+Mélissa Bégué asks about a personal loan on the website
 The same "Get in touch" form the website shows
 
-00:01:07.131 --> 00:01:11.531
+00:00:58.000 --> 00:01:02.400
 Sent — the enquiry is in the CRM
 Routing, scoring and the speed-to-lead clock run as it arrives
 
-00:01:11.531 --> 00:01:19.891
+00:01:02.400 --> 00:01:11.040
 On the enquiry: the new queue and the 2-hour first-contact target
 Read from the routing rule at the moment it arrived
 
-00:01:19.891 --> 00:01:23.371
+00:01:11.040 --> 00:01:14.520
 The speed-to-lead clock now allows 2 business hours, not 4
 Sophie Lagesse (Lending) is alerted as the deadline nears
 
-00:01:23.371 --> 00:01:26.651
+00:01:14.520 --> 00:01:17.760
 Enquiries that arrived earlier keep the target they were given
 A routing change applies from the next enquiry on
 
-00:01:26.651 --> 00:01:31.811
+00:01:17.760 --> 00:01:22.840
 The KYC risk score adds up weights from the risk-factor master
 Country risk + PEP + product + channel + occupation + ownership + activity
 
-00:01:31.811 --> 00:01:36.571
+00:01:22.840 --> 00:01:27.600
 A case under screening: risk score 102
 South African resident, onboarded without meeting in person
 
-00:01:36.571 --> 00:01:41.171
+00:01:27.600 --> 00:01:32.360
 Country risk 25 comes from the Country master
 South Africa: FATF increased monitoring (grey list)
 
-00:01:41.211 --> 00:01:53.811
+00:01:32.400 --> 00:01:44.480
 Countries (AML risk): a score from 0 to 40 for each country
 Updated after each FATF plenary or sanctions change — black-listed countries score 40
 
-00:01:53.811 --> 00:02:06.091
+00:01:44.480 --> 00:01:57.400
 Compliance decides that remote onboarding carries more risk
 Onboarding channel “non face to face”: weight 10 → 15
 
-00:02:06.091 --> 00:02:10.811
+00:01:57.400 --> 00:02:02.120
 The case still shows 102
 A risk score is worked out when the case is saved — not every time a weight changes
 
-00:02:10.851 --> 00:02:16.891
+00:02:02.160 --> 00:02:08.200
 Re-assess the case: open it and save
 At the next edit or periodic review the case reads the current weights
 
-00:02:16.891 --> 00:02:23.291
+00:02:08.200 --> 00:02:14.680
 Risk score 107: +5 from the new channel weight
 Rating, EDD and the approver follow the score
 
-00:02:23.291 --> 00:02:29.531
+00:02:14.680 --> 00:02:21.040
 Approval Matrices: who approves a loan, by amount
 Up to MUR 5m Loans Manager · up to 20m Credit Committee · above that the Board
 
-00:02:29.571 --> 00:02:37.891
+00:02:21.160 --> 00:02:29.400
 Each application reads its band from these limits
 MUR 13m → Credit Committee: the approval goes to that committee
 
-00:02:37.891 --> 00:02:47.611
+00:02:29.400 --> 00:02:39.360
 Service Request Catalogue: every request type
 Business unit, service level in business hours, and whether it needs approval
 
-00:02:47.691 --> 00:02:59.011
+00:02:39.400 --> 00:02:50.360
 A partial prepayment: 40 business hours, approval required
 Each request copies these values and routes the approval to the business-unit head
 
-00:02:59.011 --> 00:03:05.131
+00:02:50.360 --> 00:02:56.280
 Genesis PLR History: the prime lending rate over time
 Loan pricing and each product's “Rate from” read the latest rate in effect
 
-00:03:05.211 --> 00:03:12.171
+00:02:56.320 --> 00:03:03.040
 Real Estate Loan: “Rate from” = latest PLR 6.825% + the product margin −0.675%
 Products & Services ▸ the product sheet
 
-00:03:12.171 --> 00:03:19.691
+00:03:03.040 --> 00:03:10.440
 A new PLR row reprices every variable-rate loan and product
 Add one only after ALCO approves it, with its effective date — it applies from that day
 
-00:03:19.691 --> 00:03:25.691
+00:03:10.440 --> 00:03:16.560
 FX Reference Rates: the daily TT board
 Converts amounts to rupees and prices FX quotes — the forex desk publishes it each morning
 
-00:03:25.691 --> 00:03:31.931
+00:03:16.560 --> 00:03:23.040
 Collateral Types & Haircuts: lending value and LTV alert levels
 Read by every pledge and by the margin-call checks
 
-00:03:31.931 --> 00:03:36.011
+00:03:23.040 --> 00:03:27.120
 Model Portfolios A–E: the target asset mix for each risk profile
 Conservative A to Aggressive E — used by wealth mandates
 
-00:03:36.011 --> 00:03:42.771
+00:03:27.120 --> 00:03:33.920
 For this tutorial, restore what we changed
 Every change to a master is kept in the record's history
 
-00:03:42.771 --> 00:03:51.611
+00:03:33.920 --> 00:03:42.480
 Non-face-to-face weight back to 10
 
-00:03:51.611 --> 00:03:55.171
+00:03:42.480 --> 00:03:46.080
 Personal Loan routing back to Retail Loans, 4 business hours
 
-00:03:55.171 --> 00:04:01.091
+00:03:46.080 --> 00:03:52.000
 And save the KYC case once more so it reads the restored weight
 
-00:04:01.091 --> 00:04:06.451
+00:03:52.000 --> 00:03:57.280
 Back to 102
 Weights and routing are as they were
 
-00:04:06.691 --> 00:04:14.131
+00:03:57.547 --> 00:04:04.960
 Masters — reference data
 Change the data, not the system: the next calculation uses the new values.

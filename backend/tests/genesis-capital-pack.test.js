@@ -20,6 +20,15 @@ const roles = new Set([...pack.roles.map((r) => r.name), 'super_admin', 'admin',
 const WORKFLOW_CONTEXT = new Set(['id', 'stage', 'today', 'this_month', 'record_id', 'assigned_to', 'pipeline_stage_id', 'created_by']);
 const FUNCTIONS_WITH_STRING_OBJECTS = /(LOOKUP|LATEST|COUNT_RELATED|SUM_RELATED)\(\s*'(\w+)'/g;
 
+describe('enquiry duplicate detection', () => {
+  it('only matches an existing client by mobile when the surname matches too', () => {
+    const pack = require('../prisma/verticals/genesis-capital');
+    const enquiry = pack.modules.flatMap((m) => m.objects).find((o) => o.name === 'enquiry');
+    const byMobile = enquiry.fields.find((f) => f.name === 'existing_party_by_mobile').config.expression;
+    expect(byMobile).toMatch(/LOWER\(LOOKUP\('party', 'mobile', mobile_e164, 'last_name'\)\) = LOWER\(last_name\)/);
+  });
+});
+
 describe('Genesis pack — objects', () => {
   it('uses unique object and field names', () => {
     const names = pack.modules.flatMap((m) => m.objects).map((o) => o.name);

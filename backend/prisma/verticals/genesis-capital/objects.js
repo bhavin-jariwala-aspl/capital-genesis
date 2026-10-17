@@ -96,7 +96,7 @@ const party = {
     F('pep', 'Politically exposed person (PEP)', 'checkbox'),
     F('vip', 'VIP / sensitive client (restricted to named users)', 'checkbox'),
     SEL('vip_reason', 'Sensitivity', o([['staff', 'Staff member'], ['pep', 'PEP'], ['celebrity', 'Public figure'], ['board', 'Board member'], ['other', 'Other']])),
-    FX('visibility_zone', 'Visibility', "IF(vip, 'VIP_CLIENTS', '')", { type: 'string', help: 'VIP parties sit behind the VIP_CLIENTS barrier: only its named members see them (C360-FR-10).' }),
+    FX('visibility_zone', 'Visibility', "IF(vip, 'VIP_CLIENTS', '')", { type: 'string', help: 'VIP parties sit behind the VIP_CLIENTS barrier: only its named members see them.' }),
     FX('next_birthday', 'Next birthday', "IF(ISBLANK(date_of_birth), null, ADD_YEARS(date_of_birth, AGE(date_of_birth) + 1))", { type: 'date', format: 'date' }),
 
     H('h_compliance', 'Compliance & value (calculated)'),
@@ -269,7 +269,9 @@ const enquiry = {
     LK('risk_profile', 'Risk profile', 'risk_profile', { config: { always_disabled: true } }),
     FX('tracked_campaign', 'Campaign from the tracking code', "IF(ISBLANK(utm_campaign), null, LOOKUP('campaign', 'utm_code', utm_campaign, 'id'))", { detail: false, help: 'The campaign whose tracking code the website link carried (utm_campaign).' }),
     FX('mobile_e164', 'Mobile (E.164)', "IF(ISBLANK(mobile), null, IF(CONTAINS(mobile, '+'), mobile, CONCAT('+230', mobile)))", { type: 'string', help: 'Normalised for duplicate detection.' }),
-    FX('existing_party_by_mobile', 'Existing client by mobile', "LOOKUP('party', 'mobile', mobile_e164, 'id')", { detail: false }),
+    // A shared phone (family, office line) must not attach a new applicant to someone else's record: a mobile match
+    // only counts when the surname matches too.
+    FX('existing_party_by_mobile', 'Existing client by mobile', "IF(NOT(ISBLANK(last_name)) AND LOWER(LOOKUP('party', 'mobile', mobile_e164, 'last_name')) = LOWER(last_name), LOOKUP('party', 'mobile', mobile_e164, 'id'), null)", { detail: false }),
 
     H('h_routing', 'Routing & scoring (calculated)'),
     FX('display_name', 'Name', "CONCAT(first_name, ' ', last_name, IF(ISBLANK(company), '', CONCAT(' (', company, ')')))", { type: 'string', list: true }),
@@ -279,8 +281,8 @@ const enquiry = {
     FX('amount_mur', 'Amount (MUR)',
       "IF(ISBLANK(currency_code) OR currency_code = 'MUR', estimated_amount, estimated_amount * LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date'))",
       { format: 'currency', precision: 2 }),
-    FX('existing_party', 'Existing client (party id)', "COALESCE(LOOKUP('party', 'email', email, 'id'), existing_party_by_mobile, IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'id')))", { help: 'Duplicate detection on email, then mobile (E.164), then company name.', detail: false }),
-    FX('existing_client', 'Existing client', "COALESCE(LOOKUP('party', 'email', email, 'display_name'), LOOKUP('party', 'mobile', mobile_e164, 'display_name'), IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'display_name')))", { type: 'string', help: 'The client this enquiry matched, so no duplicate is created on conversion.' }),
+    FX('existing_party', 'Existing client (party id)', "COALESCE(LOOKUP('party', 'email', email, 'id'), existing_party_by_mobile, IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'id')))", { help: 'Duplicate detection on email, then mobile (E.164) with the same surname, then company name.', detail: false }),
+    FX('existing_client', 'Existing client', "COALESCE(LOOKUP('party', 'email', email, 'display_name'), IF(ISBLANK(existing_party_by_mobile), null, LOOKUP('party', 'mobile', mobile_e164, 'display_name')), IF(ISBLANK(company), null, LOOKUP('party', 'legal_name', company, 'display_name')))", { type: 'string', help: 'The client this enquiry matched, so no duplicate is created on conversion.' }),
     FX('existing_rm', "Existing client's RM", "LOOKUP('party', 'email', email, 'primary_rm')", { type: 'string', help: 'Existing-client enquiries go to the primary RM.' }),
     FX('indicative_rate', 'Indicative rate %',
       "LATEST('plr_rate', 'rate', 'effective_from') + LOOKUP('financial_product', 'code', product_code, 'margin')",
@@ -331,7 +333,7 @@ const referral = {
   label: 'Referral',
   plural_label: 'Referrals',
   icon: 'Share2',
-  description: 'Internal cross-entity referral with dual credit (PRD LEAD-FR-15, XS-FR-03).',
+  description: 'Internal cross-entity referral with dual credit.',
   config: { title_field: 'name' },
   fields: [
     AUTO('referral_no', 'Referral No.', 'REF-'),
@@ -495,7 +497,7 @@ const conflictEntry = {
   label: 'Conflict of Interest',
   plural_label: 'Conflicts Register',
   icon: 'Scale',
-  description: 'Conflict checks and staff declarations (PRD ADV-FR-02, CMP-FR-04).',
+  description: 'Conflict checks and staff declarations.',
   config: { title_field: 'subject' },
   fields: [
     F('subject', 'Subject', 'text', { required: true, config: { show_in_list: true } }),
@@ -555,7 +557,7 @@ const suitabilityRecord = {
   label: 'Suitability Record',
   plural_label: 'Suitability Records',
   icon: 'ClipboardCheck',
-  description: 'Documented recommendation, with mismatch blocking (PRD SUIT-FR-03/04).',
+  description: 'Documented recommendation, with mismatch blocking.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Party', 'party', { required: true, config: { show_in_list: true } }),
@@ -925,7 +927,7 @@ const productRouting = {
   label: 'Product Routing',
   plural_label: 'Website Product Routing',
   icon: 'Route',
-  description: 'Website label / ?prod value → product, entity and queue (PRD LEAD-FR-02, Appendix A).',
+  description: 'Website label / ?prod value → product, entity and queue.',
   config: { title_field: 'website_label', default_sort: 'product_code' },
   fields: [
     F('website_label', 'Website label', 'text', { required: true, config: { show_in_list: true } }),
@@ -976,7 +978,7 @@ const fxRate = {
   label: 'FX Reference Rate',
   plural_label: 'FX Reference Rates',
   icon: 'ArrowLeftRight',
-  description: 'Daily reference rates to MUR — base-currency conversion for every amount (PRD X-01).',
+  description: 'Daily reference rates to MUR — base-currency conversion for every amount.',
   config: { title_field: 'name' },
   fields: [
     SEL('currency_code', 'Currency', CURRENCIES, { required: true, config: { show_in_list: true } }),
