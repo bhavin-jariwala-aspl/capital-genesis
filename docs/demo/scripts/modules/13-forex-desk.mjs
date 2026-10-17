@@ -148,7 +148,7 @@ export default async function run(S) {
   const qno = quote.data.quote_no;
   S.log('quote', quote.id, qno);
 
-  await S.say('The FX quote timer: answer within 15 business minutes', 'Tools ▸ SLA Board — the dealer\'s manager is alerted on a breach');
+  await S.say('The FX quote timer: answer within 15 business minutes', 'Tools ▸ SLA Board · it counts business hours only, so a weekend request is due Monday');
   await S.go('/sla', 1500);
   const slaRow = p.locator('a').filter({ hasText: qno }).first();
   // The timer is started just after the save: reload until it is listed.

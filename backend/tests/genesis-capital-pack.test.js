@@ -300,6 +300,10 @@ describe('Genesis pack — automation', () => {
     expect(conv.config.fields.campaign).toEqual({ expr: 'campaign' });
     const fu = pack.workflows.find((w) => w.name === 'genesis_event_follow_up');
     expect(fu.steps.find((st) => st.step_type === 'notification').config.field).toBe('guest_rm');
+    // …and the RM can open the registration to record the follow-up: it is assigned to them.
+    const own = pack.workflows.find((w) => w.name === 'genesis_event_registration_rm');
+    expect(own.steps.find((st) => st.config?.field === 'assigned_to').config.value).toBe('{{guest_rm}}');
+    expect(pack.permissions.some((pm) => pm.object === 'event_registration' && pm.can_edit && [].concat(pm.roles).includes('rm'))).toBe(true);
   });
 
   it('books a confirmed subscription\'s units to a fund holding (FND-FR-03)', () => {

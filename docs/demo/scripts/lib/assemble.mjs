@@ -101,8 +101,9 @@ export function assemble({ rawDir, slug, outDir }) {
   const mp4 = path.join(outDir, `${slug}.mp4`);
   execFileSync(FFMPEG, [
     '-y', '-v', 'error', '-i', raw, '-i', srtPath, '-i', metaPath,
-    '-map', '0:v', '-map', '1:s', '-map_metadata', '2', '-map_chapters', '2',
-    '-vf', `fps=25,${sel}format=yuv420p`, '-r', '25',
+    '-map', '[v]', '-map', '1:s', '-map_metadata', '2', '-map_chapters', '2',
+    // Paint over the sync-code strip (bottom-left 80×6) with the rows just above it.
+    '-filter_complex', `[0:v]split[a][b];[b]crop=80:6:0:888[p];[a][p]overlay=0:894,fps=25,${sel}format=yuv420p[v]`, '-r', '25',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '24', '-tune', 'stillimage',
     '-c:s', 'mov_text', '-metadata:s:s:0', 'language=eng', '-metadata:s:s:0', 'title=English',
     '-movflags', '+faststart', mp4,

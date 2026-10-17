@@ -732,6 +732,11 @@ const workflows = [
     steps: [trig('Attendance recorded'), cond('c1', 'Attended', 'attended', 'eq', 'true'), cond('c2', 'Not followed up', 'follow_up_done', 'empty'), notify('n1', 'Tell the RM', { field: 'guest_rm', title: 'Event follow-up — {{name}}', message: 'Thank the guest and book a meeting.' })],
   },
   {
+    object: 'event_registration', name: 'genesis_event_registration_rm', label: 'Event — registration goes to the guest\'s RM',
+    description: 'A registration is assigned to the guest\'s relationship manager, who follows the guest up after the event (MKT-FR-05).', ...ONCREATE,
+    steps: [trig('A new registration'), cond('c1', 'Guest has an RM', 'guest_rm', 'notempty'), set('a1', 'Assign to the RM', 'assigned_to', '{{guest_rm}}')],
+  },
+  {
     // A campaign is a financial promotion: Compliance signs it off before it goes out.
     object: 'campaign', name: 'genesis_campaign_signoff', label: 'Campaign — Compliance sign-off',
     description: 'Moving a campaign to Compliance review asks Compliance to sign it off in Approvals; approval moves it to Approved, a return sends it back to Planning (MKT-FR-03).', ...STAGE,
