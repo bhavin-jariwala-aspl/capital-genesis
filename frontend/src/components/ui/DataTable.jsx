@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown, Search, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import { clsx } from 'clsx';
 import EmptyState from './EmptyState';
@@ -21,6 +21,8 @@ function cellValue(col, row) {
  * DataTable — feature-rich HTML table.
  * columns: [{ key, label, render?, sortable?, width?, accessor? }]
  * data:    any[]
+ * onFilter(rows|null, search) — called when the search changes the visible rows (null = no search).
+ * defaultSort — { key, dir } the table starts sorted by (the user can still re-sort); none keeps `data` order.
  */
 export default function DataTable({
   columns = [],
@@ -38,32 +40,49 @@ export default function DataTable({
   subtitle,
   icon: HeadIcon,
   actions,
+  onFilter,
+  defaultSort,
   frame = true,
   className,
 }) {
   const [search, setSearch]     = useState('');
-  const [sortKey, setSortKey]   = useState(null);
-  const [sortDir, setSortDir]   = useState('asc');
+  const [sortKey, setSortKey]   = useState(defaultSort?.key ?? null);
+  const [sortDir, setSortDir]   = useState(defaultSort?.dir === 'desc' ? 'desc' : 'asc');
   const [page, setPage]         = useState(1);
 
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter((row) =>
-      columns.some((col) => {
+    // Every word must match some column, so "Forex 2026-09" narrows to one entity in one month.
+    const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return data;
+    return data.filter((row) => {
+      const texts = columns.map((col) => {
         // `searchText(row)` lets a column also match what it displays (a picklist label, a lookup's title).
         const val = typeof col.searchText === 'function' ? `${cellValue(col, row) ?? ''} ${col.searchText(row) ?? ''}` : cellValue(col, row);
-        return String(val ?? '').toLowerCase().includes(q);
-      }),
-    );
+        return String(val ?? '').toLowerCase();
+      });
+      return terms.every((t) => texts.some((x) => x.includes(t)));
+    });
   }, [data, search, columns]);
+
+  // Tell the page which rows the search left (its record count and Export follow the table).
+  // Only when the result changes: the page re-renders on it, and its `data`/`columns` may be new arrays each render.
+  const lastFilter = useRef('');
+  useEffect(() => {
+    if (!onFilter) return;
+    const q = search.trim();
+    const key = q ? `${q}|${filtered.map((r) => r?.id ?? '').join(',')}` : '';
+    if (lastFilter.current === key) return;
+    lastFilter.current = key;
+    onFilter(q ? filtered : null, q);
+  }, [filtered, search, onFilter]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
-    const sortCol = columns.find((c) => c.key === sortKey);
+    // A default sort may name a field that is not a visible column.
+    const sortCol = columns.find((c) => c.key === sortKey) ?? { key: sortKey };
     return [...filtered].sort((a, b) => {
-      const av = (sortCol ? cellValue(sortCol, a) : a[sortKey]) ?? '';
-      const bv = (sortCol ? cellValue(sortCol, b) : b[sortKey]) ?? '';
+      const av = cellValue(sortCol, a) ?? '';
+      const bv = cellValue(sortCol, b) ?? '';
       const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
       return sortDir === 'asc' ? cmp : -cmp;
     });

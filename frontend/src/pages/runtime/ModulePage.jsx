@@ -244,6 +244,9 @@ export default function ModulePage() {
   const navigate = useNavigate();
   const [viewMode, setViewMode]         = useState('table');
   const [selectedIds, setSelectedIds]   = useState(() => new Set());
+  // The rows the table search leaves (null = no search): the record count and Export follow it.
+  const [tableFilter, setTableFilter]   = useState(null);
+  const handleTableFilter = useCallback((rows, search) => setTableFilter(rows ? { ids: rows.map((r) => r.id), search } : null), []);
   const [activeRecord, setActiveRecord] = useState(null);
   // Deep link: `?record=<id>` opens that record's panel (used by related lists
   // and notifications), whatever page of the list it is on.
@@ -295,6 +298,13 @@ export default function ModulePage() {
   const canEdit = activeObject?._can_edit !== false;
   // The object's title field (Builder ▸ object settings) names its records, e.g. a loan's LMS account number.
   const titleField = activeObject?.config?.title_field;
+  // Starting order of the list: the object's `default_sort` ("code", or "-rate_date"
+  // for descending). Without one the list keeps the server's newest-first order.
+  const defaultSort = useMemo(() => {
+    const ds = activeObject?.config?.default_sort;
+    if (!ds || typeof ds !== 'string') return undefined;
+    return ds.startsWith('-') ? { key: ds.slice(1), dir: 'desc' } : { key: ds, dir: 'asc' };
+  }, [activeObject?.config?.default_sort]);
 
   // ── 2. Pipeline (MetadataStore → fallback to API) ─────────────────────────
   const cachedObjectData = useMetadataStore((s) => activeObject?.id ? s.getObject(Number(activeObject.id)) : null);
@@ -361,6 +371,8 @@ export default function ModulePage() {
   // metadata on a cold load, and used to be closed again by this effect.
   useEffect(() => {
     setSelectedIds(new Set());
+    // The table remounts per object (its search box starts empty), so drop the old search result too.
+    setTableFilter(null);
     setActiveRecord((r) => (r && activeObject && Number(r.object_id) === Number(activeObject.id) ? r : null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeObject?.id]);
@@ -501,7 +513,9 @@ export default function ModulePage() {
   const handleExportCsv = useCallback(async () => {
     if (!activeObject?.id) return;
     try {
-      const res = await runtimeService.exportRecordsCsv(activeObject.id);
+      // A searched table exports the rows it shows (up to a URL-safe number of ids); otherwise everything.
+      const ids = viewMode === 'table' && tableFilter && tableFilter.ids.length <= 1500 ? tableFilter.ids : undefined;
+      const res = await runtimeService.exportRecordsCsv(activeObject.id, ids);
       const url = URL.createObjectURL(res.data);
       const a   = document.createElement('a');
       a.href    = url;
@@ -509,7 +523,7 @@ export default function ModulePage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (_) { /* silent */ }
-  }, [activeObject?.id, activeObject?.name]);
+  }, [activeObject?.id, activeObject?.name, viewMode, tableFilter]);
 
   const toggleAll = useCallback(() => {
     setSelectedIds(prev => {
@@ -715,7 +729,9 @@ export default function ModulePage() {
                   {activeObject.plural_label || activeObject.label || activeObject.name}
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-white/40">
-                  {recordsLoading ? 'Loading…' : `${records.length} record${records.length !== 1 ? 's' : ''}`}
+                  {recordsLoading ? 'Loading…' : viewMode === 'table' && tableFilter
+                    ? `${tableFilter.ids.length} of ${records.length} records match “${tableFilter.search}”`
+                    : `${records.length} record${records.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
             </div>
@@ -760,7 +776,7 @@ export default function ModulePage() {
               <button
                 onClick={handleExportCsv}
                 className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-medium text-gray-600 dark:text-white/60 hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-white/10 transition-colors"
-                title="Export CSV"
+                title={viewMode === 'table' && tableFilter ? 'Export the rows shown to CSV' : 'Export CSV'}
               >
                 <Download className="w-4 h-4" /> Export
               </button>
@@ -866,9 +882,12 @@ export default function ModulePage() {
           ) : (
             <div className="card">
               <DataTable frame={false}
+                key={activeObject?.id}
+                defaultSort={defaultSort}
                 columns={tableColumns}
                 data={records}
                 loading={recordsLoading}
+                onFilter={handleTableFilter}
                 onRowClick={(row) => handleActivityClick(row)}
                 emptyText={canEdit
                   ? `No ${(activeObject.plural_label || activeObject.label || activeObject.name).split(' ').map((w) => (/^[A-Z0-9]{2,}$/.test(w) ? w : w.toLowerCase())).join(' ')} yet. Click "New ${activeObject.label || activeObject.name}" to add one.`

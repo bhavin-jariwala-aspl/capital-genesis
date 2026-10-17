@@ -106,12 +106,14 @@ export default function Login() {
   const navigate = useNavigate();
   const { token, setAuth } = useAuthStore();
   const appearance = useAppearanceStore((s) => s.current);
+  // Until the workspace brand is known, name nothing rather than flash the product default.
+  const brandReady = useAppearanceStore((s) => s.brandReady);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   // Second factor (PRD E-02): { token, setup, remember } between password and code.
   const [mfa, setMfa] = useState(null);
 
-  const appName  = appearance['appearance.app_name'] || 'Genesis CRM';
+  const appName  = brandReady ? (appearance['appearance.app_name'] || 'Genesis CRM') : '';
   const tagline  = appearance['appearance.login_tagline'] || 'Your business, beautifully managed.';
   const footer   = appearance['appearance.login_footer'];
   const layout   = appearance['appearance.login_layout'] || 'split';
@@ -212,7 +214,7 @@ export default function Login() {
   const heading = (
     <div className="mb-8">
       <h1 className="font-display text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Welcome back</h1>
-      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">Sign in to continue to {appName}</p>
+      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">{appName ? `Sign in to continue to ${appName}` : 'Sign in to continue'}</p>
     </div>
   );
 
@@ -259,7 +261,7 @@ export default function Login() {
           <div className="text-white hidden lg:block">
             <BrandLogo size="lg" onDark className="mb-10" />
             <Tagline text={tagline} className="font-display text-5xl font-bold leading-[1.05] tracking-tight mb-5" />
-            <p className="text-white/70 text-base max-w-sm">Welcome to {appName}. Sign in to pick up where you left off.</p>
+            <p className="text-white/70 text-base max-w-sm">{appName ? `Welcome to ${appName}. ` : ''}Sign in to pick up where you left off.</p>
           </div>
           <div className="w-full max-w-md mx-auto lg:ml-auto rounded-3xl p-7 sm:p-9 bg-white/85 dark:bg-night-2/85 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-hig-lg animate-slide-up">
             <div className="lg:hidden mb-6"><BrandLogo size="md" /></div>

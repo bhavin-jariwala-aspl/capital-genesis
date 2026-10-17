@@ -178,7 +178,7 @@ The `product_routing` master maps every website label (22 labels, including the 
 | ADV-FR | Fund Raising | Genesis Corporate Advisors | Corporate Advisory (barrier-protected): mandates, conflict checks, deal teams, insiders, investor book, deliverables, time, invoices, credentials | Conflict check before engagement; engagement letter; insider list auto-add; NDA-gated indications; milestone invoicing |
 | ADV-VAL | Valuation & Business Plan | Genesis Corporate Advisors | Corporate Advisory | As above (eight valuation service lines) |
 | ADV-RES | Corporate Restructuring Advisory | Genesis Corporate Advisors | Corporate Advisory | As above (five restructuring service lines) |
-| FX-GEN | Genesis Forex ("Talk to our Forexpert") | Genesis Forex | Forex Desk: FX profiles, quotes, deals, rate alerts; `fx_rate` board | Quote-to-deal with dealing-system reference; improvement vs board rate; limits |
+| FX-GEN | Genesis Forex ("Talk to our FX specialist") | Genesis Forex | Forex Desk: FX profiles, quotes, deals, rate alerts; `fx_rate` board | Quote-to-deal with dealing-system reference; improvement vs board rate; limits |
 | FX-SPOT | Forex Spot | Genesis Forex | Forex Desk | As above |
 | FX-FWD | Forward Transactions | Genesis Forex | Forex Desk | Forward maturity reminders and roll-over offers |
 | FX-SWAP | Forex Swap | Genesis Forex | Forex Desk | As above |

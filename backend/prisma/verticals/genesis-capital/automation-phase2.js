@@ -221,8 +221,8 @@ const workflows = [
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Credit approval', 'stage', 'eq', 'credit_approval'),
-      expr('c2', 'Up to MUR 5m?', 'amount_mur <= 5000000', { on_true: 'ap_lm', on_false: 'c3' }),
-      expr('c3', 'Up to MUR 20m?', 'amount_mur <= 20000000', { on_true: 'ap_cc', on_false: 'ap_bcc' }),
+      cond('c2', 'Loans Manager band? (approval matrix)', 'approval_band', 'eq', 'LND|5M', { on_true: 'ap_lm', on_false: 'c3' }),
+      cond('c3', 'Credit Committee band? (approval matrix)', 'approval_band', 'eq', 'LND|20M', { on_true: 'ap_cc', on_false: 'ap_bcc' }),
       approval('ap_lm', 'Loans Manager', 'loans_manager', 'Facility approval: {{name}}', '{{facility_no}} · MUR {{amount_mur}} · grade {{risk_grade}} · DSCR {{dscr}}.', 'ok1', 'no1'),
       approval('ap_cc', 'Credit Committee', 'credit_committee', 'Credit Committee: {{name}}', '{{facility_no}} · MUR {{amount_mur}} · grade {{risk_grade}} · DSCR {{dscr}}.', 'ok1', 'no1'),
       approval('ap_bcc', 'Board Credit Committee', 'board_credit_committee', 'Board Credit Committee: {{name}}', '{{facility_no}} · MUR {{amount_mur}} · grade {{risk_grade}}.', 'ok1', 'no1'),
@@ -569,7 +569,7 @@ const workflows = [
       expr('c1', 'Paid fee, not yet posted', "status = 'paid' AND fee_type != 'expenses' AND NOT(revenue_posted)"),
       create('r1', 'Post the revenue line', 'revenue_entry', {
         party: { expr: 'advisory_mandate.client' }, business_unit: 'ADV', revenue_type: { expr: "CASE(fee_type, 'success', 'success_fee', 'advisory_retainer')" },
-        amount: '{{amount}}', currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: '{{assigned_to}}', referrer_split_pct: '0',
+        amount: '{{amount}}', currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: { expr: 'IF(ISBLANK(assigned_to), created_by, assigned_to)' }, referrer_split_pct: '0',
         source: 'fee_invoice', fee_invoice: '{{id}}',
       }),
       set('a1', 'Mark posted', 'revenue_posted', 'true'),
@@ -603,7 +603,7 @@ const workflows = [
       expr('c1', 'Earns a spread', 'COALESCE(spread_income, 0) > 0'),
       create('r1', 'Post the revenue line', 'revenue_entry', {
         party: '{{party}}', business_unit: 'FX', product_code: { expr: "CASE(product, 'forward', 'FX-FWD', 'swap', 'FX-SWAP', 'FX-SPOT')" }, revenue_type: 'fx_spread',
-        amount: { expr: 'ROUND(spread_income, 2)' }, currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: '{{assigned_to}}', referrer_split_pct: '0',
+        amount: { expr: 'ROUND(spread_income, 2)' }, currency_code: 'MUR', period: '{{this_month}}', booked_on: '{{today}}', rm: { expr: 'IF(ISBLANK(assigned_to), created_by, assigned_to)' }, referrer_split_pct: '0',
         source: 'fx_deal', fx_deal: '{{id}}',
       }),
     ],
@@ -795,7 +795,7 @@ const workflows = [
   // ── Website touchpoints (I-01) ─────────────────────────────────────────────
   {
     object: 'web_event', name: 'genesis_web_callback', label: 'Website — call-back request',
-    description: '"Talk to us / Talk to our Forexpert" call-back requests become enquiries routed to the right desk (§2.4).', ...ONCREATE,
+    description: '"Talk to us / Talk to our FX specialist" call-back requests become enquiries routed to the right desk (§2.4).', ...ONCREATE,
     steps: [
       trig('A new web event'),
       cond('c1', 'Call-back request', 'event_type', 'eq', 'callback_request'),

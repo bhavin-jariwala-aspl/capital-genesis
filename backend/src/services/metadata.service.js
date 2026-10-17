@@ -439,21 +439,36 @@ class MetadataService {
    *
    * This method is NOT cached because the response is role-scoped.
    */
-  async getFormForViewer(id, roleName) {
+  /**
+   * The role's field permission rows keyed by field id, read once for many
+   * forms (the runtime bootstrap); null for an admin, who bypasses them.
+   * Pass the result to getFormForViewer as `fieldPerms`.
+   */
+  async fieldPermsForRole(roleName) {
+    if ((await roleLevelFor(this.db, roleName, null)) <= ADMIN_THRESHOLD) return null;
+    const perms = await this.db.uiPermission.findMany({ where: { entity_type: 'field', role_name: roleName } });
+    return Object.fromEntries(perms.map(p => [p.entity_id, p]));
+  }
+
+  async getFormForViewer(id, roleName, fieldPerms = undefined) {
     const form = await this.getFormFull(id);
     if (!form) return form;
 
     // Admins always see and can edit everything. Level from the tenant's own
     // roles table, so a custom admin-level role keeps its bypass.
-    if ((await roleLevelFor(this.db, roleName, null)) <= ADMIN_THRESHOLD) {
+    if (fieldPerms === null) return form;
+    if (fieldPerms === undefined && (await roleLevelFor(this.db, roleName, null)) <= ADMIN_THRESHOLD) {
       return form;
     }
 
-    const fieldIds = form.field_layouts.map(fl => fl.field_id);
-    const perms = await this.db.uiPermission.findMany({
-      where: { entity_type: 'field', entity_id: { in: fieldIds }, role_name: roleName },
-    });
-    const permMap = Object.fromEntries(perms.map(p => [p.entity_id, p]));
+    let permMap = fieldPerms;
+    if (!permMap) {
+      const fieldIds = form.field_layouts.map(fl => fl.field_id);
+      const perms = await this.db.uiPermission.findMany({
+        where: { entity_type: 'field', entity_id: { in: fieldIds }, role_name: roleName },
+      });
+      permMap = Object.fromEntries(perms.map(p => [p.entity_id, p]));
+    }
 
     const filteredLayouts = form.field_layouts
       .filter(fl => {

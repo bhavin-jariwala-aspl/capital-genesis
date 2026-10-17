@@ -2,7 +2,7 @@
 // a new introducer with the wizard through KYC, Agreement and Active (two gates); an active introducer refers a client
 // through the introducer portal; the referral creates and routes an enquiry; funding the referral accrues the
 // commission; a commission is clawed back; the Marketing dashboard shows the introducer widgets.
-import { API, api, obj, poll as poll0, records } from '../lib/studio.mjs';
+import { API, PEOPLE, api, obj, poll as poll0, records } from '../lib/studio.mjs';
 
 export const title = 'Introducers & Partners';
 
@@ -62,12 +62,15 @@ export default async function run(S) {
     await S.view('Pipeline');
     await p.locator('div.min-w-\\[260px\\]').first().waitFor({ timeout: 60000 });
   });
+  const drag = (card, from, to, o = {}) => S.drag(card, from, to, { after: 1000, ...o });
   const editRec = (name, id) => S.waitCut(() => S.editRecord(name, id));
   // Open a record panel and wait until a label is rendered (a busy server sometimes answers the first load empty).
   const openPanel = async (name, id, label) => {
     for (let i = 0; i < 3; i++) {
-      await S.waitCut(() => S.openRecord(name, id));
-      const ok = await p.getByText(label, { exact: true }).locator('visible=true').first().waitFor({ timeout: 60000 }).then(() => true).catch(() => false);
+      const ok = await S.waitCut(async () => {
+        await S.openRecord(name, id);
+        return p.getByText(label, { exact: true }).locator('visible=true').first().waitFor({ timeout: 60000 }).then(() => true).catch(() => false);
+      });
       if (ok) return;
       S.log('panel not rendered, reloading');
     }
@@ -124,17 +127,17 @@ export default async function run(S) {
       'Clawback and the Marketing dashboard',
     ],
     foot: 'Personas: Shalini Ramtohul (Head of BD & Partnerships) · Fatima Hossenbux (Compliance) · Hemraj Ah-Kye (introducer, portal)',
-  }, 8000);
+  }, 7000);
 
   // ── 1. The introducer's party ────────────────────────────────────────────────────────────────────────────────────
-  await S.step(1, 'The introducer as a party', `${NAME}, a notary in Port Louis, wants to refer clients to Genesis`, 'Every introducer is first a party — the same record KYC is run on', 3500);
+  await S.step(1, 'The introducer as a party', `${NAME}, a notary in Port Louis, wants to refer clients to Genesis`, 'Every introducer is first a party — the same record KYC is run on', 2500);
   await signIn('GCBDH', 'Head of BD — onboards and manages introducers');
   await S.waitCut(() => S.newRecord('party'));
   await S.say('Clients ▸ Parties ▸ New: identity and contact details');
   await S.fill('party', {
-    salutation: 'Mr', first_name: FIRST, last_name: LAST, date_of_birth: '1978-05-21', nationality: 'MU',
+    salutation: 'Mr', first_name: FIRST, last_name: LAST,
     occupation: 'Notary', email: `${ascii(FIRST)}.${ascii(LAST)}@example.com`, mobile: '+230 5762 1840',
-  }, { delay: 14 });
+  }, { delay: 10 });
   await submit();
   const party = await S.waitCut(() => poll(async () => (await records('GCBDH', 157, { limit: 5000 })).find((r) => r.data?.last_name === LAST && r.data?.first_name === FIRST), { what: 'party' }));
 
@@ -162,9 +165,9 @@ export default async function run(S) {
   // ── 3. KYC and the agreement gate ────────────────────────────────────────────────────────────────────────────────
   await S.step(3, 'Agreement gate', 'Onboarding pipeline: Applied ▸ KYC ▸ Agreement ▸ Active', 'Move the new introducer to KYC while the documents are collected');
   await board('introducer');
-  await S.drag(NAME, 'Applied', 'KYC');
+  await drag(NAME, 'Applied', 'KYC');
   await S.say('Now try Agreement…', 'The agreement stage needs the signature date and the commission rate');
-  await S.drag(NAME, 'KYC', 'Agreement', { expectFail: true, after: 600 });
+  await drag(NAME, 'KYC', 'Agreement', { expectFail: true, after: 600 });
   await showRefusal(/Agreement signed|Commission %/);
   await S.say('The agreement is signed: record the date, expiry and commission rate', '0.4% of the funded or disbursed volume');
   await editRec('introducer', intro.id);
@@ -172,31 +175,31 @@ export default async function run(S) {
   await submit();
   await board('introducer');
   await S.say('Move to Agreement again — this time it goes through');
-  await S.drag(NAME, 'KYC', 'Agreement');
+  await drag(NAME, 'KYC', 'Agreement');
 
   // ── 4. The KYC gate on Active ────────────────────────────────────────────────────────────────────────────────────
   await S.step(4, 'KYC gate', 'Activate the introducer…', 'The CRM checks the introducer’s own KYC first');
-  await S.drag(NAME, 'Agreement', 'Active', { expectFail: true, after: 600 });
+  await drag(NAME, 'Agreement', 'Active', { expectFail: true, after: 600 });
   await showRefusal(/only after KYC approval/);
   await S.say('Blocked: KYC is not approved yet', 'The legitimate way: a KYC case on the introducer, signed off by Compliance');
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(1500);
 
   // ── 5. KYC case ──────────────────────────────────────────────────────────────────────────────────────────────────
   await S.step(5, 'Introducer KYC', 'KYC & Compliance ▸ KYC Cases ▸ New', 'Group-level KYC on the introducer — the same process as for a client (Tutorial 18)');
   await S.waitCut(() => S.newRecord('kyc_case'));
-  await S.fill('kyc_case', { party: LAST, scope: 'group', business_unit: 'LND', review_type: 'onboarding' }, { delay: 18 });
-  await S.fill('kyc_case', { product_risk: 'low', delivery_channel: 'face_to_face', occupation_risk: 'low', ownership_complexity: 'simple', transaction_profile: 'low' });
+  await S.fill('kyc_case', { party: LAST, business_unit: 'LND' }, { delay: 18 });
+  await S.fill('kyc_case', { product_risk: 'low', occupation_risk: 'low', transaction_profile: 'low' });
   await S.say('ID, proof of address and source of funds are on file', 'Tick the checks and the FATCA status');
   await S.fill('kyc_case', { documents_complete: true, source_of_funds_verified: true, fatca_status: 'non_us' });
   await submit();
   const kc = await S.waitCut(() => poll(() => newest(kycObj, (r) => r.data?.party === party.id), { what: 'KYC case' }));
   await board('kyc_case');
   await S.say('Move it to Screening: sanctions and PEP lists are checked automatically');
-  await S.drag(NAME, 'Initiated', 'Under verification', { after: 700 });
-  await S.drag(NAME, 'Under verification', 'Screening', { after: 700 });
+  await drag(NAME, 'Initiated', 'Under verification', { after: 700 });
+  await drag(NAME, 'Under verification', 'Screening', { after: 700 });
   await S.waitCut(() => poll(async () => (await data(kycObj, kc.id)).screening_result, { what: 'screening result' }));
   await S.say('Screening is clear — Pending approval sends the case to Compliance');
-  await S.drag(NAME, 'Screening', 'Pending approval');
+  await drag(NAME, 'Screening', 'Pending approval');
 
   // ── 6. Compliance signs off ──────────────────────────────────────────────────────────────────────────────────────
   await S.step(6, 'Compliance sign-off', 'Compliance approves the introducer’s KYC', 'Four eyes: the Head of BD cannot approve her own introducer');
@@ -208,29 +211,29 @@ export default async function run(S) {
   await S.step(7, 'Activate', 'Back to the Head of BD: activate the introducer', 'KYC approved and agreement signed — the gate lets it through');
   await signIn('GCBDH', 'Head of BD');
   await board('introducer');
-  await S.drag(NAME, 'Agreement', 'Active');
+  await drag(NAME, 'Agreement', 'Active');
   await openPanel('introducer', intro.id, 'Commission % of funded / disbursed volume');
   await S.say(`${NAME} is active: KYC approved, agreement and commission on file`, 'Only an active introducer can sign in to the introducer portal');
   await showField('KYC', 3500);
 
   // ── 8. The introducer portal ─────────────────────────────────────────────────────────────────────────────────────
-  await S.step(8, 'Introducer portal', `Meanwhile, ${PORTAL_INTRODUCER} — an active broker — has a client to refer`, 'He uses the introducer portal: /portal/genesis-capital', 3500);
+  await S.step(8, 'Introducer portal', `Meanwhile, ${PORTAL_INTRODUCER} — an active broker — has a client to refer`, 'He uses the introducer portal: /portal/genesis-capital', 3000);
   await S.waitCut(() => S.go('/portal/genesis-capital'));
   await S.say('Choose Introducer and enter the portal email Genesis holds', 'No password: a one-time code is sent by email');
   await S.moveTo(p.getByRole('button', { name: 'Introducer', exact: true }));
-  await S.moveTo(p.locator('input').first()); await S.type(PORTAL_EMAIL, 40);
+  await S.moveTo(p.locator('input').first()); await S.type(PORTAL_EMAIL, 25);
   await S.moveTo(p.getByRole('button', { name: /sign-in code/ }));
   const codeText = p.getByText(/your code is \d{6}/);
   await S.waitCut(() => codeText.waitFor({ timeout: 60000 }));
   const code = (await codeText.textContent()).match(/(\d{6})/)[1];
   await S.say('Outside production the code is shown on screen', 'In production it arrives by email and expires after 10 minutes');
   await S.highlight(codeText, 2500);
-  await S.moveTo(p.locator('input').first()); await S.type(code, 90);
+  await S.moveTo(p.locator('input').first()); await S.type(code, 60);
   await S.moveTo(p.getByRole('button', { name: 'Sign in', exact: true }));
   await S.waitCut(() => p.getByText('My referrals').first().waitFor({ timeout: 60000 }));
   await p.waitForTimeout(1200);
   await S.say('His referrals and commissions — only his own', 'A referral’s status is shown only where the prospect agreed to share it');
-  await p.waitForTimeout(3500);
+  await p.waitForTimeout(3000);
   await S.say(`Refer a client: ${PROSPECT} needs a personal loan`);
   await S.moveTo(p.getByRole('button', { name: /Refer a client/ }));
   await p.waitForTimeout(800);
@@ -264,27 +267,31 @@ export default async function run(S) {
   await showField('Enquiry created', 3000);
   await showField('Attribution protected until', 2500);
   const enq = await S.waitCut(() => poll(async () => { const d = await data(enqObj, ref.data.enquiry); return d.enquiry_no ? d : null; }, { what: 'enquiry' }));
-  const enqRec = (await api('GCADMIN', 'GET', `/runtime/records/${ref.data.enquiry}`)).data;
+  const enqRec = await S.waitCut(() => poll(async () => { const r = (await api('GCADMIN', 'GET', `/runtime/records/${ref.data.enquiry}`)).data; return r?.assigned_to ? r : null; }, { what: 'enquiry owner' }));
+  const [owner, ownerRole] = PEOPLE[enqRec.assigned_to] || [enqRec.assigned_to, ''];
   S.log('enquiry owner', enqRec?.assigned_to, enq.business_unit);
+  if (enqRec.assigned_to === 'GCBDH') S.issue('referral enquiry was not routed (assigned to the referral owner)');
   await openPanel('enquiry', ref.data.enquiry, 'Channel');
-  await S.say('The enquiry: channel Introducer, linked to Hemraj', 'Routed by product to the lending team, like any other enquiry');
-  await showField('Channel', 2500);
-  await showField('Introducer', 3000);
+  await S.say('The enquiry: channel Introducer, linked to Hemraj', 'Credited to him for the attribution window');
+  await showField('Channel', 2000);
+  await showField('Introducer', 2500);
+  await S.say(`Routed by product like any other enquiry: Retail Loans, to ${owner}`, `${ownerRole} — the speed-to-lead clock starts now`);
+  await showField('Queue', 3500);
 
   // ── 10. Working the referral to funded ───────────────────────────────────────────────────────────────────────────
   await S.step(10, 'Referral to funded', 'As the desk works the enquiry, BD moves the referral along', 'Submitted ▸ Accepted ▸ In progress ▸ Funded / disbursed');
   await board('introducer_referral');
-  await S.drag(PROSPECT, 'Submitted', 'Accepted', { after: 800 });
-  await S.drag(PROSPECT, 'Accepted', 'In progress', { after: 800 });
+  await drag(PROSPECT, 'Submitted', 'Accepted', { after: 800 });
+  await drag(PROSPECT, 'Accepted', 'In progress', { after: 800 });
   await S.say('The loan is disbursed — try Funded / disbursed…', 'The CRM needs the funded amount to work out the commission');
-  await S.drag(PROSPECT, 'In progress', 'Funded / disbursed', { expectFail: true, after: 600 });
+  await drag(PROSPECT, 'In progress', 'Funded / disbursed', { expectFail: true, after: 600 });
   await showRefusal(/Funded \/ disbursed \(MUR\)/);
-  await S.say('Record the amount actually disbursed: MUR 1,400,000');
   await editRec('introducer_referral', ref.id);
+  await S.say('Record the amount actually disbursed: MUR 1,400,000');
   await S.fill('introducer_referral', { funded_amount: '1400000' });
   await submit();
   await board('introducer_referral');
-  await S.drag(PROSPECT, 'In progress', 'Funded / disbursed');
+  await drag(PROSPECT, 'In progress', 'Funded / disbursed');
 
   // ── 11. Commission accrued ───────────────────────────────────────────────────────────────────────────────────────
   await S.step(11, 'Commission accrued', 'Funded: the commission is accrued automatically', `${PORTAL_INTRODUCER}’s rate 0.5% × MUR 1,400,000 = MUR 7,000`);
@@ -318,7 +325,9 @@ export default async function run(S) {
   await w.evaluate((e) => e.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   await p.waitForTimeout(1500);
   await S.say('Referrals by stage — from submitted to funded', 'Commission by status: accrued, approved, paid and clawed back');
-  await p.waitForTimeout(5000);
+  await p.waitForTimeout(4000);
+  await S.clear();
+  await p.waitForTimeout(3500);
 
   await S.logout();
   await S.card({

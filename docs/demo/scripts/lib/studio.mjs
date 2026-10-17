@@ -71,6 +71,14 @@ export async function poll(fn, { timeout = 120000, every = 1500, what = 'conditi
   }
 }
 
+/** A dashboard's id by its name (e.g. 'genesis_rm_league') — ids change between installs. */
+export async function dashboardId(name) {
+  const r = await api('GCADMIN', 'GET', '/runtime/dashboards');
+  const d = (r.data ?? []).find((x) => x.name === name);
+  if (!d) throw new Error(`unknown dashboard ${name}`);
+  return d.id;
+}
+
 // Object metadata (field types and labels) so fill() can pick the right control.
 let META;
 export async function meta() {
@@ -382,6 +390,11 @@ export async function session({ slug, title, rawDir }) {
       const ok = r.status() < 300;
       log(`move ${from} -> ${to}:`, r.status());
       if (ok === expectFail) throw new Error(`Unexpected move result ${from}->${to} ${r.status()} ${(await r.text()).slice(0, 300)}`);
+      // A long drag can drop on a neighbouring column; make sure the card landed where intended.
+      if (ok) {
+        const landed = await dst.getByText(cardText).first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+        if (!landed) throw new Error(`card "${cardText}" did not land in "${to}"`);
+      }
       await p.waitForTimeout(after);
       return r;
     },
@@ -394,7 +407,8 @@ export async function session({ slug, title, rawDir }) {
         const f = o.fields[name] || { type: 'text', label: name, config: {} };
         const disp = f.config?.choice_display;
         const el = p.locator(`[id="${name}"]`).first();
-        if (f.type === 'lookup') {
+        // Lookups and staff-id fields (`config.employee`) are search pickers: type, then pick the option.
+        if (f.type === 'lookup' || f.config?.employee) {
           await S.moveTo(el);
           const input = p.locator(`input[id="${name}"]`).first();
           await input.waitFor({ timeout: 10000 });

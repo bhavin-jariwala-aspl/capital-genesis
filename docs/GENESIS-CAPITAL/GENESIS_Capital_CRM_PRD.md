@@ -144,7 +144,7 @@ Group context: Genesis Group (the largest insurance group in Mauritius) is the p
 | "Request More Info" CTAs | Link to `/get-in-touch/?prod=<Product>`, which pre-selects the product | Use `prod` as the source/product tag for automatic routing and UTM attribution |
 | Loan Calculator | JavaScript widget; captures no lead | Embeddable calculator that turns into a lead (amount, tenure, age, rate) |
 | Investor Questionnaire | Time horizon, risk tolerance, model portfolios A–E, name, email, age, email opt-in. No visible submit or result | Risk profiling with scoring as a CRM object, feeding suitability |
-| "Talk to us" / "Talk to our Forexpert" | Phone and email only | Callback and appointment booking, click-to-call logging |
+| "Talk to us" / "Talk to our FX specialist" | Phone and email only | Callback and appointment booking, click-to-call logging |
 | Phone / email | 203 4600, 291 1994, 207 3581; info@genesis-capital.demo | Shared inbox capture to Case/Lead, call logging |
 | News & Media | Weekly market highlights, notices | Newsletter subscriptions, segmented distribution, engagement tracking |
 | Social | Facebook, LinkedIn, YouTube, Instagram | Genesis Social module (connectors need to go live) |

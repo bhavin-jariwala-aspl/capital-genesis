@@ -225,32 +225,32 @@ const products = [
   }),
   // Forex — Genesis Forex Ltd
   P('FX-GEN', 'Genesis Forex', 'Genesis Forex', 'FX', 'fx', 2, {
-    legal_entity: 'Genesis Forex Ltd', tagline: 'Talk to our Forexpert for corporate and individual solutions.',
+    legal_entity: 'Genesis Forex Ltd', tagline: 'Talk to our FX specialist for corporate and individual solutions.',
     currencies: 'AUD, CAD, CHF, EUR, GBP, JPY, USD, ZAR and others',
     description: 'Fully transparent, quality execution with a customer-centric approach; indicative TT rates published daily on the website.',
-    features: 'Forex spot, forward transactions and forex swaps\nTailored attention from our Forexperts\nIndicative exchange rates published daily',
+    features: 'Forex spot, forward transactions and forex swaps\nTailored attention from our FX specialists\nIndicative exchange rates published daily',
     eligibility: 'Corporate and individual clients after KYC and an FX profile.', security_requirements: 'Settlement limits per client.',
     documents_required: `${KYC_IND} (individuals) or ${KYC_CORP} (companies); FX client profile; settlement account details; evidence of the underlying transaction for Bank of Mauritius purpose codes.`,
     fees_and_charges: 'Dealing spread included in the quoted rate.', target_clients: 'Importers, exporters, students abroad, property buyers and investors',
-    how_to_apply: 'Request more information (Genesis Forex) or call a Forexpert for a quote.', website_url: `${SITE}/forex-services/genesis-forex/`,
+    how_to_apply: 'Request more information (Genesis Forex) or call an FX specialist for a quote.', website_url: `${SITE}/forex-services/genesis-forex/`,
   }),
   P('FX-SPOT', 'Forex Spot', 'Change au comptant', 'FX', 'fx', 2, {
     legal_entity: 'Genesis Forex Ltd', tagline: 'Spot exchange at transparent, competitive rates.', currencies: 'AUD, CAD, CHF, EUR, GBP, JPY, USD, ZAR',
     description: 'Buy or sell foreign currency for settlement within two business days.', features: 'Quotes against the daily rate board\nBest-execution audit trail',
     eligibility: 'FX clients with an approved profile.', security_requirements: 'Settlement limit.', documents_required: 'As for Genesis Forex.', fees_and_charges: 'Dealing spread included in the rate.',
-    target_clients: 'Corporate and individual clients', how_to_apply: 'Ask a Forexpert for a quote.', website_url: `${SITE}/forex-services/genesis-forex/`,
+    target_clients: 'Corporate and individual clients', how_to_apply: 'Ask an FX specialist for a quote.', website_url: `${SITE}/forex-services/genesis-forex/`,
   }),
   P('FX-FWD', 'Forward Transactions', 'Opérations à terme', 'FX', 'fx', 3, {
     legal_entity: 'Genesis Forex Ltd', tagline: 'Fix today the rate of a future payment.', currencies: 'Major currencies',
     description: 'Forward contracts to hedge known future foreign-currency payments or receipts.', features: 'Fixed forward rate\nRoll-over offered before maturity\nMaturity reminders',
     eligibility: 'FX clients approved for forwards.', security_requirements: 'Forward limit.', documents_required: 'As for Genesis Forex, plus evidence of the underlying exposure.', fees_and_charges: 'Forward points included in the rate.',
-    target_clients: 'Importers, exporters and corporate treasuries', how_to_apply: 'Ask a Forexpert.', website_url: `${SITE}/forex-services/genesis-forex/`,
+    target_clients: 'Importers, exporters and corporate treasuries', how_to_apply: 'Ask an FX specialist.', website_url: `${SITE}/forex-services/genesis-forex/`,
   }),
   P('FX-SWAP', 'Forex Swap', 'Swap de change', 'FX', 'fx', 3, {
     legal_entity: 'Genesis Forex Ltd', tagline: 'Forex swaps with a customer-centric approach.', currencies: 'Major currencies',
     description: 'Exchange currencies now and reverse the exchange at a later date to manage liquidity.', features: 'Near and far legs agreed upfront\nTailored tenors',
     eligibility: 'FX clients approved for swaps.', security_requirements: 'Swap limit.', documents_required: 'As for Genesis Forex.', fees_and_charges: 'Swap points included in the rates.',
-    target_clients: 'Corporate treasuries', how_to_apply: 'Ask a Forexpert.', website_url: `${SITE}/forex-services/genesis-forex/`,
+    target_clients: 'Corporate treasuries', how_to_apply: 'Ask an FX specialist.', website_url: `${SITE}/forex-services/genesis-forex/`,
   }),
 ];
 
@@ -308,12 +308,13 @@ const collateralTypes = [
   ['securities', 'Securities portfolio', 40, 1, 75, 80, 90], ['cash', 'Cash deposit', 0, 12, 95, 98, 100], ['guarantee', 'Guarantee', 50, 12, 80, 90, 100],
 ].map(([code, label, haircut_pct, revaluation_months, ltv_warning_pct, ltv_margin_call_pct, ltv_liquidation_pct]) => ({ code, label, haircut_pct, revaluation_months, ltv_warning_pct, ltv_margin_call_pct, ltv_liquidation_pct }));
 
+// "Up to" blank = no upper limit. The credit workflows route on the LND|5M and LND|20M limits.
 const approvalBands = [
   ['LND|5M', 'LND', 5000000, 'loans_manager', 'Loans Manager', 1],
   ['LND|20M', 'LND', 20000000, 'credit_committee', 'Credit Committee', 2],
-  ['LND|MAX', 'LND', 999999999999, 'board_credit_committee', 'Board Credit Committee', 3],
-  ['LND|RATE', 'LND', 999999999999, 'loans_manager', 'Loans Manager (rate override ≤ 0.25 pts)', 1],
-  ['FND|ORDER', 'FND', 999999999999, 'operations_checker', 'Operations checker', 1],
+  ['LND|MAX', 'LND', null, 'board_credit_committee', 'Board Credit Committee', 3],
+  ['LND|RATE', 'LND', null, 'loans_manager', 'Loans Manager (rate override ≤ 0.25 pts)', 1],
+  ['FND|ORDER', 'FND', null, 'operations_checker', 'Operations checker', 1],
 ].map(([band_key, business_unit, max_amount, approver_role, approver_label, quorum]) => ({ band_key, business_unit, max_amount, approver_role, approver_label, quorum, exception_type: band_key.endsWith('RATE') ? 'rate_override' : 'none' }));
 
 const catalogue = [

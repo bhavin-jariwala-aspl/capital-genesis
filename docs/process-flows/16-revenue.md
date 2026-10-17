@@ -42,15 +42,16 @@ flowchart LR
 | Step | Who | What to do | What the CRM does |
 |---|---|---|---|
 | 1 | Finance | Post a **Revenue Entry** per client, product and month (or import the monthly file) | Converts to MUR at the FX board rate |
-| 2 | — | Advisory deliverable delivered with a milestone fee | Raises the **Fee Invoice** automatically ([flow 12](12-corporate-advisory.md)) |
+| 2 | — | Advisory deliverable delivered with a milestone fee | Raises the **Fee Invoice** automatically ([flow 12](12-corporate-advisory.md)); once it is **Paid**, posts the fee to the ledger |
+| 2a | — | FX dealer books a deal | Posts the spread income over the mid rate, credited to the dealer, with the deal as its **Source** |
 | 3 | Finance | Set the RM credited and, for referred business, the referrer and split % | Splits credit between RMs |
-| 4 | Finance | Enter the **finance figure** from the accounting system | Shows the variance for reconciliation |
-| 5 | Managers | **Export** for incentives | — |
+| 4 | Finance | Enter the **finance figure** from the accounting system | Shows the variance; **Reconciliation** reads *Reconciled* or *Variance to investigate* |
+| 5 | Managers | Search the ledger (entity, type, month) and **Export** for incentives | Exports the rows shown, with labels and names |
 
 ## Where to see results
 
 - **Group Executive**: revenue by entity and month.
-- **RM League Table**: revenue credited per RM.
+- **RM League Table**: revenue credited per RM, and referral credit per referring RM.
 - **Marketing**: attributed revenue and campaign ROI.
 
 ## Related flows

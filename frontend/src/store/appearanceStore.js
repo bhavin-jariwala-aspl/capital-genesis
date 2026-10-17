@@ -23,10 +23,24 @@ import { useAuthStore } from './authStore';
  * case the tenant mode always applies. The same shape applies to the user's
  * density and motion overrides via `allow_user_density`.
  */
+// First paint wears the remembered workspace brand, not the product default:
+// otherwise the sign-in page and the sidebar flash "Genesis CRM" before the
+// branding effects run.
+const bootSnapshot = readBrandingSnapshot();
+if (bootSnapshot && typeof document !== 'undefined') {
+  try { applyAppearance(bootSnapshot.values); } catch { /* the effects below apply it again */ }
+}
+
 export const useAppearanceStore = create((set, get) => ({
-  saved:   resolveAppearance({}),
-  current: resolveAppearance({}),
+  saved:   bootSnapshot ? bootSnapshot.values : resolveAppearance({}),
+  current: bootSnapshot ? bootSnapshot.values : resolveAppearance({}),
   loaded:  false,
+  /**
+   * Whether the brand on screen is the right one: a remembered snapshot, the
+   * workspace's settings, or (signed out, nothing remembered) the product
+   * default. Until then BrandLogo shows a neutral placeholder.
+   */
+  brandReady: !!bootSnapshot,
   previewing: false,
   /** Set while signed out: the remembered workspace whose brand the sign-in page wears. */
   preLogin: null,
@@ -43,12 +57,12 @@ export const useAppearanceStore = create((set, get) => ({
     const snap = readBrandingSnapshot();
     if (!snap) {
       clearAppearance();
-      set({ preLogin: null, current: resolveAppearance({}), saved: resolveAppearance({}) });
+      set({ preLogin: null, current: resolveAppearance({}), saved: resolveAppearance({}), brandReady: true });
       applyDocumentChrome(resolveAppearance({}));
       return null;
     }
     const resolved = applyAppearance(snap.values);
-    set({ preLogin: { tenant_id: snap.tenant_id }, current: resolved, saved: resolved });
+    set({ preLogin: { tenant_id: snap.tenant_id }, current: resolved, saved: resolved, brandReady: true });
     get().applyMode(resolved);
     applyDocumentChrome(resolved);
     if (snap.tenant_id) {
@@ -81,16 +95,25 @@ export const useAppearanceStore = create((set, get) => ({
       const values = res?.data ?? res;
       if (!values || typeof values !== 'object' || get().publicTenant !== tenantId) return get().current;
       const resolved = applyAppearance(values);
-      set({ current: resolved, saved: resolved });
+      set({ current: resolved, saved: resolved, brandReady: true });
       get().applyMode(resolved);
       applyDocumentChrome(resolved);
       return resolved;
     } catch {
+      set({ brandReady: true });
       return get().current; // keep whatever is applied — the page must still render
     }
   },
 
   async load() {
+    // Signed in without a remembered brand for this workspace (first sign-in
+    // on this device): show the placeholder until the settings arrive rather
+    // than the product default.
+    const snap = readBrandingSnapshot();
+    const tenantId = useAuthStore.getState().employee?.tenant_id ?? null;
+    if (!snap || (snap.tenant_id != null && tenantId != null && String(snap.tenant_id) !== String(tenantId))) {
+      set({ brandReady: false });
+    }
     try {
       const res = await settingsService.getEffective();
       const values = res?.data ?? res ?? {};
@@ -100,13 +123,13 @@ export const useAppearanceStore = create((set, get) => ({
       applyAppearance(APPEARANCE_DEFAULTS);
       get().applyUserPrefs(resolveAppearance({}));
     } finally {
-      set({ loaded: true });
+      set({ loaded: true, brandReady: true });
     }
   },
 
   commit(values) {
     const resolved = applyAppearance(values);
-    set({ saved: resolved, current: resolved, previewing: false });
+    set({ saved: resolved, current: resolved, previewing: false, brandReady: true });
     get().applyMode(resolved);
     get().applyUserPrefs(resolved);
     applyDocumentChrome(resolved);

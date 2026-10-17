@@ -10,9 +10,9 @@ const RadioGroup = forwardRef(function RadioGroup(
   ref,
 ) {
   return (
-    <div className={clsx('flex flex-col gap-1', wrapperClass)}>
+    <div className={clsx('group flex flex-col gap-1.5', wrapperClass)}>
       {label && (
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 group-focus-within:text-primary-600 dark:group-focus-within:text-primary-400 transition-colors">
           {label}
           {required && <span className="ml-0.5 text-red-500">*</span>}
         </label>

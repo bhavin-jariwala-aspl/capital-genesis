@@ -78,7 +78,9 @@ export default function RuntimeHome() {
           )}
         </div>
       ) : (
-        <DashboardRenderer dashboard={dashData.data} />
+        // Keyed by board: switching boards (picker or `?dashboard=`) starts
+        // with a clean global filter instead of carrying the last board's.
+        <DashboardRenderer key={defaultDashId} dashboard={dashData.data} />
       )}
     </div>
   );

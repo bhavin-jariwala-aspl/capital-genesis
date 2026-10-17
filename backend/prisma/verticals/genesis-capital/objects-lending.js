@@ -181,7 +181,8 @@ const creditFacility = {
     FX('days_to_review', 'Days to annual review', 'IF(ISBLANK(expiry_date), null, DAYS_BETWEEN(TODAY(), expiry_date))'),
     F('renewal_opened', 'Renewal opened', 'checkbox', { config: { always_disabled: true } }),
     SEL('credit_decision', 'Credit decision', o([['approved', 'Approved', '#10b981'], ['declined', 'Declined', '#ef4444']]), { config: { always_disabled: true } }),
-    FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', CONCAT('LND|', IF(amount_mur <= 5000000, '5M', IF(amount_mur <= 20000000, '20M', 'MAX'))), 'approver_label'), IF(amount_mur <= 5000000, 'Loans Manager', IF(amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
+    FX('approval_band', 'Approval band', "CONCAT('LND|', IF(amount_mur <= COALESCE(LOOKUP('approval_matrix', 'band_key', 'LND|5M', 'max_amount'), 5000000), '5M', IF(amount_mur <= COALESCE(LOOKUP('approval_matrix', 'band_key', 'LND|20M', 'max_amount'), 20000000), '20M', 'MAX')))", { type: 'string', detail: false, help: 'The approval-matrix band for this amount: the limits come from Masters ▸ Approval Matrices.' }),
+    FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', approval_band, 'approver_label'), IF(approval_band = 'LND|5M', 'Loans Manager', IF(approval_band = 'LND|20M', 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
     FX('borrower_name', 'Borrower name', 'borrower.display_name', { type: 'string' }),
     FX('name', 'Facility', "CONCAT(borrower.display_name, ' · ', LABEL(facility_type))", { type: 'string' }),
@@ -445,7 +446,11 @@ const plrChangeEvent = {
   pipeline: {
     name: 'plr_change_flow', label: 'PLR change',
     stages: [
-      stage('draft', 'Draft', '#94a3b8'), stage('approved', 'Approved', '#6366f1', { required_fields: ['approved_by'] }),
+      stage('draft', 'Draft', '#94a3b8'), stage('approved', 'Approved', '#6366f1', {
+        required_fields: ['approved_by'],
+        // Maker-checker: whoever drafted the campaign can neither approve it nor be named as its approver.
+        four_eyes: { field: 'approved_by', message: 'Four eyes: a PLR change campaign must be approved by someone other than the person who drafted it.' },
+      }),
       stage('notices_generated', 'Notices generated', '#8b5cf6'), stage('distributed', 'Distributed', '#10b981'),
     ],
   },

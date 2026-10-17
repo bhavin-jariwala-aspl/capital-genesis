@@ -3,8 +3,10 @@ import { apiWrapper } from './apiWrapper';
 
 export const slaService = {
   // ── Dashboard / radiator ──────────────────────────────────────────────
-  getDashboard: (scope = 'me') =>
-    apiWrapper.extract(api.get('/sla/dashboard', { params: { scope } })),
+  // `focus` ('record:42') keeps that record's timers in the list even when
+  // they are not among the most urgent.
+  getDashboard: (scope = 'me', focus) =>
+    apiWrapper.extract(api.get('/sla/dashboard', { params: focus ? { scope, focus } : { scope } })),
 
   reconcile: () =>
     apiWrapper.extract(api.post('/sla/reconcile')),

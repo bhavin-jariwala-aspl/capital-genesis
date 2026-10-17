@@ -322,6 +322,19 @@ module.exports = async function authRoutes(fastify) {
     return ok(reports);
   });
 
+  // GET /api/auth/staff — the tenant's active staff (id + name only) for
+  // staff pickers on record forms. Any signed-in user may read it: a
+  // relationship manager filling `owner_rm` needs the names, not the admin
+  // detail (email, phone, role) that /employees returns.
+  fastify.get('/staff', { preHandler: [authenticate] }, async () => {
+    const staff = await fastify.prisma.employee.findMany({
+      where:   { is_active: true },
+      select:  { employee_id: true, employee_name: true },
+      orderBy: { employee_name: 'asc' },
+    });
+    return ok(staff);
+  });
+
   // GET /api/auth/employees — list all employees (admin only)
   fastify.get('/employees', { preHandler: [requireAdmin] }, async (req) => {
     const employees = await fastify.prisma.employee.findMany({

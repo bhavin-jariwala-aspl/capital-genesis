@@ -1449,16 +1449,22 @@ class RecordService {
    *   stage.config.entry_rule       { expression, message } — a formula that
    *                                 must be true (e.g. "KYC approved and
    *                                 security perfected" before disbursement)
+   *   stage.config.four_eyes        true | { field?, message? } — maker-checker:
+   *                                 the person moving the record here must not
+   *                                 be its creator, and `field` (e.g. "Approved
+   *                                 by") must not name the creator either
    * Enforced here, so Kanban drags, API calls, bulk moves and workflow moves
-   * all obey the same rule.
+   * all obey the same rule (four eyes applies to a person's move; a workflow
+   * move carries no actor).
    */
-  async #assertStageGate(recordId, stageId) {
+  async #assertStageGate(recordId, stageId, actorId = null) {
     if (!stageId || typeof this.db.uiPipelineStage?.findUnique !== 'function') return;
     const stage = await this.db.uiPipelineStage.findUnique({ where: { id: Number(stageId) }, select: { label: true, config: true } });
     const cfg = stage?.config ?? {};
     const required = Array.isArray(cfg.required_fields) ? cfg.required_fields : [];
-    if (!required.length && !cfg.entry_rule?.expression) return;
+    if (!required.length && !cfg.entry_rule?.expression && !cfg.four_eyes) return;
     const data = (await this.#loadData(recordId)) ?? {};
+    if (cfg.four_eyes) await this.#assertFourEyes(recordId, stage, cfg.four_eyes === true ? {} : cfg.four_eyes, data, actorId);
     const blank = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);
     const missing = required.filter((f) => blank(data[f]));
     if (missing.length) {
@@ -1485,12 +1491,33 @@ class RecordService {
     }
   }
 
+  /** Maker-checker on a stage: the creator can neither make the move nor be named as the approver. */
+  async #assertFourEyes(recordId, stage, rule, data, actorId) {
+    const rec = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { created_by: true } }).catch(() => null);
+    const creator = rec?.created_by ? String(rec.created_by) : null;
+    if (!creator) return;
+    const message = rule.message || `Four eyes: someone other than the person who created this record must move it to ${stage.label}.`;
+    if (actorId && String(actorId) === creator) throw new ValidationError(message);
+    if (rule.field && data[rule.field] != null && data[rule.field] !== '') {
+      const named = String(data[rule.field]).trim().toLowerCase();
+      const emp = typeof this.db.employee?.findUnique === 'function'
+        ? await this.db.employee.findUnique({ where: { employee_id: creator }, select: { employee_name: true } }).catch(() => null)
+        : null;
+      const name = emp?.employee_name ? String(emp.employee_name).trim().toLowerCase() : null;
+      if (named === creator.toLowerCase() || (name && named.includes(name))) {
+        const err = new ValidationError(rule.message || `Four eyes: the approver cannot be the person who created this record (${emp?.employee_name ?? creator}).`);
+        err.details = [{ field: rule.field, message: 'Must be someone other than the creator' }];
+        throw err;
+      }
+    }
+  }
+
   async updateRecordStage(id, stageId, updatedBy, viewer) {
     const existing = await this.db.record.findUnique({ where: { id: Number(id) } });
     if (!existing) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
-    if (stageId && Number(stageId) !== existing.pipeline_stage_id) await this.#assertStageGate(existing.id, stageId);
+    if (stageId && Number(stageId) !== existing.pipeline_stage_id) await this.#assertStageGate(existing.id, stageId, updatedBy ?? viewer?.employee_id ?? null);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     const updated = await this.db.record.update({
       where: { id: Number(id) },
@@ -1781,7 +1808,7 @@ class RecordService {
     const numIds = await this.#filterAccessibleIds(ids.map(Number), viewer);
     if (!numIds.length) return { updated: 0 };
     // Every record must pass the target stage's gate; a bulk move is all-or-nothing.
-    for (const rid of numIds) await this.#assertStageGate(rid, stageId);
+    for (const rid of numIds) await this.#assertStageGate(rid, stageId, updatedBy ?? viewer?.employee_id ?? null);
     // Fetch existing records for workflow triggers
     const existingRecords = await this.db.record.findMany({
       where: { id: { in: numIds } },
@@ -2038,36 +2065,58 @@ class RecordService {
     return this.auditChain;
   }
 
-  async exportRecordsCsv(objectId, viewer) {
+  /**
+   * The object's records as CSV, in the words the user sees: field labels as
+   * headers, picklist labels, linked records' titles and staff names rather
+   * than stored codes and ids (an incentive export read in Excel). `ids`
+   * limits the export to the rows the user filtered the table down to; the
+   * viewer's scope still applies to every row.
+   */
+  async exportRecordsCsv(objectId, viewer, { ids } = {}) {
     const ownerWhere = await this.#ownerFilter(viewer);
+    const only = Array.isArray(ids) ? ids.map(Number).filter((n) => Number.isInteger(n) && n > 0) : null;
     const anchors = await this.db.record.findMany({
-      where:   { object_id: Number(objectId), deleted_at: null, ...ownerWhere },
+      where:   { object_id: Number(objectId), deleted_at: null, ...ownerWhere, ...(only ? { id: { in: only } } : {}) },
       orderBy: { created_at: 'desc' },
       include: { pipeline_stage: { select: { label: true } } },
       take:    EXPORT_MAX_ROWS,
     });
-    if (!anchors.length) return 'id,stage,assigned_to,created_by,created_at\r\n';
+    // Owner and creator by name, not employee id.
+    const people = await this.#employeeNames([...new Set(anchors.flatMap((r) => [r.assigned_to, r.created_by]).filter((v) => typeof v === 'string' && v))]);
+    const person = (id) => (id ? people.get(id) ?? id : '');
+    const base = [['ID', (r) => r.id], ['Stage', (r) => r.pipeline_stage?.label ?? ''], ['Owner', (r) => person(r.assigned_to)],
+      ['Created by', (r) => person(r.created_by)], ['Created at', (r) => r.created_at?.toISOString?.() ?? '']];
+    if (!anchors.length) return base.map(([h]) => h).join(',') + '\r\n';
 
-    const hydrated = await this.#maskPii(Number(objectId), await this.#hydrateMany(anchors), viewer, { onDemand: false });
-    // Collect all CRM field keys present across all records
-    const crmKeys = [...new Set(hydrated.flatMap(r => Object.keys(r.data ?? {})))];
-    const headers = ['id', 'stage', 'assigned_to', 'created_by', 'created_at', ...crmKeys];
-    const rows = hydrated.map(r => {
-      const base = [
-        r.id,
-        r.pipeline_stage?.label ?? '',
-        r.assigned_to ?? '',
-        r.created_by ?? '',
-        r.created_at.toISOString(),
-      ];
-      const crmVals = crmKeys.map(k => {
-        const v = r.data?.[k];
-        return v == null ? '' : String(v).replace(/,/g, ';'); // escape commas
-      });
-      return [...base, ...crmVals].join(',');
-    });
+    const hydrated = await this.#maskPii(Number(objectId),
+      await this.#attachLookupLabels(Number(objectId), await this.#hydrateMany(anchors)), viewer, { onDemand: false });
+    const defs = typeof this.db.uiField?.findMany === 'function'
+      ? await this.db.uiField.findMany({
+        where:   { object_id: Number(objectId), is_active: true },
+        select:  { name: true, label: true, field_type: true, options: true },
+        orderBy: { order_index: 'asc' },
+      }).catch(() => []) : [];
+    const byName = new Map((defs ?? []).filter((f) => f.field_type !== 'heading').map((f) => [f.name, f]));
+    // Fields in their Builder order, then any stored value without a field definition.
+    const present = new Set(hydrated.flatMap((r) => Object.keys(r.data ?? {})));
+    const keys = [...[...byName.keys()].filter((k) => present.has(k)), ...[...present].filter((k) => !byName.has(k))];
 
-    return [headers.join(','), ...rows].join('\r\n');
+    const optionLabel = (f, v) => (Array.isArray(f?.options) ? f.options.find((o) => String(o.value) === String(v))?.label : null) ?? v;
+    const show = (r, k) => {
+      const v = r.data?.[k];
+      if (v == null || v === '') return '';
+      if (r.labels?.[k]) return r.labels[k];
+      const f = byName.get(k);
+      if (Array.isArray(v)) return v.map((x) => optionLabel(f, x)).join('; ');
+      if (f?.options?.length) return optionLabel(f, v);
+      if (v instanceof Date) return f?.field_type === 'date' ? v.toISOString().slice(0, 10) : v.toISOString();
+      if (f?.field_type === 'date' && /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(String(v))) return String(v).slice(0, 10);
+      return typeof v === 'object' ? JSON.stringify(v) : v;
+    };
+    const cell = (v) => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+    const headers = [...base.map(([h]) => h), ...keys.map((k) => byName.get(k)?.label ?? k)];
+    const rows = hydrated.map((r) => [...base.map(([, get]) => get(r)), ...keys.map((k) => show(r, k))].map(cell).join(','));
+    return [headers.map(cell).join(','), ...rows].join('\r\n');
   }
 }
 

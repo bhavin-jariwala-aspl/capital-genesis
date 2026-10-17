@@ -24,15 +24,20 @@ export function recordTitle(data, titleField) {
   );
 }
 
-/** Derive initials (up to 2 chars) from a title string. */
+/**
+ * Derive initials (up to 2 chars) from a title string. Only letters and digits
+ * count, so "Forex (Genesis Capital)" gives "FG", not "F(".
+ */
 export function initials(title) {
   if (!title) return '?';
-  return title
-    .split(' ')
+  const out = String(title)
+    .split(/\s+/)
+    .map((w) => w.match(/[\p{L}\p{N}]/u)?.[0])
     .filter(Boolean)
-    .map((w) => w[0].toUpperCase())
     .slice(0, 2)
-    .join('');
+    .join('')
+    .toUpperCase();
+  return out || '?';
 }
 
 /** Stable avatar gradients, picked deterministically from a record id. */

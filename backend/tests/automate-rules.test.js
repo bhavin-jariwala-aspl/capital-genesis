@@ -212,6 +212,21 @@ describe('SLA policy validation', () => {
     expect(SlaService.recordEntityConfig({ closed_stages: ['x'] }).metricStatus.first_response({ stage: null })).toBe('running');
   });
 
+  it('takes a record\'s own target (business hours) from the field the policy names', () => {
+    // e.g. an enquiry's first-contact target comes from its product's routing rule (a master).
+    const cfg = SlaService.recordEntityConfig({ closed_stages: ['converted'], target_hours_fields: { first_response: 'first_contact_hours' } });
+    const target = { metric: 'first_response', target_minutes: 240 };
+    expect(SlaService.targetMinutesFor(cfg, target, { first_contact_hours: 2 }, 'first_response')).toBe(120);
+    expect(SlaService.targetMinutesFor(cfg, target, { first_contact_hours: 1.5 }, 'first_response')).toBe(90);
+    // Blank, zero or not a number → the policy's own target.
+    for (const v of [null, undefined, 0, '', 'soon', -3]) {
+      expect(SlaService.targetMinutesFor(cfg, target, { first_contact_hours: v }, 'first_response')).toBe(240);
+    }
+    // Another metric is not affected, nor is a policy without the setting.
+    expect(SlaService.targetMinutesFor(cfg, { metric: 'resolution', target_minutes: 4800 }, { first_contact_hours: 2 }, 'resolution')).toBe(4800);
+    expect(SlaService.targetMinutesFor(SlaService.recordEntityConfig({ closed_stages: ['x'] }), target, { first_contact_hours: 2 }, 'first_response')).toBe(240);
+  });
+
   it('rejects a target on a metric the entity is not measured on', () => {
     expect(() => assertPolicyShape('lead', { targets: [{ metric: 'resolution', target_minutes: 60 }] }))
       .toThrow(/cannot be measured on "resolution"/);
@@ -302,5 +317,29 @@ describe('SLA board breakdown', () => {
       'KYC Case': { total: 1, breached: 0, at_risk: 1 },
       'Other records': { total: 1, breached: 0, at_risk: 0 },
     });
+  });
+});
+
+describe('SLA board focus', () => {
+  it('keeps a focused record timer that falls outside the 60 most urgent', async () => {
+    const soon = Date.now() + 3600_000, later = Date.now() + 86400_000;
+    const instances = Array.from({ length: 61 }, (_, n) => ({
+      id: n + 1, entity_type: 'record', entity_id: 100 + n, metric: 'resolution', priority: 'normal', policy_id: 1,
+      status: 'running', breached: false, owner_id: 'GCRM1',
+      due_at: new Date(n === 60 ? later : soon + n), warning_at: new Date(n === 60 ? later - 1000 : soon - 1000),
+    }));
+    const empty = { findMany: async () => [] };
+    const db = {
+      slaInstance: { findMany: async () => instances.map((i) => ({ ...i })) },
+      record: empty, recordFieldValue: empty, employee: empty, slaPolicy: empty,
+      crmCase: empty, crmLead: empty, task: empty, employeeHierarchy: empty,
+    };
+    const svc = new SlaService(db, { info() {}, warn() {}, error() {} });
+    const plain = await svc.getDashboard({ employeeId: 'GCRM1', scope: 'me' });
+    expect(plain.timers).toHaveLength(60);
+    expect(plain.timers.some((t) => t.entity_id === 160)).toBe(false);
+    const focused = await svc.getDashboard({ employeeId: 'GCRM1', scope: 'me', focus: { entity_type: 'record', entity_id: 160 } });
+    expect(focused.timers).toHaveLength(61);
+    expect(focused.timers.some((t) => t.entity_id === 160)).toBe(true);
   });
 });

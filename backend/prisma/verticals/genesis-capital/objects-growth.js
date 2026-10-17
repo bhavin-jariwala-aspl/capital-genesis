@@ -423,7 +423,7 @@ const revenueEntry = {
   fields: [
     LK('party', 'Client', 'party', { config: { show_in_list: true } }),
     SEL('business_unit', 'Business unit', BUSINESS_UNITS, { required: true, config: { show_in_list: true } }),
-    SEL('product_code', 'Product', PRODUCTS, LIST),
+    SEL('product_code', 'Product', PRODUCTS),
     SEL('revenue_type', 'Type', o([
       ['arrangement_fee', 'Loan arrangement / processing fee'], ['interest_income', 'Interest income (LMS summary)'], ['management_fee', 'Management fee'],
       ['performance_fee', 'Performance fee'], ['brokerage', 'Brokerage'], ['advisory_retainer', 'Advisory retainer'], ['success_fee', 'Advisory success fee'], ['fx_spread', 'FX spread income'],

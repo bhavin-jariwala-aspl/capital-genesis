@@ -35,7 +35,10 @@ module.exports = async function slaRoutes(fastify) {
     let scope = req.query.scope || 'me';
     if (scope === 'all' && level > ADMIN_THRESHOLD) scope = 'team';
     if (scope === 'team' && level > MANAGER_THRESHOLD) scope = 'me';
-    const data = await svc.getDashboard({ employeeId: req.user.employeeId, scope });
+    // `focus=record:42` — keep that record's timers in the list (see getDashboard).
+    const [fType, fId] = String(req.query.focus || '').split(':');
+    const focus = fType && fId ? { entity_type: fType, entity_id: Number(fId) || fId } : null;
+    const data = await svc.getDashboard({ employeeId: req.user.employeeId, scope, focus });
     return ok({ ...data, scope });
   });
 
@@ -237,6 +240,17 @@ async function assertRecordPolicy(P, entityType, body = {}) {
   }
   if (!(cfg.closed_stages ?? []).length) {
     throw new ValidationError('A record SLA needs at least one closed stage — otherwise its resolution clock never stops');
+  }
+  // Per-record targets: a metric this engine tracks, read from a field the object has.
+  const perRecord = cfg.target_hours_fields ?? {};
+  const fieldNames = Object.values(perRecord);
+  if (fieldNames.length) {
+    const allowed = metricsFor('record');
+    const badMetric = Object.keys(perRecord).find((m) => !allowed.includes(m));
+    if (badMetric) throw new ValidationError(`target_hours_fields: "${badMetric}" is not a metric — use ${allowed.join(' or ')}`);
+    const fields = await P.uiField.findMany({ where: { object_id: obj.id, name: { in: fieldNames } }, select: { name: true } });
+    const missing = fieldNames.filter((n) => !fields.some((f) => f.name === n));
+    if (missing.length) throw new ValidationError(`target_hours_fields: this object has no field ${missing.join(', ')}`);
   }
 }
 

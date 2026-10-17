@@ -472,6 +472,10 @@ accrued on funded volume, with clawback.
 
 **Revenue Ledger** — arrangement fees, interest income summary, management and performance fees, brokerage, advisory
 retainers and success fees, FX spread income; credited to the RM and a referrer; reconciled to finance figures.
+A new FX deal posts its spread income and a paid advisory fee invoice posts its fee automatically (**Source** shows
+where a line came from); Finance posts the rest by hand. Entering the **finance figure** sets **Reconciliation** to
+*Reconciled* or *Variance to investigate*. Search the ledger with several words (`Lending arrangement 2026-10`) and
+**Export** downloads the rows shown.
 
 ### Service & Complaints
 
@@ -499,7 +503,10 @@ request.
 Reference data that drives the formulas — maintained by administrators as ordinary records: website product routing,
 Genesis PLR history, countries (AML risk), FX reference rates, model portfolios, KYC risk factors and weights, collateral
 types and haircuts, approval matrices, the service request catalogue and reason codes. A change here (for example a new
-PLR) takes effect without any release.
+PLR) takes effect without any release. A new PLR reprices loans and products' "Rate from" by itself; other masters are
+read when a record is saved — a routing change (queue, first-contact target) applies from the next enquiry, and a new
+risk weight or country score re-scores a KYC case at its next save or review. The approval matrix's "Up to" limits set
+the credit approval band (blank = no upper limit).
 
 ---
 

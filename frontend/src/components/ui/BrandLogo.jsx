@@ -22,8 +22,20 @@ const IMG_H = { sm: 'h-7', md: 'h-8', lg: 'h-10', xl: 'h-14' };
 
 export default function BrandLogo({ size = 'md', onDark = false, className, nameClass, appearance, showName }) {
   const stored = useAppearanceStore((s) => s.current);
+  const brandReady = useAppearanceStore((s) => s.brandReady);
   const isDark = useThemeStore((s) => s.isDark);
   const a = appearance ?? stored;
+
+  // The workspace brand is not known yet (first visit, settings loading): a
+  // neutral placeholder rather than the product default, which would flash.
+  if (!appearance && !brandReady) {
+    return (
+      <span className={clsx('inline-flex items-center gap-2.5 min-w-0', className)} aria-hidden="true" data-brand-placeholder>
+        <span className={clsx('rounded-xl animate-pulse', onDark ? 'bg-white/20' : 'bg-gray-200 dark:bg-white/10', MARK[size].split(' ').slice(0, 2).join(' '))} />
+        {showName !== false && <span className={clsx('h-3 w-24 rounded animate-pulse', onDark ? 'bg-white/20' : 'bg-gray-200 dark:bg-white/10')} />}
+      </span>
+    );
+  }
 
   const name = a['appearance.app_name'] || 'Genesis CRM';
   const display = a['appearance.logo_display'] || 'mark_and_name';

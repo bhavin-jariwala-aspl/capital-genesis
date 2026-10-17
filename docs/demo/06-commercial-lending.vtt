@@ -1,138 +1,138 @@
 WEBVTT
 
-00:00:17.032 --> 00:00:26.360
+00:00:29.127 --> 00:00:34.520
 Commercial Lending
 A corporate facility from the RM's request to an active, monitored loan — memo, spreading, approval and covenants on one record.
 
-00:00:26.360 --> 00:00:30.960
+00:00:34.520 --> 00:00:38.080
 Port Louis Logistics Ltd needs a MUR 15 million working-capital line
 A bigger fleet and new contracts — the corporate RM opens the request
 
-00:00:30.960 --> 00:00:45.925
+00:00:38.080 --> 00:00:51.407
 Sign in as Bruno Chan — Relationship Manager (Corporate)
 Corporate relationship manager — owns the facility
 
-00:00:45.925 --> 00:01:00.965
+00:00:51.407 --> 00:01:03.578
 Commercial Lending ▸ Commercial facility request
 A two-step guided form for the RM
 
-00:01:00.965 --> 00:01:19.695
+00:01:03.578 --> 00:01:25.388
 Amount, tenor and pricing
 Margin over the Genesis PLR, arrangement and commitment fees
 
-00:01:19.695 --> 00:01:22.409
-CF-2026-000018 is created at Origination and assigned to the corporate RM
+00:01:25.388 --> 00:01:27.754
+CF-2026-000021 is created at Origination and assigned to the corporate RM
 Interest rate = Genesis PLR + margin · approval authority from the amount
 
-00:01:22.409 --> 00:01:31.569
+00:01:27.754 --> 00:01:36.954
 Group exposure: every facility of the Doorga Group — now including this one
 Checked against the group lending limit before credit takes it on
 
-00:01:31.649 --> 00:01:50.845
+00:01:37.074 --> 00:01:54.196
 The RM moves the request to RM assessment
 Then tries to send it on to Credit memo…
 
-00:01:50.845 --> 00:01:55.365
+00:01:54.196 --> 00:01:58.836
 Blocked: the credit memo needs the company background and the security package
 The board says exactly what is missing
 
-00:01:55.485 --> 00:02:24.665
+00:01:58.916 --> 00:02:23.764
 Write the memo on its own form
 Edit ▸ Credit memo tab — the same record, a focused form
 
-00:02:24.665 --> 00:02:28.917
+00:02:23.764 --> 00:02:35.197
 Memo written — Credit memo now accepts the facility
 
-00:02:28.917 --> 00:02:34.557
+00:02:35.197 --> 00:02:44.757
 The credit analyst spreads two years of audited accounts
 Commercial Lending ▸ Financial Spread ▸ New — one row per financial year
 
-00:02:34.557 --> 00:03:10.346
+00:02:44.757 --> 00:03:19.784
 Sign in as Nadia Peerbux — Credit Analyst
 Credit analyst — spreads the financials and grades the risk
 
-00:03:10.626 --> 00:03:50.725
+00:03:19.784 --> 00:03:48.744
 FY 2025: the latest audited year
 
-00:03:50.725 --> 00:03:56.725
+00:03:48.744 --> 00:03:52.877
 The ratios are calculated for every year
 EBITDA margin · DSCR · net debt / EBITDA · gearing · interest cover
 
-00:03:56.885 --> 00:04:02.049
+00:03:52.957 --> 00:03:57.294
 Back on the facility: the latest DSCR and leverage are read from the spread
 The analyst sets the internal risk grade and writes the recommendation
 
-00:04:02.289 --> 00:04:30.685
+00:03:57.414 --> 00:04:21.518
 Credit approval needs a recommendation and a risk grade
 Try it first…
 
-00:04:30.845 --> 00:04:45.496
+00:04:21.518 --> 00:04:30.170
 Who approves? Masters ▸ Approval Matrices
 Lending bands: up to MUR 5m Loans Manager · up to MUR 20m Credit Committee · above, the Board Credit Committee
 
-00:04:45.496 --> 00:04:52.616
+00:04:30.170 --> 00:04:39.850
 MUR 15 million falls in the Credit Committee band
 Moving to Credit approval raises the approval request
 
-00:04:52.616 --> 00:04:58.016
+00:04:39.850 --> 00:04:45.330
 The Credit Committee decides
 Tools ▸ Approvals — the request carries amount, grade and DSCR
 
-00:04:58.016 --> 00:05:29.883
+00:04:45.330 --> 00:05:18.158
 Sign in as Jean-Marc Desvaux — Credit Committee Member
 Credit committee member — approves facilities up to MUR 20 million
 
-00:05:29.883 --> 00:05:48.932
+00:05:18.158 --> 00:05:26.478
 Approved — the facility moved itself to Term sheet / offer
 Credit decision: Approved
 
-00:05:48.932 --> 00:05:52.052
-The term sheet was generated and filed on the Docs tab
-Amount, tenor, pricing, fees and the security package — ready to send to the borrower
-
-00:05:52.052 --> 00:06:05.162
+00:05:26.577 --> 00:05:37.143
 Preview the term sheet
 Facility, amount, tenor, pricing and fees — filled in from the record
 
-00:06:05.162 --> 00:06:26.234
+00:05:37.143 --> 00:05:41.663
+The borrower signs the term sheet
+The RM registers the charges and guarantee — Security perfection
+
+00:05:41.663 --> 00:05:54.068
 Sign in as Bruno Chan — Relationship Manager (Corporate)
 Corporate relationship manager
 
-00:06:26.234 --> 00:06:33.498
+00:05:54.068 --> 00:06:00.708
 Active: the CRM checks the borrower's KYC is approved
 Port Louis Logistics Ltd's KYC is approved — the facility goes live
 
-00:06:33.778 --> 00:07:04.045
+00:06:00.908 --> 00:06:16.508
 Record the covenants the committee set
 Commercial Lending ▸ Covenant ▸ New
 
-00:07:04.165 --> 00:07:33.205
+00:06:16.548 --> 00:06:40.892
 A year on: management accounts show DSCR at 1.08x
 Covenant Test ▸ New — record the actual value
 
-00:07:33.205 --> 00:07:38.710
+00:06:40.892 --> 00:06:47.452
 1.08 is below the 1.25 threshold: the result is Breach
 The RM and the Loans Manager are alerted at once
 
-00:07:38.710 --> 00:07:41.442
+00:06:47.452 --> 00:06:52.692
 The facility counts its covenants in breach
 Watch-list reporting and the Loan Book dashboard read the same figure
 
-00:07:41.442 --> 00:07:46.405
+00:06:52.692 --> 00:06:57.092
 The Loans Manager gets the breach alert
 He decides on a waiver or a remedy
 
-00:07:46.405 --> 00:08:08.193
+00:06:57.092 --> 00:07:08.052
 Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
 Manager, Loans & Fixed Income — decides covenant waivers
 
-00:08:08.193 --> 00:08:34.777
+00:07:08.052 --> 00:07:21.245
 Notifications: “Covenant breach” with the actual value and threshold
 
-00:08:34.777 --> 00:08:41.865
+00:07:21.245 --> 00:07:27.125
 Waiver granted and the terms recorded on the test
 The next test date stays in the calendar for the RM
 
-00:08:42.735 --> 00:08:51.583
+00:07:27.605 --> 00:07:35.844
 Commercial Lending
 Four people worked one facility — the CRM checked every gate and routed every decision.

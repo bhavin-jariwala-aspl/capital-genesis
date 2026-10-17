@@ -81,9 +81,9 @@ export const runtimeService = {
   bulkUpdateRecordStage:  (ids, stageId)     => wrap(api.post('/runtime/records/bulk-stage', { ids, stage_id: stageId })),
 
   // Export (returns blob)
-  exportRecordsCsv: (objectId) =>
+  exportRecordsCsv: (objectId, ids) =>
     apiWrapper.blob(api.get('/runtime/records/export', {
-      params:       { object_id: objectId },
+      params:       { object_id: objectId, ...(ids?.length ? { ids: ids.join(',') } : {}) },
       responseType: 'blob',
     })),
 

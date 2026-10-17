@@ -165,8 +165,8 @@ const workflows = [
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Credit approval', 'stage', 'eq', 'credit_approval'),
-      expr('c2', 'Up to MUR 5m?', 'loan_amount_mur <= 5000000', { on_true: 'ap_lm', on_false: 'c3' }),
-      expr('c3', 'Up to MUR 20m?', 'loan_amount_mur <= 20000000', { on_true: 'ap_cc', on_false: 'ap_bcc' }),
+      cond('c2', 'Loans Manager band? (approval matrix)', 'approval_band', 'eq', 'LND|5M', { on_true: 'ap_lm', on_false: 'c3' }),
+      cond('c3', 'Credit Committee band? (approval matrix)', 'approval_band', 'eq', 'LND|20M', { on_true: 'ap_cc', on_false: 'ap_bcc' }),
       approval('ap_lm', 'Loans Manager', 'loans_manager', 'Credit approval: {{name}}', '{{application_no}} · MUR {{loan_amount_mur}} · grade {{risk_grade}} · DSR {{dsr}}% · LTV {{ltv}}%. Analyst: {{analyst_recommendation}}.', 'ok1', 'no1'),
       approval('ap_cc', 'Credit Committee', 'credit_committee', 'Credit Committee: {{name}}', '{{application_no}} · MUR {{loan_amount_mur}} · grade {{risk_grade}}. Analyst: {{analyst_recommendation}}.', 'ok1', 'no1'),
       approval('ap_bcc', 'Board Credit Committee', 'board_credit_committee', 'Board Credit Committee: {{name}}', '{{application_no}} · MUR {{loan_amount_mur}} · grade {{risk_grade}}.', 'ok1', 'no1'),
@@ -311,8 +311,8 @@ const H = 60;
 const slaPolicies = [
   {
     name: 'Enquiry — speed to lead', object: 'enquiry',
-    description: 'First contact within 4 business hours; resolve (convert or close) within 10 business days (LEAD-FR-07).',
-    config: { first_response_stages: ['new'], closed_stages: ['converted', 'disqualified'], canceled_stages: ['nurture'] },
+    description: 'First contact within the product\'s routing target (4 business hours by default); resolve (convert or close) within 10 business days (LEAD-FR-07).',
+    config: { first_response_stages: ['new'], closed_stages: ['converted', 'disqualified'], canceled_stages: ['nurture'], target_hours_fields: { first_response: 'first_contact_hours' } },
     targets: [{ metric: 'first_response', minutes: 4 * H, warning_pct: 75 }, { metric: 'resolution', minutes: 10 * 8 * H }],
     escalations: [
       { metric: 'first_response', trigger: 'warning', action: 'notify_owner' },

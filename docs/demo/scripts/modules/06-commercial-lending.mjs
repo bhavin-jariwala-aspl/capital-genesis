@@ -23,13 +23,13 @@ export default async function run(S) {
 
   // Housekeeping before the take (not filmed): trash the facility a previous take created, with its spreads,
   // covenants and tests, so the board shows one card for this borrower and the group exposure is not doubled.
-  for (const old of (await records('GCADMIN', cf.id, { limit: 500 })).filter((r) => r.data?.name === CARD)) {
+  await S.waitCut(async () => { for (const old of (await records('GCADMIN', cf.id, { limit: 500 })).filter((r) => r.data?.name === CARD)) {
     for (const o of [ct, cov, fs]) {
       for (const r of (await records('GCADMIN', o.id, { limit: 500 })).filter((x) => String(x.data?.credit_facility) === String(old.id))) await api('GCADMIN', 'DELETE', `/runtime/records/${r.id}`);
     }
     await api('GCADMIN', 'DELETE', `/runtime/records/${old.id}`);
     S.log('trashed previous take', old.id);
-  }
+  } });
 
   // Text and number fields typed briskly: a short visible move, a click, then the value (keeps the take within
   // length on a busy machine; lookups and selects still go through S.fill).

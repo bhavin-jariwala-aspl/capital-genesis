@@ -153,7 +153,7 @@ const webEvent = {
     F('last_name', 'Last name'),
     F('email', 'Email', 'email', LIST),
     F('mobile', 'Mobile', 'phone'),
-    SEL('topic', 'Topic', o([['weekly_highlights', 'Weekly market highlights'], ['market_statistics', 'Market statistics'], ['research', 'Research notes'], ['forex', 'Talk to our Forexpert'], ['loans', 'Loans'], ['investments', 'Investments']])),
+    SEL('topic', 'Topic', o([['weekly_highlights', 'Weekly market highlights'], ['market_statistics', 'Market statistics'], ['research', 'Research notes'], ['forex', 'Talk to our FX specialist'], ['loans', 'Loans'], ['investments', 'Investments']])),
     F('preferred_time', 'Preferred call-back time', 'text', { placeholder: 'e.g. weekdays after 16:00' }),
     F('consent_marketing', 'I agree to receive Genesis communications', 'checkbox'),
     SEL('product_code', 'Product', PRODUCTS, LIST),
@@ -186,7 +186,7 @@ const kycRiskFactor = {
   plural_label: 'KYC Risk Factors & Weights',
   icon: 'Weight',
   description: 'Versioned weights read by the KYC risk-score formula (KYC-FR-04). Change a score here and every case recomputes on its next save.',
-  config: { title_field: 'code' },
+  config: { title_field: 'code', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     SEL('factor', 'Factor', o([['pep', 'PEP'], ['product', 'Product risk'], ['channel', 'Delivery channel'], ['occupation', 'Occupation / industry'], ['ownership', 'Ownership structure'], ['activity', 'Expected activity']]), { required: true, config: { show_in_list: true } }),
@@ -204,7 +204,7 @@ const collateralType = {
   plural_label: 'Collateral Types & Haircuts',
   icon: 'Percent',
   description: 'Standard haircut and revaluation frequency per collateral type (M24, COLL-FR-03).',
-  config: { title_field: 'label' },
+  config: { title_field: 'label', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     F('label', 'Type', 'text', { required: true, config: { show_in_list: true } }),
@@ -223,11 +223,11 @@ const approvalMatrix = {
   plural_label: 'Approval Matrices',
   icon: 'GitBranch',
   description: 'Who approves what: business unit, amount band, exception type, approver and quorum. Credit approvals are routed by these bands.',
-  config: { title_field: 'band_key' },
+  config: { title_field: 'band_key', default_sort: 'band_key' },
   fields: [
     F('band_key', 'Band key', 'text', { required: true, unique: true, config: { show_in_list: true }, help: 'BU|band, e.g. LND|5M' }),
     SEL('business_unit', 'Business unit', BUSINESS_UNITS, { required: true, config: { show_in_list: true } }),
-    F('max_amount', 'Up to (MUR)', 'currency', LIST),
+    F('max_amount', 'Up to (MUR)', 'currency', { config: { show_in_list: true }, help: 'Loans up to this amount fall in this band. Blank = no upper limit.' }),
     SEL('exception_type', 'Exception type', o([['none', 'Within policy'], ['policy_exception', 'Policy exception'], ['rate_override', 'Rate override']]), { default: 'none' }),
     F('approver_role', 'Approver role', 'text', { required: true, help: 'Role code the approval is sent to, e.g. credit_committee' }),
     F('approver_label', 'Approver', 'text', LIST),
@@ -242,7 +242,7 @@ const serviceCatalogue = {
   plural_label: 'Service Request Catalogue',
   icon: 'BookMarked',
   description: 'Each type of service request with its business unit, service level, approval need and checklist.',
-  config: { title_field: 'label' },
+  config: { title_field: 'label', default_sort: 'label' },
   fields: [
     F('request_type', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     F('label', 'Request', 'text', { required: true, config: { show_in_list: true } }),
@@ -260,7 +260,7 @@ const reasonCode = {
   plural_label: 'Reason Codes',
   icon: 'Tags',
   description: 'Lead disqualification, loan decline, mandate loss and account closure reasons (M24).',
-  config: { title_field: 'label' },
+  config: { title_field: 'label', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     SEL('reason_type', 'Used for', o([['lead_disqualification', 'Lead disqualification'], ['loan_decline', 'Loan decline'], ['mandate_loss', 'Mandate loss'], ['account_closure', 'Account closure'], ['complaint_root_cause', 'Complaint root cause']]), { required: true, config: { show_in_list: true } }),

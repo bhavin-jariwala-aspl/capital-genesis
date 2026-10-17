@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ShieldCheck, Flame, AlertTriangle, CheckCircle2, Activity, Clock,
@@ -64,13 +64,21 @@ function BarRow({ label, total, at_risk, breached }) {
   );
 }
 
-function TimerRow({ timer, now }) {
+function TimerRow({ timer, now, focused }) {
   const state = timerState(timer, now);
   const tone = SLA_STATUS[state];
   const cd = countdown(timer.due_at, now);
   const frac = elapsedFraction(timer, now);
+  const ref = useRef(null);
+  // A `?focus=` link (escalation notification, home radiator) lands here:
+  // bring the timer into view once.
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }, [focused]);
   return (
-    <Link to={timer.record_link || '/sla'} className="grid grid-cols-12 items-center gap-2 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/[0.03]">
+    <Link ref={ref} to={timer.record_link || '/sla'} data-focused={focused || undefined}
+      className={clsx('grid grid-cols-12 items-center gap-2 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-white/[0.03]',
+        focused && 'bg-primary-50 ring-2 ring-inset ring-primary-400 dark:bg-primary-500/10')}>
       <div className="col-span-5 flex min-w-0 items-center gap-2.5">
         <span className={clsx('h-8 w-1.5 shrink-0 rounded-full', tone.solid)} />
         <div className="min-w-0">
@@ -88,7 +96,7 @@ function TimerRow({ timer, now }) {
           <div className={clsx('h-full rounded-full', tone.solid)} style={{ width: `${Math.min(100, frac * 100)}%` }} />
         </div>
         <span className={clsx('flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold tabular-nums', tone.bg, tone.text)}>
-          <Clock className="h-3 w-3" />{state === 'paused' ? 'Paused' : cd.text}
+          <Clock className="h-3 w-3" />{timer.status === 'met' ? 'Met' : state === 'paused' ? 'Paused' : cd.text}
         </span>
       </div>
     </Link>
@@ -108,24 +116,40 @@ export default function SlaDashboardPage() {
   const now = useNow(1000);
   const [scope, setScope] = useState('me');
   const [filter, setFilter] = useState('open'); // open | breached | at_risk
+  const [params] = useSearchParams();
+  const focus = /^[a-z_]+:\w+$/.test(params.get('focus') || '') ? params.get('focus') : null;
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['sla-dashboard', scope],
-    queryFn: () => slaService.getDashboard(scope),
+    queryKey: ['sla-dashboard', scope, focus],
+    queryFn: () => slaService.getDashboard(scope, focus),
     refetchInterval: 30_000,
   });
   const d = data?.data ?? data;
   const s = d?.summary;
   const timers = useMemo(() => d?.timers ?? [], [d]);
+  const isFocused = (t) => !!focus && `${t.entity_type}:${t.entity_id}` === focus;
 
   const filtered = useMemo(() => {
     const open = timers.filter((t) => t.status !== 'met');
-    if (filter === 'breached') return open.filter((t) => timerState(t, now) === 'breached');
-    if (filter === 'at_risk') return open.filter((t) => timerState(t, now) === 'at_risk');
-    return open;
-  }, [timers, filter, now]);
+    let rows = open;
+    if (filter === 'breached') rows = open.filter((t) => timerState(t, now) === 'breached');
+    if (filter === 'at_risk') rows = open.filter((t) => timerState(t, now) === 'at_risk');
+    // The focused record's timers always show, whatever the filter.
+    const pinned = focus ? timers.filter((t) => `${t.entity_type}:${t.entity_id}` === focus && !rows.includes(t)) : [];
+    return [...pinned, ...rows];
+  }, [timers, filter, now, focus]);
 
   const availableScopes = SCOPES.filter((sc) => level <= sc.minLevel);
+
+  // A focused record owned by someone else (e.g. an escalation to a manager)
+  // is not in "My SLAs": widen to the next scope this user may see, once each.
+  const widened = useRef(new Set());
+  useEffect(() => {
+    if (!focus || isLoading || !d || timers.some((t) => `${t.entity_type}:${t.entity_id}` === focus)) return;
+    const order = availableScopes.map((sc) => sc.key);
+    const next = order[order.indexOf(scope) + 1];
+    if (next && !widened.current.has(next)) { widened.current.add(next); setScope(next); }
+  }, [focus, isLoading, d, timers, scope, availableScopes]);
   const isEmpty = !s || (s.active === 0 && s.completed === 0 && timers.length === 0);
 
   return (
@@ -240,7 +264,7 @@ export default function SlaDashboardPage() {
                   <CheckCircle2 className="h-4 w-4" /> Nothing here — no {filter === 'open' ? 'open' : filter.replace('_', ' ')} SLAs in this view.
                 </div>
               ) : (
-                filtered.map((t) => <TimerRow key={t.id} timer={t} now={now} />)
+                filtered.map((t) => <TimerRow key={t.id} timer={t} now={now} focused={isFocused(t)} />)
               )}
             </div>
           </div>

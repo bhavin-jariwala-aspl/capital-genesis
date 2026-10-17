@@ -974,7 +974,7 @@ for (let m = 11; m >= 0; m -= 1) {
       rm: bu === 'LND' ? pick(LOAN_EXECS) : bu === 'WLT' ? pick(['GCRM2', 'GCPM1']) : bu === 'FND' ? 'GCPM2' : bu === 'SEC' ? 'GCTRD1' : bu === 'ADV' ? 'GCADV1' : 'GCFX1',
       referrer_rm: type === 'arrangement_fee' && m % 2 ? 'GCRM1' : null, referrer_split_pct: type === 'arrangement_fee' && m % 2 ? 20 : 0,
       campaign: type === 'arrangement_fee' && m < 4 ? ref('campaign', 'CMP-HOME-Q3') : type === 'management_fee' && bu === 'FND' && m < 2 ? ref('campaign', 'CMP-FMB29-S2') : null,
-      finance_amount: m > 0 ? Math.round(amount * (m % 5 === 0 ? 0.985 : 1)) : null,
+      finance_amount: m > 0 ? Math.round(amount * (m % 5 === 0 ? 0.985 : 1)) : null, source: 'manual',
     });
   });
 }

@@ -36,6 +36,13 @@ describe('Genesis pack — objects', () => {
     }
   });
 
+  it('sorts lists by default only on a field the object has', () => {
+    for (const o of Object.values(objects)) {
+      if (!o.config?.default_sort) continue;
+      expect({ o: o.name, ok: fieldsOf(o.name).has(o.config.default_sort.replace(/^-/, '')) }).toEqual({ o: o.name, ok: true });
+    }
+  });
+
   it('denominates money fields only in a currency field the object has', () => {
     const problems = [];
     for (const o of Object.values(objects)) {
@@ -238,12 +245,28 @@ describe('Genesis pack — automation', () => {
       if (!(p.config.closed_stages ?? []).length) problems.push(`${p.name}: no closed stage`);
       for (const c of p.conditions ?? []) if (!fieldsOf(p.object).has(c.field)) problems.push(`${p.name}: condition ${c.field}`);
       if (p.config.dimension_field && !fieldsOf(p.object).has(p.config.dimension_field)) problems.push(`${p.name}: dimension`);
+      for (const f of Object.values(p.config.target_hours_fields ?? {})) if (!fieldsOf(p.object).has(f)) problems.push(`${p.name}: target field ${f}`);
     }
     for (const p of pack.permissions) {
       if (!objects[p.object]) problems.push(`permission object ${p.object}`);
       for (const r of [].concat(p.roles)) if (!roles.has(r)) problems.push(`permission role ${r}`);
     }
     expect(problems).toEqual([]);
+  });
+
+  it('lets the masters drive what they claim to: approval bands and speed-to-lead targets', () => {
+    // The approval matrix's "Up to" limits pick the band the credit workflows route on — not hard-coded amounts.
+    for (const [object, wfName] of [['loan_application', 'genesis_loan_credit_approval'], ['credit_facility', 'genesis_facility_approval']]) {
+      const band = objects[object].fields.find((f) => f.name === 'approval_band');
+      expect(band.config.expression).toMatch(/LOOKUP\('approval_matrix', 'band_key', 'LND\|5M', 'max_amount'\)/);
+      const steps = pack.workflows.find((w) => w.name === wfName).steps;
+      expect(steps.filter((s) => s.config?.field === 'approval_band').map((s) => s.config.value)).toEqual(['LND|5M', 'LND|20M']);
+      expect(JSON.stringify(steps)).not.toMatch(/5000000|20000000/);
+    }
+    // A product routing rule's first-contact target sets the enquiry's speed-to-lead SLA.
+    const sla = pack.slaPolicies.find((p) => p.object === 'enquiry');
+    expect(sla.config.target_hours_fields).toEqual({ first_response: 'first_contact_hours' });
+    expect(objects.enquiry.fields.find((f) => f.name === 'first_contact_hours').config.expression).toMatch(/LOOKUP\('product_routing'.*'first_contact_hours'\)/);
   });
 
   it('never creates a custom role at admin level or above', () => {
@@ -316,6 +339,19 @@ describe('Genesis pack — automation', () => {
     expect(keys.indexOf(book.key)).toBeLessThan(keys.indexOf('guard'));
     expect(wf.steps[keys.indexOf(book.key) - 1].config).toEqual({ field: 'order_type', operator: 'eq', value: 'subscription' });
     expect(book.config.fields).toMatchObject({ party: '{{party}}', share_class: '{{share_class}}', units: '{{allotted_units}}' });
+  });
+
+  it('posts FX spread income and paid advisory fees to the Revenue Ledger with their source (REV-FR-03)', () => {
+    for (const [name, source, link] of [['genesis_fx_deal_revenue', 'fx_deal', 'fx_deal'], ['genesis_fee_invoice_revenue', 'fee_invoice', 'fee_invoice']]) {
+      const wf = pack.workflows.find((w) => w.name === name);
+      const post = wf.steps.find((s) => s.step_type === 'create_record' && s.config.object === 'revenue_entry');
+      expect(post.config.fields).toMatchObject({ source, [link]: '{{id}}', rm: { expr: 'IF(ISBLANK(assigned_to), created_by, assigned_to)' } });
+      expect(fieldsOf('revenue_entry').has(link)).toBe(true);
+    }
+    // A paid invoice posts once: the condition reads the flag the workflow then sets.
+    const fee = pack.workflows.find((w) => w.name === 'genesis_fee_invoice_revenue');
+    expect(fee.steps.find((s) => s.key === 'c1').config.value).toMatch(/NOT\(revenue_posted\)/);
+    expect(fee.steps.at(-1).config).toEqual({ field: 'revenue_posted', value: 'true' });
   });
 });
 

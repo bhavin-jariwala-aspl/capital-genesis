@@ -370,7 +370,7 @@ module.exports = {
   'Re-capitalisation and re-organisation advisory': 'Conseil en recapitalisation et réorganisation', 'Real Estate Loan': 'Prêt immobilier',
   'Real-estate borrower → Wealth / Money Market': 'Emprunteur immobilier → gestion / monétaire', 'Reliance': 'Recours', 'Report': 'Déclaration', 'Review': 'Revue',
   'Securities': 'Titres', 'Securities (Genesis CMB Securities)': 'Titres (Genesis CMB Securities)', 'Session': 'Session', 'Snapshot': 'Instantané', 'Social': 'Réseaux sociaux',
-  'Spread': 'Analyse', 'Suggestion': 'Suggestion', 'Talk to our Forexpert': 'Parlez à notre expert change', 'Target': 'Objectif', 'Test': 'Test',
+  'Spread': 'Analyse', 'Suggestion': 'Suggestion', 'Talk to our FX specialist': 'Parlez à notre expert change', 'Target': 'Objectif', 'Test': 'Test',
   'Transaction valuation': 'Évaluation de transaction', 'Turnaround strategies': 'Stratégies de redressement', 'Unsecured debt, bond and share offers': 'Offres de dette non garantie, d\'obligations et d\'actions',
   'Valuation & Business Plan': 'Évaluation et plan d\'affaires', 'Valuation & business plan': 'Évaluation et plan d\'affaires', 'Valuation of intellectual property rights': 'Évaluation des droits de propriété intellectuelle',
   'Valuation reports for M&A, investments or public offerings': 'Rapports d\'évaluation pour fusions-acquisitions, placements ou offres publiques', 'Valuations for tax purposes': 'Évaluations à des fins fiscales',

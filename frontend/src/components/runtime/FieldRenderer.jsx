@@ -8,6 +8,7 @@ import Checkbox from '../ui/Checkbox';
 import RadioGroup from '../ui/RadioGroup';
 import StatusTracker from '../ui/StatusTracker';
 import RecordPicker from '../ui/RecordPicker';
+import { StaffPicker } from '../ui/EmployeePicker';
 import { useQuery } from '@tanstack/react-query';
 import { runtimeService } from '../../services/metadata.service';
 import { isoCode } from '../../utils/currencySource';
@@ -58,6 +59,9 @@ function RecordCurrencyInput({ control, currencyField, source, ...props }) {
  *   watchValue    — current value (for the character counter)
  *   currencySource — where a money field reads its currency code (see utils/currencySource)
  */
+/** The form-field label style shared with Input, Select, TextArea and RecordPicker. */
+const FIELD_LABEL = 'text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400';
+
 export default function FieldRenderer({
   field,
   register,
@@ -132,7 +136,7 @@ export default function FieldRenderer({
   if (labelPos === 'left' && label) {
     return (
       <div className="grid grid-cols-[minmax(7rem,1fr)_2fr] items-start gap-3">
-        <label htmlFor={fieldName} className="text-sm font-medium text-gray-700 dark:text-gray-300 pt-2.5">{label}</label>
+        <label htmlFor={fieldName} className={clsx('pt-3', FIELD_LABEL)}>{label}</label>
         <div>{body}</div>
       </div>
     );
@@ -206,7 +210,7 @@ export default function FieldRenderer({
     if (ft === 'multi_select') {
       return (
         <div>
-          {ctl.label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{ctl.label}</label>}
+          {ctl.label && <label className={clsx('block mb-1', FIELD_LABEL)}>{ctl.label}</label>}
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           <Controller
             name={fieldName}
@@ -262,7 +266,7 @@ export default function FieldRenderer({
           control={control}
           rules={validationRules}
           render={({ field: f }) => (
-            <Checkbox id={fieldName} label={ctl.label ?? field.label} checked={!!f.value} onChange={(e) => f.onChange(e.target.checked)} disabled={disabled} error={error} />
+            <Checkbox id={fieldName} stacked={!!ctl.label} label={ctl.label ?? field.label} checked={!!f.value} onChange={(e) => f.onChange(e.target.checked)} disabled={disabled} error={error} />
           )}
         />
       );
@@ -314,7 +318,7 @@ export default function FieldRenderer({
     if (ft === 'date_range') {
       return (
         <div>
-          {ctl.label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{ctl.label}</label>}
+          {ctl.label && <label className={clsx('block mb-1', FIELD_LABEL)}>{ctl.label}</label>}
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           <div className="flex gap-2">
             <Input label="From" type="date" disabled={disabled} {...register(`${fieldName}_from`, validationRules)} />
@@ -337,7 +341,7 @@ export default function FieldRenderer({
     if (ft === 'color') {
       return (
         <div>
-          {ctl.label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{ctl.label}</label>}
+          {ctl.label && <label className={clsx('block mb-1', FIELD_LABEL)}>{ctl.label}</label>}
           <input type="color" disabled={disabled} className="h-10 w-full rounded border border-gray-300 dark:border-gray-600 cursor-pointer p-1" {...register(fieldName, validationRules)} />
           {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
         </div>
@@ -351,7 +355,7 @@ export default function FieldRenderer({
     if (ft === 'file' || ft === 'image') {
       return (
         <div>
-          {ctl.label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{ctl.label}</label>}
+          {ctl.label && <label className={clsx('block mb-1', FIELD_LABEL)}>{ctl.label}</label>}
           <input
             type="file"
             accept={ft === 'image' ? 'image/*' : cfg.accept || undefined}
@@ -371,6 +375,22 @@ export default function FieldRenderer({
       return <Input {...ctl} type="text" readOnly disabled placeholder={ft === 'auto_number' ? 'Assigned on save' : 'Calculated on save'} {...register(fieldName, {})} />;
     }
 
+    // Staff-id text field (`config.employee`, e.g. owner_rm): pick the person
+    // by name; the employee_id is what is stored.
+    if (cfg.employee && (!ft || ft === 'text')) {
+      return (
+        <Controller
+          name={fieldName}
+          control={control}
+          rules={validationRules}
+          render={({ field: f }) => (
+            <StaffPicker id={fieldName} value={f.value ?? ''} onChange={f.onChange} knownLabels={knownLabels}
+              label={ctl.label} error={error} help={commonProps.help} disabled={disabled} placeholder={field.placeholder} />
+          )}
+        />
+      );
+    }
+
     // Default — text input
     return (
       <Input
@@ -388,7 +408,7 @@ export default function FieldRenderer({
 function ChoiceButtons({ label, options, value, onChange, segmented, disabled, error, help, id }) {
   return (
     <div className="flex flex-col gap-1.5" id={id}>
-      {label && <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</label>}
+      {label && <label className={FIELD_LABEL}>{label}</label>}
       <div className={clsx(segmented ? 'inline-flex rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden' : 'flex flex-wrap gap-1.5')}>
         {options.map((opt) => {
           const active = String(value) === String(opt.value);

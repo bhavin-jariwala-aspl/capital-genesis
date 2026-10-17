@@ -36,7 +36,8 @@ async function cleanup(S) {
 
 export default async function run(S) {
   const { p } = S;
-  const { party, ids } = await cleanup(S);
+  // Clean-up runs while the (blank) recording starts: cut it out.
+  const { party, ids } = await S.waitCut(() => cleanup(S));
 
   // ── helpers ──
   const fill = async (name, values, o) => {

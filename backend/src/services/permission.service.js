@@ -86,6 +86,28 @@ class PermissionService {
   }
 
   /**
+   * getEffectiveUiPermission for many entities of one type in one query.
+   * @returns {Map<number, {can_view: boolean, can_edit: boolean}>}
+   */
+  async getEffectiveUiPermissions(entityType, entityIds, roleName, tenantId) {
+    const out = new Map();
+    if (!entityIds?.length) return out;
+    if (await this.#isAdmin(roleName, tenantId)) {
+      for (const id of entityIds) out.set(id, { can_view: true, can_edit: true });
+      return out;
+    }
+    const rows = await this.db.uiPermission.findMany({
+      where: { entity_type: entityType, entity_id: { in: entityIds }, role_name: roleName, tenant_id: tenantId },
+    });
+    const byId = new Map(rows.map((p) => [p.entity_id, p]));
+    for (const id of entityIds) {
+      const p = byId.get(id);
+      out.set(id, p ? { can_view: p.can_view, can_edit: p.can_edit } : { can_view: true, can_edit: false });
+    }
+    return out;
+  }
+
+  /**
    * Filter an array of metadata entities by the viewer's role.
    * - Entities hidden from the viewer's role (can_view=false) are removed.
    * - Each retained entity receives `_can_edit` — consumed by the frontend.

@@ -18,39 +18,49 @@ const today = () => new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10)
 export default async function run(S) {
   const { p } = S;
   const ids = {};
-  for (const n of ['party', 'campaign', 'campaign_member', 'segment', 'marketing_event', 'event_registration', 'subscription', 'consent_record', 'enquiry', 'loan_application']) ids[n] = (await obj(n)).id;
+  await S.waitCut(async () => { for (const n of ['party', 'campaign', 'campaign_member', 'segment', 'marketing_event', 'event_registration', 'subscription', 'consent_record', 'enquiry', 'loan_application']) ids[n] = (await obj(n)).id; });
+  // Open an edit form and wait until it shows the record's values (the page draws empty first).
+  const edit = async (name, id, field) => {
+    await S.editRecord(name, id);
+    await S.waitCut(() => p.waitForFunction((f) => { const el = document.querySelector(`input[id="${f}"]`); return el && el.value; }, field, { timeout: 120000, polling: 300 }).catch(() => {}));
+    await p.waitForTimeout(600);
+  };
 
-  // ── Clean up leftovers of earlier takes (only records this video created or changed) ──
-  try {
-    const st = JSON.parse(fs.readFileSync(STATE, 'utf8'));
-    if (st.consent) await api('GCADMIN', 'PUT', `/runtime/records/${st.consent}`, { data: { status: 'granted', withdrawn_on: null } });
-  } catch { /* first take */ }
-  const del = async (rows) => { for (const r of rows) await api('GCADMIN', 'DELETE', `/runtime/records/${r.id}`); };
-  const oldCamps = (await records('GCADMIN', ids.campaign, { limit: 500 })).filter((r) => r.data?.name === CAMPAIGN);
-  const oldEvents = (await records('GCADMIN', ids.marketing_event, { limit: 500 })).filter((r) => r.data?.name === EVENT);
-  await del((await records('GCADMIN', ids.campaign_member, { limit: 2000 })).filter((r) => oldCamps.some((c) => String(c.id) === String(r.data?.campaign))));
-  await del((await records('GCADMIN', ids.event_registration, { limit: 2000 })).filter((r) => oldEvents.some((c) => String(c.id) === String(r.data?.marketing_event))));
-  const oldEnq = (await records('GCADMIN', ids.enquiry, { limit: 2000 })).filter((r) => r.data?.email === PROSPECT.email);
-  await del(oldEnq);
-  await del(oldEvents); await del(oldCamps);
-  await del((await records('GCADMIN', ids.segment, { limit: 500 })).filter((r) => r.data?.name === SEGMENT));
+  // Preparation (cleanup and client picks) happens before the title card; the wait is cut from the video.
+  const { X, xName, xConsent, members, complainer } = await S.waitCut(async () => {
+    // ── Clean up leftovers of earlier takes (only records this video created or changed) ──
+    try {
+      const st = JSON.parse(fs.readFileSync(STATE, 'utf8'));
+      if (st.consent) await api('GCADMIN', 'PUT', `/runtime/records/${st.consent}`, { data: { status: 'granted', withdrawn_on: null } });
+    } catch { /* first take */ }
+    const del = async (rows) => { for (const r of rows) await api('GCADMIN', 'DELETE', `/runtime/records/${r.id}`); };
+    const oldCamps = (await records('GCADMIN', ids.campaign, { limit: 500 })).filter((r) => r.data?.name === CAMPAIGN);
+    const oldEvents = (await records('GCADMIN', ids.marketing_event, { limit: 500 })).filter((r) => r.data?.name === EVENT);
+    await del((await records('GCADMIN', ids.campaign_member, { limit: 2000 })).filter((r) => oldCamps.some((c) => String(c.id) === String(r.data?.campaign))));
+    await del((await records('GCADMIN', ids.event_registration, { limit: 2000 })).filter((r) => oldEvents.some((c) => String(c.id) === String(r.data?.marketing_event))));
+    const oldEnq = (await records('GCADMIN', ids.enquiry, { limit: 2000 })).filter((r) => r.data?.email === PROSPECT.email);
+    await del(oldEnq);
+    await del(oldEvents); await del(oldCamps);
+    await del((await records('GCADMIN', ids.segment, { limit: 500 })).filter((r) => r.data?.name === SEGMENT));
 
-  // ── Pick the clients ──
-  const parties = (await records('GCADMIN', ids.party, { limit: 1000 })).filter((r) => r.data?.party_type === 'individual' && r.data?.primary_rm === 'GCRM1');
-  const fine = (r) => r.data.marketing_consent && !r.data.do_not_contact && !(r.data.open_complaints > 0);
-  const cons = await records('GCADMIN', ids.consent_record, { limit: 3000 });
-  const mkConsent = (pid) => cons.filter((c) => Number(c.data?.party) === pid && c.data?.purpose === 'marketing');
-  const X = parties.find((r) => r.data.display_name === 'Shamim Noël' && fine(r) && mkConsent(r.id).length === 1)
-    ?? parties.find((r) => fine(r) && mkConsent(r.id).length === 1 && r.data.display_name !== 'Christelle Leclézio');
-  if (!X) throw new Error('no client with a single marketing consent');
-  const xName = X.data.display_name;
-  const xConsent = mkConsent(X.id)[0];
-  const members = parties.filter((r) => fine(r) && r.id !== X.id && r.data.display_name !== 'Christelle Leclézio').slice(0, 2).map((r) => r.data.display_name);
-  const complainer = parties.find((r) => r.data.marketing_consent && !r.data.do_not_contact && r.data.open_complaints > 0)?.data.display_name;
-  if (members.length < 2 || !complainer) throw new Error(`clients: ${members} / ${complainer}`);
-  S.log('clients', xName, members, complainer);
-  const subsX = (await records('GCADMIN', ids.subscription, { limit: 3000 })).filter((r) => Number(r.data?.party) === X.id && r.data?.topic === 'research');
-  await del(subsX);
+    // ── Pick the clients ──
+    const parties = (await records('GCADMIN', ids.party, { limit: 1000 })).filter((r) => r.data?.party_type === 'individual' && r.data?.primary_rm === 'GCRM1');
+    const fine = (r) => r.data.marketing_consent && !r.data.do_not_contact && !(r.data.open_complaints > 0);
+    const cons = await records('GCADMIN', ids.consent_record, { limit: 3000 });
+    const mkConsent = (pid) => cons.filter((c) => Number(c.data?.party) === pid && c.data?.purpose === 'marketing');
+    const X = parties.find((r) => r.data.display_name === 'Shamim Noël' && fine(r) && mkConsent(r.id).length === 1)
+      ?? parties.find((r) => fine(r) && mkConsent(r.id).length === 1 && r.data.display_name !== 'Christelle Leclézio');
+    if (!X) throw new Error('no client with a single marketing consent');
+    const xName = X.data.display_name;
+    const xConsent = mkConsent(X.id)[0];
+    const members = parties.filter((r) => fine(r) && r.id !== X.id && r.data.display_name !== 'Christelle Leclézio').slice(0, 2).map((r) => r.data.display_name);
+    const complainer = parties.find((r) => r.data.marketing_consent && !r.data.do_not_contact && r.data.open_complaints > 0)?.data.display_name;
+    if (members.length < 2 || !complainer) throw new Error(`clients: ${members} / ${complainer}`);
+    S.log('clients', xName, members, complainer);
+    const subsX = (await records('GCADMIN', ids.subscription, { limit: 3000 })).filter((r) => Number(r.data?.party) === X.id && r.data?.topic === 'research');
+    await del(subsX);
+    return { X, xName, xConsent, members, complainer };
+  });
 
   // Board with its cards loaded.
   async function board() {
@@ -83,7 +93,7 @@ export default async function run(S) {
   await S.login('GCMKT1', 'Marketing Executive — plans and runs campaigns');
   await S.openObject('segment', { view: 'Table' });
   await S.say('A segment describes the audience: who should hear about the offer', 'Existing segments: HNW without a mandate, FMB 2029 holders, Francophone affluent…');
-  await p.waitForTimeout(3500);
+  await p.waitForTimeout(2500);
   await S.newRecord('segment');
   await S.fill('segment', { name: SEGMENT, base_object: 'party', estimated_size: '120' });
   await S.fill('segment', { description: 'Individual clients aged 25 to 40 with a salary account and no home loan yet.' }, { delay: 14 });
@@ -107,7 +117,7 @@ export default async function run(S) {
 
   // ── 3. Members and suppression ──
   await S.step(3, 'Add members', 'Add the clients who will receive it', 'Marketing & Consent ▸ Campaign Members ▸ New', 3000);
-  for (const [k, m] of members.entries()) {
+  for (const [k, m] of members.slice(0, 1).entries()) {
     await S.newRecord('campaign_member');
     await S.fill('campaign_member', { campaign: 'First home 2026', party: m, channel: 'email' });
     if (k === 0) { await S.say(`${m} has given marketing consent — accepted`); await p.waitForTimeout(1500); }
@@ -180,17 +190,28 @@ export default async function run(S) {
   const enq = await S.waitCut(() => poll(async () => (await records('GCADMIN', ids.enquiry, { limit: 2000 })).find((r) => r.data?.email === PROSPECT.email && r.data?.campaign), { what: 'attributed enquiry' }));
   S.log('enquiry', enq.id, enq.data.campaign);
 
-  await S.go('/login');
-  await S.login('GCMKT1', 'Back to Marketing');
   await S.openRecord('enquiry', enq.id);
+  await S.waitCut(() => p.getByText(`${PROSPECT.first} ${PROSPECT.last}`).first().waitFor({ timeout: 60000 }).catch(() => {}));
+  await p.waitForTimeout(800);
   await S.say('The enquiry kept the tracking code and is credited to the campaign', 'Routing and scoring work as for any enquiry — the Lending team calls him back');
-  await S.scroll(600, 4000);
-  await S.openRecord('campaign', camp.id);
-  await S.say('On the campaign: audience 2 · attributed enquiries 1', 'Loans that follow and their revenue roll up here too — that is what ROI is measured on');
-  await S.scroll(350, 4500);
-  await S.openObject('campaign', { view: 'Table' });
+  // The record page can be busy drawing for a while: wait until the caption is actually on screen (cut from the video).
+  await S.waitCut(() => p.waitForFunction(() => document.getElementById('__st_cap')?.textContent.includes('kept the tracking code'), null, { timeout: 120000, polling: 250 }).catch(() => {}));
+  await p.waitForTimeout(1500);
+  const utm = p.getByText('UTM campaign', { exact: true }).first();
+  if (await utm.count()) await S.highlight(utm.locator('xpath=..'), 3500); else await S.scroll(600, 3500);
+  await S.openObject('campaign');
+  const tableBtn = p.locator('button[title="Table"]').first();
+  await S.waitCut(() => tableBtn.waitFor({ timeout: 60000 }).catch(() => {}));
+  await S.moveTo(tableBtn); await S.settle(800);
+  const row = p.locator('main tr').filter({ hasText: CAMPAIGN }).first();
+  await S.waitCut(() => row.waitFor({ timeout: 60000 }));
   await S.say('Across campaigns: budget, audience, enquiries, revenue and ROI', 'Home loans Q3 earned more than it cost; a negative ROI means no revenue yet');
-  await p.waitForTimeout(5000);
+  await p.waitForTimeout(4500);
+  await S.moveTo(row.getByText(CAMPAIGN).first());
+  await S.waitCut(() => p.getByText('Attributed enquiries').first().waitFor({ timeout: 60000 }).catch(() => {}));
+  await p.waitForTimeout(800);
+  await S.say('Our campaign: its audience and 1 attributed enquiry', 'Loans that follow and their revenue roll up here too — that is what ROI is measured on');
+  await S.scroll(350, 4500);
 
   // ── 8. Event ──
   await S.step(8, 'Event', 'A seminar for the campaign\'s audience', 'Events & Seminars ▸ New', 3000);
@@ -199,14 +220,14 @@ export default async function run(S) {
   await S.submit();
   const ev = await poll(async () => (await records('GCADMIN', ids.marketing_event, { limit: 500 })).find((r) => r.data?.name === EVENT), { what: 'event' });
   await S.say('Guests register — from the website or added by staff', 'Event Registrations ▸ Register guest');
-  for (const g of [xName, members[0]]) {
+  for (const g of [xName]) {
     await S.newRecord('event_registration');
     await S.fill('event_registration', { marketing_event: 'First-home buyers', party: g, registered_on: today() });
     await S.submit();
   }
   const reg = await poll(async () => (await records('GCADMIN', ids.event_registration, { limit: 3000 })).find((r) => String(r.data?.marketing_event) === String(ev.id) && Number(r.data?.party) === X.id), { what: 'registration' });
   await S.say(`On the evening, ${xName} attends — tick Attended`, 'Her relationship manager is told to follow up');
-  await S.editRecord('event_registration', reg.id);
+  await edit('event_registration', reg.id, 'party');
   await S.fill('event_registration', { attended: true });
   await p.waitForTimeout(1200);
   await S.submit();
@@ -227,13 +248,13 @@ export default async function run(S) {
   await S.login('GCRM1', 'Relationship Manager — follows up event guests');
   await bell();
   await S.say('She calls to thank her and records the follow-up', 'Tick “Follow-up done” on the registration');
-  await S.editRecord('event_registration', reg.id);
+  await edit('event_registration', reg.id, 'party');
   await S.fill('event_registration', { follow_up_done: true });
   await S.submit();
   await S.say(`On the call ${xName.split(' ')[0]} says: no more marketing, please`, 'Open her marketing consent and record the withdrawal');
   await p.waitForTimeout(3000);
   fs.writeFileSync(STATE, JSON.stringify({ consent: xConsent.id }));
-  await S.editRecord('consent_record', xConsent.id);
+  await edit('consent_record', xConsent.id, 'party');
   await S.fill('consent_record', { status: 'withdrawn', withdrawn_on: today() });
   await S.submit();
   await S.waitCut(() => poll(async () => (await records('GCADMIN', ids.party, { limit: 1000 })).find((r) => r.id === X.id)?.data?.marketing_suppressed, { what: 'suppressed' }));

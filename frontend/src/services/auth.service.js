@@ -45,6 +45,10 @@ export const authService = {
   getEmployees:   () =>
     apiWrapper.extract(api.get('/auth/employees')),
 
+  /** Active staff (id + name) for staff pickers — any signed-in user. */
+  getStaff:       () =>
+    apiWrapper.extract(api.get('/auth/staff')),
+
   getOrgHierarchy: () =>
     apiWrapper.extract(api.get('/auth/org-hierarchy')),
 

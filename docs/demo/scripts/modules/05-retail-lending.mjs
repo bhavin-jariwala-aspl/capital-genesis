@@ -256,8 +256,11 @@ export default async function run(S) {
   await S.waitCut(() => poll(async () => (await data(la, appId, OWNER)).outcome === 'disbursed', { timeout: 400000, what: 'outcome' }));
   await openRec('loan_application', appId);
   await S.tab('Related');
-  await S.say('Related: the new loan account, the KYC case and the insurance referral', 'Loan Servicing now follows instalments, arrears and the balance');
-  await p.waitForTimeout(3500);
+  await S.say('Related: the loan account was opened automatically', 'Loan Servicing now follows instalments, arrears and the balance');
+  const acct = p.getByText('via Origination').first().locator('xpath=ancestor::div[1]');
+  await acct.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'smooth' })).catch(() => S.issue('loan account not listed under Related'));
+  await p.waitForTimeout(900);
+  await S.highlight(acct, 3500);
 
   await S.card({
     eyebrow: 'Summary',

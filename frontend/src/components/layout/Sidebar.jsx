@@ -119,7 +119,7 @@ export default function Sidebar({ open, onClose }) {
     () => !isPlatformAdmin() || !pathname.startsWith('/platform'),
   );
 
-  const { data: modulesData } = useQuery({
+  const { data: modulesData, isLoading: modulesLoading } = useQuery({
     queryKey: ['runtime-modules'],
     queryFn:  runtimeService.getModules,
     staleTime: 300_000,
@@ -309,7 +309,15 @@ export default function Sidebar({ open, onClose }) {
             onClick={handleLinkClick}
           />}
 
-          {/* Runtime modules — grouped by category */}
+          {/* Runtime modules — grouped by category. While they load, placeholder
+              rows hold their place so the menu does not grow under the cursor. */}
+          {modulesLoading && (
+            <div aria-hidden="true" data-nav-placeholder className="px-3 pt-4 space-y-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-4 rounded bg-gray-200/70 dark:bg-white/[0.06] animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />
+              ))}
+            </div>
+          )}
           {modulesByCategory.map((section) => (
             <div key={section.key}>
               <SectionLabel>{section.label}</SectionLabel>

@@ -1,7 +1,7 @@
 // Cross-sell & RM Workbench: the RM's home page, next-best actions (Accept opens an opportunity, Dismiss asks for a
 // reason), a discovery meeting note, the opportunity through the pipeline to Won (and another to Lost, with the gate),
 // RM targets, then the manager's RM League Table (user guide §9 Cross-sell & RM Workbench).
-import { records, poll, api, API } from '../lib/studio.mjs';
+import { records, poll, api, API, dashboardId } from '../lib/studio.mjs';
 
 export const title = 'Cross-sell & RM Workbench';
 
@@ -245,7 +245,8 @@ export default async function run(S) {
   // ── 7. Manager view ──
   await S.step(7, 'Manager view', 'The Head of BD follows the whole team', 'Dashboard ▸ RM League Table', 3000);
   await S.login('GCBDH', 'Head of BD — sets targets, follows the league table');
-  await S.go('/?dashboard=39', 1500);
+  const league = await S.waitCut(() => dashboardId('genesis_rm_league'));
+  await S.go(`/?dashboard=${league}`, 1500);
   await S.waitCut(() => p.waitForFunction(() => !document.querySelector('main .animate-spin'), null, { timeout: 90000, polling: 300 }).catch(() => {}));
   await S.scroll(250, 800);
   await S.say('Meetings and revenue credited, by RM', 'Activity and results side by side');

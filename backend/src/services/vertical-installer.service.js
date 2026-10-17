@@ -163,7 +163,7 @@ class VerticalInstaller {
     if (!this.skipRecords) await step('master data', () => this.#recordSets(pack.masterData ?? []));
     if (this.demo && !this.skipRecords) await step('demo records', () => this.#recordSets(pack.demo ?? []));
     if (this.demo) await step('demo ownership', () => this.#ownership(pack));
-    if (this.demo) await step('demo history', () => this.#history(pack.demo ?? [], new Set((pack.slaPolicies ?? []).map((p) => p.object))));
+    if (this.demo) await step('demo history', () => this.#history(pack.demo ?? [], VerticalInstaller.slaWindows(pack.slaPolicies ?? [])));
     if (this.demo) await step('demo approvals', () => this.#pendingApprovals());
     if (this.demo && typeof pack.platformDemo === 'function') await step('demo activity, documents & access', () => this.#platformDemo(pack.platformDemo));
     await step('recompute roll-ups', () => this.#recomputePass(pack.modules ?? []));
@@ -699,8 +699,18 @@ class VerticalInstaller {
         this.#skip('sla_policies');
         continue;
       }
-      if (old.length) await this.db.slaPolicy.deleteMany({ where: { id: { in: old.map((o) => o.id) } } });
-      const policy = await this.db.slaPolicy.create({ data: head });
+      // A changed policy is updated in place: deleting it would cascade to its
+      // live timers (sla_instances) and restart every clock from the record's
+      // creation. Only duplicates of the same name are removed.
+      let policy;
+      if (old.length) {
+        policy = await this.db.slaPolicy.update({ where: { id: old[0].id }, data: head });
+        if (old.length > 1) await this.db.slaPolicy.deleteMany({ where: { id: { in: old.slice(1).map((o) => o.id) } } });
+        await this.db.slaTarget.deleteMany({ where: { policy_id: policy.id } });
+        await this.db.slaEscalation.deleteMany({ where: { policy_id: policy.id } });
+      } else {
+        policy = await this.db.slaPolicy.create({ data: head });
+      }
       await this.db.slaTarget.createMany({ data: targets.map((t) => ({ policy_id: policy.id, ...t })) });
       if (escalations.length) await this.db.slaEscalation.createMany({ data: escalations.map((e) => ({ policy_id: policy.id, ...e })) });
       this.#count('sla_policies');
@@ -887,13 +897,33 @@ class VerticalInstaller {
    * Status history for back-dated demo records: a stage timeline from
    * `_created` to the record's current stage, and a matching updated_at, so the
    * record's timeline, stage-ageing reports and SLA outcomes look like a year
-   * of real use. Records that already have history are left alone.
+   * of real use. Records that already have history keep it — except open work
+   * on an SLA-tracked object that has aged out of a believable window, whose
+   * timeline is rebased (see below).
+   *
+   * SLA realism: open work on an SLA-tracked object is placed inside its SLA
+   * window (most on track, some at risk, a few breached by hours or days — not
+   * a year), and its timers are restarted from the record's new creation time.
+   * Timers are otherwise anchored when the record is first loaded, i.e. on the
+   * pack's back-dated `_created`, which is what made open demo enquiries read
+   * "343d over". `slaWindows` maps object → { first, resolution } (shortest
+   * target minutes across the object's policies).
    */
-  async #history(sets, slaObjects = new Set()) {
+  async #history(sets, slaWindows = new Map()) {
     const EXIT = new Set(['declined', 'withdrawn', 'lapsed', 'rejected', 'disqualified', 'abandoned', 'cancelled', 'canceled', 'lost', 'dismissed', 'refused', 'nurture', 'on_hold', 'exited', 'dormant', 'closed_no_filing']);
     const DAY = 86400000;
     const HOUR = 3600000;
     const hash = (str) => { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
+    const now = Date.now();
+    // The SLA window as calendar time: business minutes → working days (8h) → calendar days (×7/5).
+    const slaWindow = (object, awaitingFirst) => {
+      const w = slaWindows.get?.(object);
+      const mins = w ? ((awaitingFirst ? w.first : w.resolution) ?? w.resolution ?? w.first) : null;
+      return mins ? Math.max(HOUR, (mins / 480) * 1.4 * DAY) : null;
+    };
+    // Where in its window an open demo item sits: ~65% on track, ~20% at risk, ~15% breached (by up to half the window).
+    const placeIn = (win, h, h2) => Math.max(30 * 60000, win * (h2 < 0.65 ? 0.1 + 0.6 * h : h2 < 0.85 ? 0.78 + 0.18 * h : 1.05 + 0.5 * h));
+    const retimed = new Set();
     let written = 0;
     for (const set of sets) {
       if (!set.object || !Array.isArray(set.records) || !set.records.some((r) => r._created)) continue;
@@ -913,8 +943,15 @@ class VerticalInstaller {
       const events = [];
       const stamps = [];
       const moved = [];
+      const tracked = slaWindows.has(set.object);
+      const anchors = tracked
+        ? new Map((await this.db.record.findMany({ where: { id: { in: rows.map((r) => r.id) } }, select: { id: true, created_at: true, updated_at: true } })).map((r) => [r.id, r]))
+        : new Map();
+      const timers = tracked && this.db.slaInstance?.findMany
+        ? await this.db.slaInstance.findMany({ where: { entity_type: 'record', entity_id: { in: rows.map((r) => r.id) } }, select: { entity_id: true, started_at: true } })
+        : [];
+      const rebase = [];
       for (const { id, raw, stageId } of rows) {
-        if (have.has(id)) continue;
         let created = new Date(`${raw._created}T09:00:00.000Z`).getTime();
         const current = stages.find((st) => st.id === stageId);
         const normal = stages.filter((st) => !EXIT.has(st.name));
@@ -927,9 +964,24 @@ class VerticalInstaller {
         const terminal = current && (EXIT.has(current.name) || current.id === normal[normal.length - 1]?.id);
         const h = hash(`${set.object}|${raw.ext_ref ?? id}`);
         const h2 = hash(`${raw.ext_ref ?? id}|2`);
-        // Open work on an SLA-tracked object is recent; a months-old open enquiry is not a believable demo.
-        if (!terminal && slaObjects.has(set.object) && Date.now() - created > 21 * DAY) {
-          created = Date.now() - Math.floor((1 + 12 * h) * DAY);
+        const win = tracked && !terminal ? slaWindow(set.object, path.length <= 1) : null;
+        if (have.has(id)) {
+          // Already has a timeline: rebase open SLA work that has aged out of its window,
+          // and restart timers still anchored on an earlier creation date.
+          if (!win) continue;
+          const rec = anchors.get(id);
+          if (!rec) continue;
+          const createdAt = new Date(rec.created_at).getTime();
+          if (now - createdAt > win * 1.6) rebase.push({ id, from: createdAt, to: now - placeIn(win, h, h2), updated: rec.updated_at });
+          else if (timers.some((t) => t.entity_id === id && Math.abs(new Date(t.started_at).getTime() - createdAt) > 60000)) retimed.add(id);
+          continue;
+        }
+        // Open work on an SLA-tracked object sits inside its SLA window; a months-old open enquiry is not a believable demo.
+        if (win && now - created > win * 1.1) {
+          created = now - placeIn(win, h, h2);
+          moved.push({ id, created });
+        } else if (!terminal && tracked && !win && now - created > 21 * DAY) {
+          created = now - Math.floor((1 + 12 * h) * DAY);
           moved.push({ id, created });
         }
         const age = Math.max(Date.now() - created, HOUR);
@@ -947,8 +999,36 @@ class VerticalInstaller {
       const createdAt = new Map(moved.map((m) => [m.id, new Date(m.created)]));
       await pool(stamps, RECORD_CONCURRENCY, ({ id, at }) => this.db.record.update({ where: { id }, data: { updated_at: at, ...(createdAt.has(id) ? { created_at: createdAt.get(id) } : {}) } }));
       if (stamps.length) this.#count(`history.${set.object}`, stamps.length);
+      for (const m of moved) retimed.add(m.id);
+      // Rebase: the whole timeline is mapped linearly from [old created, now] onto
+      // [new created, now], so stage order and today's real changes are kept.
+      await pool(rebase, RECORD_CONCURRENCY, async ({ id, from, to, updated }) => {
+        const span = Math.max(1, now - from);
+        const map = (t) => new Date(Math.min(now - 60000, Math.max(to, to + ((new Date(t).getTime() - from) * (now - to)) / span)));
+        const evs = await this.db.statusEvent.findMany({ where: { record_id: id }, select: { id: true, occurred_at: true } });
+        for (const e of evs) await this.db.statusEvent.update({ where: { id: e.id }, data: { occurred_at: map(e.occurred_at) } });
+        await this.db.record.update({ where: { id }, data: { created_at: new Date(to), updated_at: map(updated) } });
+        retimed.add(id);
+      });
+      if (rebase.length) this.#count(`history_rebased.${set.object}`, rebase.length);
     }
     if (written) this.log(`      ${written} status events written`);
+    await this.#restartSlaTimers([...retimed]);
+  }
+
+  /**
+   * Start these records' SLA timers again from their (new) creation time: the
+   * old timers are dropped and the SLA service builds them as it would for a
+   * record created then — met from the status history, at risk or breached
+   * against the clock, without firing escalations.
+   */
+  async #restartSlaTimers(ids) {
+    if (!ids.length || !this.db.slaInstance?.deleteMany) return;
+    const SlaService = require('./sla.service');
+    const sla = new SlaService(this.db, { error: () => {}, warn: () => {}, info: () => {} });
+    await this.db.slaInstance.deleteMany({ where: { entity_type: 'record', entity_id: { in: ids } } });
+    await pool(ids, 4, (id) => sla.reconcileRecord(id).catch(() => false));
+    this.#count('sla_timers_restarted', ids.length);
   }
 
   /**

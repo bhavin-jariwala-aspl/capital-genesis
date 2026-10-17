@@ -275,6 +275,7 @@ const enquiry = {
     FX('display_name', 'Name', "CONCAT(first_name, ' ', last_name, IF(ISBLANK(company), '', CONCAT(' (', company, ')')))", { type: 'string', list: true }),
     FX('business_unit', 'Business unit', "LOOKUP('product_routing', 'product_code', product_code, 'business_unit')", { type: 'string', list: true }),
     FX('queue', 'Queue', "LOOKUP('product_routing', 'product_code', product_code, 'queue')", { type: 'string' }),
+    FX('first_contact_hours', 'First contact target (business hours)', "LOOKUP('product_routing', 'product_code', product_code, 'first_contact_hours')", { help: 'From the product routing master; the speed-to-lead SLA uses it (4 business hours when blank).' }),
     FX('amount_mur', 'Amount (MUR)',
       "IF(ISBLANK(currency_code) OR currency_code = 'MUR', estimated_amount, estimated_amount * LOOKUP('fx_rate', 'currency_code', currency_code, 'rate_to_mur', 'rate_date'))",
       { format: 'currency', precision: 2 }),
@@ -658,7 +659,8 @@ const loanApplication = {
     FX('party_name', 'Applicant name', 'party.display_name', { type: 'string' }),
     FX('party_email', 'Applicant email', 'party.email', { type: 'string' }),
     { ...FX('preferred_language', 'Correspondence language', "COALESCE(party.preferred_language, 'en')", { type: 'string' }), options: LANGUAGES }, // shows English / French, not en / fr
-    FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', CONCAT('LND|', IF(loan_amount_mur <= 5000000, '5M', IF(loan_amount_mur <= 20000000, '20M', 'MAX'))), 'approver_label'), IF(loan_amount_mur <= 5000000, 'Loans Manager', IF(loan_amount_mur <= 20000000, 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
+    FX('approval_band', 'Approval band', "CONCAT('LND|', IF(loan_amount_mur <= COALESCE(LOOKUP('approval_matrix', 'band_key', 'LND|5M', 'max_amount'), 5000000), '5M', IF(loan_amount_mur <= COALESCE(LOOKUP('approval_matrix', 'band_key', 'LND|20M', 'max_amount'), 20000000), '20M', 'MAX')))", { type: 'string', detail: false, help: 'The approval-matrix band for this amount: the limits come from Masters ▸ Approval Matrices.' }),
+    FX('approval_level', 'Approval authority', "COALESCE(LOOKUP('approval_matrix', 'band_key', approval_band, 'approver_label'), IF(approval_band = 'LND|5M', 'Loans Manager', IF(approval_band = 'LND|20M', 'Credit Committee', 'Board Credit Committee')))", { type: 'string' }),
     FX('security_value', 'Security lending value (MUR)', "SUM_RELATED('collateral', 'loan_application', 'lending_value')", { format: 'currency', precision: 2, help: 'Sum of collateral lending values (after haircut).' }),
     FX('ibl_max_loan', 'Investment-backed maximum (MUR)', "IF(product_code = 'LND-IBL', security_value, null)", { format: 'currency', precision: 2, help: 'Pledged holdings after haircut per asset class (LOAN-FR-16).' }),
     FX('open_conditions', 'Open credit conditions', "COUNT_RELATED('credit_condition', 'loan_application', 'status', 'open')"),
@@ -706,7 +708,8 @@ const loanApplication = {
       "IF(ISBLANK(ibl_ltv), null, IF(ibl_ltv >= ltv_liquidation_level, 'liquidation', IF(ibl_ltv >= ltv_call_level, 'margin_call', IF(ibl_ltv >= ltv_warning_level, 'warning', 'ok'))))",
       { type: 'string' }), options: o([['ok', 'Within limits', '#10b981'], ['warning', 'Warning', '#f59e0b'], ['margin_call', 'Margin call', '#ef4444'], ['liquidation', 'Liquidation', '#991b1b']]) },
     FX('margin_shortfall', 'Shortfall to restore cover (MUR)', 'IF(ISBLANK(ibl_ltv), null, MAX(0, exposure_mur - COALESCE(pledged_lending_value, 0)))', { format: 'currency', precision: 2, help: 'Repayment or extra lending value needed to bring the loan back within the pledges\' lending value.' }),
-    FX('margin_call_open', 'Margin call open', "COUNT_RELATED('margin_call', 'loan_application', 'cure', 'none') > 0", { type: 'boolean', format: 'checkbox' }),
+    // Blank (not "No") on other products, so the LTV-monitoring section stays out of their record view.
+    FX('margin_call_open', 'Margin call open', "IF(product_code = 'LND-IBL', COUNT_RELATED('margin_call', 'loan_application', 'cure', 'none') > 0, null)", { type: 'boolean', format: 'checkbox' }),
 
     H('h_disbursement', 'Disbursement'),
     F('disbursement_amount', 'Disbursement amount', 'currency'),
@@ -923,7 +926,7 @@ const productRouting = {
   plural_label: 'Website Product Routing',
   icon: 'Route',
   description: 'Website label / ?prod value → product, entity and queue (PRD LEAD-FR-02, Appendix A).',
-  config: { title_field: 'website_label' },
+  config: { title_field: 'website_label', default_sort: 'product_code' },
   fields: [
     F('website_label', 'Website label', 'text', { required: true, config: { show_in_list: true } }),
     F('prod_param', '?prod= value'),
@@ -957,7 +960,7 @@ const country = {
   plural_label: 'Countries (AML risk)',
   icon: 'Globe',
   description: 'Country risk scores and FATF status feeding the KYC risk engine.',
-  config: { title_field: 'name' },
+  config: { title_field: 'name', default_sort: 'name' },
   fields: [
     F('iso_code', 'ISO code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     F('name', 'Name', 'text', { required: true, config: { show_in_list: true } }),
@@ -993,7 +996,7 @@ const modelPortfolio = {
   plural_label: 'Model Portfolios',
   icon: 'PieChart',
   description: 'Model portfolios A–E with strategic allocation.',
-  config: { title_field: 'name' },
+  config: { title_field: 'name', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
     F('name', 'Name', 'text', { required: true, config: { show_in_list: true } }),

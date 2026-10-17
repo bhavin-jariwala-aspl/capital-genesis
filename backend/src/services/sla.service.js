@@ -69,6 +69,11 @@ const ENTITY = {
 //   closed_stages          — stages that complete resolution
 //   canceled_stages        — stages that cancel the timers (lost, withdrawn)
 //   dimension_field        — field whose value picks a target row (e.g. priority)
+//   target_hours_fields    — { metric: field }: a field (usually a formula reading
+//                            a master) whose value, in business hours, replaces the
+//                            target for that record — e.g. an enquiry's first-contact
+//                            target from its product's routing rule. Blank → the
+//                            policy's own target applies.
 // The reconciler builds rows from records + typed field values and then runs
 // the very same timer / pause / escalation logic as the built-in entities.
 ENTITY.record = {
@@ -94,6 +99,7 @@ function recordEntityConfig(policyCfg = {}) {
   return {
     ...ENTITY.record,
     dimField: policyCfg.dimension_field || '__dimension',
+    targetHoursFields: policyCfg.target_hours_fields && typeof policyCfg.target_hours_fields === 'object' ? policyCfg.target_hours_fields : {},
     closed, canceled,
     metricStatus: {
       first_response: (r) => {
@@ -243,6 +249,24 @@ function pickTarget(targets, metric, dim) {
   return forMetric.find((t) => t.priority === dim) || forMetric.find((t) => t.priority === '*') || null;
 }
 
+/**
+ * The target duration for one record: the record's own value (hours) when the
+ * policy names a `target_hours_fields` entry for the metric and the record has a
+ * positive number there, else the policy target.
+ */
+function targetMinutesFor(cfg, target, rec, metric) {
+  const field = cfg.targetHoursFields?.[metric];
+  const hours = field ? Number(rec[field]) : NaN;
+  return Number.isFinite(hours) && hours > 0 ? Math.round(hours * 60) : target.target_minutes;
+}
+
+/** Field values a record policy reads: dimension, title, conditions and per-record targets. */
+function wantedFields(cfg, pols) {
+  const wanted = new Set([cfg.dimField, ...TITLE_FIELDS, ...Object.values(cfg.targetHoursFields ?? {})]);
+  for (const p of pols) for (const c of p.conditions ?? []) if (c?.field) wanted.add(c.field);
+  return wanted;
+}
+
 // ── Service ─────────────────────────────────────────────────────────────────
 /** The row the shared timer logic reads for a generic record. */
 function recordRow(a, f = {}) {
@@ -369,8 +393,7 @@ class SlaService {
       const anchors = [...openRecs, ...closedRecs];
       if (!anchors.length) continue;
 
-      const wanted = new Set([cfg.dimField, ...TITLE_FIELDS]);
-      for (const p of pols) for (const c of p.conditions ?? []) if (c?.field) wanted.add(c.field);
+      const wanted = wantedFields(cfg, pols);
       const values = await this.db.recordFieldValue.findMany({
         where:  { record_id: { in: anchors.map((a) => a.id) }, field_name: { in: [...wanted] } },
         select: { record_id: true, field_name: true, str_value: true, num_value: true },
@@ -420,8 +443,7 @@ class SlaService {
     });
     if (!pols.length) return false;
     const cfg = recordEntityConfig(pols[0].config ?? {});
-    const wanted = new Set([cfg.dimField, ...TITLE_FIELDS]);
-    for (const p of pols) for (const c of p.conditions ?? []) if (c?.field) wanted.add(c.field);
+    const wanted = wantedFields(cfg, pols);
     const values = await this.db.recordFieldValue.findMany({
       where:  { record_id: a.id, field_name: { in: [...wanted] } },
       select: { record_id: true, field_name: true, str_value: true, num_value: true },
@@ -465,13 +487,15 @@ class SlaService {
   async #createInstance({ type, cfg, rec, metric, dim, ownerId, target, cal, mStatus, now }) {
     const started = rec.created_at || now;
     let dueAt, warnAt;
+    let targetMinutes = target.target_minutes;
     const explicitDue = cfg.dueField && metric === 'resolution' && rec[cfg.dueField];
     if (explicitDue) {
       dueAt = new Date(rec[cfg.dueField]);
       warnAt = new Date(started.getTime() + (dueAt - started) * (target.warning_pct / 100));
     } else {
-      dueAt = addBusinessMinutes(started, target.target_minutes, cal);
-      warnAt = addBusinessMinutes(started, target.target_minutes * (target.warning_pct / 100), cal);
+      targetMinutes = targetMinutesFor(cfg, target, rec, metric);
+      dueAt = addBusinessMinutes(started, targetMinutes, cal);
+      warnAt = addBusinessMinutes(started, targetMinutes * (target.warning_pct / 100), cal);
     }
 
     // Backfill flags to reflect reality, but do NOT fire escalations on creation.
@@ -495,7 +519,7 @@ class SlaService {
     await this.db.slaInstance.create({
       data: {
         policy_id: target.policy_id, entity_type: type, entity_id: rec.id, metric,
-        priority: dim, owner_id: ownerId, target_minutes: target.target_minutes,
+        priority: dim, owner_id: ownerId, target_minutes: targetMinutes,
         started_at: started, due_at: dueAt, warning_at: warnAt,
         status, warned, breached, completed_at, breached_at,
       },
@@ -646,7 +670,13 @@ class SlaService {
   }
 
   // ── Dashboard queries (called inside a request → tenant-scoped) ────────────
-  async getDashboard({ employeeId, scope = 'me' }) {
+  /**
+   * `focus` ({ entity_type, entity_id }, from `/sla?focus=record:42` links in
+   * escalation notifications) keeps that record's timers in `timers` even when
+   * they fall outside the most-urgent 60 — or are already met — so the board
+   * can scroll to them. It never widens the scope.
+   */
+  async getDashboard({ employeeId, scope = 'me', focus = null }) {
     const where = { status: { in: ['running', 'paused', 'breached', 'met'] } };
     if (scope === 'me') {
       where.owner_id = employeeId;
@@ -709,6 +739,12 @@ class SlaService {
         return rank(a) - rank(b) || new Date(a.due_at) - new Date(b.due_at);
       })
       .slice(0, 60);
+    if (focus?.entity_type && focus.entity_id != null) {
+      const shown = new Set(urgent.map((i) => i.id));
+      for (const i of instances) {
+        if (i.entity_type === focus.entity_type && String(i.entity_id) === String(focus.entity_id) && !shown.has(i.id)) urgent.push(i);
+      }
+    }
     const enriched = await this.#enrich(urgent);
 
     const policyNames = await this.#policyNames(Object.keys(byPolicy).map(Number));
@@ -821,6 +857,7 @@ module.exports.CONDITION_OPS = CONDITION_OPS;
 module.exports.METRIC_LABEL = METRIC_LABEL;
 module.exports.conditionsMatch = conditionsMatch;
 module.exports.recordEntityConfig = recordEntityConfig;
+module.exports.targetMinutesFor = targetMinutesFor;
 /**
  * Which metrics an entity can actually be measured on.
  *

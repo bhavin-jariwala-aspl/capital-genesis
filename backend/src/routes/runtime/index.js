@@ -91,7 +91,6 @@ module.exports = async function runtimeRoutes(fastify) {
   const wfEngine    = fastify.workflowEngine;
   const permSvc     = new PermissionService(fastify.prisma);
   const assignSvc   = new AssignmentService(fastify.prisma);
-  const forecastSvc = new ForecastService(fastify.prisma);
   const importSvc   = new ImportService(fastify.prisma);
   const crmSvc      = new CrmService(fastify.prisma, fastify.eventBus);
   const productSvc  = new ProductService(fastify.prisma);
@@ -99,6 +98,8 @@ module.exports = async function runtimeRoutes(fastify) {
   // RecordService/CrmService produce record.* domain events onto the shared bus;
   // the workflow engine and IntegrationService consume them independently.
   const recSvc      = new RecordService(fastify.prisma, fastify.eventBus, permSvc, assignSvc, scoringSvc);
+  // Builder objects are forecast from their own records, read with the viewer's scope.
+  const forecastSvc = new ForecastService(fastify.prisma, recSvc);
 
   // ── Bootstrap — single request loads all metadata for the frontend cache ──
   // GET /api/runtime/bootstrap
@@ -131,47 +132,68 @@ module.exports = async function runtimeRoutes(fastify) {
     const objects = {};
     const resolvedNames = {};
 
-    await Promise.all(objectIds.map(async (objId) => {
-      const obj = await meta.getObject(objId);
-      const objPerm = await permSvc.getEffectiveUiPermission('object', objId, roleName, tenantId);
-      if (!objPerm.can_view) return;
+    // Everything per object is read in a handful of batched queries (one per
+    // kind, not one per object): bootstrap runs on every full page load and a
+    // pack has ~100 objects, so per-object queries queued on the pool for seconds.
+    const [loadedObjects, objPerms, formRows, wizardRows] = await Promise.all([
+      Promise.all(objectIds.map((objId) => meta.getObject(objId))),
+      permSvc.getEffectiveUiPermissions('object', objectIds, roleName, tenantId),
+      objectIds.length
+        ? fastify.prisma.uiForm.findMany({ where: { object_id: { in: objectIds }, is_active: true }, orderBy: [{ created_at: 'asc' }, { id: 'asc' }] })
+        : [],
+      objectIds.length
+        ? fastify.prisma.uiWizard.findMany({ where: { object_id: { in: objectIds }, is_active: true }, select: { id: true, object_id: true }, orderBy: { id: 'asc' } })
+        : [],
+    ]);
+    const visible = loadedObjects.filter((obj) => objPerms.get(obj.id)?.can_view);
+    // Field permissions for every visible object in one query, then split back per object (order kept).
+    const allFields = visible.flatMap((obj) => obj.fields || []);
+    const fieldsByObject = new Map(visible.map((obj) => [obj.id, []]));
+    for (const f of await permSvc.filterMetadataByRole(allFields, 'field', roleName, tenantId)) {
+      fieldsByObject.get(f.object_id)?.push(f);
+    }
+    const pipelinesByObject = new Map(await Promise.all(visible.map(async (obj) => [obj.id, await dashSvc.getPipelines(obj.id)])));
+    const formsByObject = new Map();
+    for (const f of formRows) {
+      if (!formsByObject.has(f.object_id)) formsByObject.set(f.object_id, []);
+      formsByObject.get(f.object_id).push(f);
+    }
+    const wizardByObject = new Map();
+    for (const w of wizardRows) if (!wizardByObject.has(w.object_id)) wizardByObject.set(w.object_id, w);
+    const firstPipelineIds = [...new Set(visible.map((obj) => pipelinesByObject.get(obj.id)?.[0]?.id).filter((id) => id != null))];
+    const stageRows = firstPipelineIds.length
+      ? await fastify.prisma.uiPipelineStage.findMany({
+          where: { pipeline_id: { in: firstPipelineIds } },
+          orderBy: [{ pipeline_id: 'asc' }, { order_index: 'asc' }, { id: 'asc' }],
+          select: { id: true, pipeline_id: true },
+        })
+      : [];
+    const firstStageByPipeline = new Map();
+    for (const s of stageRows) if (!firstStageByPipeline.has(s.pipeline_id)) firstStageByPipeline.set(s.pipeline_id, s.id);
 
-      const filteredFields = await permSvc.filterMetadataByRole(
-        obj.fields || [], 'field', roleName, tenantId,
-      );
-      const pipelines = await dashSvc.getPipelines(objId);
-      const forms = await meta.getForms(objId);
+    for (const obj of visible) {
+      const objId = obj.id;
+      const pipelines = pipelinesByObject.get(objId) ?? [];
       objects[objId] = {
         ...obj,
-        fields: filteredFields,
+        fields: fieldsByObject.get(objId) ?? [],
         pipelines,
-        forms,
-        _can_edit: objPerm.can_edit,
+        forms: formsByObject.get(objId) ?? [],
+        _can_edit: objPerms.get(objId).can_edit,
       };
 
       // Resolve name → IDs mapping
       if (obj.name) {
         const pipeline = pipelines[0];
-        const firstStage = pipeline
-          ? await fastify.prisma.uiPipelineStage.findFirst({
-              where: { pipeline_id: pipeline.id },
-              orderBy: { order_index: 'asc' },
-              select: { id: true },
-            })
-          : null;
-        const wizard = await fastify.prisma.uiWizard.findFirst({
-          where: { object_id: objId, is_active: true },
-          select: { id: true },
-        });
         resolvedNames[obj.name] = {
           object_id:      objId,
           module_id:      obj.module_id,
-          first_stage_id: firstStage?.id ?? null,
+          first_stage_id: pipeline ? (firstStageByPipeline.get(pipeline.id) ?? null) : null,
           pipeline_id:    pipeline?.id ?? null,
-          wizard_id:      wizard?.id ?? null,
+          wizard_id:      wizardByObject.get(objId)?.id ?? null,
         };
       }
-    }));
+    }
 
     // 3. Load all forms with full field_layouts and dependencies
     const forms = {};
@@ -182,9 +204,11 @@ module.exports = async function runtimeRoutes(fastify) {
       }
     }
 
+    // The role's field permissions once, not once per form (null = admin).
+    const fieldPerms = await meta.fieldPermsForRole(roleName);
     await Promise.all([...formIds].map(async (formId) => {
       try {
-        const form = await meta.getFormForViewer(formId, roleName);
+        const form = await meta.getFormForViewer(formId, roleName, fieldPerms);
         const deps = await meta.getDependenciesForForm(formId);
         if (form) {
           forms[formId] = { ...form, dependencies: deps };
@@ -194,24 +218,28 @@ module.exports = async function runtimeRoutes(fastify) {
       }
     }));
 
-    // 4. Load all wizards
+    // 4. Load all wizards (the list already carries each wizard in full)
     const wizards = {};
     const allWizards = await dashSvc.getWizards();
+    const wizardById = new Map(allWizards.map((w) => [w.id, w]));
     const filteredWizards = await permSvc.filterMetadataByRole(allWizards, 'wizard', roleName, tenantId);
     for (const wiz of filteredWizards) {
-      const full = await dashSvc.getWizard(wiz.id);
-      wizards[wiz.id] = full;
+      wizards[wiz.id] = wizardById.get(wiz.id);
     }
 
-    // 5. Load all pipelines
+    // 5. Load all pipelines — one query for all of them
     const pipelinesMap = {};
-    for (const obj of Object.values(objects)) {
-      for (const p of (obj.pipelines || [])) {
-        if (!pipelinesMap[p.id]) {
-          const full = await dashSvc.getPipeline(p.id);
-          pipelinesMap[p.id] = full;
-        }
-      }
+    const pipelineIds = [...new Set(Object.values(objects).flatMap((obj) => (obj.pipelines || []).map((p) => p.id)))];
+    const fullPipelines = pipelineIds.length
+      ? await fastify.prisma.uiPipeline.findMany({
+          where:   { id: { in: pipelineIds } },
+          include: { stages: { orderBy: { order_index: 'asc' } }, object: { include: { module: true } } },
+        })
+      : [];
+    const pipelineById = new Map(fullPipelines.map((p) => [p.id, p]));
+    for (const id of pipelineIds) {
+      if (!pipelineById.has(id)) throw new NotFoundError('Pipeline');
+      pipelinesMap[id] = pipelineById.get(id);
     }
 
     return ok({
@@ -605,11 +633,12 @@ module.exports = async function runtimeRoutes(fastify) {
   fastify.post('/records/:id/unmerge', { preHandler: [authenticate], schema: { params: idParam } },
     async (req) => ok(await recSvc.unmergeRecord(req.params.id, req.user)));
 
-  // GET /api/runtime/records/export?object_id=X
+  // GET /api/runtime/records/export?object_id=X[&ids=1,2,3] — `ids`: only the rows the table is filtered to
   fastify.get('/records/export', { preHandler: [authenticate] }, async (req, reply) => {
-    const { object_id } = req.query;
+    const { object_id, ids } = req.query;
     if (!object_id) return reply.code(400).send({ error: 'object_id is required' });
-    const csv = await recSvc.exportRecordsCsv(object_id, req.user);
+    const only = typeof ids === 'string' && ids.trim() ? ids.split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined;
+    const csv = await recSvc.exportRecordsCsv(object_id, req.user, { ids: only });
     return reply
       .header('Content-Type', 'text/csv')
       .header('Content-Disposition', `attachment; filename="records-${object_id}-${Date.now()}.csv"`)
@@ -708,7 +737,7 @@ module.exports = async function runtimeRoutes(fastify) {
   fastify.get('/forecast', { preHandler: [authenticate] }, async (req) => {
     const { object_id, ...opts } = req.query;
     if (!object_id) throw new ValidationError('object_id is required');
-    return ok(await forecastSvc.computeForecast(Number(object_id), opts));
+    return ok(await forecastSvc.computeForecast(Number(object_id), opts, req.user));
   });
 
   // GET /api/runtime/forecast/team?manager_id=X&object_id=Y
@@ -716,7 +745,7 @@ module.exports = async function runtimeRoutes(fastify) {
     const { manager_id, object_id, ...opts } = req.query;
     if (!manager_id) throw new ValidationError('manager_id is required');
     if (!object_id)  throw new ValidationError('object_id is required');
-    return ok(await forecastSvc.getTeamForecast(manager_id, Number(object_id), opts));
+    return ok(await forecastSvc.getTeamForecast(manager_id, Number(object_id), opts, req.user));
   });
 
   // ── Import ───────────────────────────────────────────────────────────────
