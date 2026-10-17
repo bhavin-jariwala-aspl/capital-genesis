@@ -147,6 +147,19 @@ describe('WorkflowEngineService — EAV-backed objects', () => {
     await new WorkflowEngineService(db).manualRun(1, { id: 100 });
     expect(db.recordFieldValue.upsert.mock.calls[0][0].create.str_value).toBe('Auto-expired CON-9');
   });
+
+  it('offers {{today}} and {{this_month}} for stamping (a commission period is a month)', async () => {
+    const db = makeDb({ record: eavRecord([]) });
+    const steps = [
+      { id: 1, name: 'Stamp period', step_type: 'action', order_index: 1,
+        config: { field: 'notes', value: '{{this_month}} / {{today}}' }, on_true_id: null, on_false_id: null },
+    ];
+    db.uiWorkflow.findUnique.mockResolvedValue(wf(steps));
+
+    await new WorkflowEngineService(db).manualRun(1, { id: 100 });
+    const today = new Date().toISOString().slice(0, 10);
+    expect(db.recordFieldValue.upsert.mock.calls[0][0].create.str_value).toBe(`${today.slice(0, 7)} / ${today}`);
+  });
 });
 
 describe('WorkflowEngineService — record-level columns', () => {

@@ -17,7 +17,7 @@ const objects = Object.fromEntries(pack.modules.flatMap((m) => m.objects).map((o
 const fieldsOf = (name) => new Set((objects[name]?.fields ?? []).map((f) => f.name));
 const stagesOf = (name) => new Set((objects[name]?.pipeline?.stages ?? []).map((s) => s.name));
 const roles = new Set([...pack.roles.map((r) => r.name), 'super_admin', 'admin', 'manager', 'user']);
-const WORKFLOW_CONTEXT = new Set(['id', 'stage', 'today', 'record_id', 'assigned_to', 'pipeline_stage_id', 'created_by']);
+const WORKFLOW_CONTEXT = new Set(['id', 'stage', 'today', 'this_month', 'record_id', 'assigned_to', 'pipeline_stage_id', 'created_by']);
 const FUNCTIONS_WITH_STRING_OBJECTS = /(LOOKUP|LATEST|COUNT_RELATED|SUM_RELATED)\(\s*'(\w+)'/g;
 
 describe('Genesis pack — objects', () => {

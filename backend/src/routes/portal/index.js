@@ -16,6 +16,7 @@ const DocumentService = require('../../services/document.service');
 const EmailSendService = require('../../services/email-send.service');
 const EmailTemplateService = require('../../services/email-template.service');
 const NotificationService = require('../../services/notification.service');
+const CurrencyService = require('../../services/currency.service');
 const { tenantContext } = require('../../middleware/tenant-scope');
 const { RateLimiter } = require('../../utils/rate-limit');
 const { RateLimitedError, AuthenticationError } = require('../../utils/errors');
@@ -63,7 +64,12 @@ module.exports = async function portalRoutes(fastify) {
   // ── Public ────────────────────────────────────────────────────────────────
   fastify.get('/:slug', { schema: { params: slugParams } }, async (req) => {
     const t = await svc.tenantBySlug(req.params.slug);
-    return ok({ tenant_id: t.id, name: t.name, slug: t.slug, logo_url: t.logo_url, primary_color: t.primary_color });
+    // The workspace's display currency, so portal amounts are not shown in the USD default.
+    const cur = await tenantContext.run({ tenantId: t.id }, () => new CurrencyService(fastify.prisma).getProfile(t.id));
+    return ok({
+      tenant_id: t.id, name: t.name, slug: t.slug, logo_url: t.logo_url, primary_color: t.primary_color,
+      currency: cur.code, locale: cur.locale, number_format: cur.numberFormat,
+    });
   });
 
   fastify.post('/:slug/login/request', {

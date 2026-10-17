@@ -329,6 +329,7 @@ const introducer = {
   config: { title_field: 'name', portal_signin_stages: ['active'] },
   fields: [
     AUTO('introducer_no', 'Introducer No.', 'INT-'),
+    FX('name', 'Introducer', 'party.display_name', { type: 'string', list: true }),
     LK('party', 'Party', 'party', { required: true }),
     SEL('introducer_type', 'Type', o([['broker', 'Independent broker'], ['agent', 'Genesis insurance agent'], ['professional', 'Professional (notary, accountant)'], ['client', 'Existing client'], ['corporate', 'Corporate partner']]), { required: true, config: { show_in_list: true } }),
     F('agreement_signed_on', 'Agreement signed', 'date'),
@@ -342,7 +343,6 @@ const introducer = {
     FX('referrals', 'Referrals', "COUNT_RELATED('introducer_referral', 'introducer')", LIST),
     // A clawed-back commission is no longer earned.
     FX('commission_earned', 'Commission earned (MUR)', "COALESCE(SUM_RELATED('commission_entry', 'introducer', 'amount'), 0) - COALESCE(SUM_RELATED('commission_entry', 'introducer', 'amount', 'status', 'clawed_back'), 0)", { format: 'currency', list: true }),
-    FX('name', 'Introducer', 'party.display_name', { type: 'string', list: true }),
   ],
   forms: [{ name: 'introducer_create', label: 'Introducer', fields: ['party', 'introducer_type', 'agreement_signed_on', 'agreement_expires_on', 'allowed_products', 'commission_pct', 'clawback_months', 'protection_days', 'portal_email'] }],
   pipeline: {

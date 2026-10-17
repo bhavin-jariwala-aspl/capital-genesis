@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Plus, Upload, FileText, MessageSquare, ShieldCheck, Download, Send, User } from 'lucide-react';
@@ -11,6 +11,7 @@ import FieldValue, { recordCurrency } from '../../components/runtime/FieldValue'
 import { portalClient, portalToken } from '../../services/portal.service';
 import { fmtDate, fmtCurrency } from '../../utils/formatters';
 import { useWorkspaceBranding } from '../../hooks/useWorkspaceBranding';
+import { useCurrencyStore } from '../../store/currencyStore';
 
 /**
  * Client & introducer portal (/portal/:slug) — PRD M23 / M19.
@@ -175,6 +176,8 @@ function Section({ api, view, onChanged }) {
   const { data, isLoading, error } = useQuery({ queryKey: ['portal-list', view.object], queryFn: () => api.list(view.object) });
   const rows = data?.records ?? [];
   const actions = view.row_actions ?? [];
+  // Only records on a pipeline have a status (a commission or a holding has none).
+  const hasStage = rows.some((r) => r.stage);
   const rowTitle = (r) => {
     const first = view.fields[0];
     return first ? (r.labels?.[first.name] ?? r.data?.[first.name] ?? '') : '';
@@ -194,7 +197,7 @@ function Section({ api, view, onChanged }) {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-400">
                 {view.fields.map((f) => <th key={f.name} className="px-2 py-1.5 font-medium">{f.label}</th>)}
-                <th className="px-2 py-1.5 font-medium">Status</th>
+                {hasStage && <th className="px-2 py-1.5 font-medium">Status</th>}
                 {(view.uploads || actions.length > 0) && <th className="px-2 py-1.5" />}
               </tr>
             </thead>
@@ -202,7 +205,7 @@ function Section({ api, view, onChanged }) {
               {rows.map((r) => (
                 <tr key={r.id}>
                   {view.fields.map((f) => <td key={f.name} className="whitespace-nowrap px-2 py-2"><FieldValue field={f} value={r.data?.[f.name]} label={r.labels?.[f.name]} currency={recordCurrency(f, r.data)} compact /></td>)}
-                  <td className="px-2 py-2">{r.stage ? <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || 'rgb(var(--n-500))' }}>{r.stage.label}</span> : '—'}</td>
+                  {hasStage && <td className="px-2 py-2">{r.stage ? <span className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: r.stage.color || 'rgb(var(--n-500))' }}>{r.stage.label}</span> : '—'}</td>}
                   {(view.uploads || actions.length > 0) && (
                     <td className="whitespace-nowrap px-2 py-2 text-right">
                       <div className="inline-flex items-center gap-3">
@@ -296,6 +299,11 @@ export default function PortalPage() {
   const [signedIn, setSignedIn] = useState(() => Boolean(portalToken.get(slug)));
   const workspace = useQuery({ queryKey: ['portal-ws', slug], queryFn: api.workspace, retry: false });
   useWorkspaceBranding(workspace.data?.tenant_id);
+  // Amounts in the workspace's currency (MUR for Genesis), not the USD default of a signed-out browser.
+  const ws = workspace.data;
+  useEffect(() => {
+    if (ws?.currency) useCurrencyStore.getState().applySettings({ 'localization.currency': ws.currency, 'localization.locale': ws.locale, 'localization.number_format': ws.number_format });
+  }, [ws?.currency, ws?.locale, ws?.number_format]);
   const me = useQuery({ queryKey: ['portal-me', slug], queryFn: api.me, enabled: signedIn, retry: false });
   const views = useQuery({ queryKey: ['portal-views', slug], queryFn: api.views, enabled: signedIn, retry: false });
 

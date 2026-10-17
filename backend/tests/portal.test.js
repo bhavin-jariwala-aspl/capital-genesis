@@ -52,6 +52,21 @@ describe('portal sign-in codes', () => {
     await expect(svc.verifyCode(tenant, 'client', 'anne@example.mu', again)).rejects.toThrow(/Too many/);
   });
 
+  it('lets an introducer sign in only from the configured stages (active, not applied or suspended)', async () => {
+    const d = {
+      ...db(true),
+      uiObject: { findFirst: jest.fn().mockResolvedValue({ id: 1 }), findUnique: jest.fn().mockResolvedValue({ config: { portal_signin_stages: ['active'] } }) },
+    };
+    await new PortalService(d).requestCode(tenant, 'introducer', 'partner@example.mu');
+    expect(d.recordFieldValue.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ field_name: 'portal_email', record: expect.objectContaining({ pipeline_stage: { name: { in: ['active'] } } }) }),
+    }));
+    d.uiObject.findUnique.mockResolvedValue({ config: {} });
+    d.recordFieldValue.findFirst.mockClear();
+    await new PortalService(d).requestCode(tenant, 'introducer', 'partner@example.mu');
+    expect(d.recordFieldValue.findFirst.mock.calls[0][0].where.record).not.toHaveProperty('pipeline_stage');
+  });
+
   it('refuses an unknown realm', async () => {
     await expect(new PortalService(db(true)).requestCode(tenant, 'staff', 'a@b.mu')).rejects.toThrow(/Unknown portal/);
   });

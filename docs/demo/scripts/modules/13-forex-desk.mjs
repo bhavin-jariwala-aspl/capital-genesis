@@ -151,7 +151,9 @@ export default async function run(S) {
   await S.say('The FX quote timer: answer within 15 business minutes', 'Tools ▸ SLA Board — the dealer\'s manager is alerted on a breach');
   await S.go('/sla', 1500);
   const slaRow = p.locator('a').filter({ hasText: qno }).first();
-  if (await slaRow.waitFor({ timeout: 15000 }).then(() => true).catch(() => false)) await S.highlight(slaRow, 3500);
+  // The timer is started just after the save: reload until it is listed.
+  const listed = await S.waitCut(() => poll(async () => { if (await slaRow.count()) return true; await p.reload(); await S.settle(600); return (await slaRow.count()) > 0; }, { timeout: 45000, every: 2000, what: 'SLA row' }).catch(() => false));
+  if (listed) await S.highlight(slaRow, 3500);
   else { S.issue('SLA Board: FX quote timer not listed'); await p.waitForTimeout(3000); }
 
   // ── 3. Quoted (gate) ──

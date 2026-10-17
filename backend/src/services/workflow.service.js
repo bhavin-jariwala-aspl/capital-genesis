@@ -1724,9 +1724,10 @@ class WorkflowEngineService {
     fields.id                = full.id;
     fields.created_by        = full.created_by ?? null;
     // Readable context for conditions and {{placeholders}}: the stage by its
-    // API name (`stage eq 'offer_issued'`) and today's date for stamping.
+    // API name (`stage eq 'offer_issued'`) and today's date (and month, `2026-10`) for stamping.
     fields.stage             = full.pipeline_stage?.name ?? null;
     fields.today             = new Date().toISOString().slice(0, 10);
+    fields.this_month        = fields.today.slice(0, 7);
 
     return fields;
   }

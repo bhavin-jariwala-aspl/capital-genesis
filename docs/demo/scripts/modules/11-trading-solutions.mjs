@@ -102,12 +102,13 @@ export default async function run(S) {
 
   // Housekeeping: remove this tutorial's own records from an earlier take.
   const mine = (r) => r.created_by === 'GCTRD1' && r.created_at > '2026-10-16';
-  for (const [o, test] of [[orderObj, (r) => [INSTRUMENT, RESTRICTED].includes(r.data?.instrument)], [acctObj, (r) => r.data?.name?.startsWith(CLIENT)],
+  // (The recording has already started: the clean-up is trimmed from the video.)
+  await S.waitCut(async () => { for (const [o, test] of [[orderObj, (r) => [INSTRUMENT, RESTRICTED].includes(r.data?.instrument)], [acctObj, (r) => r.data?.name?.startsWith(CLIENT)],
     [ioiObj, (r) => r.data?.name === `${ISSUE} · ${CLIENT}`], [resObj, (r) => r.data?.title === NOTE]]) {
     for (const r of await poll(() => records('GCTRD1', o.id, { limit: 500 }), { what: 'earlier records' })) {
       if (mine(r) && test(r)) { S.log('removing earlier take', o.name, r.id); await poll(() => api('GCTRD1', 'DELETE', `/runtime/records/${r.id}`, {}), { what: 'delete' }); }
     }
-  }
+  } });
 
   await S.go('/login');
   await S.card({

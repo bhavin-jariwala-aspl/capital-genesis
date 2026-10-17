@@ -93,7 +93,7 @@ const workflows = [
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Funded', 'stage', 'eq', 'funded'),
-      create('c2', 'Accrue commission', 'commission_entry', { introducer: '{{introducer}}', introducer_referral: '{{id}}', period: '{{today}}', base_amount: '{{funded_amount}}', amount: '{{commission_due}}', status: 'accrued' }),
+      create('c2', 'Accrue commission', 'commission_entry', { introducer: '{{introducer}}', introducer_referral: '{{id}}', period: '{{this_month}}', base_amount: '{{funded_amount}}', amount: '{{commission_due}}', status: 'accrued' }),
     ],
   },
 
@@ -975,7 +975,12 @@ const permissions = [
   // New roles on the phase-1 objects
   ...perm(['party', 'client_relationship', 'party_relationship', 'consent_record', 'enquiry', 'referral', 'service_request', 'kyc_case', 'loan_application', 'collateral',
     'risk_profile', 'suitability_record', 'wealth_mandate', 'fund_order', 'securities_account', 'fx_profile', 'restricted_list_entry',
-    'financial_product', 'product_routing', 'plr_rate', 'country', 'fx_rate', 'model_portfolio'], ['bu_head', 'auditor'], false),
+    'financial_product', 'product_routing', 'plr_rate', 'country', 'fx_rate', 'model_portfolio'], ['auditor'], false),
+  ...perm(['client_relationship', 'party_relationship', 'consent_record', 'enquiry', 'referral', 'service_request', 'loan_application', 'collateral',
+    'risk_profile', 'suitability_record', 'wealth_mandate', 'fund_order', 'securities_account', 'fx_profile', 'restricted_list_entry',
+    'financial_product', 'product_routing', 'plr_rate', 'country', 'fx_rate', 'model_portfolio'], ['bu_head'], false),
+  // The Head of BD onboards introducers: their party record and the KYC case it needs (flow 15, step A2).
+  ...perm(['party', 'kyc_case'], ['bu_head'], true),
   ...perm(['party', 'consent_record', 'enquiry'], ['marketing'], false),
 ];
 
