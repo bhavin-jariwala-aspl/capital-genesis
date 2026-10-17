@@ -91,6 +91,19 @@ async function showField(S, label, ms = 3000) {
   await S.highlight(el.locator('xpath=..'), ms);
 }
 
+// The trader's wall-crossing from an earlier take: reject anything pending and take him off the advisory wall,
+// so the barrier step shows an empty list again (admin, through the access API).
+async function resetCrossing() {
+  const zones = (await api('GCADMIN', 'GET', '/access/barrier-zones')).data ?? [];
+  const adv = zones.find((z) => z.code === 'ADV_PRIVATE');
+  if (!adv) return;
+  const list = (await api('GCADMIN', 'GET', '/access/wall-crossings')).data ?? [];
+  for (const c of list.filter((x) => x.employee_id === 'GCTRD1' && x.status === 'pending')) {
+    await api('GCADMIN', 'POST', `/access/wall-crossings/${c.id}/decide`, { approve: false });
+  }
+  await api('GCADMIN', 'DELETE', `/access/barrier-zones/${adv.id}/members/GCTRD1`, {});
+}
+
 export default async function run(S) {
   const { p } = S;
   S.submit = () => submit(S);
@@ -123,6 +136,7 @@ export default async function run(S) {
   const short = CODE.replace('Project ', '');
   const im = specimen(rawDir, `Information memorandum - ${CODE}.pdf`, [`${CODE} - Information memorandum`, 'Strictly private and confidential', 'Specimen for demonstration']);
   S.log('code name', CODE);
+  await S.waitCut(() => resetCrossing());
 
   await S.go('/login');
   await S.card({
@@ -215,8 +229,25 @@ export default async function run(S) {
   await S.settle(1500);
   await p.waitForTimeout(2000);
 
+  // ── 5. Compliance decides the crossing ──────────────────────────────────────────────────────────────────────
+  await S.step(5, 'Wall-crossing approval', 'Compliance decides the request', 'Compliance runs the control room — it approves crossings without seeing behind the wall', 2800);
+  await S.login('GCCOMP1', 'Compliance officer — decides wall-crossings');
+  await S.go('/access', 1500);
+  const crossRow = p.locator('main tr').filter({ hasText: 'Arvind Ramsurrun' }).filter({ has: p.getByRole('button', { name: /Approve/ }) }).first();
+  await crossRow.waitFor({ timeout: 30000 });
+  await S.highlight(crossRow, 2500);
+  await S.say('Approve for 30 days — the trader joins the advisory insider list until then', 'Nobody can approve their own request, or a crossing for themselves');
+  const decided = p.waitForResponse((r) => r.url().includes('/wall-crossings/') && r.request().method() === 'POST', { timeout: 240000 });
+  await S.moveTo(crossRow.getByRole('button', { name: /Approve/ }));
+  const dr = await S.waitCut(() => decided);
+  if (dr.status() >= 300) throw new Error(`crossing decision ${dr.status()}`);
+  await S.settle(1200);
+  await S.highlight(p.locator('main tr').filter({ hasText: 'Arvind Ramsurrun' }).first(), 2500);
+  await S.say('The crossing is recorded on the tamper-evident audit trail', 'It ends automatically on its expiry date');
+  await p.waitForTimeout(2500);
+
   // ── 5. Engagement & execution ──────────────────────────────────────────────────────────────────────────────
-  await S.step(5, 'Engagement letter', 'Back to the advisor: the conflict check is cleared', 'Conflict check ▸ Engagement letter', 2800);
+  await S.step(6, 'Engagement letter', 'Back to the advisor: the conflict check is cleared', 'Conflict check ▸ Engagement letter', 2800);
   await S.login('GCADV1', 'Corporate advisor');
   await S.openObject('advisory_mandate', { view: 'Pipeline' });
   await S.drag(CODE, 'Conflict check', 'Engagement letter', { after: 1000 });
@@ -248,7 +279,7 @@ export default async function run(S) {
   await S.drag(CODE, 'Engagement letter', 'Execution');
 
   // ── 6. Deal team → insider list ───────────────────────────────────────────────────────────────────────────
-  await S.step(6, 'Deal team and insider list', 'Add the analyst to the deal team', 'Corporate Advisory ▸ Deal Team Member ▸ New');
+  await S.step(7, 'Deal team and insider list', 'Add the analyst to the deal team', 'Corporate Advisory ▸ Deal Team Member ▸ New');
   await S.newRecord('deal_team_member');
   await S.fill('deal_team_member', { advisory_mandate: short, employee_id: 'GCADV2', employee_name: 'Ryan Pillay', deal_role: 'analyst', added_on: today() }, { delay: 30 });
   await S.submit();
@@ -258,7 +289,7 @@ export default async function run(S) {
   await S.highlight(p.locator('tr').filter({ hasText: CODE }).first(), 4000);
 
   // ── 7. Investor bookbuilding ──────────────────────────────────────────────────────────────────────────────
-  await S.step(7, 'Investor bookbuilding', `Approach an investor: ${INVESTOR}`, 'Targeted ▸ NDA ▸ IM shared ▸ Indication ▸ Committed ▸ Allocated');
+  await S.step(8, 'Investor bookbuilding', `Approach an investor: ${INVESTOR}`, 'Targeted ▸ NDA ▸ IM shared ▸ Indication ▸ Committed ▸ Allocated');
   await S.newRecord('investor_target');
   await S.fill('investor_target', { advisory_mandate: short, investor: 'Sunrise Pension', investor_type: 'pension_fund', nda_status: 'sent' }, { delay: 30 });
   await S.submit();
@@ -321,7 +352,7 @@ export default async function run(S) {
   await p.waitForTimeout(2500);
 
   // ── 8. Deliverable → fee invoice ──────────────────────────────────────────────────────────────────────────
-  await S.step(8, 'Deliverables and fees', 'The information memorandum is a deliverable with a milestone fee', 'Drafting ▸ In review ▸ Approved ▸ Delivered to client', 2800);
+  await S.step(9, 'Deliverables and fees', 'The information memorandum is a deliverable with a milestone fee', 'Drafting ▸ In review ▸ Approved ▸ Delivered to client', 2800);
   await S.newRecord('advisory_deliverable');
   await S.say('Name the reviewer: approval needs one', 'A second pair of eyes on everything that goes to the client');
   await S.fill('advisory_deliverable', { advisory_mandate: short, title: 'Information memorandum', deliverable_type: 'information_memorandum', due_date: today(), reviewer: 'GCADV1', milestone_fee: '750000' }, { delay: 16 });
@@ -338,7 +369,7 @@ export default async function run(S) {
   await S.highlight(p.locator('tr').filter({ hasText: CODE }).first(), 4000);
 
   // ── 9. Time ──────────────────────────────────────────────────────────────────────────────────────────────
-  await S.step(9, 'Time & effort', 'Log the hours spent on the mandate', 'For profitability: hours × internal rate = cost');
+  await S.step(10, 'Time & effort', 'Log the hours spent on the mandate', 'For profitability: hours × internal rate = cost');
   await S.newRecord('time_entry');
   await S.fill('time_entry', { advisory_mandate: short, employee_id: 'GCADV1', work_date: today(), hours: '6', activity: 'Investor meetings and IM review' }, { delay: 20 });
   await S.submit();
@@ -348,7 +379,7 @@ export default async function run(S) {
   await showField(S, 'Hours logged', 2500);
 
   // ── 10. Dashboard ────────────────────────────────────────────────────────────────────────────────────────
-  await S.step(10, 'Corporate Advisory dashboard', 'The Corporate Advisory dashboard', 'Live mandates, weighted fee pipeline, commitments and fees invoiced');
+  await S.step(11, 'Corporate Advisory dashboard', 'The Corporate Advisory dashboard', 'Live mandates, weighted fee pipeline, commitments and fees invoiced');
   await S.go('/', 1500);
   const dsel = p.locator('main select').first();
   await dsel.waitFor({ timeout: 60000 });

@@ -48,6 +48,10 @@ const operationalPermissions = [
   // Only the MLRO sees across every barrier; Compliance officers are members
   // of the zones they police (see staff), not a blanket override.
   { entity_type: 'barrier_override', role_name: 'mlro', view_scope: 'all', create_scope: 'none', edit_scope: 'none', delete_scope: 'none', assign_scope: 'none' },
+  // Compliance runs the control room: it decides wall-crossing requests without
+  // seeing inside the walls (the MLRO already can, through the override).
+  ...['compliance_officer', 'mlro'].map((role_name) => (
+    { entity_type: 'wall_crossing_decide', role_name, view_scope: 'all', create_scope: 'none', edit_scope: 'none', delete_scope: 'none', assign_scope: 'none' })),
   // Unmasked personal data (ID numbers, income) — everyone else sees it masked
   // and reveals it on click, each reveal audited (PRD X-08).
   ...['compliance_officer', 'mlro', 'credit_analyst', 'operations_checker'].map((role_name) => (

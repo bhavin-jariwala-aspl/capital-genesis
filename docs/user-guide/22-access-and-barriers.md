@@ -39,8 +39,10 @@ needs neither. Record visibility and permissions still apply.
 ## Where to find it
 
 Sidebar → **Tools** → **Access & Barriers**. Everyone can request a wall-crossing. Managing units needs an
-admin role. Managing zones, deciding crossings and the audit chain need an admin role or the *barrier override*
-permission.
+admin role. Managing zones and the audit chain need an admin role or the *barrier override* permission. Deciding
+crossings also needs one of those, or the *wall-crossing decisions* permission, which lets Compliance approve or reject
+requests without seeing inside any wall. Nobody can approve their own request, or a crossing that brings themselves
+over a wall.
 
 ## How records get their unit and zone
 
@@ -112,7 +114,8 @@ unit and is shared by every entity.
 | `COMPLIANCE_ONLY` | Watch-list entries (restricted-list entries stay public) | Compliance officer, MLRO |
 | `VIP_CLIENTS` | Clients flagged VIP / sensitive; every view is recorded on the audit chain | COO, senior RM, MLRO |
 
-Only the MLRO holds **Barrier Override**. The tenant administrator (`GCADMIN`) is in no zone, so cannot open advisory
+Only the MLRO holds **Barrier Override**. The Compliance Officer and the MLRO hold **Wall-crossing Decisions**, so
+Compliance (`GCCOMP1`) approves crossings without being able to open what is behind the walls. The tenant administrator (`GCADMIN`) is in no zone, so cannot open advisory
 mandates or STRs, which is deliberate.
 
 ### Wall-crossings in the demo

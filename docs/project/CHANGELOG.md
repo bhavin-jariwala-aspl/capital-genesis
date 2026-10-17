@@ -11,6 +11,28 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — Tutorial videos, and fixes found while recording them (2026-10-15 → 2026-10-17)
+
+- **Twenty captioned tutorial videos** in `docs/demo/` (getting started + one end-to-end process per module), each
+  with an English subtitle track, chapters and `.srt`/`.vtt` files, and the Playwright scripts that re-record them
+  (`docs/demo/scripts/`). Recording drove every module through the UI as each persona; the problems it exposed were
+  fixed in the platform or the Genesis Capital pack rather than worked around. Highlights:
+- **Security.** `GET /auth/me` no longer returns the MFA secret, recovery codes or reset token. Rate limits and audit
+  IPs no longer trust a client-supplied `X-Forwarded-For`; set `TRUST_PROXY` behind a load balancer. Personal-data
+  Reveal works and is audited, and is limited to roles with `view_pii`. New operational permission
+  `wall_crossing_decide`: Compliance decides wall-crossings without seeing past the walls; nobody approves their own
+  request or a crossing for themselves.
+- **Platform.** `LABEL()` formula function; role-based home dashboards (Settings ▸ Home Page); several staff forms per
+  object (Edit-page tabs, `?form=`); stage-gate fields added to the edit form when missing; four-eyes stage gates;
+  workflow `for_each`, `create_reminder`, `route` and `{{now}}`/`{{this_month}}`; record actions with conditions and
+  input dialogs; lookups refresh dependent records; currency per record (`currency_field`); staff pickers; global
+  search ranks by record title and respects record access; CSV export with labels and filters; Forecast for Builder
+  objects; bootstrap batched (~600 queries → ~8); the installer clears the metadata cache, updates SLA policies in
+  place and recomputes changed formulas.
+- **Genesis Capital pack.** Margin calls, PLR notices, rate alerts, holdings, commissions, revenue posting, campaign
+  sign-off and attribution, referral routing and the approval matrix now work end to end as the user guide describes;
+  raw codes and requirement references removed from screens; realistic SLA demo data.
+
 ### Added — Client upload links, expert routing, subscriber distribution, website preview (2026-10-15)
 
 - **Document checklist status and secure upload links** (DOC-FR-04, LOAN-FR-07, KYC-FR-07). The record's Docs tab

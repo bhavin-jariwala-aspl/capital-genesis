@@ -169,6 +169,9 @@ class SegmentationService {
     if (crossing.requested_by && crossing.requested_by === decidedBy) {
       throw new AuthorizationError('A wall-crossing cannot be approved by the person who requested it');
     }
+    if (approve && crossing.employee_id && crossing.employee_id === decidedBy) {
+      throw new AuthorizationError('You cannot approve a wall-crossing that brings yourself over the wall');
+    }
     const days = Math.min(Math.max(Number(validDays) || 30, 1), 365);
     const validTo = approve ? new Date(Date.now() + days * 86_400_000) : null;
     const updated = await this.db.wallCrossing.update({

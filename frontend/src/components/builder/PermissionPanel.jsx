@@ -319,14 +319,14 @@ export function OperationalPermissionPanel({ entityType, className = '' }) {
   const roleLevelMap = Object.fromEntries((data.roles ?? []).map(r => [r.name, r.level]));
   // Information barriers bind every role, admins included, so the override is
   // granted per role and never implied by rank.
-  const isOverride = entityType === 'barrier_override';
+  const isOverride = entityType === 'barrier_override' || entityType === 'wall_crossing_decide';
   // Roles at level <= 3 are admin-tier and always have full access — locked in the UI.
   // An unknown level is not admin: never default a missing level to the top of the ladder.
   const isAdminLocked = (roleName) => {
     const level = roleLevelMap[roleName];
     return !isOverride && Number.isFinite(level) && level <= 3;
   };
-  const TITLES = { task: 'Task', activity: 'Activity', record: 'Record', barrier_override: 'Information barrier override' };
+  const TITLES = { task: 'Task', activity: 'Activity', record: 'Record', barrier_override: 'Information barrier override', wall_crossing_decide: 'Wall-crossing decisions' };
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -334,7 +334,13 @@ export function OperationalPermissionPanel({ entityType, className = '' }) {
         <Shield className="w-4 h-4 text-primary-500" />
         {TITLES[entityType] ?? entityType}{isOverride ? '' : ' Scope Permissions'}
       </div>
-      {isOverride && (
+      {entityType === 'wall_crossing_decide' && (
+        <p className="text-xs text-gray-500 dark:text-white/50">
+          Roles ticked here review and decide wall-crossing requests in Tools → Access &amp; Barriers (Compliance). It
+          does not let them see inside any barrier, and nobody can approve their own request.
+        </p>
+      )}
+      {entityType === 'barrier_override' && (
         <p className="text-xs text-gray-500 dark:text-white/50">
           Roles ticked here see records inside every barrier zone (Compliance, MLRO). Administrators are bound by
           barriers unless ticked. Prefer zone membership or a time-bound wall-crossing (Tools → Access &amp; Barriers).

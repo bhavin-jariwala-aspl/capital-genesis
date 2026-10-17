@@ -11,6 +11,7 @@ const OPERATIONAL_TABS = [
   { id: 'activity', label: 'Activity Permissions' },
   { id: 'record',   label: 'Record Permissions' },
   { id: 'barrier_override', label: 'Barrier Override' },
+  { id: 'wall_crossing_decide', label: 'Wall-crossing Decisions' },
 ];
 
 // ── Dashboard permission panel ────────────────────────────────────────────────

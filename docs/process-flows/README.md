@@ -1,17 +1,17 @@
-# Process Flows — Genesis CRM for Swan Capital
+# Process Flows — Genesis CRM for Genesis Capital
 
 These documents explain, in plain steps, how work moves through each module of the CRM from the first touch to the
 finished outcome. Each module has its own file. Start with the purpose document if you are new to the CRM.
 
 The demo workspace is branded **Genesis Capital**. Its six business units mirror a multi-entity financial-services
 group (lending, wealth, funds, securities, corporate advisory, forex). At go-live the names, letterheads, product
-sheets, rates and staff accounts become Swan Capital's own. The flows stay the same.
+sheets, rates and staff accounts become the client's own. The flows stay the same.
 
 ## Start here
 
 | Document | Read it to learn |
 |---|---|
-| [00 — Purpose: why Swan Capital uses this CRM](00-purpose-swan-capital.md) | What the CRM is for, who uses it and what it changes for Swan Capital |
+| [00 — Purpose: why Genesis Capital uses this CRM](00-purpose-genesis-capital.md) | What the CRM is for, who uses it and what it changes for Genesis Capital |
 
 ## Module process flows
 

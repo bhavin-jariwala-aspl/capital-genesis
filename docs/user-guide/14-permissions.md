@@ -29,7 +29,8 @@ The page opens with three top-level tabs across the top: **Operational (Tasks / 
 ### Operational permissions (tasks, activities, records)
 
 1. Open the **Operational** tab (selected by default).
-2. Choose a sub-tab: **Task Permissions**, **Activity Permissions**, **Record Permissions** or **Barrier Override**.
+2. Choose a sub-tab: **Task Permissions**, **Activity Permissions**, **Record Permissions**, **Barrier Override** or
+   **Wall-crossing Decisions**.
 3. You see one card per role. Admin-tier roles (level 3 or lower) are shown as "always full" and are locked.
 4. For each configurable role, set a scope for **View**, **Create**, **Edit**, and **Delete** using the
    dropdowns, plus an **Assign to** dropdown.
@@ -39,6 +40,9 @@ The page opens with three top-level tabs across the top: **Operational (Tasks / 
 role, administrators included, so nothing is ticked by default and admin roles are not locked here. Tick it only
 for roles such as Compliance or the MLRO. Each change is written to the tamper-evident audit chain. See
 [22. Business Units & Information Barriers](22-access-and-barriers.md).
+
+**Wall-crossing Decisions** works the same way: ticked roles review and decide wall-crossing requests in **Tools →
+Access & Barriers**. It does not let them see inside any barrier. Give it to Compliance.
 
 ### Dashboard permissions
 

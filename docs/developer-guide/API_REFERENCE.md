@@ -1310,7 +1310,9 @@ header widget (polls count + list, marks read).
 ## Access · `/api/access`
 
 Mounted from `backend/src/routes/access/index.js` (`SegmentationService`, `AuditChainService`). *Compliance*
-means an admin role or a role holding the `barrier_override` operational permission. All bodies are schema-validated.
+means an admin role or a role holding the `barrier_override` operational permission. Listing and deciding
+wall-crossings also accepts the `wall_crossing_decide` operational permission (it grants no view inside a barrier).
+All bodies are schema-validated.
 
 | Method & Path | Purpose / Relevance | Auth |
 |---|---|---|

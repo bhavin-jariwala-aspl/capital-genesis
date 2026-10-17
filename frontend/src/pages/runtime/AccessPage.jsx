@@ -219,6 +219,8 @@ function ZonesTab() {
 }
 
 /* ── Wall-crossings ─────────────────────────────────────────────────────── */
+const CROSSING_STATUS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', expired: 'Expired' };
+
 function CrossingsTab() {
   const qc = useQueryClient();
   const names = useEmployeeMap();
@@ -256,9 +258,10 @@ function CrossingsTab() {
             { key: 'employee', header: 'Who', render: (e, r) => e?.employee_name ?? r.employee_id },
             { key: 'reason', header: 'Reason', render: (v) => <span className="line-clamp-2 text-xs">{v}</span> },
             { key: 'requested_by', header: 'Asked by', render: (v) => names.get(v) ?? v ?? '—' },
-            { key: 'status', header: 'Status', render: (v, r) => <Badge variant={{ approved: 'success', rejected: 'danger', pending: 'warning' }[v] ?? 'secondary'}>{v}{r.valid_to && v === 'approved' ? ` · until ${fmtDate(r.valid_to)}` : ''}</Badge> },
+            { key: 'status', header: 'Status', render: (v, r) => <Badge variant={{ approved: 'success', rejected: 'danger', pending: 'warning' }[v] ?? 'secondary'}>{CROSSING_STATUS[v] ?? v}{r.valid_to && v === 'approved' ? ` · until ${fmtDate(r.valid_to)}` : ''}</Badge> },
             {
-              key: 'id', header: '', render: (id, r) => r.status === 'pending' && r.requested_by !== me?.employee_id && (
+              // Never the requester, and never a crossing for yourself (the server refuses both).
+              key: 'id', header: '', render: (id, r) => r.status === 'pending' && r.requested_by !== me?.employee_id && r.employee_id !== me?.employee_id && (
                 <div className="flex justify-end gap-1">
                   <Button size="xs" onClick={() => decide.mutate({ id, approve: true })}><CheckCircle2 className="mr-1 h-3 w-3" />Approve 30d</Button>
                   <Button size="xs" variant="ghost" onClick={() => decide.mutate({ id, approve: false })}>Reject</Button>

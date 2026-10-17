@@ -426,7 +426,7 @@ module.exports = async function builderRoutes(fastify) {
   });
 
   // ── OPERATIONAL PERMISSIONS ──────────────────────────────────────────────
-  // entity_type: task | activity | record | barrier_override
+  // entity_type: task | activity | record | barrier_override | wall_crossing_decide
 
   /**
    * GET /builder/permissions/operational
@@ -447,7 +447,7 @@ module.exports = async function builderRoutes(fastify) {
     const { defaultPermsForLevel } = require('../../services/permission.service');
     const NO_ACCESS = { view_scope: 'none', create_scope: 'none', edit_scope: 'none', delete_scope: 'none', assign_scope: 'none' };
     const merged = {};
-    for (const et of (entity_type ? [entity_type] : ['task', 'activity', 'barrier_override'])) {
+    for (const et of (entity_type ? [entity_type] : ['task', 'activity', 'barrier_override', 'wall_crossing_decide'])) {
       merged[et] = {};
       for (const role of roles) {
         const explicit = permissions.find(
@@ -455,7 +455,7 @@ module.exports = async function builderRoutes(fastify) {
         );
         // The barrier override is never implied by rank; an unknown level gets
         // the least-privileged defaults, never the admin ones.
-        const defaults = et === 'barrier_override'
+        const defaults = et === 'barrier_override' || et === 'wall_crossing_decide'
           ? NO_ACCESS
           : defaultPermsForLevel(Number.isFinite(role.level) ? role.level : Number.POSITIVE_INFINITY);
         merged[et][role.name] = explicit ?? {
@@ -480,7 +480,9 @@ module.exports = async function builderRoutes(fastify) {
 
     // `barrier_override`: a view_scope other than 'none' lets the role see
     // inside every information barrier (Compliance / MLRO).
-    const VALID_ENTITY_TYPES = ['task', 'activity', 'record', 'barrier_override'];
+    // `wall_crossing_decide`: may approve or reject wall-crossing requests
+    // (Compliance) — it does not let the role see inside any barrier.
+    const VALID_ENTITY_TYPES = ['task', 'activity', 'record', 'barrier_override', 'wall_crossing_decide'];
     if (!VALID_ENTITY_TYPES.includes(entityType)) {
       throw new ValidationError(`Invalid entity_type: ${entityType}`);
     }

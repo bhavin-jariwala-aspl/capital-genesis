@@ -14,7 +14,9 @@ const AuditChainService = require('../../services/audit-chain.service');
  * Units are administration (admins). Barriers belong to Compliance: zone
  * membership, insider lists, crossing decisions and the audit chain are open
  * to admins and to any role holding the `barrier_override` operational
- * permission. Any user may *request* a crossing.
+ * permission. Any user may *request* a crossing. Deciding crossings is the
+ * control room's job: roles holding the `wall_crossing_decide` operational
+ * permission (Compliance) list and decide them without seeing past the walls.
  */
 module.exports = async function accessRoutes(fastify) {
   const scope = new AccessScopeService(fastify.prisma);
@@ -26,6 +28,18 @@ module.exports = async function accessRoutes(fastify) {
     if (level <= ADMIN_THRESHOLD) return;
     const s = await scope.forViewer(req.user);
     if (!s.override) throw new AuthorizationError('Compliance access is required');
+  }
+
+  // Admins, barrier-override holders, or roles granted `wall_crossing_decide`.
+  async function requireCrossingDecider(req) {
+    const level = req.user?.role_level ?? ROLE_LEVEL[req.user?.role] ?? 999;
+    if (level <= ADMIN_THRESHOLD) return;
+    const s = await scope.forViewer(req.user);
+    if (s.override) return;
+    const grant = await fastify.prisma.operationalPermission.findFirst({
+      where: { entity_type: 'wall_crossing_decide', role_name: String(req.user?.role ?? ''), view_scope: { not: 'none' } },
+    });
+    if (!grant) throw new AuthorizationError('Compliance access is required');
   }
 
   const idSchema = { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } };
@@ -114,10 +128,10 @@ module.exports = async function accessRoutes(fastify) {
       req.user?.employee_id,
     ));
   });
-  fastify.get('/wall-crossings', { preHandler: [authenticate, requireCompliance] }, async (req) =>
+  fastify.get('/wall-crossings', { preHandler: [authenticate, requireCrossingDecider] }, async (req) =>
     ok(await svc.listCrossings({ status: req.query?.status })));
   fastify.post('/wall-crossings/:id/decide', {
-    preHandler: [authenticate, requireCompliance],
+    preHandler: [authenticate, requireCrossingDecider],
     schema: {
       params: idSchema,
       body: { type: 'object', required: ['approve'], properties: { approve: { type: 'boolean' }, valid_days: { type: 'integer', minimum: 1, maximum: 365 } }, additionalProperties: false },

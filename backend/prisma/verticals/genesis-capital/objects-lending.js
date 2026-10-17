@@ -246,6 +246,10 @@ const financialSpread = {
   forms: [{ name: 'financial_spread_create', label: 'Add a year', columns: 3, fields: ['credit_facility', 'period_end', 'basis', 'revenue', 'ebitda', 'depreciation', 'interest_expense', 'tax', 'net_profit', 'total_assets', 'total_debt', 'cash', 'equity', 'annual_debt_service'] }],
 };
 
+// Covenant metrics and test results — shown with their labels wherever a formula repeats them.
+const COVENANT_METRICS = o([['dscr', 'DSCR ≥'], ['net_debt_to_ebitda', 'Net debt / EBITDA ≤'], ['gearing', 'Gearing ≤'], ['interest_cover', 'Interest cover ≥'], ['audited_accounts', 'Audited accounts within 120 days'], ['insurance', 'Insurance in force']]);
+const COVENANT_RESULTS = o([['pass', 'Pass', '#10b981'], ['breach', 'Breach', '#ef4444'], ['pending', 'Pending', '#94a3b8']]);
+
 const covenant = {
   name: 'covenant',
   label: 'Covenant',
@@ -256,11 +260,11 @@ const covenant = {
   fields: [
     LK('credit_facility', 'Facility', 'credit_facility', { required: true, config: { show_in_list: true } }),
     SEL('covenant_type', 'Type', o([['financial', 'Financial'], ['information', 'Information'], ['negative_pledge', 'Negative pledge'], ['other', 'Other']]), { required: true }),
-    SEL('metric', 'Metric', o([['dscr', 'DSCR ≥'], ['net_debt_to_ebitda', 'Net debt / EBITDA ≤'], ['gearing', 'Gearing ≤'], ['interest_cover', 'Interest cover ≥'], ['audited_accounts', 'Audited accounts within 120 days'], ['insurance', 'Insurance in force']]), LIST),
+    SEL('metric', 'Metric', COVENANT_METRICS, LIST),
     F('threshold', 'Threshold', 'decimal', LIST),
     SEL('frequency', 'Test frequency', o([['quarterly', 'Quarterly'], ['semi_annual', 'Semi-annual'], ['annual', 'Annual']]), { default: 'annual' }),
     F('next_test_date', 'Next test date', 'date', LIST),
-    FX('last_result', 'Last result', "LOOKUP('covenant_test', 'covenant', id, 'result', 'test_date')", { type: 'string', list: true }),
+    { ...FX('last_result', 'Last result', "LOOKUP('covenant_test', 'covenant', id, 'result', 'test_date')", { type: 'string', list: true }), options: COVENANT_RESULTS },
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),
     FX('name', 'Covenant', "CONCAT(credit_facility.facility_no, ' · ', LABEL(metric), ' ', threshold)", { type: 'string' }),
   ],
@@ -280,11 +284,11 @@ const covenantTest = {
     F('test_date', 'Test date', 'date', { required: true, config: { show_in_list: true } }),
     F('certificate_received', 'Compliance certificate received', 'checkbox'),
     F('actual_value', 'Actual value', 'decimal', LIST),
-    FX('metric', 'Metric', 'covenant.metric', { type: 'string' }),
+    { ...FX('metric', 'Metric', 'covenant.metric', { type: 'string' }), options: COVENANT_METRICS },
     FX('threshold', 'Threshold', 'covenant.threshold'),
-    FX('result', 'Result',
+    { ...FX('result', 'Result',
       "IF(ISBLANK(actual_value), 'pending', IF(IN(metric, 'dscr', 'interest_cover'), IF(actual_value >= threshold, 'pass', 'breach'), IF(IN(metric, 'net_debt_to_ebitda', 'gearing'), IF(actual_value <= threshold, 'pass', 'breach'), IF(certificate_received, 'pass', 'breach'))))",
-      { type: 'string', list: true }),
+      { type: 'string', list: true }), options: COVENANT_RESULTS },
     SEL('waiver', 'Waiver', o([['none', 'None'], ['requested', 'Requested'], ['granted', 'Granted', '#10b981'], ['refused', 'Refused', '#ef4444']]), { default: 'none' }),
     F('waiver_terms', 'Waiver terms / remedy', 'textarea'),
     FX('business_unit', 'Business unit', "'LND'", { type: 'string' }),

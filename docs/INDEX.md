@@ -87,8 +87,11 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 **"...learn to use the Genesis Capital CRM, or look up a term"**
 → [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md)
 
-**"...follow each module's end-to-end process flow, or explain the CRM's purpose to Swan Capital"**
-→ [process-flows/README.md](process-flows/README.md) (purpose: [process-flows/00-purpose-swan-capital.md](process-flows/00-purpose-swan-capital.md))
+**"...follow each module's end-to-end process flow, or explain the CRM's purpose to Genesis Capital"**
+→ [process-flows/README.md](process-flows/README.md) (purpose: [process-flows/00-purpose-genesis-capital.md](process-flows/00-purpose-genesis-capital.md))
+
+**"...watch how each module is used, end to end (captioned tutorial videos)"**
+→ [demo/README.md](demo/README.md)
 
 **"...present the Genesis Capital CRM to a client, and prepare for their questions"**
 → [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md)
@@ -272,6 +275,9 @@ and [→ Meta Ads](admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
 - [GENESIS-CAPITAL/genesis-capital-user-guide.md](GENESIS-CAPITAL/genesis-capital-user-guide.md) —
   How Genesis staff use the CRM: navigation, records, approvals, documents, every module and journey, and a glossary of
   every business and CRM term
+- [demo/README.md](demo/README.md) —
+  Twenty captioned tutorial videos: getting started and one end-to-end process per module, with chapters and
+  subtitle files, and the scripts that re-record them
 - [GENESIS-CAPITAL/DEMO_PITCH.md](GENESIS-CAPITAL/DEMO_PITCH.md) —
   Running a client demonstration: scenes with links, talk tracks and expected questions
 - [GENESIS-CAPITAL/CLIENT_SANDBOX.md](GENESIS-CAPITAL/CLIENT_SANDBOX.md) —

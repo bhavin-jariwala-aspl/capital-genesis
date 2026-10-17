@@ -787,6 +787,7 @@ automatically, whatever language you work in.
 | **Barrier zone** | A wall in the CRM: ADV_PRIVATE, MLRO_STR, COMPLIANCE_ONLY, VIP_CLIENTS. |
 | **Wall-crossing** | Time-limited, approved permission to go over a wall. |
 | **Barrier override** | Permission to see past every wall (MLRO only). |
+| **Wall-crossing decisions** | Permission to approve or reject wall-crossing requests without seeing past the walls (Compliance, MLRO). |
 | **Gifts & hospitality** | Gifts given or received; above MUR 5,000 Compliance decides. |
 | **PA dealing** | Staff personal-account dealing; pre-cleared for two business days. |
 | **DSR (data)** | Data subject request: access, rectification, erasure, portability, objection — answered within 30 days. |

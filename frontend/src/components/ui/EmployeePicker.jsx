@@ -293,7 +293,10 @@ export function StaffPicker({ value, onChange, label, error, help, disabled, pla
 
 /** useEmployeeMap — returns a Map<employee_id, employee_name> for quick lookups */
 export function useEmployeeMap() {
+  // The staff directory is readable by everyone; the full employee list (with
+  // inactive staff) only by admins — use it on top when it is available.
+  const { data: staff } = useStaff();
   const { data: employees } = useEmployees();
-  const map = new Map((employees ?? []).map(e => [e.employee_id, e.employee_name]));
-  return map;
+  const rows = [...(Array.isArray(staff) ? staff : staff?.data ?? []), ...(employees ?? [])];
+  return new Map(rows.map(e => [e.employee_id, e.employee_name]));
 }
