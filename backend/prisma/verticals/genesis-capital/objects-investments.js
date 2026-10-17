@@ -21,7 +21,7 @@ const mandateReview = {
   label: 'Mandate Review',
   plural_label: 'Mandate Reviews',
   icon: 'CalendarCheck',
-  description: 'Review cycle per mandate with a preparation pack, suitability check and minutes (WLT-FR-04).',
+  description: 'Review cycle per mandate with a preparation pack, suitability check and minutes.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('wealth_mandate', 'Mandate', 'wealth_mandate', { required: true, config: { show_in_list: true } }),
@@ -55,7 +55,7 @@ const aumSnapshot = {
   label: 'AUM Snapshot',
   plural_label: 'AUM Snapshots',
   icon: 'BarChart3',
-  description: 'Month-end market value by asset class, performance and flows from the PMS (WLT-FR-03).',
+  description: 'Month-end market value by asset class, performance and flows from the PMS.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('wealth_mandate', 'Mandate', 'wealth_mandate', { required: true, config: { show_in_list: true } }),
@@ -82,7 +82,7 @@ const saacDecision = {
   label: 'SAAC Decision',
   plural_label: 'SAAC Decisions',
   icon: 'Gavel',
-  description: 'Strategic Asset Allocation Committee decisions and their impact on model portfolios (WLT-FR-06).',
+  description: 'Strategic Asset Allocation Committee decisions and their impact on model portfolios.',
   config: { title_field: 'title' },
   fields: [
     F('title', 'Decision', 'text', { required: true, config: { show_in_list: true } }),
@@ -102,7 +102,7 @@ const fund = {
   label: 'Fund',
   plural_label: 'Funds',
   icon: 'Landmark',
-  description: 'Genesis Global Funds fund master (FND-FR-01).',
+  description: 'Genesis Global Funds fund master.',
   config: { title_field: 'name' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
@@ -133,7 +133,7 @@ const fundShareClass = {
   label: 'Share Class',
   plural_label: 'Fund Share Classes',
   icon: 'Layers',
-  description: 'Class, currency, ISIN, risk rating, minimum, fees, dealing and cut-off; latest NAV from the TA (FND-FR-01, FND-FR-03).',
+  description: 'Class, currency, ISIN, risk rating, minimum, fees, dealing and cut-off; latest NAV from the TA.',
   config: { title_field: 'name' },
   fields: [
     F('class_code', 'Class code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
@@ -164,7 +164,7 @@ const navHistory = {
   label: 'NAV',
   plural_label: 'NAV History',
   icon: 'LineChart',
-  description: 'Net asset value per share class per dealing date, synced from the transfer agent (FND-FR-03).',
+  description: 'Net asset value per share class per dealing date, synced from the transfer agent.',
   config: { title_field: 'name' },
   fields: [
     LK('share_class', 'Share class', 'fund_share_class', { required: true, config: { show_in_list: true } }),
@@ -182,7 +182,7 @@ const fundHolding = {
   label: 'Fund Holding',
   plural_label: 'Fund Holdings',
   icon: 'Wallet',
-  description: 'Units held per investor per share class, valued at the latest NAV (FND-FR-03).',
+  description: 'Units held per investor per share class, valued at the latest NAV.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Investor', 'party', { required: true, config: { show_in_list: true } }),
@@ -211,7 +211,7 @@ const fundCampaign = {
   label: 'Fund Campaign',
   plural_label: 'Fund Campaigns',
   icon: 'Megaphone',
-  description: 'Subscription window, target raise, allocation tracking and maturity plan — e.g. the Fixed Maturity Bond 2029 (FND-FR-04).',
+  description: 'Subscription window, target raise, allocation tracking and maturity plan — e.g. the Fixed Maturity Bond 2029.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     F('name', 'Campaign', 'text', { required: true, config: { show_in_list: true } }),
@@ -237,7 +237,7 @@ const distributionNotice = {
   label: 'Distribution Notice',
   plural_label: 'Dividend & Distribution Notices',
   icon: 'Bell',
-  description: 'Dividend and distribution notices to unitholders (FND-FR-06).',
+  description: 'Dividend and distribution notices to unitholders.',
   config: { title_field: 'name' },
   fields: [
     LK('share_class', 'Share class', 'fund_share_class', { required: true, config: { show_in_list: true } }),
@@ -259,7 +259,7 @@ const clientOrder = {
   label: 'Client Order',
   plural_label: 'Order Intake Log',
   icon: 'ScrollText',
-  description: 'Time-stamped phone / email instructions handed to the OMS, checked against the restricted list (SEC-FR-03, CMP-FR-03).',
+  description: 'Time-stamped phone / email instructions handed to the OMS, checked against the restricted list.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('order_ref', 'Order ref.', 'OL-'),
@@ -300,7 +300,7 @@ const ioiEntry = {
   label: 'Indication of Interest',
   plural_label: 'IPO / Bond Book',
   icon: 'HandCoins',
-  description: 'Investor indications of interest for underwritten issues (SEC-FR-04). Shared with advisory bookbuilding through the investor target, subject to barrier rules.',
+  description: 'Investor indications of interest for underwritten issues. Shared with advisory bookbuilding through the investor target, subject to barrier rules.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     F('issue_name', 'Issue', 'text', { required: true, config: { show_in_list: true } }),
@@ -320,7 +320,7 @@ const researchPublication = {
   label: 'Research & Market Note',
   plural_label: 'Research & Market Statistics',
   icon: 'Newspaper',
-  description: 'Weekly market highlights, market statistics and research, distributed to opted-in subscribers (SEC-FR-05, MKT-FR-04).',
+  description: 'Weekly market highlights, market statistics and research, distributed to opted-in subscribers.',
   config: { title_field: 'title' },
   fields: [
     F('title', 'Title', 'text', { required: true, config: { show_in_list: true } }),

@@ -33,7 +33,7 @@ const workflows = [
   // ── Enquiries ───────────────────────────────────────────────────────────────
   {
     object: 'enquiry', name: 'genesis_enquiry_acknowledgement', label: 'Enquiry — acknowledgement (EN/FR)',
-    description: 'Every new enquiry gets an acknowledgement in the enquirer\'s language with product-specific next steps (LEAD-FR-12).',
+    description: 'Every new enquiry gets an acknowledgement in the enquirer\'s language with product-specific next steps.',
     trigger_type: 'on_create',
     steps: [
       trig('A new enquiry from any channel'),
@@ -43,7 +43,7 @@ const workflows = [
   },
   {
     object: 'enquiry', name: 'genesis_enquiry_conversion', label: 'Enquiry — convert to Party, relationship, KYC and application',
-    description: 'Moving an enquiry to Converted creates (or links) the Party, opens the entity relationship and the KYC case, records consent and — for retail loans — starts the loan application (LEAD-FR-09).',
+    description: 'Moving an enquiry to Converted creates (or links) the Party, opens the entity relationship and the KYC case, records consent and — for retail loans — starts the loan application.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -76,7 +76,7 @@ const workflows = [
   // ── KYC ─────────────────────────────────────────────────────────────────────
   {
     object: 'kyc_case', name: 'genesis_kyc_approval', label: 'KYC — risk-based approval (MLRO for high risk)',
-    description: 'Pending approval routes high-risk / PEP cases to the MLRO and the rest to Compliance; four eyes, decision recorded and dated (KYC-FR-01, KYC-FR-05).',
+    description: 'Pending approval routes high-risk / PEP cases to the MLRO and the rest to Compliance; four eyes, decision recorded and dated.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -97,7 +97,7 @@ const workflows = [
   },
   {
     object: 'kyc_case', name: 'genesis_kyc_periodic_review', label: 'KYC — periodic review scheduler',
-    description: 'Daily: approved cases whose review falls due within 30 days (1 / 3 / 5 years by risk) open a periodic review case (KYC-FR-06).',
+    description: 'Daily: approved cases whose review falls due within 30 days (1 / 3 / 5 years by risk) open a periodic review case.',
     ...DAILY,
     steps: [
       trig('Daily sweep'),
@@ -111,7 +111,7 @@ const workflows = [
   },
   {
     object: 'party', name: 'genesis_id_expiry', label: 'Party — ID document expiring',
-    description: 'Thirty days before an ID document expires, the client is asked for a new one and the RM is told (KYC-FR-07).',
+    description: 'Thirty days before an ID document expires, the client is asked for a new one and the RM is told.',
     ...DAILY,
     steps: [
       trig('Daily sweep'),
@@ -122,7 +122,7 @@ const workflows = [
   },
   {
     object: 'str_report', name: 'genesis_str_raised', label: 'STR — alert the MLRO',
-    description: 'A new internal STR alerts the MLRO only — no details in the alert, and the record itself sits behind the MLRO barrier (KYC-FR-10).',
+    description: 'A new internal STR alerts the MLRO only — no details in the alert, and the record itself sits behind the MLRO barrier.',
     trigger_type: 'on_create',
     steps: [
       trig('A new internal STR'),
@@ -133,7 +133,7 @@ const workflows = [
   // ── Suitability ─────────────────────────────────────────────────────────────
   {
     object: 'risk_profile', name: 'genesis_questionnaire_lead', label: 'Questionnaire — create an enquiry',
-    description: 'A website questionnaire with no client attached becomes a Wealth enquiry carrying the provisional profile (LEAD-FR-11).',
+    description: 'A website questionnaire with no client attached becomes a Wealth enquiry carrying the provisional profile.',
     trigger_type: 'on_create',
     steps: [
       trig('A new risk profile'),
@@ -149,7 +149,7 @@ const workflows = [
   // ── Retail lending ──────────────────────────────────────────────────────────
   {
     object: 'loan_application', name: 'genesis_loan_documents', label: 'Loan — request documents',
-    description: 'Documents pending sends the client the product checklist (LOAN-FR-07).',
+    description: 'Documents pending sends the client the product checklist.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -160,7 +160,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_credit_approval', label: 'Loan — approval matrix',
-    description: 'Credit approval routes by amount: ≤ MUR 5m Loans Manager, ≤ MUR 20m Credit Committee, above that Board Credit Committee. Four eyes; the decision moves the application on (LOAN-FR-09).',
+    description: 'Credit approval routes by amount: ≤ MUR 5m Loans Manager, ≤ MUR 20m Credit Committee, above that Board Credit Committee. Four eyes; the decision moves the application on.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -181,7 +181,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_offer', label: 'Loan — offer letter',
-    description: 'Offer issued generates the offer letter on the application and emails the client; the offer lapses after 30 days (LOAN-FR-10).',
+    description: 'Offer issued generates the offer letter on the application and emails the client; the offer lapses after 30 days.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -194,7 +194,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_offer_lapse', label: 'Loan — lapse unaccepted offers',
-    description: 'Daily: an offer not accepted by its validity date lapses (LOAN-FR-10).',
+    description: 'Daily: an offer not accepted by its validity date lapses.',
     ...DAILY,
     steps: [
       trig('Daily sweep'),
@@ -207,7 +207,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_disbursement', label: 'Loan — disbursement maker-checker',
-    description: 'Ready for disbursement needs a checker other than the maker; on approval the LMS hand-off event is sent (LOAN-FR-12, X-05).',
+    description: 'Ready for disbursement needs a checker other than the maker; on approval the LMS hand-off event is sent.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -222,7 +222,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_disbursed', label: 'Loan — disbursed: close and cross-sell',
-    description: 'Disbursement closes the application and, for larger real-estate loans, refers the client to Wealth (LOAN-FR-17, XS-FR-02).',
+    description: 'Disbursement closes the application and, for larger real-estate loans, refers the client to Wealth.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -237,7 +237,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_declined', label: 'Loan — decline letter',
-    description: 'A declined application gets a compliant decline letter with the re-application date (LOAN-FR-15).',
+    description: 'A declined application gets a compliant decline letter with the re-application date.',
     ...STAGE,
     steps: [
       trig('Stage change'),
@@ -251,7 +251,7 @@ const workflows = [
   // ── Service & complaints ────────────────────────────────────────────────────
   {
     object: 'service_request', name: 'genesis_service_acknowledgement', label: 'Service — acknowledge (complaints to Compliance)',
-    description: 'Every request is acknowledged in the client\'s language; complaints are acknowledged within the regulatory time and flagged to Compliance (SR-FR-03).',
+    description: 'Every request is acknowledged in the client\'s language; complaints are acknowledged within the regulatory time and flagged to Compliance.',
     trigger_type: 'on_create',
     steps: [
       trig('A new request or complaint'),
@@ -311,7 +311,7 @@ const H = 60;
 const slaPolicies = [
   {
     name: 'Enquiry — speed to lead', object: 'enquiry',
-    description: 'First contact within the product\'s routing target (4 business hours by default); resolve (convert or close) within 10 business days (LEAD-FR-07).',
+    description: 'First contact within the product\'s routing target (4 business hours by default); resolve (convert or close) within 10 business days.',
     config: { first_response_stages: ['new'], closed_stages: ['converted', 'disqualified'], canceled_stages: ['nurture'], target_hours_fields: { first_response: 'first_contact_hours' } },
     targets: [{ metric: 'first_response', minutes: 4 * H, warning_pct: 75 }, { metric: 'resolution', minutes: 10 * 8 * H }],
     escalations: [
@@ -322,7 +322,7 @@ const slaPolicies = [
   },
   {
     name: 'Loan — application to decision', object: 'loan_application',
-    description: 'Picked up within a business day; credit decision and disbursement inside 20 business days (LOAN-FR-14).',
+    description: 'Picked up within a business day; credit decision and disbursement inside 20 business days.',
     config: { first_response_stages: ['enquiry', 'pre_qualified'], closed_stages: ['disbursed', 'declined'], canceled_stages: ['withdrawn', 'lapsed'] },
     targets: [{ metric: 'first_response', minutes: 8 * H }, { metric: 'resolution', minutes: 20 * 8 * H, warning_pct: 70 }],
     escalations: [{ metric: '*', trigger: 'warning', action: 'notify_owner' }, { metric: '*', trigger: 'breach', action: 'notify_manager' }],
@@ -336,7 +336,7 @@ const slaPolicies = [
   },
   {
     name: 'Complaints — FSC register', object: 'service_request', order_index: 0,
-    description: 'Complaints: acknowledged within 1 business day, final response within 15 business days (SR-FR-03).',
+    description: 'Complaints: acknowledged within 1 business day, final response within 15 business days.',
     conditions: [{ field: 'request_type', op: 'equals', value: 'complaint' }],
     config: { first_response_stages: ['new'], closed_stages: ['resolved', 'closed'], dimension_field: 'priority' },
     pause_stages: ['awaiting_client'],
@@ -359,7 +359,7 @@ const slaPolicies = [
   },
   {
     name: 'Referral — accept within a day', object: 'referral',
-    description: 'A cross-entity referral is accepted within one business day (XS-FR-03).',
+    description: 'A cross-entity referral is accepted within one business day.',
     config: { first_response_stages: ['submitted'], closed_stages: ['won', 'lost'] },
     targets: [{ metric: 'first_response', minutes: 8 * H }, { metric: 'resolution', minutes: 30 * 8 * H }],
     escalations: [{ metric: 'first_response', trigger: 'breach', action: 'notify_manager' }],

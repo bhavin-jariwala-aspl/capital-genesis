@@ -99,3 +99,35 @@ describe('stage moves in the user\'s words, and mirrored status fields', () => {
     expect(db.recordFieldValue.createMany).not.toHaveBeenCalled();
   });
 });
+
+describe('four eyes on a stage (maker-checker)', () => {
+  function fourEyes(data = {}) {
+    const built = svc({ stageConfig: { required_fields: ['approved_by'], four_eyes: { field: 'approved_by' } }, data });
+    built.db.employee = { findUnique: jest.fn(async () => ({ employee_name: 'Sophie Lagesse' })) };
+    return built;
+  }
+
+  it('stops the creator moving the record to the stage', async () => {
+    const { s, db } = fourEyes({ approved_by: 'Rajiv Doorgakant — ALCO' });
+    await expect(s.updateRecordStage(1, 20, 'U', null)).rejects.toThrow(/Four eyes/);
+    expect(db.record.update).not.toHaveBeenCalled();
+  });
+
+  it('stops anyone when the approver named is the creator', async () => {
+    const { s, db } = fourEyes({ approved_by: 'Sophie Lagesse — ALCO of 14 Oct' });
+    await expect(s.updateRecordStage(1, 20, 'CHECKER', null)).rejects.toThrow(/approver cannot be the person who created/);
+    expect(db.record.update).not.toHaveBeenCalled();
+  });
+
+  it('lets a second person approve, naming someone else', async () => {
+    const { s, db } = fourEyes({ approved_by: 'Rajiv Doorgakant — ALCO' });
+    await s.updateRecordStage(1, 20, 'CHECKER', null);
+    expect(db.record.update).toHaveBeenCalled();
+  });
+
+  it('applies to bulk moves by the creator', async () => {
+    const { s, db } = fourEyes({ approved_by: 'Rajiv Doorgakant' });
+    await expect(s.bulkUpdateStage([1], 20, 'U', null)).rejects.toThrow(/Four eyes/);
+    expect(db.record.updateMany).not.toHaveBeenCalled();
+  });
+});

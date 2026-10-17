@@ -160,7 +160,7 @@ const documentTemplates = [
 <p>Under the Data Protection Act 2017 you may ask what information we used. Your relationship manager will gladly discuss alternatives.</p>`),
   },
   {
-    name: 'plr_change_notice', entity_type: 'plr_notification', output_category: 'correspondence', description: 'Personalised notice of a Genesis PLR change to a variable-rate borrower (SERV-FR-02) — generated for each PLR notice.',
+    name: 'plr_change_notice', entity_type: 'plr_notification', output_category: 'correspondence', description: 'Personalised notice of a Genesis PLR change to a variable-rate borrower — generated for each PLR notice.',
     body: letter(`<h2>Change in the Genesis Prime Lending Rate</h2><p>Dear {{party_name}},</p>
 <p>Following the decision of our Asset and Liability Committee, the Genesis Prime Lending Rate changes from <strong>{{effective_from}}</strong>. Your loan <strong>{{lms_account_no}}</strong> is linked to the PLR, so its rate and instalment change on that date:</p>
 <table style="border-collapse:collapse" cellpadding="6">
@@ -231,7 +231,7 @@ const CUR = { appearance: { format: 'currency_compact' } };
 const dashboards = [
   {
     name: 'genesis_group_executive', label: 'Group Executive', is_default: true,
-    description: 'New business, pipeline and service across all six entities (RPT-01, RPT-02).',
+    description: 'New business, pipeline and service across all six entities.',
     widgets: [
       W('metric', 'Open enquiries', 'kpi', { object: 'enquiry', filters: [{ field: 'stage', op: 'in', value: 'new,contacted,qualified' }] }),
       W('metric', 'Loan pipeline (MUR)', 'kpi', { object: 'loan_application', metric: 'sum', field: 'loan_amount_mur', filters: [{ field: 'stage', op: 'nin', value: 'disbursed,declined,withdrawn,lapsed' }] }),
@@ -246,7 +246,7 @@ const dashboards = [
     ],
   },
   {
-    name: 'genesis_lending', label: 'Lending', description: 'Origination pipeline, product mix and outcomes (RPT-03).',
+    name: 'genesis_lending', label: 'Lending', description: 'Origination pipeline, product mix and outcomes.',
     widgets: [
       W('metric', 'Applications in progress', 'kpi', { object: 'loan_application', filters: [{ field: 'stage', op: 'nin', value: 'disbursed,declined,withdrawn,lapsed' }] }),
       W('metric', 'Average DSR %', 'kpi', { object: 'loan_application', metric: 'avg', field: 'dsr' }),
@@ -259,7 +259,7 @@ const dashboards = [
   },
   {
     name: 'genesis_compliance', label: 'Compliance',
-    description: 'KYC status, risk distribution, reviews due, complaints and consents (RPT-09). Numbers respect each viewer\'s access scope.',
+    description: 'KYC status, risk distribution, reviews due, complaints and consents. Numbers respect each viewer\'s access scope.',
     widgets: [
       W('metric', 'KYC awaiting approval', 'kpi', { object: 'kyc_case', filters: [{ field: 'stage', op: 'eq', value: 'pending_approval' }] }),
       W('metric', 'Reviews due (30 days)', 'kpi', { object: 'kyc_case', filters: [{ field: 'review_due', op: 'eq', value: 'true' }] }),

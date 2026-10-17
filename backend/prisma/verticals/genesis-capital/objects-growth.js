@@ -62,7 +62,7 @@ const opportunity = {
   label: 'Opportunity',
   plural_label: 'Opportunities',
   icon: 'Sparkles',
-  description: 'Unified opportunity per BU and product with probability, forecast category and MUR value (XS-FR-01, XS-FR-04).',
+  description: 'Unified opportunity per BU and product with probability, forecast category and MUR value.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('opportunity_no', 'Opportunity No.', 'OPP-'),
@@ -98,7 +98,7 @@ const nbaSuggestion = {
   label: 'Next-Best Action',
   plural_label: 'Next-Best Actions',
   icon: 'Lightbulb',
-  description: 'Suggestions raised by the next-best-action rules (Builder workflows), worked by the RM (XS-FR-02).',
+  description: 'Suggestions raised by the next-best-action rules (Builder workflows), worked by the RM.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Client', 'party', { required: true, config: { show_in_list: true } }),
@@ -128,7 +128,7 @@ const meetingNote = {
   label: 'Meeting Note',
   plural_label: 'Meeting Notes',
   icon: 'NotebookPen',
-  description: 'Structured notes for discovery, review and credit visits; feeds the RM workbench and team views (RM-FR-02, RM-FR-06).',
+  description: 'Structured notes for discovery, review and credit visits; feeds the RM workbench and team views.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Client', 'party', { required: true, config: { show_in_list: true } }),
@@ -153,7 +153,7 @@ const rmTarget = {
   label: 'RM Target',
   plural_label: 'RM Targets & Quotas',
   icon: 'Trophy',
-  description: 'Quarterly targets per RM and BU in MUR, measured against won opportunities and revenue (XS-FR-04, RPT-10).',
+  description: 'Quarterly targets per RM and BU in MUR, measured against won opportunities and revenue.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     F('rm', 'RM (employee id)', 'text', { required: true, config: { show_in_list: true, employee: true } }),
@@ -324,7 +324,7 @@ const introducer = {
   label: 'Introducer',
   plural_label: 'Introducers & Partners',
   icon: 'Handshake',
-  description: 'Introducer onboarding: KYC, agreement, allowed products and commission plan (INT-FR-01). Includes Genesis insurance agents (INT-FR-04).',
+  description: 'Introducer onboarding: KYC, agreement, allowed products and commission plan. Includes Genesis insurance agents.',
   // Portal sign-in is for active introducers only: an applicant or a suspended partner cannot submit referrals.
   config: { title_field: 'name', portal_signin_stages: ['active'] },
   fields: [
@@ -350,7 +350,7 @@ const introducer = {
     stages: [
       stage('applied', 'Applied', '#94a3b8'), stage('kyc', 'KYC', '#6366f1'),
       stage('agreement', 'Agreement', '#3b82f6', { required_fields: ['agreement_signed_on', 'commission_pct'] }),
-      stage('active', 'Active', '#10b981', { entry_rule: { expression: "kyc_status = 'approved'", message: 'Activate an introducer only after KYC approval (INT-FR-01).' } }),
+      stage('active', 'Active', '#10b981', { entry_rule: { expression: "kyc_status = 'approved'", message: 'Activate an introducer only after KYC approval.' } }),
       stage('suspended', 'Suspended', '#ef4444'),
     ],
   },
@@ -361,7 +361,7 @@ const introducerReferral = {
   label: 'Introducer Referral',
   plural_label: 'Introducer Referrals',
   icon: 'Send',
-  description: 'Referrals submitted by introducers (portal or unique link) with the attribution protection window (INT-FR-02).',
+  description: 'Referrals submitted by introducers (portal or unique link) with the attribution protection window.',
   config: { title_field: 'name' },
   fields: [
     AUTO('referral_no', 'Referral No.', 'IR-'),
@@ -396,7 +396,7 @@ const commissionEntry = {
   label: 'Commission',
   plural_label: 'Commissions',
   icon: 'Coins',
-  description: 'Introducer commission on funded or disbursed volume with clawback (INT-FR-03).',
+  description: 'Introducer commission on funded or disbursed volume with clawback.',
   config: { title_field: 'name' },
   fields: [
     LK('introducer', 'Introducer', 'introducer', { required: true, config: { show_in_list: true } }),
@@ -418,7 +418,7 @@ const revenueEntry = {
   label: 'Revenue',
   plural_label: 'Revenue Ledger',
   icon: 'Receipt',
-  description: 'Revenue lines by party, RM, BU and product with split credit for referrals (REV-FR-01/02). Interest income is an LMS summary only.',
+  description: 'Revenue lines by party, RM, BU and product with split credit for referrals. Interest income is an LMS summary only.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Client', 'party', { config: { show_in_list: true } }),

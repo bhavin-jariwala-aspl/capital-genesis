@@ -69,9 +69,9 @@ const SEVEN_YEARS = 7 * 365;
 const OFFICE = ['application/pdf', 'image/jpeg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 const documentCategories = [
   { code: 'tax_self_cert', label: 'FATCA / CRS self-certification', color: 'red', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 10, review_required: true },
-  { code: 'credit_bureau', label: 'MCIB credit report', color: 'orange', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 10, description: 'Pulled with the applicant\'s consent (LOAN-FR-06).' },
+  { code: 'credit_bureau', label: 'MCIB credit report', color: 'orange', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 10, description: 'Pulled with the applicant\'s consent.' },
   { code: 'covenant_certificates', label: 'Compliance certificates', color: 'lime', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 15 },
-  { code: 'client_reports', label: 'Monthly client reports', color: 'indigo', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 25, description: 'PMS-generated reports distributed by secure link (WLT-FR-05).' },
+  { code: 'client_reports', label: 'Monthly client reports', color: 'indigo', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 25, description: 'PMS-generated reports distributed by secure link.' },
   { code: 'fund_documents', label: 'Prospectus & factsheets', color: 'violet', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 25 },
   { code: 'nda', label: 'Non-disclosure agreements', color: 'pink', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 10, description: 'Attach to the investor target or mandate — barrier-protected.' },
   { code: 'insider_lists', label: 'Insider list exports', color: 'rose', retention_days: SEVEN_YEARS, allowed_mime: OFFICE, max_file_mb: 10 },
@@ -115,7 +115,7 @@ const documentTemplates = [
     body: letter('Genesis Wealth Managers Ltd', 'FSC licences IX09000018 · CM12000023 · DF09000007', '<h2>Investment Policy Statement — {{mandate_no}}</h2><p>Objective and risk profile follow model portfolio <strong>{{model_portfolio}}</strong>. Strategic allocation as per the model; rebalancing within ±5% bands. Benchmark: {{benchmark}}. Constraints: {{esg_restrictions}}. Liquidity and reporting as agreed at the review cycle ({{review_frequency}}).</p>') },
   { name: 'nda', entity_type: 'investor_target', output_category: 'nda', description: 'Mutual non-disclosure agreement for a raise (referenced by code name).',
     body: letter('Genesis Corporate Advisors Ltd', 'FSC IZ19000019', '<h2>Non-disclosure agreement — {{name}}</h2><p>The recipient will keep confidential all information about the transaction, use it only to evaluate the opportunity, and acknowledges it may constitute inside information under the Securities Act 2005.</p>') },
-  { name: 'security_discharge', entity_type: 'collateral', output_category: 'security_docs', description: 'Release of security on loan closure (COLL-FR-06).',
+  { name: 'security_discharge', entity_type: 'collateral', output_category: 'security_docs', description: 'Release of security on loan closure.',
     body: letter('Genesis Life Ltd — Loans business line', 'Regulated by the Financial Services Commission (FSC IS10000013)', '<h2>Release of security — {{collateral_no}}</h2><p>We confirm that the security over <strong>{{description}}</strong> (title {{title_reference}}) is released following full repayment.</p>') },
   { name: 'kyc_refresh_request_letter', entity_type: 'kyc_case', output_category: 'correspondence', description: 'Periodic KYC refresh request.',
     body: letter('Genesis Capital', 'Think. Multiply.', '<h2>Updating your records</h2><p>Dear {{party_name}},</p><p>As part of our periodic review we ask you to confirm your details and provide an up-to-date identity document and proof of address.</p>') },
@@ -165,7 +165,7 @@ const OPEN_LOAN = [{ field: 'stage', op: 'nin', value: 'disbursed,declined,withd
 const dashboards = [
   {
     name: 'genesis_group_executive', label: 'Group Executive', is_default: true,
-    description: 'New business, assets, loan book, revenue and cross-sell across all six entities (RPT-01).',
+    description: 'New business, assets, loan book, revenue and cross-sell across all six entities.',
     widgets: [
       W('metric', 'Total relationship value (MUR)', 'kpi', { object: 'party', metric: 'sum', field: 'total_relationship_value' }, { config: { format: 'currency_compact' } }),
       W('metric', 'Wealth AUM (MUR)', 'kpi', { object: 'wealth_mandate', metric: 'sum', field: 'aum_mur' }, { config: { format: 'currency_compact' } }),
@@ -183,7 +183,7 @@ const dashboards = [
   },
   {
     name: 'genesis_lead_funnel', label: 'Lead Funnel',
-    description: 'Enquiries by channel, product and entity; conversion and calculator sessions (RPT-02).',
+    description: 'Enquiries by channel, product and entity; conversion and calculator sessions.',
     widgets: [
       W('metric', 'Open enquiries', 'kpi', { object: 'enquiry', filters: [{ field: 'stage', op: 'in', value: 'new,contacted,qualified' }] }),
       W('metric', 'Converted', 'kpi', { object: 'enquiry', filters: [{ field: 'stage', op: 'eq', value: 'converted' }] }),
@@ -200,7 +200,7 @@ const dashboards = [
   },
   {
     name: 'genesis_lending', label: 'Lending Pipeline',
-    description: 'Origination pipeline, approvals, decline reasons and PLR exposure (RPT-03).',
+    description: 'Origination pipeline, approvals, decline reasons and PLR exposure.',
     widgets: [
       W('metric', 'Applications in progress', 'kpi', { object: 'loan_application', filters: OPEN_LOAN }),
       W('metric', 'Pipeline value (MUR)', 'kpi', { object: 'loan_application', metric: 'sum', field: 'loan_amount_mur', filters: OPEN_LOAN }, { config: { format: 'currency_compact' } }),
@@ -216,7 +216,7 @@ const dashboards = [
   },
   {
     name: 'genesis_loan_book', label: 'Loan Book',
-    description: 'Loan book from the LMS snapshot by product, LTV band, arrears bucket and maturity (RPT-04).',
+    description: 'Loan book from the LMS snapshot by product, LTV band, arrears bucket and maturity.',
     widgets: [
       W('metric', 'Accounts', 'kpi', { object: 'loan_account' }),
       W('metric', 'Outstanding (MUR)', 'kpi', { object: 'loan_account', metric: 'sum', field: 'outstanding_mur' }, { config: { format: 'currency_compact' } }),
@@ -232,7 +232,7 @@ const dashboards = [
   },
   {
     name: 'genesis_wealth', label: 'Wealth',
-    description: 'AUM and flows, mandates by stage, reviews completed vs due, suitability exceptions (RPT-05).',
+    description: 'AUM and flows, mandates by stage, reviews completed vs due, suitability exceptions.',
     widgets: [
       W('metric', 'Active mandates', 'kpi', { object: 'wealth_mandate', filters: [{ field: 'stage', op: 'eq', value: 'active' }] }),
       W('metric', 'AUM (MUR)', 'kpi', { object: 'wealth_mandate', metric: 'sum', field: 'aum_mur' }, { config: { format: 'currency_compact' } }),
@@ -248,7 +248,7 @@ const dashboards = [
   },
   {
     name: 'genesis_funds', label: 'Investment Funds',
-    description: 'Subscriptions and redemptions by fund, investor concentration and the FMB 2029 campaign (RPT-06).',
+    description: 'Subscriptions and redemptions by fund, investor concentration and the FMB 2029 campaign.',
     widgets: [
       W('metric', 'Holdings value (MUR)', 'kpi', { object: 'fund_holding', metric: 'sum', field: 'value_mur' }, { config: { format: 'currency_compact' } }),
       W('metric', 'Investors', 'kpi', { object: 'fund_holding' }),
@@ -263,7 +263,7 @@ const dashboards = [
   },
   {
     name: 'genesis_securities', label: 'Trading',
-    description: 'Accounts, order intake and research distribution (M11).',
+    description: 'Accounts, order intake and research distribution.',
     widgets: [
       W('metric', 'Active accounts', 'kpi', { object: 'securities_account', filters: [{ field: 'stage', op: 'eq', value: 'active' }] }),
       W('metric', 'Portfolio value (MUR)', 'kpi', { object: 'securities_account', metric: 'sum', field: 'portfolio_value_mur' }, { config: { format: 'currency_compact' } }),
@@ -290,7 +290,7 @@ const dashboards = [
   },
   {
     name: 'genesis_forex', label: 'Forex Desk',
-    description: 'Client activity, top clients, forward book and rate alerts (RPT-08).',
+    description: 'Client activity, top clients, forward book and rate alerts.',
     widgets: [
       W('metric', 'Deals (12 months)', 'kpi', { object: 'fx_deal' }),
       W('metric', 'Volume (MUR)', 'kpi', { object: 'fx_deal', metric: 'sum', field: 'amount_mur' }, { config: { format: 'currency_compact' } }),
@@ -306,7 +306,7 @@ const dashboards = [
   },
   {
     name: 'genesis_compliance', label: 'Compliance',
-    description: 'KYC status, risk distribution, overdue reviews, screening hits, complaints and consents (RPT-09, CMP-FR-06). STRs appear only for the MLRO.',
+    description: 'KYC status, risk distribution, overdue reviews, screening hits, complaints and consents. STRs appear only for the MLRO.',
     widgets: [
       W('metric', 'KYC awaiting approval', 'kpi', { object: 'kyc_case', filters: [{ field: 'stage', op: 'eq', value: 'pending_approval' }] }),
       W('metric', 'Reviews due (30 days)', 'kpi', { object: 'kyc_case', filters: [{ field: 'review_due', op: 'eq', value: 'true' }] }),
@@ -322,7 +322,7 @@ const dashboards = [
   },
   {
     name: 'genesis_service', label: 'Service & Complaints',
-    description: 'Request volumes, complaint ageing, root causes and satisfaction (SR-FR-04, SR-FR-05).',
+    description: 'Request volumes, complaint ageing, root causes and satisfaction.',
     widgets: [
       W('metric', 'Open requests', 'kpi', { object: 'service_request', filters: [{ field: 'stage', op: 'nin', value: 'resolved,closed' }] }),
       W('metric', 'Open complaints', 'kpi', { object: 'service_request', filters: [{ field: 'complaint_open', op: 'eq', value: 'true' }] }),
@@ -336,7 +336,7 @@ const dashboards = [
   },
   {
     name: 'genesis_rm_league', label: 'RM League Table',
-    description: 'Activity, pipeline, revenue and cross-sell by RM (RPT-10, RM-FR-06).',
+    description: 'Activity, pipeline, revenue and cross-sell by RM.',
     widgets: [
       W('chart', 'Meetings by RM', 'half', { object: 'meeting_note', group_by: 'rm' }, { chart: 'bar' }),
       W('chart', 'Revenue credited by RM (MUR)', 'half', { object: 'revenue_entry', metric: 'sum', field: 'rm_credit_mur', group_by: 'rm' }, { chart: 'bar', ...CUR }),
@@ -364,7 +364,7 @@ const dashboards = [
   },
   {
     name: 'genesis_regulatory', label: 'Regulatory Extracts',
-    description: 'Complaints log, FX transactions by BoM purpose code, insider lists and AML statistics (RPT-12, FX-FR-06).',
+    description: 'Complaints log, FX transactions by BoM purpose code, insider lists and AML statistics.',
     widgets: [
       W('metric', 'Complaints (12 months)', 'kpi', { object: 'service_request', filters: [{ field: 'request_type', op: 'eq', value: 'complaint' }] }),
       W('metric', 'Referred to the Ombudsperson', 'kpi', { object: 'service_request', filters: [{ field: 'ombudsperson_referred', op: 'eq', value: 'true' }] }),
@@ -378,7 +378,7 @@ const dashboards = [
   },
   {
     name: 'genesis_rm_workbench', label: 'My Workbench',
-    description: 'What to do today: open enquiries, next-best actions, reviews due, KYC in flight and my pipeline (RM-FR-01). Each viewer sees their own book.',
+    description: 'What to do today: open enquiries, next-best actions, reviews due, KYC in flight and my pipeline. Each viewer sees their own book.',
     widgets: [
       W('metric', 'My open enquiries', 'kpi', { object: 'enquiry', filters: [{ field: 'stage', op: 'in', value: 'new,contacted,qualified' }] }),
       W('metric', 'Next-best actions', 'kpi', { object: 'nba_suggestion', filters: [{ field: 'status', op: 'eq', value: 'open' }] }),

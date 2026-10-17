@@ -25,7 +25,7 @@ const loanApplicant = {
   label: 'Applicant',
   plural_label: 'Applicants & Guarantors',
   icon: 'UserPlus',
-  description: 'Every borrower, co-borrower and guarantor on an application, with their income and obligations (LOAN-FR-01, LOAN-FR-05).',
+  description: 'Every borrower, co-borrower and guarantor on an application, with their income and obligations.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('loan_application', 'Application', 'loan_application', { required: true, config: { show_in_list: true } }),
@@ -52,7 +52,7 @@ const creditCondition = {
   label: 'Credit Condition',
   plural_label: 'Credit Conditions',
   icon: 'ListChecks',
-  description: 'Conditions precedent and subsequent set at approval and tracked to satisfaction (LOAN-FR-08).',
+  description: 'Conditions precedent and subsequent set at approval and tracked to satisfaction.',
   config: { title_field: 'condition', business_unit_field: 'business_unit' },
   fields: [
     LK('loan_application', 'Application', 'loan_application', LIST),
@@ -74,7 +74,7 @@ const loanOffer = {
   label: 'Offer Scenario',
   plural_label: 'Offer Scenarios',
   icon: 'Calculator',
-  description: 'Side-by-side offer scenarios — tenure vs instalment vs total interest — with the chosen one becoming the offer (LOAN-FR-04, LOAN-FR-03).',
+  description: 'Side-by-side offer scenarios — tenure vs instalment vs total interest — with the chosen one becoming the offer.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('offer_no', 'Offer No.', 'OF-'),
@@ -104,7 +104,7 @@ const disbursement = {
   label: 'Disbursement',
   plural_label: 'Disbursements',
   icon: 'Banknote',
-  description: 'Single or staged disbursements (construction / renovation) with stage certificates, maker-checker and the LMS booking reference (LOAN-FR-12).',
+  description: 'Single or staged disbursements (construction / renovation) with stage certificates, maker-checker and the LMS booking reference.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('disbursement_no', 'Disbursement No.', 'DB-'),
@@ -200,7 +200,7 @@ const creditFacility = {
       stage('credit_approval', 'Credit approval', '#8b5cf6', { required_fields: ['recommendation', 'risk_grade'] }),
       stage('term_sheet', 'Term sheet / offer', '#14b8a6', { entry_rule: { expression: "credit_decision = 'approved'", message: 'Only an approved facility gets a term sheet.' } }),
       stage('security_perfection', 'Security perfection', '#22c55e'),
-      stage('active', 'Active', '#10b981', { entry_rule: { expression: "borrower.kyc_status = 'approved'", message: 'Activate only for a borrower with approved KYC (KYC-FR-11).' } }),
+      stage('active', 'Active', '#10b981', { entry_rule: { expression: "borrower.kyc_status = 'approved'", message: 'Activate only for a borrower with approved KYC.' } }),
       stage('annual_review', 'Annual review', '#f59e0b'),
       stage('closed', 'Closed', '#64748b'),
       stage('declined', 'Declined', '#ef4444'),
@@ -379,7 +379,7 @@ const loanAccount = {
   label: 'Loan Account',
   plural_label: 'Loan Book (LMS view)',
   icon: 'BookOpen',
-  description: 'Daily snapshot from the LMS — outstanding, rate, next instalment, arrears and maturity (SERV-FR-01). The LMS is the system of record.',
+  description: 'Daily snapshot from the LMS — outstanding, rate, next instalment, arrears and maturity. The LMS is the system of record.',
   config: { title_field: 'lms_account_no', business_unit_field: 'business_unit' },
   fields: [
     F('lms_account_no', 'LMS account no.', 'text', { required: true, unique: true, config: { show_in_list: true } }),
@@ -428,7 +428,7 @@ const plrChangeEvent = {
   label: 'PLR Change',
   plural_label: 'PLR Change Campaigns',
   icon: 'TrendingUp',
-  description: 'Each PLR change: the affected variable-rate book, personalised notices and their delivery log (SERV-FR-02). Approving a campaign generates the notices; it does not change the PLR itself (Masters ▸ Genesis PLR History).',
+  description: 'Each PLR change: the affected variable-rate book, personalised notices and their delivery log. Approving a campaign generates the notices; it does not change the PLR itself (Masters ▸ Genesis PLR History).',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('plr_change_no', 'Change No.', 'PLR-'),
@@ -490,7 +490,7 @@ const collectionAction = {
   label: 'Collections Action',
   plural_label: 'Collections (early warning)',
   icon: 'PhoneCall',
-  description: 'Arrears follow-up: calls, promises to pay, escalation (SERV-FR-04).',
+  description: 'Arrears follow-up: calls, promises to pay, escalation.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('loan_account', 'Loan account', 'loan_account', { required: true, config: { show_in_list: true } }),

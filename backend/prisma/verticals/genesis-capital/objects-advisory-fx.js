@@ -202,7 +202,7 @@ const fxQuote = {
   label: 'FX Quote',
   plural_label: 'FX Quotes',
   icon: 'MessageSquareQuote',
-  description: 'Client asks, dealer quotes, client accepts — with a time-stamped audit for best execution (FX-FR-03).',
+  description: 'Client asks, dealer quotes, client accepts — with a time-stamped audit for best execution.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('quote_no', 'Quote No.', 'FXQ-'),
@@ -238,7 +238,7 @@ const fxDeal = {
   label: 'FX Deal',
   plural_label: 'FX Deals',
   icon: 'ArrowLeftRight',
-  description: 'Deal hand-off with the dealing-system reference; forwards feed the maturity calendar; BoM purpose codes for regulatory reporting (FX-FR-03/05/06).',
+  description: 'Deal hand-off with the dealing-system reference; forwards feed the maturity calendar; BoM purpose codes for regulatory reporting.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     AUTO('deal_no', 'Deal No.', 'FXD-'),
@@ -277,7 +277,7 @@ const fxRateAlert = {
   label: 'Rate Alert',
   plural_label: 'FX Rate Alerts',
   icon: 'BellRing',
-  description: 'Client-requested target-rate alerts, checked against the rate board and sent when hit (FX-FR-04).',
+  description: 'Client-requested target-rate alerts, checked against the rate board and sent when hit.',
   config: { title_field: 'name', business_unit_field: 'business_unit' },
   fields: [
     LK('party', 'Client', 'party', { required: true, config: { show_in_list: true } }),

@@ -17,7 +17,7 @@ const screeningHit = {
   label: 'Screening Hit',
   plural_label: 'Screening Hits',
   icon: 'ScanSearch',
-  description: 'Sanctions, PEP and adverse-media hits from the screening adapter, triaged as true match, false positive or escalate (KYC-FR-03).',
+  description: 'Sanctions, PEP and adverse-media hits from the screening adapter, triaged as true match, false positive or escalate.',
   config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY', conceal_existence: true },
   fields: [
     LK('kyc_case', 'KYC case', 'kyc_case', { required: true, config: { show_in_list: true } }),
@@ -41,7 +41,7 @@ const kycReliance = {
   label: 'KYC Reliance',
   plural_label: 'KYC Reliance Records',
   icon: 'Repeat2',
-  description: 'Another Genesis entity relying on an approved group KYC within validity and risk appetite, with the documented reliance (KYC-FR-08).',
+  description: 'Another Genesis entity relying on an approved group KYC within validity and risk appetite, with the documented reliance.',
   config: { title_field: 'name', business_unit_field: 'relying_business_unit' },
   fields: [
     LK('kyc_case', 'Approved KYC case', 'kyc_case', {
@@ -66,7 +66,7 @@ const giftRegister = {
   label: 'Gift / Hospitality',
   plural_label: 'Gifts & Hospitality Register',
   icon: 'Gift',
-  description: 'Gifts and hospitality given or received by staff (CMP-FR-05).',
+  description: 'Gifts and hospitality given or received by staff.',
   config: { title_field: 'name' },
   fields: [
     F('employee_id', 'Employee', 'text', { required: true, config: { show_in_list: true } }),
@@ -87,7 +87,7 @@ const paDealing = {
   label: 'Personal Account Dealing',
   plural_label: 'Personal Dealing Pre-clearance',
   icon: 'UserCog',
-  description: 'Staff personal-account dealing pre-clearance, checked against the restricted list (CMP-FR-05).',
+  description: 'Staff personal-account dealing pre-clearance, checked against the restricted list.',
   config: { title_field: 'name', barrier_zone: 'COMPLIANCE_ONLY', conceal_existence: true },
   fields: [
     AUTO('request_no', 'Request No.', 'PAD-'),
@@ -109,7 +109,7 @@ const dataSubjectRequest = {
   label: 'Data Subject Request',
   plural_label: 'Data Subject Requests (DPA)',
   icon: 'FileLock2',
-  description: 'Access, rectification, erasure (subject to AML retention) and portability requests under the Mauritius DPA 2017, with a 30-day SLA (CMP-FR-08).',
+  description: 'Access, rectification, erasure (subject to AML retention) and portability requests under the Mauritius DPA 2017, with a 30-day SLA.',
   config: { title_field: 'name' },
   fields: [
     AUTO('dsr_no', 'Request No.', 'DSR-'),
@@ -145,7 +145,7 @@ const webEvent = {
   label: 'Web Event',
   plural_label: 'Calculator Sessions',
   icon: 'MousePointerClick',
-  description: 'Anonymous loan-calculator sessions kept as web events, matched to an enquiry when the visitor leaves details (LEAD-FR-10).',
+  description: 'Anonymous loan-calculator sessions kept as web events, matched to an enquiry when the visitor leaves details.',
   config: { title_field: 'name' },
   fields: [
     SEL('event_type', 'Event', o([['calculator', 'Loan calculator'], ['newsletter_signup', 'Newsletter sign-up'], ['callback_request', 'Call-back request'], ['questionnaire_started', 'Questionnaire started'], ['product_view', 'Product page view']]), { default: 'calculator', config: { show_in_list: true } }),
@@ -185,7 +185,7 @@ const kycRiskFactor = {
   label: 'KYC Risk Factor',
   plural_label: 'KYC Risk Factors & Weights',
   icon: 'Weight',
-  description: 'Versioned weights read by the KYC risk-score formula (KYC-FR-04). Change a score here and every case recomputes on its next save.',
+  description: 'Versioned weights read by the KYC risk-score formula. Change a score here and every case recomputes on its next save.',
   config: { title_field: 'code', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
@@ -203,7 +203,7 @@ const collateralType = {
   label: 'Collateral Type',
   plural_label: 'Collateral Types & Haircuts',
   icon: 'Percent',
-  description: 'Standard haircut and revaluation frequency per collateral type (M24, COLL-FR-03).',
+  description: 'Standard haircut and revaluation frequency per collateral type.',
   config: { title_field: 'label', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),
@@ -259,7 +259,7 @@ const reasonCode = {
   label: 'Reason Code',
   plural_label: 'Reason Codes',
   icon: 'Tags',
-  description: 'Lead disqualification, loan decline, mandate loss and account closure reasons (M24).',
+  description: 'Lead disqualification, loan decline, mandate loss and account closure reasons.',
   config: { title_field: 'label', default_sort: 'code' },
   fields: [
     F('code', 'Code', 'text', { required: true, unique: true, config: { show_in_list: true } }),

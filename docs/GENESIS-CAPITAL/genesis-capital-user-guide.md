@@ -457,8 +457,11 @@ Start any client conversation here: the **Related** tab shows everything Genesis
 
 ### Marketing & Consent
 
-**Campaigns** (*Planning → Approved → Live → Completed / Cancelled*) with budget, audience, attributed enquiries,
-loans, revenue and ROI; **Segments**; **Events & Seminars** and **Registrations** (follow-up after attendance);
+**Campaigns** (*Planning → Compliance review → Approved → Live → Completed / Cancelled*) with budget, audience,
+attributed enquiries, loans, revenue and ROI. Moving a campaign to *Compliance review* sends a sign-off to Compliance in
+**Tools ▸ Approvals**; approval moves it to *Approved* (a return sends it back to *Planning*), and it cannot be approved
+or go live without that sign-off. Web enquiries whose link carries the campaign's **tracking code** (`utm_campaign`)
+are attributed to it automatically, and the loan application opened on conversion keeps the campaign; **Segments**; **Events & Seminars** and **Registrations** (assigned to the guest's RM, who is told to follow up after attendance);
 **Newsletter & Research Subscriptions** (who receives *Send to subscribers*). Clients without consent, flagged do-not-contact or with an open complaint
 cannot be added to a campaign.
 

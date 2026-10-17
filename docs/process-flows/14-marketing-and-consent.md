@@ -33,7 +33,8 @@ withdrawn at any time.
 
 ```mermaid
 flowchart LR
-    P(["Planning"]) --> A(["Approved"]) --> L(["Live"]) --> C(["Completed"])
+    P(["Planning"]) --> R(["Compliance review"]) --> A(["Approved"]) --> L(["Live"]) --> C(["Completed"])
+    R -- returned --> P
     P --> X(["Cancelled"])
     A --> X
 ```
@@ -54,7 +55,7 @@ flowchart TD
 | Step | Who | What to do | What the CRM does |
 |---|---|---|---|
 | 1 | Marketing | Build a **Segment** with filter criteria | — |
-| 2 | Marketing | **New** campaign at *Planning* with budget and audience ▸ **Approved** | — |
+| 2 | Marketing | **New** campaign at *Planning* with budget, audience, dates, message and tracking code ▸ **Compliance review** | Sends the sign-off to Compliance in Approvals; approval moves it to *Approved*, a return to *Planning*. *Approved* and *Live* refuse a campaign without the sign-off |
 | 3 | Marketing | Add members from the segment | Refuses any client who is **suppressed**: no consent, do-not-contact, or an open complaint |
 | 4 | Marketing | ▸ **Live**; send through the chosen channel | Records sent date and opens per member |
 | 5 | — | As responses arrive | Enquiries carrying the campaign (or its UTM tags) are attributed; loans and revenue that follow roll up to the campaign |
@@ -64,7 +65,8 @@ flowchart TD
 
 1. Create the **Event & Seminar**; take **Registrations** (staff or web).
 2. Mark attendance on the day.
-3. Each attendee triggers a **follow-up** reminder to the RM.
+3. Each registration is assigned to the guest's RM; marking attendance notifies the RM to **follow up**, who ticks
+   *Follow-up done*.
 
 ### C. Newsletter and research
 

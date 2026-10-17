@@ -479,6 +479,28 @@ describe('send_email step — the email shows on the record timeline', () => {
   });
 });
 
+describe('send_email step — amounts and dates as people read them', () => {
+  it('formats currency fields and dates from the field metadata and workspace settings', async () => {
+    const step = { id: 32, name: 'Offer', step_type: 'send_email', order_index: 1, on_true_id: null, on_false_id: null,
+      config: { template: 'loan_offer', to_field: 'party_email' } };
+    const db = makePrisma(makeWorkflow([step]), { party_email: 'anne@example.mu', loan_amount_mur: 39834.26, value_date: new Date('2026-10-17T00:00:00Z'), product_code: 'LND-RE' });
+    db.uiField.findMany = jest.fn().mockResolvedValue([
+      { name: 'loan_amount_mur', field_type: 'formula', config: { format: 'currency', precision: 2 } },
+      { name: 'value_date', field_type: 'date', config: {} },
+    ]);
+    db.tenantConfig = { findUnique: jest.fn().mockResolvedValue({ config_value: 'DD/MM/YYYY' }) };
+    db.emailTemplate = { findMany: jest.fn().mockResolvedValue([{ id: 9, name: 'loan_offer' }]) };
+    db.activity = { create: jest.fn().mockResolvedValue({ id: 1 }) };
+    const svc = new WorkflowEngineService(db);
+    svc.emailSender = { sendWithTemplate: jest.fn().mockResolvedValue({ id: 1, status: 'sent' }) };
+    await svc.manualRun(1, { ...makeRecord(), object_id: 5, tenant_id: 7 }, 'GCRM1');
+    const { variables } = svc.emailSender.sendWithTemplate.mock.calls[0][0];
+    expect(variables.loan_amount_mur).toBe('39,834.26');
+    expect(variables.value_date).toBe('17/10/2026');
+    expect(variables.product_code).toBe('LND-RE');
+  });
+});
+
 describe('approval and notification text — what people read', () => {
   it('shows picklist labels and formatted amounts, not stored codes', async () => {
     const step = {

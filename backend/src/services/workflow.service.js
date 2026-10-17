@@ -1157,7 +1157,7 @@ class WorkflowEngineService {
           this.emailSender = new EmailSendService(this.db, new EmailTemplateService(this.db));
         }
         const sent = await this.emailSender.sendWithTemplate({
-          template_id: tpl.id, variables: ctx, to_email: String(to),
+          template_id: tpl.id, variables: await this.#templateValues(record, ctx), to_email: String(to),
           related_record_id: record?.id ?? null, related_type: 'record', sent_by: actorId ?? null,
         });
         logEntry.result = `email ${sent.status} → ${to} (${tpl.name})`;
@@ -1244,6 +1244,8 @@ class WorkflowEngineService {
           this.emailSender = new EmailSendService(this.db, new EmailTemplateService(this.db));
         }
         const tracking = require('./email-tracking');
+        // Matching above uses the stored values; the email shows them formatted.
+        const vars = await this.#templateValues(record, ctx);
         const base = (process.env.API_URL || process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
         const tenantId = record?.tenant_id;
         let sent = 0; let skipped = 0;
@@ -1255,7 +1257,7 @@ class WorkflowEngineService {
           const tpl = pick(lang) ?? pick('en');
           await this.emailSender.sendWithTemplate({
             template_id: tpl.id, to_email: String(to),
-            variables: { ...ctx, first_name: person.first_name ?? '', display_name: person.display_name ?? '' },
+            variables: { ...vars, first_name: person.first_name ?? '', display_name: person.display_name ?? '' },
             related_record_id: record?.id ?? null,
             related_type: cfg.track_field ? `distribution:${cfg.track_field}` : 'distribution',
             sent_by: actorId ?? null,
@@ -1604,6 +1606,40 @@ class WorkflowEngineService {
       }
     }
     return out;
+  }
+
+  /**
+   * Template variables for an email: amounts and numbers formatted from the
+   * field metadata and the workspace currency ("39,834.26"), dates in the
+   * workspace date format. Falls back to the values unchanged.
+   */
+  async #templateValues(record, values = {}) {
+    try {
+      const { formatTemplateValues } = require('../utils/template-format');
+      const fields = record?.object_id && typeof this.db.uiField?.findMany === 'function'
+        ? await this.db.uiField.findMany({
+          where:  { object_id: Number(record.object_id), is_active: true, field_type: { in: ['currency', 'decimal', 'number', 'formula', 'date', 'datetime'] } },
+          select: { name: true, field_type: true, config: true },
+        }).catch(() => [])
+        : [];
+      let decimals = 2; let numberFormat = '1,234.56'; let dateFormat = 'YYYY-MM-DD';
+      if (record?.tenant_id) {
+        const CurrencyService = require('./currency.service');
+        const profile = await new CurrencyService(this.db).getProfile(record.tenant_id);
+        decimals = profile.decimals ?? 2;
+        numberFormat = profile.numberFormat ?? numberFormat;
+        const row = typeof this.db.tenantConfig?.findUnique === 'function'
+          ? await this.db.tenantConfig.findUnique({
+            where: { tenant_id_config_key: { tenant_id: Number(record.tenant_id), config_key: 'localization.date_format' } },
+          }).catch(() => null)
+          : null;
+        if (row?.config_value) dateFormat = String(row.config_value);
+      }
+      return formatTemplateValues(values, fields ?? [], { decimals, numberFormat, dateFormat });
+    } catch (err) {
+      logger?.warn?.('[WorkflowEngine] template formatting failed — raw values used', { error: err.message });
+      return values;
+    }
   }
 
   #interpolate(template, data = {}) {

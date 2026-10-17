@@ -37,7 +37,7 @@ const each = (step, forEach) => ({ ...step, config: { ...step.config, for_each: 
 
 /** A next-best-action rule: daily per party, deduplicated by rule. */
 const nba = (name, label, rule, when, bu, product, reason) => ({
-  object: 'party', name, label, description: `Next-best action (XS-FR-02): ${reason}`, ...DAILY,
+  object: 'party', name, label, description: `Next-best action: ${reason}`, ...DAILY,
   steps: [
     trig('Daily next-best-action sweep'),
     expr('c1', 'Rule matches', `(${when}) AND COUNT_RELATED('nba_suggestion', 'party', 'rule_status', '${rule}|open') = 0 AND COUNT_RELATED('nba_suggestion', 'party', 'rule_status', '${rule}|dismissed') = 0`),
@@ -56,7 +56,7 @@ const workflows = [
   // ── M01 Enquiries ───────────────────────────────────────────────────────────
   {
     object: 'enquiry', name: 'genesis_enquiry_existing_client_rm', label: 'Enquiry — existing clients go to their RM',
-    description: 'An enquiry from an existing client is reassigned to the client\'s primary RM (LEAD-FR-04).', ...ONCREATE,
+    description: 'An enquiry from an existing client is reassigned to the client\'s primary RM.', ...ONCREATE,
     steps: [
       trig('A new enquiry'),
       cond('c1', 'Existing client with an RM', 'existing_rm', 'notempty'),
@@ -66,7 +66,7 @@ const workflows = [
   },
   {
     object: 'referral', name: 'genesis_referral_to_receiving_rm', label: 'Referral — goes to the receiving RM',
-    description: 'A cross-entity referral naming a receiving RM is assigned to that person, so the receiving entity sees it and can accept it within the SLA (LEAD-FR-15). Without a name, routing by the receiving entity applies.', ...ONCREATE,
+    description: 'A cross-entity referral naming a receiving RM is assigned to that person, so the receiving entity sees it and can accept it within the SLA. Without a name, routing by the receiving entity applies.', ...ONCREATE,
     steps: [
       trig('A new referral'),
       cond('c1', 'Receiving RM named', 'receiving_rm', 'notempty'),
@@ -76,7 +76,7 @@ const workflows = [
   },
   {
     object: 'introducer_referral', name: 'genesis_introducer_referral_intake', label: 'Introducer referral — create the enquiry',
-    description: 'A referral from an introducer becomes an enquiry attributed to the introducer, inside the protection window (INT-FR-02, LEAD-FR-14).', ...ONCREATE,
+    description: 'A referral from an introducer becomes an enquiry attributed to the introducer, inside the protection window.', ...ONCREATE,
     steps: [
       trig('A new introducer referral'),
       cond('c1', 'Not linked yet', 'enquiry', 'empty'),
@@ -89,7 +89,7 @@ const workflows = [
   },
   {
     object: 'introducer_referral', name: 'genesis_introducer_commission', label: 'Introducer referral — accrue commission',
-    description: 'A funded referral accrues the introducer\'s commission on the funded volume (INT-FR-03).', ...STAGE,
+    description: 'A funded referral accrues the introducer\'s commission on the funded volume.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Funded', 'stage', 'eq', 'funded'),
@@ -100,7 +100,7 @@ const workflows = [
   // ── M03 KYC ─────────────────────────────────────────────────────────────────
   {
     object: 'kyc_case', name: 'genesis_kyc_screening', label: 'KYC — sanctions / PEP screening',
-    description: 'Entering Screening calls the screening provider and records the result; any hit is logged for triage (KYC-FR-03).', ...STAGE,
+    description: 'Entering Screening calls the screening provider and records the result; any hit is logged for triage.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Screening', 'stage', 'eq', 'screening'),
@@ -114,7 +114,7 @@ const workflows = [
   },
   {
     object: 'kyc_case', name: 'genesis_kyc_batch_rescreen', label: 'KYC — daily batch rescreening',
-    description: 'Approved clients are rescreened daily; new matches are logged and Compliance alerted (KYC-FR-03).', ...DAILY,
+    description: 'Approved clients are rescreened daily; new matches are logged and Compliance alerted.', ...DAILY,
     steps: [
       trig('Daily rescreening'),
       cond('c1', 'Approved case', 'kyc_outcome', 'eq', 'approved'),
@@ -123,7 +123,7 @@ const workflows = [
   },
   {
     object: 'screening_hit', name: 'genesis_screening_hit_triage', label: 'Screening hit — escalate true matches',
-    description: 'A true match or escalation alerts the MLRO and puts the KYC case on hold (KYC-FR-03, KYC-FR-05).', ...changed('disposition'),
+    description: 'A true match or escalation alerts the MLRO and puts the KYC case on hold.', ...changed('disposition'),
     steps: [
       trig('Disposition changed'),
       expr('c1', 'True match or escalated', "IN(disposition, 'true_match', 'escalated')"),
@@ -134,7 +134,7 @@ const workflows = [
   // ── M04 Suitability ─────────────────────────────────────────────────────────
   {
     object: 'party', name: 'genesis_profile_refresh', label: 'Party — risk profile refresh due',
-    description: 'A risk profile within 30 days of its two-year validity asks the RM to refresh it (SUIT-FR-05).', ...DAILY,
+    description: 'A risk profile within 30 days of its two-year validity asks the RM to refresh it.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Profile expires within 30 days', "NOT(ISBLANK(profile_valid_until)) AND DAYS_BETWEEN(TODAY(), profile_valid_until) <= 30 AND NOT(profile_refresh_requested)"),
@@ -144,7 +144,7 @@ const workflows = [
   },
   {
     object: 'party', name: 'genesis_birthday', label: 'Party — birthday reminder',
-    description: 'The RM is reminded of a client\'s birthday (RM-FR-01, C360-FR-09).', ...DAILY,
+    description: 'The RM is reminded of a client\'s birthday.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Birthday today', 'NOT(ISBLANK(date_of_birth)) AND DAYS_BETWEEN(TODAY(), next_birthday) = 0'),
@@ -155,7 +155,7 @@ const workflows = [
   // ── M05 Retail lending ──────────────────────────────────────────────────────
   {
     object: 'loan_application', name: 'genesis_loan_mcib', label: 'Loan — MCIB credit report',
-    description: 'With the applicant\'s consent, capturing the application pulls the MCIB report and stores the score (LOAN-FR-06).', ...STAGE,
+    description: 'With the applicant\'s consent, capturing the application pulls the MCIB report and stores the score.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Application captured', 'stage', 'eq', 'application_captured'),
@@ -165,7 +165,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_status_update', label: 'Loan — client status updates (EN/FR)',
-    description: 'The client is told at each milestone in their language (LOAN-FR-13).', ...STAGE,
+    description: 'The client is told at each milestone in their language.', ...STAGE,
     steps: [
       trig('Stage change'),
       expr('c1', 'A client-facing milestone', "IN(stage, 'application_captured', 'documents_complete', 'credit_appraisal', 'offer_accepted', 'security_perfection', 'disbursed')"),
@@ -174,7 +174,7 @@ const workflows = [
   },
   {
     object: 'loan_application', name: 'genesis_loan_cross_sell_offer', label: 'Loan — cross-sell at offer',
-    description: 'At offer, a real-estate borrower is referred to Genesis insurance for life and building cover (LOAN-FR-17, I-09).', ...STAGE,
+    description: 'At offer, a real-estate borrower is referred to Genesis insurance for life and building cover.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Offer issued', 'stage', 'eq', 'offer_issued'),
@@ -199,7 +199,7 @@ const workflows = [
   },
   {
     object: 'disbursement', name: 'genesis_disbursement_checker', label: 'Disbursement — maker-checker and LMS booking',
-    description: 'A tranche needs a checker other than the requester; once authorised it is booked in the LMS and the reference recorded (LOAN-FR-12, X-05).', ...STAGE,
+    description: 'A tranche needs a checker other than the requester; once authorised it is booked in the LMS and the reference recorded.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Checker review', 'stage', 'eq', 'checking'),
@@ -217,7 +217,7 @@ const workflows = [
   // ── M06 Commercial lending ──────────────────────────────────────────────────
   {
     object: 'credit_facility', name: 'genesis_facility_approval', label: 'Facility — approval matrix',
-    description: 'Commercial facilities follow the same amount-banded approval matrix as retail (COM-FR-07, LOAN-FR-09).', ...STAGE,
+    description: 'Commercial facilities follow the same amount-banded approval matrix as retail.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Credit approval', 'stage', 'eq', 'credit_approval'),
@@ -236,7 +236,7 @@ const workflows = [
   },
   {
     object: 'credit_facility', name: 'genesis_facility_annual_review', label: 'Facility — annual review pipeline',
-    description: 'Sixty days before a facility\'s review date it moves to Annual review and the RM is told (COM-FR-06).', ...DAILY,
+    description: 'Sixty days before a facility\'s review date it moves to Annual review and the RM is told.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Active and review within 60 days', "stage = 'active' AND NOT(ISBLANK(expiry_date)) AND DAYS_BETWEEN(TODAY(), expiry_date) <= 60 AND NOT(renewal_opened)"),
@@ -247,7 +247,7 @@ const workflows = [
   },
   {
     object: 'covenant_test', name: 'genesis_covenant_breach', label: 'Covenant — breach alert',
-    description: 'A failed covenant test alerts the RM and credit, starting the waiver workflow (COM-FR-05).', ...ONCREATE,
+    description: 'A failed covenant test alerts the RM and credit, starting the waiver workflow.', ...ONCREATE,
     steps: [
       trig('A covenant test recorded'),
       cond('c1', 'Breach', 'result', 'eq', 'breach'),
@@ -258,7 +258,7 @@ const workflows = [
   // ── M07 Collateral & M08 servicing ─────────────────────────────────────────
   {
     object: 'collateral', name: 'genesis_collateral_insurance_lapse', label: 'Collateral — insurance lapsing',
-    description: 'Thirty days before cover on collateral lapses the RM is told; a lapse is a breach (COLL-FR-05).', ...DAILY,
+    description: 'Thirty days before cover on collateral lapses the RM is told; a lapse is a breach.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Cover lapses in 30 days', 'NOT(ISBLANK(insurance_expiry)) AND DAYS_BETWEEN(TODAY(), insurance_expiry) = 30 AND ISBLANK(released_on)'),
@@ -276,7 +276,7 @@ const workflows = [
   },
   {
     object: 'collateral', name: 'genesis_collateral_revaluation', label: 'Collateral — revaluation due',
-    description: 'Collateral due for revaluation by its type\'s frequency raises a reminder (COLL-FR-03).', ...DAILY,
+    description: 'Collateral due for revaluation by its type\'s frequency raises a reminder.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Revaluation due today', "NOT(ISBLANK(next_revaluation)) AND DAYS_BETWEEN(TODAY(), next_revaluation) = 0 AND NOT(IN(collateral_type, 'fund_units', 'securities'))"),
@@ -292,7 +292,7 @@ const workflows = [
     { name: 'genesis_ltv_monitor', label: 'Loan — daily LTV check (safety net)', trigger: DAILY, t: 'Daily LTV check' },
   ].map(({ name, label, trigger, t }) => ({
     object: 'loan_application', name, label,
-    description: 'An investment-backed loan whose LTV reaches the margin-call level of its pledged asset class (Masters ▸ Collateral types) gets a margin call with the shortfall; the client is notified and the loans executive and loans manager alerted (COLL-FR-04).',
+    description: 'An investment-backed loan whose LTV reaches the margin-call level of its pledged asset class (Masters ▸ Collateral types) gets a margin call with the shortfall; the client is notified and the loans executive and loans manager alerted.',
     ...trigger,
     steps: [
       trig(t),
@@ -303,7 +303,7 @@ const workflows = [
   })),
   {
     object: 'margin_call', name: 'genesis_margin_call_notice', label: 'Margin call — notify the client',
-    description: 'A margin call letter is generated and emailed to the borrower in their language (DOC-FR-03).', ...ONCREATE,
+    description: 'A margin call letter is generated and emailed to the borrower in their language.', ...ONCREATE,
     steps: [
       trig('A new margin call'),
       set('a1', 'Cure within five business days', 'cure_by', '{{cure_deadline}}'),
@@ -318,7 +318,7 @@ const workflows = [
   // writes the PLR itself — that is Masters ▸ Genesis PLR History, on the effective date.
   {
     object: 'plr_change_event', name: 'genesis_plr_notices', label: 'PLR change — generate the borrower notices',
-    description: 'On approval, every variable-rate, unsettled loan gets a personalised notice with its old and new instalment; the campaign moves to Notices generated (SERV-FR-02).', ...STAGE,
+    description: 'On approval, every variable-rate, unsettled loan gets a personalised notice with its old and new instalment; the campaign moves to Notices generated.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Approved', 'stage', 'eq', 'approved'),
@@ -334,7 +334,7 @@ const workflows = [
   },
   {
     object: 'plr_notification', name: 'genesis_plr_notice_letter', label: 'PLR notice — generate the letter',
-    description: 'Each notice gets its personalised letter on the Docs tab (DOC-FR-03, SERV-FR-02).', ...ONCREATE,
+    description: 'Each notice gets its personalised letter on the Docs tab.', ...ONCREATE,
     steps: [
       trig('A new PLR notice'),
       doc('d1', 'Generate the PLR change letter', 'plr_change_notice', 'PLR change notice {{lms_account_no}}'),
@@ -342,7 +342,7 @@ const workflows = [
   },
   {
     object: 'plr_change_event', name: 'genesis_plr_distribute', label: 'PLR change — distribute the notices',
-    description: 'Moving a campaign to Distributed emails every pending notice to its borrower in their language and logs the date (SERV-FR-02).', ...STAGE,
+    description: 'Moving a campaign to Distributed emails every pending notice to its borrower in their language and logs the date.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Distributed', 'stage', 'eq', 'distributed'),
@@ -353,7 +353,7 @@ const workflows = [
   },
   {
     object: 'loan_account', name: 'genesis_collections_ews', label: 'Loan — arrears early warning',
-    description: 'An account entering arrears opens a collections follow-up for the RM; it closes when the account is current (SERV-FR-04).', ...DAILY,
+    description: 'An account entering arrears opens a collections follow-up for the RM; it closes when the account is current.', ...DAILY,
     steps: [
       trig('Daily arrears check'),
       expr('c1', 'In arrears with no follow-up', 'COALESCE(arrears_days, 0) > 0 AND NOT(collections_opened)', { on_false: 'c2' }),
@@ -367,7 +367,7 @@ const workflows = [
   },
   {
     object: 'collection_action', name: 'genesis_collections_ptp', label: 'Collections — promise to pay on the loan',
-    description: 'A promise to pay is written on the loan account, so everyone sees the date it is due (SERV-FR-04).', ...changed('outcome'),
+    description: 'A promise to pay is written on the loan account, so everyone sees the date it is due.', ...changed('outcome'),
     steps: [
       trig('Outcome changed'),
       cond('c1', 'Promise to pay', 'outcome', 'eq', 'ptp'),
@@ -376,7 +376,7 @@ const workflows = [
   },
   {
     object: 'collection_action', name: 'genesis_collections_escalate', label: 'Collections — escalation to legal',
-    description: 'Escalating an account to legal alerts the loans manager (SERV-FR-04).', ...ONCREATE,
+    description: 'Escalating an account to legal alerts the loans manager.', ...ONCREATE,
     steps: [
       trig('A new collections action'),
       cond('c1', 'Escalated to legal', 'action', 'eq', 'escalate'),
@@ -385,7 +385,7 @@ const workflows = [
   },
   {
     object: 'loan_account', name: 'genesis_instalment_reminder', label: 'Loan — instalment reminder by SMS',
-    description: 'Three days before each instalment, active borrowers get a text reminder in their language (SERV-FR-03, I-11).', ...DAILY,
+    description: 'Three days before each instalment, active borrowers get a text reminder in their language.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Instalment due in 3 days', "status = 'active' AND NOT(ISBLANK(next_instalment_date)) AND DAYS_BETWEEN(TODAY(), next_instalment_date) = 3"),
@@ -395,7 +395,7 @@ const workflows = [
   },
   {
     object: 'loan_account', name: 'genesis_maturity_retention', label: 'Loan — maturity retention',
-    description: 'Loans within six months of maturity raise a retention / new-need suggestion (SERV-FR-05).', ...DAILY,
+    description: 'Loans within six months of maturity raise a retention / new-need suggestion.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Matures within 6 months', 'NOT(ISBLANK(months_to_maturity)) AND months_to_maturity <= 6 AND NOT(renewal_opened)'),
@@ -407,7 +407,7 @@ const workflows = [
   // ── M09 Wealth ─────────────────────────────────────────────────────────────
   {
     object: 'wealth_mandate', name: 'genesis_mandate_review_scheduler', label: 'Mandate — schedule the review',
-    description: 'Fourteen days before a review is due by the mandate\'s cycle, the review is opened with its preparation pack (WLT-FR-04).', ...DAILY,
+    description: 'Fourteen days before a review is due by the mandate\'s cycle, the review is opened with its preparation pack.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Active, review due within 14 days, none open', "stage = 'active' AND NOT(ISBLANK(next_review_due)) AND DAYS_BETWEEN(TODAY(), next_review_due) <= 14 AND COUNT_RELATED('mandate_review', 'wealth_mandate', 'open', 'true') = 0"),
@@ -426,7 +426,7 @@ const workflows = [
   },
   {
     object: 'wealth_mandate', name: 'genesis_mandate_attrition', label: 'Mandate — attrition risk alert',
-    description: 'Declining assets, missed reviews or a complaint raise an RM task once (WLT-FR-08).', ...DAILY,
+    description: 'Declining assets, missed reviews or a complaint raise an RM task once.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'At risk, not yet alerted', 'attrition_risk AND NOT(attrition_alerted)', { on_false: 'c2' }),
@@ -439,14 +439,14 @@ const workflows = [
   },
   {
     object: 'saac_decision', name: 'genesis_saac_communication', label: 'SAAC — brief the portfolio managers',
-    description: 'A new SAAC decision is pushed to portfolio managers to communicate to affected clients (WLT-FR-06).', ...ONCREATE,
+    description: 'A new SAAC decision is pushed to portfolio managers to communicate to affected clients.', ...ONCREATE,
     steps: [trig('A new SAAC decision'), notify('n1', 'Tell portfolio managers', { role: 'portfolio_manager', title: 'SAAC decision — {{title}}', message: 'Models {{affected_models}}: {{allocation_change}}' })],
   },
 
   // ── M10 Funds ──────────────────────────────────────────────────────────────
   {
     object: 'fund_order', name: 'genesis_fund_order_checker', label: 'Fund order — maker-checker and TA hand-off',
-    description: 'Checks complete → an operations checker other than the maker authorises → the order goes to the transfer agent and is confirmed; a subscription books its units to a fund holding (FND-FR-02, FND-FR-03).', ...STAGE,
+    description: 'Checks complete → an operations checker other than the maker authorises → the order goes to the transfer agent and is confirmed; a subscription books its units to a fund holding.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Checks complete', 'stage', 'eq', 'checked'),
@@ -463,7 +463,7 @@ const workflows = [
   },
   {
     object: 'fund_holding', name: 'genesis_fmb_maturity', label: 'Funds — FMB 2029 reinvestment',
-    description: 'Fixed Maturity Bond holders within six months of maturity get a reinvestment proposal (FND-FR-04, XS-FR-02).', ...DAILY,
+    description: 'Fixed Maturity Bond holders within six months of maturity get a reinvestment proposal.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'FMB maturing within 6 months', "product_code = 'FND-FMB29' AND NOT(ISBLANK(maturity_date)) AND MONTHS_BETWEEN(TODAY(), maturity_date) <= 6 AND NOT(maturity_nba_raised)"),
@@ -473,14 +473,14 @@ const workflows = [
   },
   {
     object: 'distribution_notice', name: 'genesis_distribution_publish', label: 'Funds — distribution notice published',
-    description: 'Publishing a distribution notice tells the fund team to distribute it to unitholders (FND-FR-06).', ...changed('published'),
+    description: 'Publishing a distribution notice tells the fund team to distribute it to unitholders.', ...changed('published'),
     steps: [trig('Published flag changed'), cond('c1', 'Published', 'published', 'eq', 'true'), notify('n1', 'Tell the fund team', { role: 'portfolio_manager', title: 'Distribution notice published — {{name}}', message: '{{notice_text}}' })],
   },
 
   // ── M11 Securities ─────────────────────────────────────────────────────────
   {
     object: 'client_order', name: 'genesis_client_order_oms', label: 'Order — hand off to the OMS',
-    description: 'Sending an instruction to the OMS records the OMS reference for best-execution evidence (SEC-FR-03).', ...STAGE,
+    description: 'Sending an instruction to the OMS records the OMS reference for best-execution evidence.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Sent to OMS', 'stage', 'eq', 'sent_to_oms'),
@@ -489,7 +489,7 @@ const workflows = [
   },
   {
     object: 'securities_account', name: 'genesis_dormant_reactivation', label: 'Securities — dormant account reactivation',
-    description: 'Accounts without a trade for 12 months get a reactivation suggestion (SEC-FR-06).', ...DAILY,
+    description: 'Accounts without a trade for 12 months get a reactivation suggestion.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Dormant, no open suggestion', "dormant AND COUNT_RELATED('nba_suggestion', 'party', 'rule_status', 'dormant_reactivation|open') = 0"),
@@ -498,7 +498,7 @@ const workflows = [
   },
   {
     object: 'restricted_list_entry', name: 'genesis_restricted_list_alert', label: 'Restricted list — alert the public side',
-    description: 'A new restricted-list issuer is announced to traders and portfolio managers; watch-list entries stay with Compliance (CMP-FR-03).', ...ONCREATE,
+    description: 'A new restricted-list issuer is announced to traders and portfolio managers; watch-list entries stay with Compliance.', ...ONCREATE,
     steps: [
       trig('A new list entry'),
       cond('c1', 'Restricted list', 'list_type', 'eq', 'restricted'),
@@ -510,7 +510,7 @@ const workflows = [
   // ── M12 Advisory ───────────────────────────────────────────────────────────
   {
     object: 'advisory_mandate', name: 'genesis_advisory_conflict_check', label: 'Advisory — open the conflict check',
-    description: 'Moving a mandate to Conflict check opens a check for Compliance across the party master, relationships, open mandates and the restricted list (ADV-FR-02).', ...STAGE,
+    description: 'Moving a mandate to Conflict check opens a check for Compliance across the party master, relationships, open mandates and the restricted list.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Conflict check', 'stage', 'eq', 'conflict_check'),
@@ -520,7 +520,7 @@ const workflows = [
   },
   {
     object: 'conflict_check', name: 'genesis_conflict_decision', label: 'Conflict check — record on the mandate',
-    description: 'Compliance\'s decision is written back to the mandate (cleared or declined) and stored as the audit artifact (ADV-FR-02).', ...changed('decision'),
+    description: 'Compliance\'s decision is written back to the mandate (cleared or declined) and stored as the audit artifact.', ...changed('decision'),
     steps: [
       trig('Decision changed'),
       expr('c1', 'Cleared (with or without controls)?', "IN(decision, 'cleared', 'managed')", { on_false: 'c2' }),
@@ -536,12 +536,12 @@ const workflows = [
   },
   {
     object: 'advisory_mandate', name: 'genesis_advisory_engagement_letter', label: 'Advisory — engagement letter',
-    description: 'Entering Engagement generates the engagement letter (by code name) for e-signature (DOC-FR-03).', ...STAGE,
+    description: 'Entering Engagement generates the engagement letter (by code name) for e-signature.', ...STAGE,
     steps: [trig('Stage change'), cond('c1', 'Moved to Engagement letter', 'stage', 'eq', 'engagement'), doc('d1', 'Generate the engagement letter', 'engagement_letter', 'Engagement letter {{code_name}}')],
   },
   {
     object: 'deal_team_member', name: 'genesis_deal_team_insider', label: 'Deal team — add to the insider list',
-    description: 'Every deal-team member is automatically added to the mandate\'s insider list with date, time and reason (ADV-FR-04).', ...ONCREATE,
+    description: 'Every deal-team member is automatically added to the mandate\'s insider list with date, time and reason.', ...ONCREATE,
     steps: [
       trig('A new deal-team member'),
       cond('c1', 'Not yet on the list', 'insider_added', 'empty'),
@@ -551,7 +551,7 @@ const workflows = [
   },
   {
     object: 'advisory_deliverable', name: 'genesis_milestone_invoice', label: 'Advisory — milestone fee invoice',
-    description: 'A delivered fee milestone raises the fee invoice for accounting (ADV-FR-08, REV-FR-03).', ...STAGE,
+    description: 'A delivered fee milestone raises the fee invoice for accounting.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Delivered', 'stage', 'eq', 'delivered'),
@@ -563,7 +563,7 @@ const workflows = [
   },
   {
     object: 'fee_invoice', name: 'genesis_fee_invoice_revenue', label: 'Advisory — paid fee to the Revenue Ledger',
-    description: 'A paid retainer, milestone or success fee invoice posts the fee to the Revenue Ledger, credited to the advisor and linked to the invoice (REV-FR-03).', ...changed('status'),
+    description: 'A paid retainer, milestone or success fee invoice posts the fee to the Revenue Ledger, credited to the advisor and linked to the invoice.', ...changed('status'),
     steps: [
       trig('Status change'),
       expr('c1', 'Paid fee, not yet posted', "status = 'paid' AND fee_type != 'expenses' AND NOT(revenue_posted)"),
@@ -579,7 +579,7 @@ const workflows = [
   // ── M13 Forex ──────────────────────────────────────────────────────────────
   {
     object: 'fx_quote', name: 'genesis_fx_quote_accepted', label: 'FX quote — book the deal',
-    description: 'An accepted quote becomes a deal booked in the dealing system with a time-stamped trail (FX-FR-03).', ...STAGE,
+    description: 'An accepted quote becomes a deal booked in the dealing system with a time-stamped trail.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Accepted', 'stage', 'eq', 'accepted'),
@@ -588,7 +588,7 @@ const workflows = [
   },
   {
     object: 'fx_deal', name: 'genesis_fx_deal_booking', label: 'FX deal — dealing-system reference',
-    description: 'A new deal is booked in the dealing system and its reference recorded (FX-FR-03).', ...ONCREATE,
+    description: 'A new deal is booked in the dealing system and its reference recorded.', ...ONCREATE,
     steps: [
       trig('A new deal'),
       cond('c1', 'No reference yet', 'dealing_reference', 'empty'),
@@ -597,7 +597,7 @@ const workflows = [
   },
   {
     object: 'fx_deal', name: 'genesis_fx_deal_revenue', label: 'FX deal — post the spread income',
-    description: 'A new deal posts its spread income over the mid rate to the Revenue Ledger, credited to the dealer and linked to the deal (REV-FR-01/03).', ...ONCREATE,
+    description: 'A new deal posts its spread income over the mid rate to the Revenue Ledger, credited to the dealer and linked to the deal.', ...ONCREATE,
     steps: [
       trig('A new deal'),
       expr('c1', 'Earns a spread', 'COALESCE(spread_income, 0) > 0'),
@@ -610,7 +610,7 @@ const workflows = [
   },
   {
     object: 'fx_rate_alert', name: 'genesis_fx_rate_alert', label: 'FX — rate alerts',
-    description: 'Hourly: an alert whose target the board rate has reached is sent to the client and closed (FX-FR-04).', ...HOURLY,
+    description: 'Hourly: an alert whose target the board rate has reached is sent to the client and closed.', ...HOURLY,
     steps: [
       trig('Hourly check'),
       cond('c1', 'Active', 'stage', 'eq', 'active'),
@@ -626,7 +626,7 @@ const workflows = [
   },
   {
     object: 'fx_rate', name: 'genesis_fx_rate_alert_board', label: 'FX — rate alerts on a new board rate',
-    description: 'Publishing a board rate checks the active alerts in that currency at once: each one reached is sent to the client (email or SMS), closed as Triggered and handed to its dealer (FX-FR-04).', ...ONCREATE,
+    description: 'Publishing a board rate checks the active alerts in that currency at once: each one reached is sent to the client (email or SMS), closed as Triggered and handed to its dealer.', ...ONCREATE,
     steps: [
       trig('A new board rate'),
       // A back-dated rate (history being filled in) is not today's board.
@@ -641,7 +641,7 @@ const workflows = [
   },
   {
     object: 'fx_deal', name: 'genesis_fx_forward_maturity', label: 'FX — forward maturity reminder',
-    description: 'A week before an open forward matures the dealer and client are reminded and a roll-over offered (FX-FR-05).', ...DAILY,
+    description: 'A week before an open forward matures the dealer and client are reminded and a roll-over offered.', ...DAILY,
     steps: [
       trig('Daily sweep'),
       expr('c1', 'Open forward maturing in 7 days', 'open_forward AND days_to_value = 7 AND NOT(rollover_offered)'),
@@ -652,7 +652,7 @@ const workflows = [
   },
   {
     object: 'fx_deal', name: 'genesis_fx_forward_reminder', label: 'FX — forward maturity on the dealer\'s reminders',
-    description: 'Booking a forward or swap puts a reminder for its dealer a week before the value date (FX-FR-05).', ...ONCREATE,
+    description: 'Booking a forward or swap puts a reminder for its dealer a week before the value date.', ...ONCREATE,
     steps: [
       trig('A new deal'),
       cond('c1', 'Forward or swap', 'product', 'neq', 'spot'),
@@ -676,7 +676,7 @@ const workflows = [
     'HNW client without a wealth mandate — book a discovery meeting.'),
   {
     object: 'nba_suggestion', name: 'genesis_nba_accept', label: 'NBA — accepted suggestion opens an opportunity',
-    description: 'Accepting a suggestion opens the opportunity with the referrer credited (XS-FR-01, XS-FR-03).', ...changed('status'),
+    description: 'Accepting a suggestion opens the opportunity with the referrer credited.', ...changed('status'),
     steps: [
       trig('Status changed'),
       cond('c1', 'Accepted', 'status', 'eq', 'accepted'),
@@ -685,7 +685,7 @@ const workflows = [
   },
   {
     object: 'fs_opportunity', name: 'genesis_opp_stage_defaults', label: 'Opportunity — stage sets probability and forecast',
-    description: 'Each stage sets the default probability and forecast category, so the weighted value follows the deal; the RM can still adjust them (XS-FR-01, XS-FR-04).', ...STAGE,
+    description: 'Each stage sets the default probability and forecast category, so the weighted value follows the deal; the RM can still adjust them.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c_identified', 'Identified?', 'stage', 'eq', 'identified', { on_false: 'c_qualified' }),
@@ -714,7 +714,7 @@ const workflows = [
   // Accept opens the opportunity itself — exactly once.
   {
     object: 'nba_suggestion', name: 'genesis_nba_accept_action', label: 'Accept',
-    description: 'Accept the suggestion: opens an opportunity at Identified for the client (XS-FR-02).',
+    description: 'Accept the suggestion: opens an opportunity at Identified for the client.',
     trigger_type: 'manual',
     trigger_config: { show_when: { field: 'status', op: 'eq', value: 'open' }, success_message: 'Accepted — an opportunity is open at Identified. It is on the Related tab.' },
     steps: [
@@ -725,7 +725,7 @@ const workflows = [
   },
   {
     object: 'nba_suggestion', name: 'genesis_nba_dismiss_action', label: 'Dismiss',
-    description: 'Dismiss the suggestion with a reason; the rule will not suggest it again for this client (XS-FR-02).',
+    description: 'Dismiss the suggestion with a reason; the rule will not suggest it again for this client.',
     trigger_type: 'manual',
     trigger_config: { show_when: { field: 'status', op: 'eq', value: 'open' }, inputs: [{ field: 'dismiss_reason', label: 'Why are you dismissing it?', required: true, type: 'textarea' }], success_message: 'Dismissed — this rule will not suggest it again for this client.' },
     steps: [trig('Dismiss'), set('a1', 'Mark dismissed', 'status', 'dismissed')],
@@ -734,7 +734,7 @@ const workflows = [
   // ── M16 Service ────────────────────────────────────────────────────────────
   {
     object: 'service_request', name: 'genesis_service_intake', label: 'Service — stamp and route approvals',
-    description: 'Stamps the received date; requests that the catalogue marks as needing approval go to the business-unit head (SR-FR-01).', ...ONCREATE,
+    description: 'Stamps the received date; requests that the catalogue marks as needing approval go to the business-unit head.', ...ONCREATE,
     steps: [
       trig('A new request'),
       cond('c0', 'Received date missing?', 'created_on', 'empty', undefined, { on_false: 'c1' }),
@@ -748,25 +748,25 @@ const workflows = [
   },
   {
     object: 'service_request', name: 'genesis_service_csat', label: 'Service — satisfaction survey',
-    description: 'A resolved request sends the CSAT / NPS survey in the client\'s language (SR-FR-05).', ...STAGE,
+    description: 'A resolved request sends the CSAT / NPS survey in the client\'s language.', ...STAGE,
     steps: [trig('Stage change'), cond('c1', 'Resolved', 'stage', 'eq', 'resolved'), email('m1', 'Send the survey', 'csat_survey', { to_field: 'party_email' })],
   },
 
   // ── M18 Marketing ──────────────────────────────────────────────────────────
   {
     object: 'event_registration', name: 'genesis_event_follow_up', label: 'Event — follow up attendees',
-    description: 'An attended registration reminds the RM to follow up (MKT-FR-05).', ...changed('attended'),
+    description: 'An attended registration reminds the RM to follow up.', ...changed('attended'),
     steps: [trig('Attendance recorded'), cond('c1', 'Attended', 'attended', 'eq', 'true'), cond('c2', 'Not followed up', 'follow_up_done', 'empty'), notify('n1', 'Tell the RM', { field: 'guest_rm', title: 'Event follow-up — {{name}}', message: 'Thank the guest and book a meeting.' })],
   },
   {
     object: 'event_registration', name: 'genesis_event_registration_rm', label: 'Event — registration goes to the guest\'s RM',
-    description: 'A registration is assigned to the guest\'s relationship manager, who follows the guest up after the event (MKT-FR-05).', ...ONCREATE,
+    description: 'A registration is assigned to the guest\'s relationship manager, who follows the guest up after the event.', ...ONCREATE,
     steps: [trig('A new registration'), cond('c1', 'Guest has an RM', 'guest_rm', 'notempty'), set('a1', 'Assign to the RM', 'assigned_to', '{{guest_rm}}')],
   },
   {
     // A campaign is a financial promotion: Compliance signs it off before it goes out.
     object: 'campaign', name: 'genesis_campaign_signoff', label: 'Campaign — Compliance sign-off',
-    description: 'Moving a campaign to Compliance review asks Compliance to sign it off in Approvals; approval moves it to Approved, a return sends it back to Planning (MKT-FR-03).', ...STAGE,
+    description: 'Moving a campaign to Compliance review asks Compliance to sign it off in Approvals; approval moves it to Approved, a return sends it back to Planning.', ...STAGE,
     steps: [
       trig('Stage change'),
       cond('c1', 'Moved to Compliance review', 'stage', 'eq', 'compliance_review'),
@@ -783,7 +783,7 @@ const workflows = [
   },
   {
     object: 'enquiry', name: 'genesis_enquiry_campaign_attribution', label: 'Enquiry — attribute to the campaign',
-    description: 'A web enquiry whose link carried a campaign\'s tracking code (utm_campaign) is attributed to that campaign, so its enquiries, loans and ROI count it (MKT-FR-03).', ...ONCREATE,
+    description: 'A web enquiry whose link carried a campaign\'s tracking code (utm_campaign) is attributed to that campaign, so its enquiries, loans and ROI count it.', ...ONCREATE,
     steps: [
       trig('A new enquiry'),
       cond('c1', 'Not already attributed', 'campaign', 'empty'),
@@ -811,7 +811,7 @@ const workflows = [
     // A button on the publication (manual trigger): email it to the subscribers
     // of its topic who still consent, count opens, and mark it distributed.
     object: 'research_publication', name: 'genesis_research_distribute', label: 'Send to subscribers',
-    description: 'Emails the publication to subscribers of its topic (EN/FR), skipping anyone without marketing consent; opens are counted on the publication (MKT-FR-04, SEC-FR-05).',
+    description: 'Emails the publication to subscribers of its topic (EN/FR), skipping anyone without marketing consent; opens are counted on the publication.',
     trigger_type: 'manual',
     steps: [
       trig('Send to subscribers'),
@@ -825,7 +825,7 @@ const workflows = [
   },
   {
     object: 'web_event', name: 'genesis_web_newsletter', label: 'Website — newsletter sign-up',
-    description: 'A newsletter sign-up is welcomed and passed to Marketing (MKT-FR-04).', ...ONCREATE,
+    description: 'A newsletter sign-up is welcomed and passed to Marketing.', ...ONCREATE,
     steps: [
       trig('A new web event'),
       cond('c1', 'Newsletter sign-up', 'event_type', 'eq', 'newsletter_signup'),
@@ -837,7 +837,7 @@ const workflows = [
   // ── M21 Compliance registers ───────────────────────────────────────────────
   {
     object: 'data_subject_request', name: 'genesis_dsr_intake', label: 'DPA — acknowledge a data subject request',
-    description: 'A data subject request is acknowledged and Compliance alerted; the 30-day SLA runs (CMP-FR-08).', ...ONCREATE,
+    description: 'A data subject request is acknowledged and Compliance alerted; the 30-day SLA runs.', ...ONCREATE,
     steps: [
       trig('A new request'),
       notify('n1', 'Tell Compliance', { role: 'compliance_officer', title: 'Data subject request — {{name}}', message: 'Respond by {{due_by}}.' }),
@@ -845,7 +845,7 @@ const workflows = [
   },
   {
     object: 'gift_register', name: 'genesis_gift_threshold', label: 'Gifts — above-threshold approval',
-    description: 'A gift or hospitality above MUR 5,000 waits for a Compliance decision in Approvals; the decision is written back to the register (CMP-FR-05).', ...ONCREATE,
+    description: 'A gift or hospitality above MUR 5,000 waits for a Compliance decision in Approvals; the decision is written back to the register.', ...ONCREATE,
     steps: [
       trig('A new declaration'),
       cond('c1', 'Above threshold', 'needs_approval', 'eq', 'true'),
@@ -857,7 +857,7 @@ const workflows = [
   },
   {
     object: 'pa_dealing', name: 'genesis_pa_dealing_check', label: 'Personal dealing — pre-clearance',
-    description: 'Requests in a restricted security are refused automatically; others go to Compliance (CMP-FR-05).', ...ONCREATE,
+    description: 'Requests in a restricted security are refused automatically; others go to Compliance.', ...ONCREATE,
     steps: [
       trig('A new request'),
       expr('c1', 'Restricted security?', "restricted = 'restricted'", { on_false: 'n1' }),
@@ -911,14 +911,14 @@ const slaPolicies = [
   },
   {
     name: 'Conflict checks — two business days', object: 'conflict_check',
-    description: 'Compliance decides a conflict check within two business days (ADV-FR-02).',
+    description: 'Compliance decides a conflict check within two business days.',
     config: { first_response_stages: ['requested'], closed_stages: ['decided'] },
     targets: [{ metric: 'first_response', minutes: 4 * H }, { metric: 'resolution', minutes: 2 * 8 * H }],
     escalations: [{ metric: '*', trigger: 'breach', action: 'notify_manager' }],
   },
   {
     name: 'Data subject requests — 30 days', object: 'data_subject_request',
-    description: 'Mauritius DPA 2017: respond within one month (CMP-FR-08).',
+    description: 'Mauritius DPA 2017: respond within one month.',
     config: { first_response_stages: ['received'], closed_stages: ['completed', 'refused'] },
     targets: [{ metric: 'first_response', minutes: 2 * 8 * H }, { metric: 'resolution', minutes: 21 * 8 * H, warning_pct: 70 }],
     escalations: [{ metric: '*', trigger: 'warning', action: 'notify_owner' }, { metric: '*', trigger: 'breach', action: 'notify_manager' }],
@@ -932,7 +932,7 @@ const slaPolicies = [
   },
   {
     name: 'Commercial credit — memo to decision', object: 'credit_facility',
-    description: 'From credit memo to decision within 10 business days (COM-FR-07, LOAN-FR-14).',
+    description: 'From credit memo to decision within 10 business days.',
     config: { first_response_stages: ['origination'], closed_stages: ['active', 'declined', 'closed'] },
     targets: [{ metric: 'first_response', minutes: 2 * 8 * H }, { metric: 'resolution', minutes: 30 * 8 * H, warning_pct: 70 }],
     escalations: [{ metric: '*', trigger: 'breach', action: 'notify_manager' }],

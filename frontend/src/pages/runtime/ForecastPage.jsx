@@ -222,7 +222,8 @@ export default function ForecastPage() {
 
   const forecastQ = useQuery({
     queryKey: ['forecast', objectId],
-    queryFn:  () => runtimeService.getForecast(objectId, { value_field: 'amount' }),
+    // The server picks the value field from the object (config or field names).
+    queryFn:  () => runtimeService.getForecast(objectId),
     enabled:  !!objectId,
   });
   const forecast = forecastQ.data?.data;
@@ -283,7 +284,7 @@ export default function ForecastPage() {
                 </span>
               )}
               <span className="text-xs px-2.5 py-1 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
-                Revenue · amount
+                Revenue · {forecast?.value_label || forecast?.value_field || 'amount'}
               </span>
             </div>
           )}

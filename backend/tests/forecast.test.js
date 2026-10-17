@@ -151,3 +151,69 @@ describe('ForecastService — getTeamForecast', () => {
     expect(result.manager_id).toBe('MGR-1');
   });
 });
+
+// ── Builder objects (records, not crm_opportunities) ───────────────────────
+
+describe('ForecastService — Builder object forecast', () => {
+  const fields = [
+    { name: 'amount', field_type: 'currency', label: 'Amount' },
+    { name: 'amount_mur', field_type: 'formula', label: 'Amount (MUR)' },
+    { name: 'probability', field_type: 'percent', label: 'Probability %' },
+    { name: 'expected_close', field_type: 'date', label: 'Expected close' },
+    { name: 'forecast_category', field_type: 'select', label: 'Forecast' },
+    { name: 'owner_rm', field_type: 'text', label: 'Owner RM' },
+  ];
+  const stages = [
+    { id: 1, name: 'qualified', label: 'Qualified', config: {} },
+    { id: 2, name: 'proposal', label: 'Proposal', config: {} },
+    { id: 3, name: 'won', label: 'Won', config: {} },
+  ];
+  const rec = (id, stage, data, assigned_to = null) => ({ id, pipeline_stage_id: stage, assigned_to, data });
+  const records = [
+    rec(1, 1, { amount: 100, amount_mur: 1000, probability: 25, owner_rm: 'RM1', forecast_category: 'pipeline', expected_close: '2026-11-15' }),
+    rec(2, 2, { amount: 2000, amount_mur: 2000, probability: 50, owner_rm: 'RM2', forecast_category: 'commit', expected_close: '2026-12-20' }),
+    rec(3, 3, { amount: 9999, amount_mur: 9999, probability: 100, owner_rm: 'RM1' }), // won → not pipeline
+    rec(4, 2, { amount: 400, amount_mur: 400, probability: 50, forecast_category: 'pipeline' }, 'RM3'), // owner from assignee
+  ];
+  function build() {
+    const prisma = makePrisma({
+      uiObject:        { findUnique: jest.fn().mockResolvedValue({ id: 166, name: 'fs_opportunity', config: {} }) },
+      uiField:         { findMany: jest.fn().mockResolvedValue(fields) },
+      uiPipelineStage: { findMany: jest.fn().mockResolvedValue(stages) },
+    });
+    const recordSvc = { getRecords: jest.fn().mockResolvedValue(records) };
+    return { svc: new ForecastService(prisma, recordSvc), recordSvc, prisma };
+  }
+
+  it('reads the object\'s records with the viewer\'s scope, in the base-currency amount', async () => {
+    const { svc, recordSvc, prisma } = build();
+    const viewer = { employee_id: 'RM1', role: 'rm' };
+    const f = await svc.computeForecast(166, { value_field: 'amount' }, viewer);
+    expect(recordSvc.getRecords).toHaveBeenCalledWith(166, null, viewer, {});
+    expect(prisma.crmOpportunity.findMany).not.toHaveBeenCalled();
+    expect(f.value_field).toBe('amount_mur');
+    expect(f.total_pipeline).toBe(3400);
+    // 1000×25% + 2000×50% + 400×50%
+    expect(f.weighted_forecast).toBe(1450);
+    expect(f.by_stage.map((s) => s.stage)).toEqual(['Qualified', 'Proposal']);
+    expect(f.by_employee.find((e) => e.owner_id === 'RM3').amount).toBe(400);
+    expect(f.by_category.find((c) => c.category === 'commit').weighted).toBe(1000);
+  });
+
+  it('filters by owner and close date, and rolls up a team', async () => {
+    const { svc, prisma } = build();
+    expect((await svc.computeForecast(166, { assigned_to: 'RM2' })).total_pipeline).toBe(2000);
+    expect((await svc.computeForecast(166, { from: '2026-11-01', to: '2026-11-30' })).total_pipeline).toBe(1000);
+    prisma.employeeHierarchy.findMany.mockResolvedValue([{ descendant_id: 'RM1' }, { descendant_id: 'RM3' }]);
+    const team = await svc.getTeamForecast('MGR', 166, {});
+    expect(team.total_pipeline).toBe(1400);
+    expect(team.team_size).toBe(2);
+  });
+
+  it('uses the object\'s forecast config over the conventional names', () => {
+    const roles = ForecastService.resolveRoles(fields, { forecast: { amount_field: 'amount', owner_field: 'owner_rm' } });
+    expect(roles.amount).toBe('amount');
+    expect(roles.close).toBe('expected_close');
+    expect(roles.category).toBe('forecast_category');
+  });
+});

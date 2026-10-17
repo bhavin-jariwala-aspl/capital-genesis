@@ -90,6 +90,26 @@ function storedString(v) {
 
 class VerticalInstaller {
   /**
+   * The SLA window per tracked object: the shortest first-response and
+   * resolution targets (business minutes) across the object's policies.
+   * @returns {Map<string, {first: number|null, resolution: number|null}>}
+   */
+  static slaWindows(policies = []) {
+    const out = new Map();
+    for (const p of policies) {
+      if (!p?.object) continue;
+      const w = out.get(p.object) ?? { first: null, resolution: null };
+      for (const t of p.targets ?? []) {
+        const key = t.metric === 'first_response' ? 'first' : t.metric === 'resolution' ? 'resolution' : null;
+        const mins = Number(t.minutes ?? t.target_minutes);
+        if (key && Number.isFinite(mins) && mins > 0) w[key] = w[key] == null ? mins : Math.min(w[key], mins);
+      }
+      out.set(p.object, w);
+    }
+    return out;
+  }
+
+  /**
    * @param {import('@prisma/client').PrismaClient} prisma tenant-scoped client
    * @param {{ tenantId: number, log?: Function, demo?: boolean, password?: string }} opts
    */
@@ -923,6 +943,9 @@ class VerticalInstaller {
     };
     // Where in its window an open demo item sits: ~65% on track, ~20% at risk, ~15% breached (by up to half the window).
     const placeIn = (win, h, h2) => Math.max(30 * 60000, win * (h2 < 0.65 ? 0.1 + 0.6 * h : h2 < 0.85 ? 0.78 + 0.18 * h : 1.05 + 0.5 * h));
+    // Out of place: past its window and well beyond where it should sit (so a demo item meant to be
+    // breached stays put until it drifts, and re-running the installer does not keep moving it).
+    const stale = (age, win, h, h2) => age > win && age > placeIn(win, h, h2) * 1.25;
     const retimed = new Set();
     let written = 0;
     for (const set of sets) {
@@ -972,12 +995,12 @@ class VerticalInstaller {
           const rec = anchors.get(id);
           if (!rec) continue;
           const createdAt = new Date(rec.created_at).getTime();
-          if (now - createdAt > win * 1.6) rebase.push({ id, from: createdAt, to: now - placeIn(win, h, h2), updated: rec.updated_at });
+          if (stale(now - createdAt, win, h, h2)) rebase.push({ id, from: createdAt, to: now - placeIn(win, h, h2), updated: rec.updated_at });
           else if (timers.some((t) => t.entity_id === id && Math.abs(new Date(t.started_at).getTime() - createdAt) > 60000)) retimed.add(id);
           continue;
         }
         // Open work on an SLA-tracked object sits inside its SLA window; a months-old open enquiry is not a believable demo.
-        if (win && now - created > win * 1.1) {
+        if (win && stale(now - created, win, h, h2)) {
           created = now - placeIn(win, h, h2);
           moved.push({ id, created });
         } else if (!terminal && tracked && !win && now - created > 21 * DAY) {
