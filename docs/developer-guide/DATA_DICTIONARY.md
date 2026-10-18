@@ -601,8 +601,9 @@ is removed.
 - `id` — BIGINT PK (auto-increment).
 - `record_id` — FK → `records.id` (cascade delete).
 - `field_name` — VARCHAR(100); the UI field's `name`.
-- Typed value columns (only one populated per row per the field's `data_type`): `str_value` (TEXT), `num_value`
-  (Float/DOUBLE), `bool_value` (Boolean), `date_value` (DateTime), `json_value` (JSON).
+- Typed value columns: `str_value` (TEXT), `num_value` (Float/DOUBLE), `bool_value` (Boolean), `date_value`
+  (DateTime), `json_value` (JSON). `str_value` is always populated; the typed column matching the field's `data_type` is
+  populated alongside it. See [DATABASE_SCHEMA](DATABASE_SCHEMA.md#where-record-data-lives-and-querying-it-with-sql).
 - `created_at` / `updated_at` — timestamps.
 - **Uniqueness:** `@@unique([record_id, field_name])` — exactly one row per field per record.
 

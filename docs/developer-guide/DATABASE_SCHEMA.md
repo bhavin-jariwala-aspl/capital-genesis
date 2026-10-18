@@ -568,6 +568,71 @@ Dynamic per-field values for records in columnar/typed form (string, number, boo
 
 **Relationships:** FK to `records`; UNIQUE on (record_id, field_name) — one row per field per record.
 
+### Where record data lives, and querying it with SQL
+
+**Which table holds a record's fields** depends on the object's `ui_objects.name` (`MODEL_MAP` in
+[`crm-storage-map.js`](../../backend/src/services/crm-storage-map.js)):
+
+| Object name | Field data lives in |
+|---|---|
+| `lead`, `prospect` | `crm_leads` |
+| `lead_intake` | `crm_lead_intake` |
+| `contact` / `account` / `opportunity` / `case` | `crm_contacts` / `crm_accounts` / `crm_opportunities` / `crm_cases` |
+| everything else | `record_field_values` |
+
+The Genesis Capital workspace uses none of the names in the first rows, so **all of its business data is in `records` +
+`record_field_values`** and the `crm_*` tables are empty (Oct 2026). Leads are object `enquiry` and clients are
+`party`; [IMPLEMENTATION](../GENESIS-CAPITAL/IMPLEMENTATION.md) lists the objects for each module.
+
+**How values are written** (`toTypedValue`, used by `RecordService`):
+
+- `str_value` is **always** populated, also for numbers, dates and booleans, alongside the typed column (`num_value`,
+  `date_value`, `bool_value`, `json_value`). Use `str_value` when unsure and the typed column to sort, sum or compare.
+- An empty field has no row at all.
+- A `lookup` field stores the target record's `records.id` (in `num_value` and `str_value`); the target object is
+  `ui_fields.config.target_object`.
+- Fields with `config.encrypt` (e.g. `party.id_number`) hold `enc:v1:…` ciphertext in `str_value`, which SQL cannot
+  read — see [PLATFORM_BUILDER_EXTENSIONS](PLATFORM_BUILDER_EXTENSIONS.md#12-personal-data-protection).
+- Soft-deleted records keep their values; filter `records.deleted_at IS NULL`.
+
+**Recipes** (any SQL client — connection details in [INSTALLATION](../getting-started/INSTALLATION.md)):
+
+```sql
+-- Record types with live record counts
+SELECT o.id, o.name, o.label, COUNT(r.id) AS records
+FROM ui_objects o JOIN records r ON r.object_id = o.id AND r.deleted_at IS NULL
+GROUP BY o.id ORDER BY records DESC;
+
+-- Fields of one object
+SELECT f.name, f.label, f.field_type, f.config
+FROM ui_fields f JOIN ui_objects o ON o.id = f.object_id
+WHERE o.name = 'enquiry' ORDER BY f.order_index;
+
+-- One row per record, fields as columns (here: leads). Add a MAX(CASE …) line per field.
+SELECT r.id, r.created_at, r.created_by, r.assigned_to, s.label AS stage,
+  MAX(CASE WHEN v.field_name = 'enquiry_no'   THEN v.str_value END) AS enquiry_no,
+  MAX(CASE WHEN v.field_name = 'display_name' THEN v.str_value END) AS name,
+  MAX(CASE WHEN v.field_name = 'email'        THEN v.str_value END) AS email,
+  MAX(CASE WHEN v.field_name = 'channel'      THEN v.str_value END) AS channel,
+  MAX(CASE WHEN v.field_name = 'score'        THEN v.num_value END) AS score
+FROM records r
+JOIN ui_objects o ON o.id = r.object_id AND o.name = 'enquiry'
+LEFT JOIN ui_pipeline_stages s ON s.id = r.pipeline_stage_id
+LEFT JOIN record_field_values v ON v.record_id = r.id
+WHERE r.deleted_at IS NULL
+GROUP BY r.id, s.label
+ORDER BY r.created_at DESC;
+
+-- Follow a lookup: the client (party) a lead converted into
+SELECT enq.record_id AS enquiry_id, cli.str_value AS client_name
+FROM record_field_values enq
+JOIN record_field_values cli ON cli.record_id = enq.num_value AND cli.field_name = 'display_name'
+WHERE enq.field_name = 'party';
+```
+
+`records.created_by` is `NULL` for records created by the public web form or an integration, and an employee ID (e.g.
+`GCRM1`) for records staff created.
+
 ### `activities`
 Logged interactions on records (calls, meetings, notes, etc.).
 
