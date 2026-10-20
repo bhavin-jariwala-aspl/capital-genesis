@@ -1,240 +1,240 @@
 1
-00:00:01,966 --> 00:00:10,640
+00:00:01,966 --> 00:00:11,200
 Retail Lending
 A home loan from the client's first call to disbursement — every hand-off, check and approval in one record.
 
 2
-00:00:10,640 --> 00:00:15,800
+00:00:11,200 --> 00:00:14,880
 Anika Gopaul calls about a home loan
 The loans executive logs the enquiry while on the phone
 
 3
-00:00:15,800 --> 00:00:28,360
+00:00:14,880 --> 00:00:27,440
 Sign in as Sophie Lagesse — Loans Executive
 Loans executive — takes the client’s call
 
 4
-00:00:28,360 --> 00:00:35,320
+00:00:27,440 --> 00:00:34,400
 What she wants: a real-estate loan of MUR 4.5 million over 20 years
 
 5
-00:00:35,320 --> 00:00:42,216
+00:00:34,400 --> 00:00:42,616
 Routing assigns lending enquiries round the loans team — this one stays with Sophie
 The first-contact SLA clock starts now
 
 6
-00:00:42,216 --> 00:00:50,896
+00:00:42,616 --> 00:00:51,296
 She qualifies on the call — drag the enquiry to Qualified, then Converted
 Converting creates the client, the KYC case and the loan application
 
 7
-00:00:51,016 --> 00:00:57,336
+00:00:53,536 --> 00:00:59,016
 The loan application is waiting in Retail Lending
 Already at Pre-qualified, with the amount and tenure from the enquiry
 
 8
-00:00:57,336 --> 00:01:05,656
+00:00:59,016 --> 00:01:07,536
 Application captured needs the client's income and the property value
 The board refuses the move and says what is missing
 
 9
-00:01:05,656 --> 00:01:12,656
+00:01:07,536 --> 00:01:14,856
 Open the record from the message and complete it
 Purpose, income, existing repayments and property value
 
 10
-00:01:12,656 --> 00:01:18,256
+00:01:14,856 --> 00:01:19,856
 Tick the client's consent to the MCIB credit bureau check
 No consent, no credit report
 
 11
-00:01:18,256 --> 00:01:27,136
+00:01:19,856 --> 00:01:30,376
 The CRM prices the loan and checks eligibility by itself
 Genesis PLR + product margin = interest rate · monthly instalment · total interest
 
 12
-00:01:27,136 --> 00:01:34,229
+00:01:30,376 --> 00:01:37,909
 Loan-to-value, debt-service ratio and eligibility
 And the approval authority — up to MUR 5 million, the Loans Manager
 
 13
-00:01:34,229 --> 00:01:40,029
+00:01:37,909 --> 00:01:43,869
 Now Application captured is accepted
 The MCIB report is pulled and the client gets a status email
 
 14
-00:01:40,029 --> 00:01:48,589
+00:01:43,869 --> 00:01:52,429
 Documents pending: the client is emailed the document checklist
 
 15
-00:01:48,589 --> 00:01:53,189
+00:01:52,429 --> 00:01:56,149
 The Docs tab shows the checklist for a real-estate loan
 What is in and what is still missing
 
 16
-00:01:53,189 --> 00:01:58,469
+00:01:56,149 --> 00:02:01,709
 Send the client a secure upload link
 No sign-in — she only sees the documents still needed
 
 17
-00:01:58,469 --> 00:02:01,890
+00:02:01,709 --> 00:02:05,130
 Her uploads land on this application and tick off the checklist
 
 18
-00:02:01,890 --> 00:02:10,850
+00:02:05,130 --> 00:02:15,330
 Documents in: Documents complete, then on to credit
 Credit appraisal only accepts an eligible application — or one with its policy exceptions recorded
 
 19
-00:02:10,850 --> 00:02:16,290
+00:02:15,330 --> 00:02:19,770
 The credit analyst picks up the application
 Same record — another person, another form
 
 20
-00:02:16,290 --> 00:02:22,632
+00:02:19,770 --> 00:02:25,512
 Sign in as Nadia Peerbux — Credit Analyst
 Credit analyst — appraises the risk and recommends a decision
 
 21
-00:02:22,632 --> 00:02:29,112
+00:02:25,512 --> 00:02:32,072
 The MCIB credit report is already on the application
 Score, rating and reference came back from the credit bureau
 
 22
-00:02:29,112 --> 00:02:37,072
+00:02:32,072 --> 00:02:40,032
 Switch to the Credit appraisal workbench form
 Risk grade, recommendation and conditions
 
 23
-00:02:37,112 --> 00:02:43,399
+00:02:40,072 --> 00:02:46,359
 Credit approval: the request goes to the right authority for the amount
 
 24
-00:02:43,399 --> 00:02:49,679
+00:02:46,359 --> 00:02:52,559
 MUR 4.5 million: the Loans Manager decides
 Four eyes — whoever sent it can never approve it
 
 25
-00:02:49,679 --> 00:02:57,999
+00:02:52,559 --> 00:03:00,199
 Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income
 Manager, Loans & Fixed Income — approves loans up to MUR 5 million
 
 26
-00:02:57,999 --> 00:03:09,599
+00:03:00,199 --> 00:03:12,879
 Tools ▸ Approvals: grade, DSR, LTV and the analyst's recommendation on one card
 
 27
-00:03:09,599 --> 00:03:16,399
+00:03:12,879 --> 00:03:19,599
 Approved — the application moved itself to Offer issued
 Decision, date and the PLR the offer is priced on are recorded
 
 28
-00:03:16,399 --> 00:03:22,519
+00:03:19,599 --> 00:03:26,719
 The offer letter was generated and filed here
 The client is emailed; an offer not accepted in 30 days lapses
 
 29
-00:03:22,519 --> 00:03:28,919
+00:03:26,719 --> 00:03:33,399
 The client signs the offer — back to the loans executive
 Record the signature, the security and the amount to disburse
 
 30
-00:03:28,919 --> 00:03:37,039
+00:03:33,399 --> 00:03:41,519
 Sign in as Sophie Lagesse — Loans Executive
 Loans executive
 
 31
-00:03:37,039 --> 00:03:46,020
+00:03:41,519 --> 00:03:50,500
 Valuation, notary, fixed charge, life and building insurance
 
 32
-00:03:46,020 --> 00:03:53,900
+00:03:50,500 --> 00:03:58,380
 Signed offer: move to Offer accepted, then Security & insurance
 The client gets a status email at each milestone
 
 33
-00:03:53,900 --> 00:04:02,100
+00:03:58,380 --> 00:04:06,580
 Ready for disbursement needs perfected security and an approved KYC
 Her KYC case is still open — the move is refused
 
 34
-00:04:02,220 --> 00:04:07,300
+00:04:07,700 --> 00:04:11,300
 Finish the KYC case that was opened at conversion
 Clients ▸ KYC & Compliance ▸ KYC Cases
 
 35
-00:04:07,300 --> 00:04:13,500
+00:04:11,300 --> 00:04:17,740
 ID, proof of address and source of funds are on file
 Tick the checks and the FATCA status
 
 36
-00:04:13,500 --> 00:04:21,900
+00:04:17,740 --> 00:04:26,140
 Move it to Screening: sanctions and PEP lists are checked automatically
 The result and its reference are written on the case
 
 37
-00:04:21,900 --> 00:04:27,580
+00:04:26,140 --> 00:04:32,380
 Clear — Pending approval sends the case to Compliance
 High-risk clients go to the MLRO instead
 
 38
-00:04:27,580 --> 00:04:33,220
+00:04:32,380 --> 00:04:35,700
 Compliance signs off the KYC case
 Four eyes again: the loans executive cannot approve her own client
 
 39
-00:04:33,220 --> 00:04:38,900
+00:04:35,700 --> 00:04:40,100
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance officer — signs off KYC
 
 40
-00:04:38,900 --> 00:04:47,780
+00:04:40,100 --> 00:04:48,980
 Tools ▸ Approvals: the KYC case with its risk score and rating
 
 41
-00:04:47,780 --> 00:04:52,180
+00:04:48,980 --> 00:04:52,540
 KYC approved — the loans executive tries again
 Now the gate lets it through
 
 42
-00:04:52,180 --> 00:05:02,779
+00:04:52,540 --> 00:05:03,139
 Sign in as Sophie Lagesse — Loans Executive
 Loans executive
 
 43
-00:05:02,779 --> 00:05:09,059
+00:05:03,139 --> 00:05:08,379
 An approval request goes to the operations checker
 Maker-checker: whoever requests a disbursement cannot approve it
 
 44
-00:05:09,059 --> 00:05:15,379
+00:05:08,379 --> 00:05:12,899
 Sign in as Ritesh Seewoo — Operations Checker
 Operations checker — the second pair of eyes before money moves
 
 45
-00:05:15,379 --> 00:05:24,868
+00:05:12,899 --> 00:05:22,388
 Tools ▸ Approvals: the disbursement request, with security and KYC status
 
 46
-00:05:24,868 --> 00:05:30,908
+00:05:22,388 --> 00:05:28,708
 The loan is booked in the core loan system
 The LMS account number is written back on the application
 
 47
-00:05:30,908 --> 00:05:34,108
+00:05:28,708 --> 00:05:31,908
 The loans executive closes the application as Disbursed
 
 48
-00:05:34,108 --> 00:05:50,708
+00:05:31,908 --> 00:05:48,508
 Sign in as Sophie Lagesse — Loans Executive
 Loans executive
 
 49
-00:05:50,708 --> 00:05:57,041
+00:05:48,508 --> 00:05:54,881
 Related: the loan account was opened automatically
 Loan Servicing now follows instalments, arrears and the balance
 
 50
-00:05:57,041 --> 00:06:03,588
+00:05:54,881 --> 00:06:01,428
 One record, the whole journey
 Five people worked the same loan application — no re-keying, every step audited.

@@ -1,0 +1,257 @@
+[
+  {
+    "n": 1,
+    "caption": "Service Requests & Complaints",
+    "vo": "A client calls with a request, or writes in with a complaint. Who picks it up, and how fast? Let's find out."
+  },
+  {
+    "n": 2,
+    "caption": "Every request type comes from the service catalogue",
+    "vo": "It all starts with the service request catalogue, in Masters."
+  },
+  {
+    "n": 3,
+    "caption": "Sign in as Priya Ramdin — Relationship Manager",
+    "vo": "We'll sign in as Priya Ramdin, a relationship manager who logs requests for her clients. But first, let's look at the catalogue, because every request type she can pick comes from here. Change it once, and every new request follows."
+  },
+  {
+    "n": 4,
+    "caption": "Each type has its business unit, a service level in business hours and an approval flag",
+    "vo": "Each type has a business unit, a service level in business hours, and an approval flag. A statement request gets sixteen hours, no approval. A partial prepayment gets forty, and needs approval."
+  },
+  {
+    "n": 5,
+    "caption": "Complaints get 120 business hours — 15 working days for a final response",
+    "vo": "Complaints get a hundred and twenty business hours, that's fifteen working days for a final response, with an acknowledgement inside one business day, in line with FSC expectations."
+  },
+  {
+    "n": 6,
+    "caption": "Rohan Beeharry phones to ask for the last six months of statements",
+    "vo": "So, a real request. Rohan Beeharry phones Priya and asks for the last six months of statements. She opens Service and Complaints and clicks New."
+  },
+  {
+    "n": 7,
+    "caption": "Pick the client, the business unit and the request type",
+    "vo": "She picks the client, the business unit and the request type. Complaint fields only appear for complaints."
+  },
+  {
+    "n": 8,
+    "caption": "Saved: the request is numbered, acknowledged and routed automatically",
+    "vo": "Save, and the system takes over. It's numbered, acknowledged and routed. The client gets an email, and Lending requests go to the Loans team."
+  },
+  {
+    "n": 9,
+    "caption": "Stage Acknowledged · Catalogue SLA 16 business hours · Needs approval: No",
+    "vo": "It's at Acknowledged, with a sixteen hour service level, no approval needed, and Yash Bholah on the Loans team owns it."
+  },
+  {
+    "n": 10,
+    "caption": "Activity: the acknowledgement email the client received",
+    "vo": "In Activity, there's the acknowledgement email the client received. Sent automatically the moment it was logged."
+  },
+  {
+    "n": 11,
+    "caption": "The Loans executive who owns the request works it",
+    "vo": "That's the hand-off. From here, the Loans team does the work."
+  },
+  {
+    "n": 12,
+    "caption": "Sign in as Yash Bholah — Loans Executive",
+    "vo": "So let's switch to Yash Bholah, the Loans executive who now owns the request."
+  },
+  {
+    "n": 13,
+    "caption": "The board: one column per stage, from New to Closed",
+    "vo": "One column per stage, from New to Closed. When the work moves on, drag the card."
+  },
+  {
+    "n": 14,
+    "caption": "Statements prepared — try to mark it Resolved",
+    "vo": "The statements are ready, so let's mark it Resolved. But wait…"
+  },
+  {
+    "n": 15,
+    "caption": "Blocked: the Resolved stage needs the \"Resolved on\" date",
+    "vo": "Blocked. Resolved needs a resolved on date, and the board tells you exactly what's missing."
+  },
+  {
+    "n": 16,
+    "caption": "Enter the date the request was resolved and save",
+    "vo": "So, enter the date it was resolved, and save. A small rule, but it means the record is always complete. Then back to the board."
+  },
+  {
+    "n": 17,
+    "caption": "Resolved — the client is emailed a short satisfaction survey",
+    "vo": "Resolved. And the client is emailed a short survey. Two questions, how satisfied, one to five, and how likely to recommend, nought to ten."
+  },
+  {
+    "n": 18,
+    "caption": "Closed. The service level was met on time",
+    "vo": "Closed, and on time. The SLA clock stopped the moment it was resolved."
+  },
+  {
+    "n": 19,
+    "caption": "Bhavish Dabee wants to prepay part of a home loan",
+    "vo": "Next, Bhavish Dabee wants to prepay part of a home loan. That needs the business-unit head's approval."
+  },
+  {
+    "n": 20,
+    "caption": "Sign in as Priya Ramdin — Relationship Manager",
+    "vo": "Priya logs it, just as before."
+  },
+  {
+    "n": 21,
+    "caption": "Same form, request type Partial prepayment",
+    "vo": "Same form, but this time the request type is Partial prepayment. And the catalogue already knows this one needs approval, so Priya doesn't have to remember."
+  },
+  {
+    "n": 22,
+    "caption": "Needs approval: Yes — the catalogue sent it to the business-unit head",
+    "vo": "There it is. Needs approval, yes. An approval request is now waiting in Tools, under Approvals."
+  },
+  {
+    "n": 23,
+    "caption": "The BD head reviews and approves the request",
+    "vo": "The BD head reviews it. And no, the requester can never approve their own request."
+  },
+  {
+    "n": 24,
+    "caption": "Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships",
+    "vo": "So we sign in as Shalini Ramtohul, Head of BD and Strategic Partnerships."
+  },
+  {
+    "n": 25,
+    "caption": "The request waits in her Approvals inbox",
+    "vo": "It's waiting in her Approvals inbox. She can open the linked record to check the details, add a comment, then approve or reject."
+  },
+  {
+    "n": 26,
+    "caption": "Approved: the owner is notified to go ahead",
+    "vo": "Approved. The owner's told to go ahead, and the decision and comment stay on the Audit tab."
+  },
+  {
+    "n": 27,
+    "caption": "Stéphanie Montocchio writes in to complain about a fee",
+    "vo": "Now the serious one. Stéphanie Montocchio writes in to complain about a fee."
+  },
+  {
+    "n": 28,
+    "caption": "Sign in as Priya Ramdin — Relationship Manager",
+    "vo": "The letter reaches Priya. And anyone can log a complaint."
+  },
+  {
+    "n": 29,
+    "caption": "New request: the client, the business unit — and request type Complaint",
+    "vo": ""
+  },
+  {
+    "n": 30,
+    "caption": "Choosing Complaint shows the complaint-handling fields",
+    "vo": "Choose Complaint, and the form changes. Now there's a category, root cause, final response, redress, and a box for an Ombudsperson referral. Everything a complaint needs, in one place."
+  },
+  {
+    "n": 31,
+    "caption": "Acknowledged automatically and routed to Compliance",
+    "vo": "Acknowledged straight away, and routed to Compliance. Fatima Hossenbux owns it, whatever the business unit, and the complaints timer is already running."
+  },
+  {
+    "n": 32,
+    "caption": "The client already has the complaint acknowledgement",
+    "vo": "Stéphanie already has the acknowledgement, in the client's preferred language, with a reference number and next steps."
+  },
+  {
+    "n": 33,
+    "caption": "Compliance owns the complaint and is notified",
+    "vo": "Compliance owns it now, and has been notified."
+  },
+  {
+    "n": 34,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "So let's sign in as Fatima Hossenbux, the Compliance Officer who oversees the complaints register."
+  },
+  {
+    "n": 35,
+    "caption": "The SLA Board shows the complaint's timers",
+    "vo": "The SLA Board shows both timers. First response, met. Resolution, due within fifteen business days."
+  },
+  {
+    "n": 36,
+    "caption": "Compliance investigates",
+    "vo": "Fatima starts investigating, so the complaint moves to In progress."
+  },
+  {
+    "n": 37,
+    "caption": "A statement copy is needed from the client — Awaiting client",
+    "vo": "She needs a statement copy from Stéphanie, so it moves to Awaiting client. And while the client has the ball, the clock is paused."
+  },
+  {
+    "n": 38,
+    "caption": "Paused: the waiting time does not count against the target",
+    "vo": "That waiting time doesn't count against the target. The clock restarts when things move on."
+  },
+  {
+    "n": 39,
+    "caption": "The client sent the statement — back to In progress",
+    "vo": "Stéphanie sends the statement, so it's back to In progress. And it turns out the fee was charged in error."
+  },
+  {
+    "n": 40,
+    "caption": "Try to resolve it straight away…",
+    "vo": "So, let's resolve it right away…"
+  },
+  {
+    "n": 41,
+    "caption": "Blocked: a complaint needs a root cause and a final response before it is resolved",
+    "vo": "Not so fast. A complaint needs a root cause, a final response and a resolved date first."
+  },
+  {
+    "n": 42,
+    "caption": "Record the root cause and the final response sent to the client",
+    "vo": "So Fatima records what happened. A system error applied the fee, and it's refunded."
+  },
+  {
+    "n": 43,
+    "caption": "Root cause, final response, redress — and the Ombudsperson box",
+    "vo": "Root cause, final response, redress. And if Stéphanie takes it to the Ombudsperson for Financial Services, you tick this box."
+  },
+  {
+    "n": 44,
+    "caption": "Saved — now move the complaint to Resolved",
+    "vo": "Saved. Now the complaint can move to Resolved."
+  },
+  {
+    "n": 45,
+    "caption": "Resolved: the timer stops and the satisfaction survey goes to the client",
+    "vo": "This time it goes through. The timer stops, and Stéphanie gets the satisfaction survey."
+  },
+  {
+    "n": 46,
+    "caption": "Everything is on the complaint record",
+    "vo": "Everything's on the record. The final response, the dates, the emails, and the full audit trail."
+  },
+  {
+    "n": 47,
+    "caption": "Activity: the acknowledgement and the satisfaction survey",
+    "vo": "In Activity, the acknowledgement and the survey. Both sent automatically. Nobody had to remember."
+  },
+  {
+    "n": 48,
+    "caption": "Audit: every stage change, who made it and when",
+    "vo": "And Audit shows every stage change, who made it and when. That's the evidence the FSC complaints register asks for."
+  },
+  {
+    "n": 49,
+    "caption": "When the client answers the survey, the scores are recorded on the request",
+    "vo": "When Stéphanie answers the survey, the scores land on the request and feed the CSAT and NPS figures on the Service dashboard."
+  },
+  {
+    "n": 50,
+    "caption": "The SLA Board: on-time compliance across requests and complaints",
+    "vo": "And the SLA Board, in Tools, tracks on-time compliance across requests and complaints."
+  },
+  {
+    "n": 51,
+    "caption": "Service & Complaints",
+    "vo": "So that's Service and Complaints. Acknowledged, routed and timed by the system, so your people can focus on fixing the problem. Next, KYC and compliance."
+  }
+]

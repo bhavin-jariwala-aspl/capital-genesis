@@ -1,0 +1,217 @@
+[
+  {
+    "n": 1,
+    "caption": "KYC & Compliance",
+    "vo": "Onboarding a client means knowing exactly who they are, and how risky they are. Here's risk-based KYC at Genesis, from a brand-new client to an approved case."
+  },
+  {
+    "n": 2,
+    "caption": "Sign in as Priya Ramdin — Relationship Manager",
+    "vo": "Priya Ramdin, our relationship manager, is onboarding a new client."
+  },
+  {
+    "n": 3,
+    "caption": "Clients ▸ Parties ▸ New: the client's identity and contact details",
+    "vo": "She opens Clients, then Parties, and clicks New, for the client's identity and contact details. This client is a senior official, so she ticks PEP, for a prominent public function."
+  },
+  {
+    "n": 4,
+    "caption": "KYC & Compliance ▸ KYC Cases ▸ New",
+    "vo": "Next, a KYC case. When an enquiry converts, the case opens for you, but here we'll open one by hand."
+  },
+  {
+    "n": 5,
+    "caption": "Answer the risk questions",
+    "vo": "Then the risk questions. Product, onboarding channel, occupation, ownership structure, and expected activity."
+  },
+  {
+    "n": 6,
+    "caption": "Add the tax status for FATCA and CRS reporting",
+    "vo": "Add the tax status for FATCA and CRS. And the scope is group-level, so one approved KYC serves every Genesis entity."
+  },
+  {
+    "n": 7,
+    "caption": "The risk score is calculated for you",
+    "vo": "Now, nobody adds up the risk score by hand. Country, PEP, product, channel and the rest, each weighted from the risk-factor master."
+  },
+  {
+    "n": 8,
+    "caption": "A PEP is always high risk: enhanced due diligence is now required",
+    "vo": "And a PEP is always high risk. So enhanced due diligence is now required, with MLRO approval and a yearly review."
+  },
+  {
+    "n": 9,
+    "caption": "Docs tab: the Individual KYC pack lists what is still missing",
+    "vo": "On the Docs tab, the Individual KYC pack shows exactly what's still missing. Priya uploads what the client handed her. If something's still to come, she could email the client a secure upload link instead."
+  },
+  {
+    "n": 10,
+    "caption": "All three items are in — the checklist shows nothing outstanding",
+    "vo": "All three items are in, nothing outstanding. Identity and address documents are reviewed, and kept seven years for AML."
+  },
+  {
+    "n": 11,
+    "caption": "Edit the case and tick “Document checklist complete”",
+    "vo": "She edits the case and ticks document checklist complete. Verification won't accept it otherwise."
+  },
+  {
+    "n": 12,
+    "caption": "Move the case along the KYC pipeline",
+    "vo": "Now the case moves along the KYC pipeline, one stage at a time. Initiated, documents pending, under verification, and screening."
+  },
+  {
+    "n": 13,
+    "caption": "Entering Screening checks the client against sanctions, PEP and adverse-media lists",
+    "vo": "Entering screening checks the client against sanctions, PEP and adverse-media lists. The answer comes back in seconds."
+  },
+  {
+    "n": 14,
+    "caption": "Screening result: potential match — with the provider reference and date",
+    "vo": "A potential match, with the provider's reference and date. The PEP hit is logged, and Compliance is alerted."
+  },
+  {
+    "n": 15,
+    "caption": "The hit itself sits behind the compliance barrier",
+    "vo": "But Priya can't see the hit itself. It's behind the compliance barrier. She only knows one is open."
+  },
+  {
+    "n": 16,
+    "caption": "Screening done: move the case to Risk assessed",
+    "vo": "Screening's done, so on to Risk assessed. That stage needs a screening result and date, and the automation already filled them in."
+  },
+  {
+    "n": 17,
+    "caption": "Now try Pending approval…",
+    "vo": "Now, Pending approval… but for a high-risk client, the CRM checks enhanced due diligence first."
+  },
+  {
+    "n": 18,
+    "caption": "Blocked: high risk needs verified source of wealth and EDD notes",
+    "vo": "Blocked. High risk needs verified source of wealth and EDD notes, and the message says exactly what's missing."
+  },
+  {
+    "n": 19,
+    "caption": "Record the enhanced due diligence on the case",
+    "vo": "So Priya records the enhanced due diligence. Source of funds verified, plus notes on source of wealth and senior management approval."
+  },
+  {
+    "n": 20,
+    "caption": "Move to Pending approval again",
+    "vo": "Pending approval again. This time, the gate lets it through."
+  },
+  {
+    "n": 21,
+    "caption": "An approval request is raised automatically",
+    "vo": "An approval request goes out by itself. Standard or medium risk goes to the Compliance Officer. High risk or PEP, to the MLRO."
+  },
+  {
+    "n": 22,
+    "caption": "Staff declare gifts and hospitality in the Gifts & Hospitality Register",
+    "vo": "While that waits, another register. Staff declare gifts and hospitality here, and anything above five thousand rupees needs a compliance decision."
+  },
+  {
+    "n": 23,
+    "caption": "8,500 is above the threshold, so the declaration goes to Compliance for approval",
+    "vo": "This dinner is worth eight thousand five hundred, so it goes to Compliance for approval."
+  },
+  {
+    "n": 24,
+    "caption": "Compliance reviews the screening hit",
+    "vo": "Now Compliance reviews the screening hit. True match, false positive, or escalate to the MLRO, always with a rationale."
+  },
+  {
+    "n": 25,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "Enter Fatima Hossenbux, Compliance Officer. Screening triage, registers and approvals all land on her desk."
+  },
+  {
+    "n": 26,
+    "caption": "Set the disposition and record why",
+    "vo": "She records her reasoning. A domestic PEP isn't a sanctions match, so she escalates it to the MLRO for sign-off."
+  },
+  {
+    "n": 27,
+    "caption": "An escalation alerts the MLRO",
+    "vo": "The escalation alerts the MLRO. A true match would also stop the case reaching approval."
+  },
+  {
+    "n": 28,
+    "caption": "Tools ▸ Approvals: the gift declaration is waiting for Compliance",
+    "vo": "In Approvals, Priya's gift declaration is waiting for Fatima. Standard-risk KYC sign-offs land here too."
+  },
+  {
+    "n": 29,
+    "caption": "Add an issuer to the restricted list",
+    "vo": "Next, the restricted list. Say Genesis is advising on a deal and holds inside information. Fatima adds the issuer."
+  },
+  {
+    "n": 30,
+    "caption": "Traders and portfolio managers are alerted at once",
+    "vo": "Traders and portfolio managers are alerted at once, and personal-dealing requests in that issuer are refused automatically. Watch-list entries stay with Compliance."
+  },
+  {
+    "n": 31,
+    "caption": "A client asks for a copy of their personal data (DPA 2017)",
+    "vo": "Then, a data protection request. A client wants a copy of their personal data under the DPA twenty seventeen. It runs from received, through identity checks, to completed, within thirty days."
+  },
+  {
+    "n": 32,
+    "caption": "Acknowledged and assigned to Compliance; respond-by date = received + 30 days",
+    "vo": "It's acknowledged and assigned to Compliance, with a respond-by date thirty days out. Step one, verify who's asking."
+  },
+  {
+    "n": 33,
+    "caption": "Verify identity, prepare the response, record the completion date",
+    "vo": "Fatima verifies the identity, prepares the response, and records the completion date. And the stages enforce the order. In progress needs the identity verified, and completed needs the response and the date. No shortcuts."
+  },
+  {
+    "n": 34,
+    "caption": "Suspicious transaction reports sit behind the MLRO barrier",
+    "vo": "Suspicious transaction reports are different. Anyone can raise one, but only the MLRO can see them. No tipping-off."
+  },
+  {
+    "n": 35,
+    "caption": "Even the compliance officer sees no reports here",
+    "vo": "Even Fatima sees nothing here. Not listed, not searchable, not even counted."
+  },
+  {
+    "n": 36,
+    "caption": "High-risk and PEP cases are signed off by the MLRO",
+    "vo": "Back to our client. High-risk and PEP cases are signed off by the MLRO."
+  },
+  {
+    "n": 37,
+    "caption": "Sign in as Olivier Maurel — MLRO",
+    "vo": "That's Olivier Maurel, our Money Laundering Reporting Officer."
+  },
+  {
+    "n": 38,
+    "caption": "The request shows the risk score and the EDD notes",
+    "vo": "The request shows the risk score and the EDD notes. Olivier can open the case for more detail, then approve or reject."
+  },
+  {
+    "n": 39,
+    "caption": "The case moves to Approved by itself",
+    "vo": "Olivier approves, and the case moves to Approved by itself. The outcome, decision date and next review, one year out for high risk, are all recorded."
+  },
+  {
+    "n": 40,
+    "caption": "On the client record, KYC status is now approved",
+    "vo": "On the client record, KYC is now approved. Loans can be disbursed, accounts funded, relationships activated."
+  },
+  {
+    "n": 41,
+    "caption": "The MLRO sees the STR register",
+    "vo": "And only Olivier sees the STR register. Raised, MLRO review, then filed with the FIU, reference and date required, or closed with no filing."
+  },
+  {
+    "n": 42,
+    "caption": "Who may see which zone is managed in Tools ▸ Access & Barriers",
+    "vo": "Who sees which zone is set in Access and Barriers, which has its own tutorial."
+  },
+  {
+    "n": 43,
+    "caption": "KYC & Compliance",
+    "vo": "So that's KYC and Compliance. The CRM screens, scores and routes. Your people answer the questions and make the decisions. Next, the masters behind it all."
+  }
+]

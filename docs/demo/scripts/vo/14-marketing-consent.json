@@ -1,0 +1,227 @@
+[
+  {
+    "n": 1,
+    "caption": "Marketing & Consent",
+    "vo": "Marketing is easy to get wrong in financial services. Let's plan a campaign, reach only the clients who said yes, and measure what it brings in."
+  },
+  {
+    "n": 2,
+    "caption": "Emilie plans a first-home campaign for young professionals",
+    "vo": "Emilie is planning a first-home campaign for young professionals."
+  },
+  {
+    "n": 3,
+    "caption": "Sign in as Emilie Fanchette — Marketing Executive",
+    "vo": "She's Emilie Fanchette, a marketing executive at Genesis Capital, and she plans and runs the campaigns. This one is for people buying their first home. Every marketer here has two questions to answer. Who's allowed to hear about it? And once it's out, what did it actually bring in? Let's see how the CRM handles both."
+  },
+  {
+    "n": 4,
+    "caption": "A segment describes the audience: who should hear about the offer",
+    "vo": "It starts with a segment, a description of who should hear about the offer. There are a few already, like high net worth clients without a mandate, and francophone affluent clients."
+  },
+  {
+    "n": 5,
+    "caption": "The criteria are a filter over the client master",
+    "vo": "The criteria are a filter over the client master. Reports builds the matching list from it."
+  },
+  {
+    "n": 6,
+    "caption": "New campaign: objective, product, channels, audience",
+    "vo": "Now the campaign itself, First home twenty twenty-six, with its objective, product, channels and audience. Every campaign starts in Planning."
+  },
+  {
+    "n": 7,
+    "caption": "Budget and dates — the budget is the cost ROI is measured against",
+    "vo": "The budget matters, because it's the cost ROI is measured against. Actual cost goes in when the invoices arrive."
+  },
+  {
+    "n": 8,
+    "caption": "The tracking code goes into every website link of the campaign",
+    "vo": "Then the tracking code. It goes into every website link, so any enquiry coming through one is credited to this campaign."
+  },
+  {
+    "n": 9,
+    "caption": "Add the clients who will receive it",
+    "vo": "Next, Emilie adds the clients who'll receive it, one campaign member at a time."
+  },
+  {
+    "n": 10,
+    "caption": "Deepak Seegoolam has given marketing consent — accepted",
+    "vo": "Deepak Seegoolam has given consent, so Deepak's in."
+  },
+  {
+    "n": 11,
+    "caption": "Now Corinne Henry…",
+    "vo": "Now Corinne Henry. She's a client with a complaint that's still open."
+  },
+  {
+    "n": 12,
+    "caption": "Refused: the client is suppressed from marketing",
+    "vo": "Refused. She's suppressed from marketing. No consent, do not contact, or an open complaint, and the CRM never lets them through."
+  },
+  {
+    "n": 13,
+    "caption": "A campaign is a financial promotion",
+    "vo": "Here's the thing. A campaign is a financial promotion, so Compliance signs it off before it's approved or goes live."
+  },
+  {
+    "n": 14,
+    "caption": "Try to approve it straight away…",
+    "vo": "So what if Emilie tries to approve it straight away?"
+  },
+  {
+    "n": 15,
+    "caption": "Blocked: Compliance must sign it off first",
+    "vo": "Blocked. Compliance has to sign it off first, so she moves it to Compliance review instead."
+  },
+  {
+    "n": 16,
+    "caption": "Compliance review: the sign-off request is now in Compliance's Approvals inbox",
+    "vo": "Now the sign-off request is in Compliance's approvals inbox. And she couldn't make this move without the segment, budget, dates and message filled in."
+  },
+  {
+    "n": 17,
+    "caption": "Fatima checks the message and approves it",
+    "vo": "Fatima will check the message and approve it. Whoever asks can never approve their own campaign."
+  },
+  {
+    "n": 18,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "So we sign in as Fatima Hossenbux, the compliance officer who signs off marketing material."
+  },
+  {
+    "n": 19,
+    "caption": "The request shows the budget, the dates and the message",
+    "vo": "The request shows the budget, the dates and the message. She opens the record, reviews it, comments, then approves or rejects."
+  },
+  {
+    "n": 20,
+    "caption": "Approved: the campaign moves to Approved by itself",
+    "vo": "Approved, and the campaign moves on by itself. Rejected, it would go back to Planning with her comment."
+  },
+  {
+    "n": 21,
+    "caption": "Emilie launches the campaign",
+    "vo": "Emilie's told it's approved, so she launches."
+  },
+  {
+    "n": 22,
+    "caption": "Sign in as Emilie Fanchette — Marketing Executive",
+    "vo": "Back as Emilie. The campaign has cleared Compliance, every member agreed to hear from Genesis, and the tracking code is in place. All that's left is to go live."
+  },
+  {
+    "n": 23,
+    "caption": "Live: the emails and the social posts go out",
+    "vo": "Live. The emails and social posts go out, and each member's sent date, opens and responses are tracked."
+  },
+  {
+    "n": 24,
+    "caption": "Kevin Rampersad clicks the campaign ad",
+    "vo": "Now let's look from the other side. Kevin Rampersad sees the campaign ad and clicks it. The link opens the website enquiry form, carrying the campaign's tracking code with it, so whatever he sends is tied back to this campaign."
+  },
+  {
+    "n": 25,
+    "caption": "Sent — he has a reference number and his consent to be contacted is recorded",
+    "vo": "Sent. He gets a reference number, and his consent to be contacted is recorded."
+  },
+  {
+    "n": 26,
+    "caption": "The enquiry kept the tracking code and is credited to the campaign",
+    "vo": "The enquiry kept the tracking code, so the campaign gets the credit. Routing and scoring work as usual, and the Lending team calls him back."
+  },
+  {
+    "n": 27,
+    "caption": "Across campaigns: budget, audience, enquiries, revenue and ROI",
+    "vo": "Across campaigns you see budget, audience, enquiries, revenue and ROI. Home loans Q3 earned more than it cost. A negative ROI just means no revenue yet."
+  },
+  {
+    "n": 28,
+    "caption": "Our campaign: its audience and 1 attributed enquiry",
+    "vo": "Our campaign shows its audience and one attributed enquiry. Any loans that follow, and their revenue, roll up here too."
+  },
+  {
+    "n": 29,
+    "caption": "A seminar for the campaign's audience",
+    "vo": "Campaigns aren't only emails. Emilie sets up a seminar for the same audience, First-home buyers, at the Genesis Centre in Ebène."
+  },
+  {
+    "n": 30,
+    "caption": "Guests register — from the website or added by staff",
+    "vo": "Guests register, either from the website or added by staff."
+  },
+  {
+    "n": 31,
+    "caption": "On the evening, Shamim Noël attends — tick Attended",
+    "vo": "On the evening, Shamim Noël attends, so she's ticked as attended, and her relationship manager is told to follow up."
+  },
+  {
+    "n": 32,
+    "caption": "The event counts registrations, attendance and the attendance rate",
+    "vo": "The event tracks registrations, attendance and the attendance rate."
+  },
+  {
+    "n": 33,
+    "caption": "At the event Shamim asks for the research notes",
+    "vo": "At the event, Shamim asks for the research notes, so she's subscribed to research."
+  },
+  {
+    "n": 34,
+    "caption": "Subscribers of a topic receive each publication when it is sent",
+    "vo": "Each time a note is sent to subscribers, it reaches her by email, in her own language."
+  },
+  {
+    "n": 35,
+    "caption": "Priya, her RM, was notified to follow up",
+    "vo": "Meanwhile Priya, her RM, has been notified to follow up."
+  },
+  {
+    "n": 36,
+    "caption": "Sign in as Priya Ramdin — Relationship Manager",
+    "vo": "Let's sign in as Priya Ramdin, the relationship manager."
+  },
+  {
+    "n": 37,
+    "caption": "She calls to thank her and records the follow-up",
+    "vo": "She calls Shamim to thank her, and ticks Follow-up done on the registration."
+  },
+  {
+    "n": 38,
+    "caption": "On the call Shamim says: no more marketing, please",
+    "vo": "But on the call, Shamim says no more marketing, please. So Priya opens her marketing consent and records the withdrawal."
+  },
+  {
+    "n": 39,
+    "caption": "Marketing consent: No — she is now suppressed from marketing",
+    "vo": "Marketing consent is now No, and she's suppressed straight away, just like in the Clients tutorial."
+  },
+  {
+    "n": 40,
+    "caption": "Emilie tries to add Shamim Noël to the campaign",
+    "vo": "So what happens when Emilie tries to add Shamim to the campaign?"
+  },
+  {
+    "n": 41,
+    "caption": "Sign in as Emilie Fanchette — Marketing Executive",
+    "vo": "Back to Emilie. She wasn't on that phone call, and she doesn't need to have been."
+  },
+  {
+    "n": 42,
+    "caption": "Refused — she withdrew her consent",
+    "vo": "Refused. Shamim withdrew her consent, and research mailings skip her too."
+  },
+  {
+    "n": 43,
+    "caption": "The Marketing dashboard sums it all up",
+    "vo": "And the Marketing dashboard pulls it all together. Live campaigns, attributed enquiries, event attendance, subscribers, and ROI."
+  },
+  {
+    "n": 44,
+    "caption": "ROI and attributed revenue by campaign, engagement, subscriptions by topic",
+    "vo": "ROI and attributed revenue by campaign, engagement, and subscriptions by topic."
+  },
+  {
+    "n": 45,
+    "caption": "Marketing & Consent",
+    "vo": "So that's Marketing and Consent. Campaigns reach only the clients who agreed, and every result is credited back to the campaign. Next, introducers and partners."
+  }
+]

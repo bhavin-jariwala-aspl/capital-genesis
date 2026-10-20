@@ -4,216 +4,216 @@ Products & Services
 The catalogue of Genesis products and services: one product sheet per product, the source for pricing, checklists and the website.
 
 2
-00:00:10,800 --> 00:00:17,240
+00:00:10,880 --> 00:00:16,960
 Sign in as Priya Ramdin — Relationship Manager
 Relationship manager: looks up products while talking to clients
 
 3
-00:00:17,240 --> 00:00:24,880
+00:00:16,960 --> 00:00:26,640
 Products & Services is the first module under Client 360
 22 products and services across six Genesis legal entities
 
 4
-00:00:24,880 --> 00:00:33,440
+00:00:26,640 --> 00:00:36,520
 Each row is one product: code, name, business unit, category, risk rating and "Rate from"
 The business unit names the legal entity that provides it
 
 5
-00:00:33,440 --> 00:00:40,280
+00:00:36,520 --> 00:00:42,920
 Filter by legal entity: type part of its name in the search box
 Here: Genesis Global Funds, the funds entity
 
 6
-00:00:40,280 --> 00:00:46,960
+00:00:42,920 --> 00:00:49,160
 Six investment funds are provided by Genesis Global Funds
 Search matches what the table shows, not only the codes
 
 7
-00:00:46,960 --> 00:00:52,760
+00:00:49,160 --> 00:00:56,240
 Genesis Life Ltd provides the four loans
 Real Estate, Personal, Investment-Backed and Commercial
 
 8
-00:00:52,760 --> 00:00:56,280
+00:00:56,240 --> 00:00:59,640
 Open Real Estate Loan to see its product sheet
 Click the row
 
 9
-00:00:56,280 --> 00:01:04,840
+00:00:59,640 --> 00:01:08,120
 Details: code, French name, business unit and the legal entity that provides it
 Provided by: Genesis Life Ltd (Loans business line)
 
 10
-00:01:04,840 --> 00:01:14,760
+00:01:08,120 --> 00:01:20,120
 Terms: the margin over the Genesis PLR, maximum tenure, age at maturity and financing (LTV)
 Loan applications check these limits and read the margin for pricing
 
 11
-00:01:14,760 --> 00:01:28,360
+00:01:20,120 --> 00:01:35,680
 Rate from = the current Genesis PLR (6.825%) + the margin (−0.675%) = 6.15% a year
 Calculated by the CRM — it is greyed and cannot be typed
 
 12
-00:01:28,360 --> 00:01:35,800
+00:01:35,680 --> 00:01:43,640
 The product sheet: features, eligibility, security & insurance
 The same text as the product page on the Genesis website
 
 13
-00:01:35,800 --> 00:01:41,880
+00:01:43,640 --> 00:01:49,880
 Documents required, fees & charges and how to apply
 Use it to answer a client accurately on the phone
 
 14
-00:01:41,880 --> 00:01:50,240
+00:01:49,880 --> 00:01:58,240
 Docs tab: the document checklist for applications for this product
 Each new application gets this list on its own Docs tab, with what is in and what is missing
 
 15
-00:01:50,320 --> 00:01:55,240
+00:01:58,320 --> 00:02:02,360
 Funds have the same product sheet
 Income Fund, provided by Genesis Global Funds
 
 16
-00:01:55,240 --> 00:02:03,720
+00:02:02,360 --> 00:02:11,040
 Business unit Funds, category Funds, risk rating on a 1–5 scale
 The risk rating is compared with the client's risk profile when they invest
 
 17
-00:02:03,720 --> 00:02:10,920
+00:02:11,040 --> 00:02:18,240
 No PLR margin, so no "Rate from": that applies to loans only
 Fund prices (NAV) are kept in Investment Funds
 
 18
-00:02:10,920 --> 00:02:17,720
+00:02:18,240 --> 00:02:25,040
 Its applications use the "Fund subscription" checklist
 Docs tab
 
 19
-00:02:17,720 --> 00:02:23,800
+00:02:25,040 --> 00:02:32,800
 Product terms change: the CRM administrator updates the sheet
 Only administrators may edit the catalogue
 
 20
-00:02:23,800 --> 00:02:32,480
+00:02:32,800 --> 00:02:41,480
 Sign in as Kevin Lam — CRM Administrator
 CRM administrator: keeps the catalogue up to date
 
 21
-00:02:32,480 --> 00:02:36,320
+00:02:41,480 --> 00:02:45,080
 Edit opens the product form
 Every field of the product sheet is on it
 
 22
-00:02:36,320 --> 00:02:41,480
+00:02:45,080 --> 00:02:48,720
 Rate from stays greyed: it is calculated, never typed
 Change the margin and it follows
 
 23
-00:02:41,480 --> 00:02:46,280
+00:02:48,720 --> 00:02:52,240
 Update Fees & charges with the new arrangement fee
 Type the new text over the old one
 
 24
-00:02:46,280 --> 00:02:51,160
+00:02:52,240 --> 00:02:55,840
 Save: the change is recorded in the product's Audit tab
 Who changed what, and when
 
 25
-00:02:51,160 --> 00:02:56,600
+00:02:55,840 --> 00:03:00,560
 Everyone now sees the new fee on the product sheet
 Including relationship managers answering clients
 
 26
-00:02:56,600 --> 00:03:01,920
+00:03:00,560 --> 00:03:05,880
 The Audit tab shows the change: who made it and when
 Old and new values are kept
 
 27
-00:03:01,960 --> 00:03:09,280
+00:03:05,920 --> 00:03:14,640
 Masters ▸ Genesis PLR History: the prime lending rate in force
 Rate from on every loan product reads the latest rate already in effect
 
 28
-00:03:09,280 --> 00:03:19,920
+00:03:14,640 --> 00:03:26,440
 When ALCO changes the PLR, the administrator adds a row: rate, effective date, approver
 Every loan product's Rate from is then recalculated at once; a future date waits for that day
 
 29
-00:03:19,920 --> 00:03:23,680
+00:03:26,440 --> 00:03:30,200
 Running loans are repriced through Loan Servicing ▸ PLR Change Campaigns
 We don't change the PLR in this video: the demo loans rely on it
 
 30
-00:03:27,440 --> 00:03:33,240
+00:03:35,520 --> 00:03:43,040
 Masters ▸ Website Product Routing: which business unit and queue receives an enquiry
 One rule per product
 
 31
-00:03:33,240 --> 00:03:37,320
+00:03:43,040 --> 00:03:47,120
 Real Estate Loan enquiries go to Lending, queue Retail Loans
 First contact target: 4 business hours
 
 32
-00:03:39,440 --> 00:03:45,760
+00:03:50,320 --> 00:03:57,320
 The website shows the catalogue straight from the CRM
 Website preview: /site/genesis-capital (no sign-in needed)
 
 33
-00:03:45,760 --> 00:03:51,560
+00:03:57,320 --> 00:04:03,320
 The prime lending rate comes from the PLR History
 Exchange rates and fund prices are fed from the CRM too
 
 34
-00:03:51,560 --> 00:03:57,920
+00:04:03,320 --> 00:04:09,680
 Products & services: one card per active product, with its legal entity
 Pick a category to narrow the list
 
 35
-00:03:57,920 --> 00:04:04,960
+00:04:09,680 --> 00:04:17,880
 Rates from 6.15% p.a.: the same Rate from as in the CRM
 Change the PLR or the margin and the website follows
 
 36
-00:04:04,960 --> 00:04:11,600
+00:04:17,880 --> 00:04:22,720
 "Request more information" opens the enquiry form for this product
 The link carries the product code (?prod=LND-RE)
 
 37
-00:04:11,600 --> 00:04:20,520
+00:04:22,720 --> 00:04:31,640
 The form opens with Real Estate Loan already chosen
 The prospect only adds their needs and contact details
 
 38
-00:04:20,520 --> 00:04:27,280
+00:04:31,640 --> 00:04:38,400
 Step 2: who is asking
 Name, email, mobile and consent
 
 39
-00:04:27,280 --> 00:04:30,520
+00:04:38,400 --> 00:04:41,640
 Sent: the enquiry is created in the CRM and routed by the product
 No re-typing by staff
 
 40
-00:04:32,600 --> 00:04:38,280
+00:04:44,640 --> 00:04:50,760
 Back in the CRM, the enquiry is already in Enquiries & Leads
 Routed by Website Product Routing
 
 41
-00:04:38,280 --> 00:04:47,440
+00:04:50,760 --> 00:05:01,080
 Kavya Ramphul: Real Estate Loan, MUR 6,500,000 over 240 months
 The product came from the link; the client never had to pick it
 
 42
-00:04:47,440 --> 00:04:52,880
+00:05:01,080 --> 00:05:07,200
 Business unit Lending and queue Retail Loans come from the routing rule
 and handed to a loans executive automatically
 
 43
-00:04:52,880 --> 00:04:58,483
+00:05:07,200 --> 00:05:13,403
 The indicative rate is the same PLR + margin as Rate from
 The instalment is calculated from it
 
 44
-00:04:58,483 --> 00:05:05,800
+00:05:13,403 --> 00:05:22,440
 Products & Services
 One product sheet drives what staff say, what applications need and what the website shows.

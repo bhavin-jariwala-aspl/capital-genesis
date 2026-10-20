@@ -1,0 +1,267 @@
+[
+  {
+    "n": 1,
+    "caption": "Corporate Advisory",
+    "vo": "Corporate finance deals live or die on discretion. Let's run a mandate behind the advisory information barrier, from the first pitch to investor commitments."
+  },
+  {
+    "n": 2,
+    "caption": "Sign in as Camille Rivalland — Corporate Advisor",
+    "vo": "We'll start as Camille Rivalland, a corporate advisor with Genesis Corporate Advisors."
+  },
+  {
+    "n": 3,
+    "caption": "Corporate Advisory ▸ Advisory Mandates: every deal is known by its code name",
+    "vo": "Every deal here goes by a code name, never the client's. And only the advisory team and Compliance can open these records at all."
+  },
+  {
+    "n": 4,
+    "caption": "Code name, client, target and service line",
+    "vo": "Camille sets up the mandate. The code name, the client, Port Louis Logistics, the target, Doorga Trading, and the service line, fund raising. The fees are a retainer, plus a success fee on the amount raised."
+  },
+  {
+    "n": 5,
+    "caption": "Move the mandate along its pipeline",
+    "vo": "Now Camille moves the mandate along its pipeline. Origination, then Pitch, then Conflict check."
+  },
+  {
+    "n": 6,
+    "caption": "Pitch won — before any engagement, Compliance must check for conflicts",
+    "vo": "The pitch is won. But before any engagement, Compliance has to check for conflicts, and moving to Conflict check opens that check for them automatically."
+  },
+  {
+    "n": 7,
+    "caption": "Try to go straight to Engagement letter…",
+    "vo": "So what if Camille skips ahead, straight to the engagement letter?"
+  },
+  {
+    "n": 8,
+    "caption": "Blocked: Compliance must clear the conflict check first",
+    "vo": "Blocked. No engagement letter goes out on a deal Compliance hasn't cleared."
+  },
+  {
+    "n": 9,
+    "caption": "The conflict check CC-2026-000015 is waiting for Compliance",
+    "vo": "The conflict check is now waiting for Compliance. They've been notified, and they have two business days to make the call."
+  },
+  {
+    "n": 10,
+    "caption": "Compliance reviews the conflict check",
+    "vo": "So let's switch sides. Compliance sits inside the barrier, so it can see every deal."
+  },
+  {
+    "n": 11,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "We sign in as Fatima Hossenbux, the compliance officer who decides conflict checks."
+  },
+  {
+    "n": 12,
+    "caption": "The CRM has already searched the group for conflicts",
+    "vo": "Here's the thing, the search is already done. The CRM has checked the client's and target's relationships across Genesis, loans outstanding, and other advisory mandates."
+  },
+  {
+    "n": 13,
+    "caption": "…and the restricted and watch lists",
+    "vo": "It's checked the restricted and watch lists too. A match here would mean controls, or a decline."
+  },
+  {
+    "n": 14,
+    "caption": "Take it into review, then record the decision",
+    "vo": "Fatima takes the check into review before she records anything."
+  },
+  {
+    "n": 15,
+    "caption": "Record the decision and the rationale",
+    "vo": "Then she records her decision, and why. Cleared, cleared with controls, or declined, the rationale always goes with it."
+  },
+  {
+    "n": 16,
+    "caption": "Decided: the check moves to Decided with the date",
+    "vo": "Decided, and dated. The result flows back to the mandate and stays on file as the audit record."
+  },
+  {
+    "n": 17,
+    "caption": "What does the trading desk see?",
+    "vo": "Now, what does the trading desk see?"
+  },
+  {
+    "n": 18,
+    "caption": "Sign in as Arvind Ramsurrun — Trader",
+    "vo": "Let's sign in as Arvind Ramsurrun, a trader on the public side of the wall."
+  },
+  {
+    "n": 19,
+    "caption": "No mandates at all — not even that Project Trochetia exists",
+    "vo": "Nothing. No mandates at all, not even the fact that Project Trochetia exists. Deal records, documents and alerts stay behind the barrier."
+  },
+  {
+    "n": 20,
+    "caption": "Someone who needs inside information asks for a wall-crossing",
+    "vo": "But sometimes someone genuinely needs inside information. For that, they ask for a wall-crossing."
+  },
+  {
+    "n": 21,
+    "caption": "Approval is time-limited and never by the requester",
+    "vo": "Approval is always time-limited, and never by the person asking. Once approved, they're on the insider list until the crossing ends."
+  },
+  {
+    "n": 22,
+    "caption": "Compliance decides the request",
+    "vo": "Compliance decides. It runs the control room, approving crossings without needing to see behind the wall."
+  },
+  {
+    "n": 23,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "So it's back to Fatima, who decides wall-crossings as well as conflict checks."
+  },
+  {
+    "n": 24,
+    "caption": "Approve for 30 days — the trader joins the advisory insider list until then",
+    "vo": "She approves it for thirty days, so Arvind joins the advisory insider list until then. Nobody can approve their own request, or a crossing for themselves."
+  },
+  {
+    "n": 25,
+    "caption": "The crossing is recorded on the tamper-evident audit trail",
+    "vo": "It's on the tamper-evident audit trail, and it ends by itself on the expiry date."
+  },
+  {
+    "n": 26,
+    "caption": "Back to the advisor: the conflict check is cleared",
+    "vo": "Back to Camille. The conflict check is cleared, so the engagement letter is next."
+  },
+  {
+    "n": 27,
+    "caption": "Sign in as Camille Rivalland — Corporate Advisor",
+    "vo": "Camille signs back in. This time nothing stands between Camille and the engagement letter, because Compliance has done its part."
+  },
+  {
+    "n": 28,
+    "caption": "The engagement letter is generated for you — under the code name",
+    "vo": "And nobody has to write it. The letter is generated for Camille, under the code name, and filed in the mandate's documents, ready for e-signature."
+  },
+  {
+    "n": 29,
+    "caption": "Execution needs the signed letter",
+    "vo": "Execution needs that letter signed. Let's see what happens if Camille tries to move on before it is."
+  },
+  {
+    "n": 30,
+    "caption": "Blocked: the engagement letter must be signed first",
+    "vo": "Blocked again. The letter has to be signed first."
+  },
+  {
+    "n": 31,
+    "caption": "The client has signed: tick \"Engagement letter signed\"",
+    "vo": "Once the client has signed, Camille ticks Engagement letter signed. The gate opens, and the mandate can move on."
+  },
+  {
+    "n": 32,
+    "caption": "Add the analyst to the deal team",
+    "vo": "Now Camille adds the analyst to the deal team. Open Corporate Advisory, then Deal Team Member, and click New."
+  },
+  {
+    "n": 33,
+    "caption": "Ryan Pillay is on the insider list automatically",
+    "vo": "Ryan Pillay goes on the insider list automatically, with date and reason. Exactly the list the regulator asks for."
+  },
+  {
+    "n": 34,
+    "caption": "Approach an investor: Sunrise Pension Fund",
+    "vo": "Time to approach investors. First up, Sunrise Pension Fund. Each investor moves through targeted, NDA, IM shared, indication, committed and allocated."
+  },
+  {
+    "n": 35,
+    "caption": "The NDA has been sent to the investor",
+    "vo": "The NDA has gone out to the investor."
+  },
+  {
+    "n": 36,
+    "caption": "Share the information memorandum already?",
+    "vo": "Can Camille share the information memorandum already? The CRM checks the NDA first."
+  },
+  {
+    "n": 37,
+    "caption": "Blocked: the IM can only be shared once the NDA is signed",
+    "vo": "No. The IM is only shared once the NDA is signed, so inside information never leaves without one."
+  },
+  {
+    "n": 38,
+    "caption": "The investor signs the NDA: record it with the date the IM is shared",
+    "vo": "The investor signs, so Camille records it, with the date the IM is shared."
+  },
+  {
+    "n": 39,
+    "caption": "Share the IM by secure link",
+    "vo": "And Camille shares it by secure link. Upload the IM to the investor's documents, then create a share link."
+  },
+  {
+    "n": 40,
+    "caption": "A link that expires in 14 days, view-only",
+    "vo": "The link is view-only and expires in fourteen days. Every view is counted, so you can see exactly who has opened the IM."
+  },
+  {
+    "n": 41,
+    "caption": "NDA signed and IM shared: the move is accepted now",
+    "vo": "NDA signed, IM shared, and this time the move goes through."
+  },
+  {
+    "n": 42,
+    "caption": "The investor indicates MUR 150 million, then commits MUR 120 million",
+    "vo": "Then the bookbuilding. Sunrise indicates one hundred and fifty million rupees, and later commits one hundred and twenty million. Each stage asks for its own figure, the indication, the commitment and the allocation, so the numbers are always on record."
+  },
+  {
+    "n": 43,
+    "caption": "Commitments roll up to the mandate and the dashboard",
+    "vo": "It all rolls up to the mandate and dashboard."
+  },
+  {
+    "n": 44,
+    "caption": "The information memorandum is a deliverable with a milestone fee",
+    "vo": "The information memorandum is also a deliverable, with its own milestone fee."
+  },
+  {
+    "n": 45,
+    "caption": "Name the reviewer: approval needs one",
+    "vo": "To approve it, you have to name a reviewer. That's a second pair of eyes on everything that goes to the client."
+  },
+  {
+    "n": 46,
+    "caption": "Drafted, reviewed and approved",
+    "vo": "So it's drafted, it goes into review, and the reviewer approves it."
+  },
+  {
+    "n": 47,
+    "caption": "Delivered to the client — the milestone fee is invoiced automatically",
+    "vo": "Delivered to the client, and the milestone fee is invoiced automatically."
+  },
+  {
+    "n": 48,
+    "caption": "Fee invoice raised: MUR 750,000 milestone, sent to accounting",
+    "vo": "There's the invoice, a milestone fee of seven hundred and fifty thousand rupees, sent to accounting. Retainer and success-fee invoices live here too."
+  },
+  {
+    "n": 49,
+    "caption": "Log the hours spent on the mandate",
+    "vo": "Camille logs the hours on the mandate. Hours times the internal rate gives the cost, so you can see whether a deal really pays."
+  },
+  {
+    "n": 50,
+    "caption": "The mandate adds it all up",
+    "vo": "And the mandate adds it all up. Deal team, insiders, investors, commitments, fees invoiced, and hours logged."
+  },
+  {
+    "n": 51,
+    "caption": "The Corporate Advisory dashboard",
+    "vo": "Finally, the Corporate Advisory dashboard. Live mandates, the weighted fee pipeline, commitments, and fees invoiced, all in one view."
+  },
+  {
+    "n": 52,
+    "caption": "Mandates by stage and service line, bookbuilding and hours by mandate",
+    "vo": "Mandates by stage and service line, bookbuilding, hours by mandate. It's barrier-aware, so the public side sees none of it."
+  },
+  {
+    "n": 53,
+    "caption": "Corporate Advisory",
+    "vo": "So that's Corporate Advisory. Deals stay discreet and controlled, because the CRM enforces the wall and the gates for you. Next, the Forex Desk."
+  }
+]

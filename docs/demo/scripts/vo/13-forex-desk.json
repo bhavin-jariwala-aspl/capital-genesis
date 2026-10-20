@@ -1,0 +1,172 @@
+[
+  {
+    "n": 1,
+    "caption": "Forex Desk",
+    "vo": "Foreign exchange moves fast. Let's follow Genesis Forex from a client's FX profile to a booked deal, through quotes, forwards and rate alerts."
+  },
+  {
+    "n": 2,
+    "caption": "Le Morne Resorts Ltd, a hotel group, earns euros and pays its costs in rupees",
+    "vo": "Le Morne Resorts is a hotel group. It earns euros but pays its costs in rupees, so it wants to sell those euros forward. First, an FX profile."
+  },
+  {
+    "n": 3,
+    "caption": "Sign in as Deepak Mungur — Forex Dealer",
+    "vo": "We're Deepak Mungur, the forex dealer, who quotes, books deals, and looks after forwards and alerts."
+  },
+  {
+    "n": 4,
+    "caption": "Forex Desk ▸ FX Client Profiles: one profile per FX client",
+    "vo": "Every FX client gets one profile. Its purpose, volumes, currency pairs, approved products and limits."
+  },
+  {
+    "n": 5,
+    "caption": "“Forex client onboarding” opens a two-step wizard",
+    "vo": "Forex client onboarding walks Deepak through it in two steps. First the client's FX need, then the products and limits."
+  },
+  {
+    "n": 6,
+    "caption": "Approved products and the settlement limit",
+    "vo": "Here are the approved products and the settlement limit. The limit is checked against open forwards, and the utilisation is worked out for you."
+  },
+  {
+    "n": 7,
+    "caption": "Profile created",
+    "vo": "And the profile's created. Deals, open forwards and limit usage will build up right here."
+  },
+  {
+    "n": 8,
+    "caption": "The client calls: sell EUR 300,000 forward, in six weeks",
+    "vo": "Now the client calls. It wants to sell three hundred thousand euros forward, in six weeks. Deepak opens a new FX quote with the client, profile, product, side, currency and amount."
+  },
+  {
+    "n": 9,
+    "caption": "“Requested at” is stamped with the time of the call",
+    "vo": "Requested at is stamped with the time of the call. That's where the quote timer starts."
+  },
+  {
+    "n": 10,
+    "caption": "The FX quote timer: answer within 15 business minutes",
+    "vo": "Why a timer? Best execution. Deepak has fifteen business minutes to answer, and since it counts business hours only, a weekend request is due Monday."
+  },
+  {
+    "n": 11,
+    "caption": "FX Quotes on the pipeline board",
+    "vo": "Here's the quote on the board. Requested, quoted, then accepted, rejected or expired."
+  },
+  {
+    "n": 12,
+    "caption": "Move the quote to Quoted…",
+    "vo": "Let's move it to Quoted before entering a rate."
+  },
+  {
+    "n": 13,
+    "caption": "Blocked: a quote needs the quoted rate and the time it was given",
+    "vo": "Blocked. A quote needs its rate and the time it was given. No rate, no quote."
+  },
+  {
+    "n": 14,
+    "caption": "The board buys EUR at 52.64 — Deepak quotes the client 52.90",
+    "vo": "The board buys euros at fifty-two point six four. Deepak quotes the client fifty-two point nine zero, and enters the rate with the time it was given."
+  },
+  {
+    "n": 15,
+    "caption": "Quoted — the first-response timer is met",
+    "vo": "Quoted, and the first-response timer is met. The improvement on the board rate is calculated on the quote."
+  },
+  {
+    "n": 16,
+    "caption": "The client agrees to the rate",
+    "vo": "The client agrees, so Deepak moves it to Accepted."
+  },
+  {
+    "n": 17,
+    "caption": "Blocked: record when the client responded",
+    "vo": "Blocked again, and for a good reason. The CRM wants to know when the client responded. That completes the time-stamped trail, from requested, to quoted, to the client's answer. If anyone ever asks how this deal was priced, it's all there."
+  },
+  {
+    "n": 18,
+    "caption": "Accepted: the CRM books the deal for you",
+    "vo": "Accepted. And the CRM books the deal for Deepak, sending it straight to the dealing system."
+  },
+  {
+    "n": 19,
+    "caption": "Forex Desk ▸ FX Deals: the deal booked from the quote",
+    "vo": "Here it is in FX Deals, booked from the quote. A forward, three hundred thousand euros at fifty-two point nine zero."
+  },
+  {
+    "n": 20,
+    "caption": "The dealing system's reference is recorded on the deal",
+    "vo": "The dealing system's reference is already on the deal, recorded when it was booked."
+  },
+  {
+    "n": 21,
+    "caption": "Board rate 52.64 · quoted 52.90 — the client gets MUR 78,000 more",
+    "vo": "Here's what it means for the client. Board rate fifty-two point six four, quoted fifty-two point nine zero, so seventy-eight thousand rupees more. That's best-execution evidence."
+  },
+  {
+    "n": 22,
+    "caption": "An open forward until it settles",
+    "vo": "Until it settles, it's an open forward. The days to value date count down, and it counts against the limit."
+  },
+  {
+    "n": 23,
+    "caption": "Reminders tab: the CRM reminds the dealer a week before the value date",
+    "vo": "And nobody has to remember the date. A week before, the CRM reminds Deepak to confirm settlement or offer a roll-over."
+  },
+  {
+    "n": 24,
+    "caption": "On that day the client is also emailed and a roll-over offered",
+    "vo": "On the day, the client is emailed a roll-over offer. The date's in Deepak's calendar feed too."
+  },
+  {
+    "n": 25,
+    "caption": "The client also wants to sell more euros if EUR/MUR rises to 53.60",
+    "vo": "One more request. If the euro rises to fifty-three point six zero against the rupee, the client wants to sell more. So Deepak sets a rate alert, and the client's emailed when the board gets there."
+  },
+  {
+    "n": 26,
+    "caption": "Active: today's board is 53.43 — below the target",
+    "vo": "It's active. Today's board is fifty-three point four three, below target. Alerts are checked hourly, and whenever a new board rate is published."
+  },
+  {
+    "n": 27,
+    "caption": "Next morning's board: the euro is stronger",
+    "vo": "Next morning, the euro is stronger. Deepak publishes the new TT buying and selling rates in FX Reference Rates."
+  },
+  {
+    "n": 28,
+    "caption": "The board feeds every MUR conversion, the rate alerts and the website",
+    "vo": "That board feeds every rupee conversion, the rate alerts, and the website."
+  },
+  {
+    "n": 29,
+    "caption": "53.65 is above the client's 53.60 — the alert fires at once",
+    "vo": "Fifty-three point six five is above the client's fifty-three point six zero, so the alert fires at once. The client's emailed, the alert closes as triggered, and Deepak's notified."
+  },
+  {
+    "n": 30,
+    "caption": "The email to the client is on the alert's timeline",
+    "vo": "The email's right there on the alert's timeline, in French, the client's language. It goes by SMS when the client prefers."
+  },
+  {
+    "n": 31,
+    "caption": "Deepak is notified to call the client and deal",
+    "vo": "And the bell tells Deepak to call the client and deal."
+  },
+  {
+    "n": 32,
+    "caption": "The Forex Desk dashboard",
+    "vo": "All of this rolls into the Forex Desk dashboard. Deals, volume, spread income, and the forwards still open."
+  },
+  {
+    "n": 33,
+    "caption": "Volume by currency and by month, top clients",
+    "vo": "Volume by currency and by month, the top clients, quote outcomes, and rate alerts."
+  },
+  {
+    "n": 34,
+    "caption": "Forex Desk",
+    "vo": "So that's the Forex Desk. The dealer quotes and decides, and the CRM keeps the trail, books the deal and sends the reminders. Next up, Marketing and Consent."
+  }
+]

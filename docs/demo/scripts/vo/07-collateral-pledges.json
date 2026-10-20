@@ -1,0 +1,192 @@
+[
+ {
+  "n": 1,
+  "caption": "Collateral & Pledges",
+  "vo": "Behind every secured loan is something of value. What's it worth, how much can it lend, and what happens when that value falls?"
+ },
+ {
+  "n": 2,
+  "caption": "Jean-Marc Lagesse is borrowing MUR 9.45M to buy a construction lot",
+  "vo": "Jean-Marc Lagesse is borrowing nine point four five million rupees to buy a construction lot. And the lot itself will secure the loan."
+ },
+ {
+  "n": 3,
+  "caption": "Sign in as Sophie Lagesse — Loans Executive",
+  "vo": "Sophie Lagesse, the loans executive, handles both the loan and its security."
+ },
+ {
+  "n": 4,
+  "caption": "Collateral & Pledges ▸ Collateral Register ▸ New",
+  "vo": "She registers the lot as new collateral, linked to the loan application. Jean-Marc owns it, so Owner stays empty."
+ },
+ {
+  "n": 5,
+  "caption": "The value from the sale agreement — the bank's own valuation follows",
+  "vo": "For now, the value comes from the sale agreement, ten point five million. The bank's own valuation comes later."
+ },
+ {
+  "n": 6,
+  "caption": "Land carries a standard 10% haircut, from Masters ▸ Collateral types",
+  "vo": "She leaves the haircut empty, because land carries a standard ten percent, set in the collateral types master. That master also sets revaluation frequency and LTV levels."
+ },
+ {
+  "n": 7,
+  "caption": "Lending value = market value less the haircut: MUR 9.45M",
+  "vo": "So the lending value is nine point four five million. Exactly the loan amount."
+ },
+ {
+  "n": 8,
+  "caption": "Collateral Allocations: how much of the security backs which loan",
+  "vo": "Now, one property can secure several loans or facilities. So allocations say how much of the security backs which loan, and each one gets its share. Here, Sophie allocates the full nine point four five million to Jean-Marc's loan."
+ },
+ {
+  "n": 9,
+  "caption": "On the loan application, the security lending value now shows MUR 9.45M",
+  "vo": "Over on the loan application, the security lending value now shows nine point four five million, adding up every collateral registered for the loan."
+ },
+ {
+  "n": 10,
+  "caption": "At Security & insurance the team completes valuation, notary, charge and insurance",
+  "vo": "At Security and insurance, the team completes valuation, notary, charge and insurance. Until Security complete says yes, disbursement stays blocked."
+ },
+ {
+  "n": 11,
+  "caption": "The bank's panel valuer reports — the credit analyst records it",
+  "vo": "Then the bank's panel valuer reports back, and the credit analyst records the valuation."
+ },
+ {
+  "n": 12,
+  "caption": "Sign in as Nadia Peerbux — Credit Analyst",
+  "vo": "That's Nadia Peerbux, our credit analyst, who checks the security. Nadia enters today's valuation from Ramlackhan and Associates. A market value of ten point eight million rupees, and a forced-sale value of eight point one million."
+ },
+ {
+  "n": 13,
+  "caption": "The latest valuation becomes the market value — lending value is now MUR 9.72M",
+  "vo": "The latest valuation becomes the market value, so lending value rises to nine point seven two million. The loan is covered, with room to spare."
+ },
+ {
+  "n": 14,
+  "caption": "Next revaluation: three years for land, from the master",
+  "vo": "The next revaluation is set for three years out, and the record's owner is reminded the day it's due."
+ },
+ {
+  "n": 15,
+  "caption": "Insured property: 30 days before the cover lapses, a reminder goes out",
+  "vo": "Insured property gets a reminder thirty days before cover lapses. This building policy expires on the first of November, so it's flagged."
+ },
+ {
+  "n": 16,
+  "caption": "Investment-backed loan: Lina Chan borrowed against her fund units",
+  "vo": "Property isn't the only kind of security. Lina Chan borrowed against her fund units. She owes one point one four million rupees, secured by a pledge of Genesis Foreign Equity Fund units."
+ },
+ {
+  "n": 17,
+  "caption": "LTV = drawn exposure ÷ market value of the registered pledges",
+  "vo": "Her LTV is what she's drawn, over the market value of the pledges. Today, seven point three percent."
+ },
+ {
+  "n": 18,
+  "caption": "Margin-call level 80%, liquidation 90% — per asset class, from the master",
+  "vo": "A margin call kicks in at eighty percent, liquidation at ninety, and it's checked every time a pledge is revalued."
+ },
+ {
+  "n": 19,
+  "caption": "Sign in as Ritesh Seewoo — Operations Checker",
+  "vo": "Ritesh Seewoo in operations registers and releases pledges with the transfer agent."
+ },
+ {
+  "n": 20,
+  "caption": "Lina is redeeming most of her units — the pledge keeps only 3,600",
+  "vo": "Lina's redeeming most of her units, so the pledge keeps just three thousand six hundred. Enough to cover the loan after the thirty percent haircut."
+ },
+ {
+  "n": 21,
+  "caption": "3,600 units at the latest NAV: MUR 1.62M",
+  "vo": "At the latest NAV, those units are worth one point six two million. The LTV updates at once, seventy point eight percent. Still within limits."
+ },
+ {
+  "n": 22,
+  "caption": "A month later equity markets fall — the units lose 14%",
+  "vo": "Then, a month later, equity markets fall, and the units lose fourteen percent. Operations records the monthly market-price valuation, now one point three nine million. Nobody has to work out what that does to the LTV. Watch."
+ },
+ {
+  "n": 23,
+  "caption": "The LTV is now above 80% — the CRM raises a margin call by itself",
+  "vo": "The LTV crosses eighty percent, and the CRM raises a margin call by itself, the moment the pledge is revalued."
+ },
+ {
+  "n": 24,
+  "caption": "LTV 82.2% — margin call, with the shortfall to restore cover",
+  "vo": "LTV is at eighty-two point two percent. The call shows the shortfall, what's drawn less the pledges' lending value. That's what it takes to restore cover."
+ },
+ {
+  "n": 25,
+  "caption": "Margin call MC-2026-000012: LTV at call, shortfall, cure within five business days",
+  "vo": "The margin call records the LTV at call, the shortfall, and a cure within five business days. It's assigned to the loans manager, and Lina is emailed and texted."
+ },
+ {
+  "n": 26,
+  "caption": "Docs: the margin-call notice letter, generated in Lina's language",
+  "vo": "The notice letter is generated in Lina's language, and emailed to her too."
+ },
+ {
+  "n": 27,
+  "caption": "The loans manager calls Lina",
+  "vo": "Next, the loans manager picks up the phone."
+ },
+ {
+  "n": 28,
+  "caption": "Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income",
+  "vo": "Margin calls route to Rajiv Doorgakant, Manager, Loans and Fixed Income. He calls Lina, and moves the call from Issued to Client contacted."
+ },
+ {
+  "n": 29,
+  "caption": "Lina will pledge more units rather than repay — try closing the call now…",
+  "vo": "Lina will pledge more units rather than repay. So can Rajiv close the call now?"
+ },
+ {
+  "n": 30,
+  "caption": "Blocked: record how the call was cured first",
+  "vo": "Not yet. First, say how it was cured."
+ },
+ {
+  "n": 31,
+  "caption": "Operations registers the extra pledge: units of her money-market fund",
+  "vo": "The extra pledge is units of her money-market fund, and operations registers it with the transfer agent."
+ },
+ {
+  "n": 32,
+  "caption": "Sign in as Ritesh Seewoo — Operations Checker",
+  "vo": "So it's back to Ritesh in operations."
+ },
+ {
+  "n": 33,
+  "caption": "Collateral Register ▸ New: fund units, linked to Lina's loan",
+  "vo": "He adds new collateral, fund units, linked to Lina's loan. Four thousand units of her money-market fund, with the pledge registered. As soon as he saves, the loan's lending value and LTV are worked out again."
+ },
+ {
+  "n": 34,
+  "caption": "LTV back to 63% — within limits, no shortfall",
+  "vo": "And the LTV is back to sixty-three percent. Within limits, no shortfall."
+ },
+ {
+  "n": 35,
+  "caption": "Operations records the cure on the margin call",
+  "vo": "Ritesh records the cure on the margin call, additional collateral."
+ },
+ {
+  "n": 36,
+  "caption": "Now the call can move to Cured",
+  "vo": "This time, the gate lets it through."
+ },
+ {
+  "n": 37,
+  "caption": "Cured within the deadline — the call is closed",
+  "vo": "Cured within the deadline, and closed. If the LTV passes the call level again, a new call is raised."
+ },
+ {
+  "n": 38,
+  "caption": "Collateral & Pledges",
+  "vo": "So staff register and value the security, and the CRM keeps lending value and LTV current, and raises the alarm when it matters."
+ }
+]

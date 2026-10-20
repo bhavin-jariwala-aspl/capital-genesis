@@ -4,182 +4,182 @@ Clients — Client 360
 One golden record per client, shared by every Genesis entity — and everything Genesis does with that client in one place.
 
 2
-00:00:11,040 --> 00:00:19,560
+00:00:13,360 --> 00:00:23,440
 Priya, a relationship manager, meets a new client at the branch
 Kavya Beeharry, the wife of an existing client, wants to invest with Genesis Wealth
 
 3
-00:00:19,560 --> 00:00:23,760
+00:00:23,440 --> 00:00:27,640
 Sign in as Priya Ramdin — Relationship Manager
 Relationship manager — she owns the client and the relationship
 
 4
-00:00:25,800 --> 00:00:31,880
+00:00:27,680 --> 00:00:33,760
 First, a household for the family
 Clients ▸ Households & Groups ▸ New — the family’s value is added up here
 
 5
-00:00:31,880 --> 00:00:40,000
+00:00:33,760 --> 00:00:43,400
 A household or corporate group adds up its members’ relationship value
 Members join it from their own client record · a corporate group also has a lending limit
 
 6
-00:00:40,000 --> 00:00:46,440
+00:00:43,400 --> 00:00:50,880
 Now the client herself: Clients ▸ Parties ▸ New
 One party per person or company — every entity of the group shares it
 
 7
-00:00:46,440 --> 00:00:54,120
+00:00:50,880 --> 00:00:59,240
 Identity: the form shows the individual fields for a person
 Choose Organisation instead and it asks for the legal name, BRN and sector
 
 8
-00:00:54,120 --> 00:01:01,880
+00:00:59,240 --> 00:01:07,280
 The ID number is personal data: it is stored encrypted and shown masked
 Clients must be at least 18 — the date of birth is checked when you save
 
 9
-00:01:01,880 --> 00:01:15,240
+00:01:07,280 --> 00:01:20,640
 Contact details, preferred language and channel
 Put her in the household you just created
 
 10
-00:01:15,240 --> 00:01:27,160
+00:01:20,640 --> 00:01:32,560
 A client can have several addresses and phones
 Clients ▸ Addresses & Phones ▸ New — mark one as verified and preferred
 
 11
-00:01:27,160 --> 00:01:36,520
+00:01:32,560 --> 00:01:41,920
 Record her marketing consent: one record per purpose and channel
 Clients ▸ Consents ▸ New — Data Protection Act 2017
 
 12
-00:01:36,520 --> 00:01:44,560
+00:01:41,920 --> 00:01:51,640
 Marketing campaigns only reach clients with a granted consent
 No consent, a withdrawal, “do not contact” or an open complaint suppresses her
 
 13
-00:01:44,560 --> 00:01:56,000
+00:01:51,640 --> 00:02:03,080
 Link related people: spouse, director, shareholder, beneficial owner, guarantor…
 Clients ▸ Party Relationships ▸ New
 
 14
-00:01:56,040 --> 00:02:08,440
+00:02:03,120 --> 00:02:15,520
 Open her relationship with the entity she will deal with
 Clients ▸ Client Relationships ▸ New — one per Genesis entity
 
 15
-00:02:08,520 --> 00:02:14,280
+00:02:15,600 --> 00:02:22,720
 The relationship lifecycle: Prospect ▸ Onboarding ▸ Active ▸ Dormant ▸ Closed ▸ Exited
 Drag the card to move it
 
 16
-00:02:14,280 --> 00:02:18,800
+00:02:22,720 --> 00:02:27,240
 She has agreed to go ahead: move her to Onboarding
 
 17
-00:02:18,800 --> 00:02:23,440
+00:02:27,240 --> 00:02:31,880
 Can she become Active straight away?
 
 18
-00:02:23,440 --> 00:02:31,040
+00:02:31,880 --> 00:02:40,760
 No — the move is refused: her KYC is not approved yet
 The KYC & Compliance team approves her KYC case; then the move goes through
 
 19
-00:02:31,040 --> 00:02:34,560
+00:02:40,760 --> 00:02:44,280
 Closing a relationship asks for the closing date; Exited also asks for a note
 These rules are set in the Builder — no code
 
 20
-00:02:37,840 --> 00:02:44,400
+00:02:47,880 --> 00:02:54,440
 Back on her client record: everything is linked
 The header shows her email, phone and address
 
 21
-00:02:44,400 --> 00:02:51,920
+00:02:54,440 --> 00:03:01,960
 Related: her relationship, household, address, consent and spouse
 Click any row to open it
 
 22
-00:02:51,920 --> 00:02:56,000
+00:03:01,960 --> 00:03:06,040
 The calculated Client 360 figures fill themselves in
 KYC: not started yet · Marketing consent: yes
 
 23
-00:02:59,240 --> 00:03:10,960
+00:03:09,240 --> 00:03:20,960
 A week later she calls: no more marketing emails
 Open the consent ▸ Edit ▸ status Withdrawn and the withdrawal date
 
 24
-00:03:10,960 --> 00:03:15,560
+00:03:20,960 --> 00:03:25,560
 Marketing consent is now No and she is suppressed from marketing
 The latest decision per purpose wins — campaigns skip her automatically
 
 25
-00:03:18,040 --> 00:03:24,000
+00:03:28,600 --> 00:03:34,920
 Now an established client: Christelle Leclézio
 Start any client conversation on the client record
 
 26
-00:03:24,000 --> 00:03:30,400
+00:03:34,920 --> 00:03:42,560
 ID number and income band are masked for a relationship manager
 No Reveal link: her role may not view personal data
 
 27
-00:03:30,400 --> 00:03:41,800
+00:03:42,560 --> 00:03:56,440
 Client 360 figures: wealth AUM, fund holdings, total relationship value in MUR and USD
 Products held, open applications and complaints, KYC status and AML risk
 
 28
-00:03:41,800 --> 00:03:49,440
+00:03:56,440 --> 00:04:04,600
 Next-best actions open, and the suitable product risk ceiling from her risk profile
 Every figure recalculates when a linked record changes
 
 29
-00:03:49,440 --> 00:03:59,560
+00:04:04,600 --> 00:04:15,080
 Related: everything Genesis does with her, across every entity
 KYC case, risk profile, fund holdings, next-best actions, consents, meetings, events…
 
 30
-00:03:59,560 --> 00:04:06,240
+00:04:15,080 --> 00:04:22,320
 Rows owned by another desk that you may not open show as “restricted”
 Ask Compliance if you need them — nothing is hidden silently
 
 31
-00:04:06,240 --> 00:04:17,160
+00:04:22,320 --> 00:04:33,240
 Activity: log the call you just had with her
 Calls, meetings, emails and notes stay on the client record
 
 32
-00:04:17,160 --> 00:04:20,280
+00:04:33,240 --> 00:04:36,240
 The call is on her timeline, with who logged it and when
 
 33
-00:04:20,280 --> 00:04:25,760
+00:04:36,240 --> 00:04:40,640
 Compliance may view personal data — on demand, and audited
 Sign in as the Compliance Officer
 
 34
-00:04:25,760 --> 00:04:35,520
+00:04:40,640 --> 00:04:50,400
 Sign in as Fatima Hossenbux — Compliance Officer
 Compliance Officer — her role holds the “view personal data” permission
 
 35
-00:04:35,520 --> 00:04:42,320
+00:04:50,400 --> 00:04:58,800
 She also sees the ID number masked — with a Reveal link
 Personal data is only shown when someone deliberately asks for it
 
 36
-00:04:42,320 --> 00:04:47,560
+00:04:58,800 --> 00:05:04,040
 Revealed — and recorded in the tamper-evident audit trail
 
 37
-00:04:47,560 --> 00:04:50,720
+00:05:04,040 --> 00:05:07,200
 The Audit tab shows who revealed which field, and when
 Alongside every change, stage move and approval on the record
 
 38
-00:04:55,900 --> 00:05:03,440
+00:05:12,380 --> 00:05:22,120
 What you learned
 The party is the golden record; everything else links to it.

@@ -1,0 +1,207 @@
+[
+ {
+  "n": 1,
+  "caption": "Cross-sell & RM Workbench",
+  "vo": "Across the group, you already know a lot about each client. The trick is turning that into the next sale, and seeing how every RM is doing."
+ },
+ {
+  "n": 2,
+  "caption": "The RM's day starts on My Workbench",
+  "vo": "An RM's day starts in one place, My Workbench. Enquiries, next-best actions, reviews, KYC, pipeline and meetings, all on her home page."
+ },
+ {
+  "n": 3,
+  "caption": "Sign in as Priya Ramdin — Relationship Manager",
+  "vo": "Let's sign in as Priya Ramdin. She's a relationship manager working her own book of clients."
+ },
+ {
+  "n": 4,
+  "caption": "Next-best actions waiting for her, and her pipeline by stage",
+  "vo": "Here are her next-best actions and her pipeline by stage. And only her own book."
+ },
+ {
+  "n": 5,
+  "caption": "The rules run every night across all clients",
+  "vo": "Where do these come from? Rules that run every night across all clients. Fund holders without a loan get an investment-backed loan. Borrowers get wealth, corporates FX hedging, high-net-worth clients wealth discovery, and FMB 2029 holders reinvestment."
+ },
+ {
+  "n": 6,
+  "caption": "Open the list of next-best actions",
+  "vo": "Let's open the full list of next-best actions."
+ },
+ {
+  "n": 7,
+  "caption": "Each suggestion: the client, the rule that raised it, the entity and the product",
+  "vo": "Every suggestion tells you the client, the rule behind it, the entity and the product. It stays open until the RM decides."
+ },
+ {
+  "n": 8,
+  "caption": "Jayesh Coret holds funds above MUR 1 million and has no loan",
+  "vo": "Take Jayesh Coret. She holds over one million rupees in funds and no loan. So the suggestion is an investment-backed loan, liquidity without selling her funds."
+ },
+ {
+  "n": 9,
+  "caption": "Accept or Dismiss — buttons on the suggestion",
+  "vo": "Priya can accept or dismiss. She knows Jayesh is planning a purchase, so she accepts."
+ },
+ {
+  "n": 10,
+  "caption": "Accepted: the CRM opens an opportunity for the client",
+  "vo": "And the CRM opens an opportunity straight away, at Identified, owned by Priya."
+ },
+ {
+  "n": 11,
+  "caption": "Status: Accepted — opportunity opened",
+  "vo": "The status is now Accepted. The buttons are gone, because the decision's been made."
+ },
+ {
+  "n": 12,
+  "caption": "The new opportunity is linked to the suggestion",
+  "vo": "The new opportunity is linked right back to the suggestion. Identified, twenty-five percent, a placeholder value of one million rupees, and Priya as owner."
+ },
+ {
+  "n": 13,
+  "caption": "Now a suggestion that does not fit: Shamim Noël",
+  "vo": "But not every suggestion fits. Shamim Noël is a real-estate borrower, flagged for wealth and money market."
+ },
+ {
+  "n": 14,
+  "caption": "Dismiss asks why",
+  "vo": "Priya dismisses it, and the CRM asks her why. That reason stays on the suggestion."
+ },
+ {
+  "n": 15,
+  "caption": "Dismissed — the rule will not raise it again for this client",
+  "vo": "Done. That rule won't nag her about this client again."
+ },
+ {
+  "n": 16,
+  "caption": "Dismissed, with the reason on record",
+  "vo": "And managers can see exactly why it was turned down."
+ },
+ {
+  "n": 17,
+  "caption": "Priya meets Jayesh Coret to discuss the loan",
+  "vo": "Back to Jayesh. Priya meets her to talk through the loan."
+ },
+ {
+  "n": 18,
+  "caption": "A structured note: pick the template — Discovery meeting",
+  "vo": "Instead of free text, she writes a structured note. She picks the discovery meeting template. There are others for reviews, credit visits, calls and event follow-ups."
+ },
+ {
+  "n": 19,
+  "caption": "Objectives, outcomes and next steps",
+  "vo": "She captures the objectives, the outcomes and the next steps. The note shows up in Priya's calendar feed, follow-up date included."
+ },
+ {
+  "n": 20,
+  "caption": "Saved — the meeting counts on her workbench and on the RM League Table",
+  "vo": "Saved. That meeting now counts on her workbench and the league table."
+ },
+ {
+  "n": 21,
+  "caption": "Put a real value on the opportunity",
+  "vo": "Now the opportunity gets a real value. Six million rupees, closing in about two months."
+ },
+ {
+  "n": 22,
+  "caption": "Value MUR 6,000,000 · probability 25% at Identified",
+  "vo": "Six million at twenty-five percent probability. The weighted value is simply value times probability."
+ },
+ {
+  "n": 23,
+  "caption": "The opportunity board: Identified → Qualified → Proposal → Negotiation → Won / Lost",
+  "vo": "Here's the opportunity board. Identified, Qualified, Proposal, Negotiation, then Won or Lost. As the deal moves on, Priya just drags the card."
+ },
+ {
+  "n": 24,
+  "caption": "Qualified: the stage sets the probability to 40%",
+  "vo": "At Qualified, the stage sets the probability to forty percent, so the weighted value is two point four million rupees. Priya can still adjust it if she knows better."
+ },
+ {
+  "n": 25,
+  "caption": "Terms sent — Proposal (60%, Best case)",
+  "vo": "Terms go out, so it moves to Proposal, sixty percent and best case. Then Negotiation, eighty percent and commit."
+ },
+ {
+  "n": 26,
+  "caption": "The client signs — Won",
+  "vo": "And then Jayesh signs. Won."
+ },
+ {
+  "n": 27,
+  "caption": "Won: probability 100%, forecast Closed",
+  "vo": "A hundred percent, forecast Closed. And won business is exactly what her quarterly target measures."
+ },
+ {
+  "n": 28,
+  "caption": "Arvind Jugnauth · Investment-Backed Loan: the client went elsewhere",
+  "vo": "Of course, not every deal closes. Arvind Jugnauth's investment-backed loan, the client went elsewhere. So Priya moves it to Lost."
+ },
+ {
+  "n": 29,
+  "caption": "Blocked: a lost opportunity needs a loss reason",
+  "vo": "Blocked. You can't lose a deal without saying why. Price, competitor, timing, no need, not eligible. That's how losses get analysed."
+ },
+ {
+  "n": 30,
+  "caption": "Loss reason: Competitor",
+  "vo": "Here, the reason is a competitor. She saves it and heads back to the board."
+ },
+ {
+  "n": 31,
+  "caption": "Lost — with its reason, probability 0%",
+  "vo": "Now the move goes through. Lost, with its reason on record and the probability at zero. It drops out of the open pipeline and the weighted forecast, so the numbers managers look at stay honest. No dead deals hanging around inflating the forecast."
+ },
+ {
+  "n": 32,
+  "caption": "Each RM has quarterly targets",
+  "vo": "So how is Priya doing? Every RM has quarterly targets, set by the managers."
+ },
+ {
+  "n": 33,
+  "caption": "New business and revenue targets per quarter, and what was achieved",
+  "vo": "New business and revenue targets each quarter, next to what was achieved. Attainment is achieved new business over target."
+ },
+ {
+  "n": 34,
+  "caption": "Priya sees her own targets; managers see the whole team",
+  "vo": "Priya sees her own targets, managers see the whole team. And attainment updates whenever the achieved figures change."
+ },
+ {
+  "n": 35,
+  "caption": "The Head of BD follows the whole team",
+  "vo": "Now let's switch to the manager's view."
+ },
+ {
+  "n": 36,
+  "caption": "Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships",
+  "vo": "We sign in as Shalini Ramtohul, Head of BD and Strategic Partnerships. She sets the targets and follows the league table."
+ },
+ {
+  "n": 37,
+  "caption": "Meetings and revenue credited, by RM",
+  "vo": "Meetings and revenue credited, by RM. Activity and results side by side."
+ },
+ {
+  "n": 38,
+  "caption": "Open weighted pipeline and won opportunities, by RM",
+  "vo": "Weighted pipeline and wins by RM. Priya's win from today already counts."
+ },
+ {
+  "n": 39,
+  "caption": "Target attainment by RM",
+  "vo": "And attainment. Who's ahead of plan, and who needs help."
+ },
+ {
+  "n": 40,
+  "caption": "The forecast: every open opportunity with its forecast category and weighted value",
+  "vo": "Need the forecast? Here's every open opportunity, with its forecast category and weighted value."
+ },
+ {
+  "n": 41,
+  "caption": "Cross-sell & RM Workbench",
+  "vo": "So that's cross-sell. The CRM suggests the next sale, the RM decides and works it, and managers see the results. Next up, retail lending."
+ }
+]

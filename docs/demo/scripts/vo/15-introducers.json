@@ -1,0 +1,217 @@
+[
+  {
+    "n": 1,
+    "caption": "Introducers & Partners",
+    "vo": "Brokers, agents and professionals refer clients for a commission. Let's follow one from onboarding, all the way to the commission they earn."
+  },
+  {
+    "n": 2,
+    "caption": "Anil Bhugaloo, a notary in Port Louis, wants to refer clients to Genesis",
+    "vo": "Anil Bhugaloo, a notary in Port Louis, wants to refer clients to Genesis. Like every introducer, Anil is first a party, the record KYC runs on."
+  },
+  {
+    "n": 3,
+    "caption": "Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships",
+    "vo": "We're Shalini Ramtohul, Head of BD and Strategic Partnerships. She onboards and manages introducers."
+  },
+  {
+    "n": 4,
+    "caption": "Clients ▸ Parties ▸ New: identity and contact details",
+    "vo": "First, Shalini creates Anil's party record. Open Clients, then Parties, click New, and fill in the identity and contact details."
+  },
+  {
+    "n": 5,
+    "caption": "Growth ▸ Introducers ▸ Introducer onboarding",
+    "vo": "Then the introducer onboarding wizard. Two steps, who the introducer is, then the agreement and commission plan."
+  },
+  {
+    "n": 6,
+    "caption": "The portal email is how the introducer will sign in to the introducer portal",
+    "vo": "The portal email is how Anil will sign in to the portal."
+  },
+  {
+    "n": 7,
+    "caption": "Agreement & commission: the agreement is not signed yet",
+    "vo": "The agreement isn't signed yet. Shalini picks the products Anil may refer, and clawback and the protection window keep their defaults."
+  },
+  {
+    "n": 8,
+    "caption": "Introducer created at Applied — complete KYC to activate",
+    "vo": "Anil's created at Applied, with an introducer number. Before activation, KYC has to be completed."
+  },
+  {
+    "n": 9,
+    "caption": "Onboarding pipeline: Applied ▸ KYC ▸ Agreement ▸ Active",
+    "vo": "The onboarding runs Applied, KYC, Agreement, Active. Anil moves to KYC while the documents are collected."
+  },
+  {
+    "n": 10,
+    "caption": "Now try Agreement…",
+    "vo": "Now let's try Agreement. It needs the signature date and the commission rate."
+  },
+  {
+    "n": 11,
+    "caption": "The agreement is signed: record the date, expiry and commission rate",
+    "vo": "Once the agreement's signed, Shalini records the date, the expiry, and the rate, zero point four percent of the funded or disbursed volume."
+  },
+  {
+    "n": 12,
+    "caption": "Move to Agreement again — this time it goes through",
+    "vo": "Move to Agreement again, and this time it goes through."
+  },
+  {
+    "n": 13,
+    "caption": "Activate the introducer…",
+    "vo": "Now can she activate Anil? Not until the CRM has checked the introducer's own KYC."
+  },
+  {
+    "n": 14,
+    "caption": "Blocked: KYC is not approved yet",
+    "vo": "Blocked. KYC isn't approved yet. The proper route is a KYC case on Anil, signed off by Compliance."
+  },
+  {
+    "n": 15,
+    "caption": "KYC & Compliance ▸ KYC Cases ▸ New",
+    "vo": "So she opens a new KYC case. It's group-level KYC, the very same process as for a client, covered in tutorial eighteen."
+  },
+  {
+    "n": 16,
+    "caption": "ID, proof of address and source of funds are on file",
+    "vo": "Anil's ID, proof of address and source of funds are on file. She ticks the checks and sets the FATCA status."
+  },
+  {
+    "n": 17,
+    "caption": "Move it to Screening: sanctions and PEP lists are checked automatically",
+    "vo": "Move it to Screening, and the sanctions and PEP lists are checked automatically."
+  },
+  {
+    "n": 18,
+    "caption": "Screening is clear — Pending approval sends the case to Compliance",
+    "vo": "Screening's clear. Pending approval sends the case to Compliance."
+  },
+  {
+    "n": 19,
+    "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+    "vo": "Fatima Hossenbux, the compliance officer, signs off the KYC. It's four eyes. The Head of BD can't approve her own introducer, so the decision is Compliance's."
+  },
+  {
+    "n": 20,
+    "caption": "Back to the Head of BD: activate the introducer",
+    "vo": "Back to Shalini. KYC approved, agreement signed, so this time the gate lets Anil through."
+  },
+  {
+    "n": 21,
+    "caption": "Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships",
+    "vo": "She signs back in to activate Anil. Both conditions are met, so there's nothing left in the way."
+  },
+  {
+    "n": 22,
+    "caption": "Anil Bhugaloo is active: KYC approved, agreement and commission on file",
+    "vo": "Anil Bhugaloo is active, with KYC approved and the agreement and commission on file. Only active introducers can sign in to the portal."
+  },
+  {
+    "n": 23,
+    "caption": "Meanwhile, Hemraj Ah-Kye — an active broker — has a client to refer",
+    "vo": "Meanwhile, Hemraj Ah-Kye, an active broker, has a client to refer. He uses the Genesis Capital introducer portal."
+  },
+  {
+    "n": 24,
+    "caption": "Choose Introducer and enter the portal email Genesis holds",
+    "vo": "He chooses Introducer and enters the email Genesis holds. No password, just a one-time code by email."
+  },
+  {
+    "n": 25,
+    "caption": "Outside production the code is shown on screen",
+    "vo": "Outside production the code shows on screen. In production it comes by email and expires after ten minutes."
+  },
+  {
+    "n": 26,
+    "caption": "His referrals and commissions — only his own",
+    "vo": "He sees his own referrals and commissions, nobody else's. Status shows only where the prospect agreed to it."
+  },
+  {
+    "n": 27,
+    "caption": "Refer a client: Mélanie Rault needs a personal loan",
+    "vo": "Now he refers a client. Mélanie Rault needs a personal loan, so he fills in her details."
+  },
+  {
+    "n": 28,
+    "caption": "She agreed that Hemraj may follow her application",
+    "vo": "She's agreed that Hemraj can follow her application, so he'll see its status."
+  },
+  {
+    "n": 29,
+    "caption": "The referral is in — Submitted",
+    "vo": "Submitted. It lands in the CRM at once."
+  },
+  {
+    "n": 30,
+    "caption": "Back in the CRM, the Head of BD sees the referral",
+    "vo": "And back in the CRM, Shalini already sees the referral."
+  },
+  {
+    "n": 31,
+    "caption": "The CRM created an enquiry for the prospect, credited to the introducer",
+    "vo": "The CRM has created an enquiry for the prospect, credited to the introducer. That attribution is protected for ninety days from submission."
+  },
+  {
+    "n": 32,
+    "caption": "The enquiry: channel Introducer, linked to Hemraj",
+    "vo": "The enquiry's channel is Introducer, linked to Hemraj, so he gets the credit for the whole window."
+  },
+  {
+    "n": 33,
+    "caption": "Routed by product like any other enquiry: Retail Loans, to Yash Bholah",
+    "vo": "It's routed by product like any other enquiry, to Yash Bholah in Retail Loans, and the speed-to-lead clock starts now."
+  },
+  {
+    "n": 34,
+    "caption": "As the desk works the enquiry, BD moves the referral along",
+    "vo": "As the desk works the enquiry, BD moves the referral along. Submitted, accepted, in progress, then funded or disbursed."
+  },
+  {
+    "n": 35,
+    "caption": "The loan is disbursed — try Funded / disbursed…",
+    "vo": "The loan's disbursed. But try to mark it funded, and the CRM asks for the funded amount, because that's what the commission is worked out on."
+  },
+  {
+    "n": 36,
+    "caption": "Record the amount actually disbursed: MUR 1,400,000",
+    "vo": "So Shalini records the amount actually disbursed, one point four million rupees."
+  },
+  {
+    "n": 37,
+    "caption": "Funded: the commission is accrued automatically",
+    "vo": "Funded, and the commission accrues automatically. Hemraj's rate is zero point five percent, on one point four million rupees. That's seven thousand rupees."
+  },
+  {
+    "n": 38,
+    "caption": "Status Accrued — Finance approves and pays it, then marks it Paid",
+    "vo": "It's Accrued. Finance approves and pays it, then marks it Paid, and Hemraj sees it under Commissions in his portal."
+  },
+  {
+    "n": 39,
+    "caption": "A client repaid a referred personal loan early, within the 12-month clawback period",
+    "vo": "Now, a client repaid a referred loan early, inside the twelve-month clawback period. So Hemraj's June commission is clawed back."
+  },
+  {
+    "n": 40,
+    "caption": "Clawed-back commission no longer counts as earned",
+    "vo": "Clawed-back commission no longer counts as earned, and his total is recalculated."
+  },
+  {
+    "n": 41,
+    "caption": "Dashboard ▸ Marketing: the introducer channel at a glance",
+    "vo": "On the Marketing dashboard, you see the introducer channel at a glance."
+  },
+  {
+    "n": 42,
+    "caption": "Referrals by stage — from submitted to funded",
+    "vo": "Referrals by stage, from submitted to funded. And commission by status, accrued, approved, paid, and clawed back."
+  },
+  {
+    "n": 43,
+    "caption": "Introducers & Partners",
+    "vo": "So that's introducers and partners. They're onboarded with the same rigour as clients, and every referral traces back to the commission it earns. Next, Revenue."
+  }
+]

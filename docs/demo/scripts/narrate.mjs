@@ -1,7 +1,7 @@
 // Adds (or redoes) the spoken narration on finished videos in docs/demo/, from their .srt captions.
 //   node narrate.mjs                  every video
 //   node narrate.mjs 05-retail        one (or several) by file-name prefix
-// NARRATION_VOICE (default Samantha) and NARRATION_RATE (words per minute, default 180) pick the voice.
+// NARRATION_VOICE (Kokoro voice, default af_heart) picks the voice; NARRATION_ENGINE=say uses macOS say.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

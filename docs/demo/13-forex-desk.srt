@@ -1,169 +1,169 @@
 1
-00:00:02,338 --> 00:00:10,840
+00:00:02,338 --> 00:00:11,520
 Forex Desk
 Genesis Forex: from a client's FX profile to a booked deal — quotes, forwards and rate alerts.
 
 2
-00:00:10,840 --> 00:00:20,200
+00:00:11,520 --> 00:00:21,280
 Le Morne Resorts Ltd, a hotel group, earns euros and pays its costs in rupees
 It wants to sell its euro receipts forward — first, an FX profile
 
 3
-00:00:20,200 --> 00:00:27,160
+00:00:21,280 --> 00:00:26,960
 Sign in as Deepak Mungur — Forex Dealer
 Forex dealer — quotes, books deals, manages forwards and alerts
 
 4
-00:00:27,160 --> 00:00:35,840
+00:00:26,960 --> 00:00:33,840
 Forex Desk ▸ FX Client Profiles: one profile per FX client
 Purpose, volumes, currency pairs, approved products and limits
 
 5
-00:00:35,840 --> 00:00:45,840
+00:00:33,840 --> 00:00:43,840
 “Forex client onboarding” opens a two-step wizard
 The FX need, then products and limits
 
 6
-00:00:45,840 --> 00:00:53,640
+00:00:43,840 --> 00:00:51,960
 Approved products and the settlement limit
 The limit is checked against the open forwards — the utilisation is calculated
 
 7
-00:00:53,640 --> 00:00:56,360
+00:00:51,960 --> 00:00:54,680
 Profile created
 Its deals, open forwards and limit utilisation will build up here
 
 8
-00:00:58,600 --> 00:01:09,760
+00:00:57,440 --> 00:01:08,920
 The client calls: sell EUR 300,000 forward, in six weeks
 FX Quotes ▸ New — client, profile, product, side, currency, amount
 
 9
-00:01:09,760 --> 00:01:14,480
+00:01:08,920 --> 00:01:13,640
 “Requested at” is stamped with the time of the call
 The quote timer starts from it — best execution
 
 10
-00:01:15,080 --> 00:01:20,600
+00:01:13,760 --> 00:01:19,280
 The FX quote timer: answer within 15 business minutes
 Tools ▸ SLA Board · it counts business hours only, so a weekend request is due Monday
 
 11
-00:01:24,400 --> 00:01:29,160
+00:01:23,200 --> 00:01:28,560
 FX Quotes on the pipeline board
 Requested ▸ Quoted ▸ Accepted / Rejected / Expired
 
 12
-00:01:29,160 --> 00:01:32,720
+00:01:28,560 --> 00:01:32,120
 Move the quote to Quoted…
 before entering a rate
 
 13
-00:01:32,720 --> 00:01:37,280
+00:01:32,120 --> 00:01:36,680
 Blocked: a quote needs the quoted rate and the time it was given
 No rate, no quote — the audit trail stays complete
 
 14
-00:01:39,120 --> 00:01:52,920
+00:01:36,960 --> 00:01:50,760
 The board buys EUR at 52.64 — Deepak quotes the client 52.90
 Enter the quoted rate and the time
 
 15
-00:01:52,920 --> 00:01:58,360
+00:01:50,760 --> 00:01:56,880
 Quoted — the first-response timer is met
 The improvement on the board rate is calculated on the quote
 
 16
-00:01:58,360 --> 00:02:02,000
+00:01:56,880 --> 00:02:00,520
 The client agrees to the rate
 Move the quote to Accepted
 
 17
-00:02:02,000 --> 00:02:19,760
+00:02:00,520 --> 00:02:18,280
 Blocked: record when the client responded
 The time-stamped trail: requested → quoted → client response
 
 18
-00:02:19,760 --> 00:02:22,280
+00:02:18,280 --> 00:02:20,800
 Accepted: the CRM books the deal for you
 An FX deal is created and sent to the dealing system
 
 19
-00:02:25,160 --> 00:02:36,280
+00:02:23,760 --> 00:02:31,080
 Forex Desk ▸ FX Deals: the deal booked from the quote
 FXD-2026-000105 — forward, EUR 300,000 at 52.90
 
 20
-00:02:36,280 --> 00:02:41,160
+00:02:31,080 --> 00:02:35,560
 The dealing system's reference is recorded on the deal
 Booked automatically when the deal was created
 
 21
-00:02:41,160 --> 00:02:51,120
+00:02:35,560 --> 00:02:46,640
 Board rate 52.64 · quoted 52.90 — the client gets MUR 78,000 more
 Improvement against the board rate — best-execution evidence
 
 22
-00:02:51,120 --> 00:02:57,240
+00:02:46,640 --> 00:02:53,000
 An open forward until it settles
 Days to the value date count down; the amount counts against the profile's limit
 
 23
-00:02:57,240 --> 00:03:04,560
+00:02:53,000 --> 00:03:00,960
 Reminders tab: the CRM reminds the dealer a week before the value date
 Confirm settlement with the client or offer a roll-over
 
 24
-00:03:04,560 --> 00:03:08,040
+00:03:00,960 --> 00:03:04,440
 On that day the client is also emailed and a roll-over offered
 The value date shows in the dealer's calendar feed too
 
 25
-00:03:10,520 --> 00:03:22,760
+00:03:06,680 --> 00:03:19,000
 The client also wants to sell more euros if EUR/MUR rises to 53.60
 FX Rate Alerts ▸ New — the client is told by email when the board reaches it
 
 26
-00:03:22,760 --> 00:03:26,920
+00:03:19,000 --> 00:03:23,160
 Active: today's board is 53.43 — below the target
 Alerts are checked every hour, and whenever a new board rate is published
 
 27
-00:03:30,240 --> 00:03:37,440
+00:03:27,680 --> 00:03:35,000
 Next morning's board: the euro is stronger
 Masters ▸ FX Reference Rates — the dealer publishes the TT buying and selling rates
 
 28
-00:03:37,440 --> 00:03:41,840
+00:03:35,000 --> 00:03:39,280
 The board feeds every MUR conversion, the rate alerts and the website
 Save it…
 
 29
-00:03:41,840 --> 00:03:52,960
+00:03:39,280 --> 00:03:50,640
 53.65 is above the client's 53.60 — the alert fires at once
 The client is emailed, the alert closed as Triggered, the dealer notified
 
 30
-00:03:52,960 --> 00:03:55,480
+00:03:50,640 --> 00:03:53,160
 The email to the client is on the alert's timeline
 Sent in the client's language (French here) — SMS when the client prefers it
 
 31
-00:04:00,080 --> 00:04:04,600
+00:03:58,480 --> 00:04:03,000
 Deepak is notified to call the client and deal
 Notifications bell
 
 32
-00:04:04,640 --> 00:04:17,120
+00:04:03,040 --> 00:04:15,520
 The Forex Desk dashboard
 Deals, volume, spread income and open forwards
 
 33
-00:04:17,120 --> 00:04:22,880
+00:04:15,520 --> 00:04:21,280
 Volume by currency and by month, top clients
 Quote outcomes and rate alerts
 
 34
-00:04:23,811 --> 00:04:31,319
+00:04:22,211 --> 00:04:29,719
 Forex Desk
 The dealer quotes and decides — the CRM keeps the trail, books and reminds.

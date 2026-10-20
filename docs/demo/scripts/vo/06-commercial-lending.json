@@ -1,0 +1,182 @@
+[
+ {
+  "n": 1,
+  "caption": "Commercial Lending",
+  "vo": "Corporate loans live in memos, spreadsheets and email chains. Let's follow one facility from the RM's request to an active, monitored loan, all on one record."
+ },
+ {
+  "n": 2,
+  "caption": "Port Louis Logistics Ltd needs a MUR 15 million working-capital line",
+  "vo": "Port Louis Logistics needs a fifteen million rupee working-capital line. It's growing its fleet and has new contracts to serve."
+ },
+ {
+  "n": 3,
+  "caption": "Sign in as Bruno Chan — Relationship Manager (Corporate)",
+  "vo": "Bruno Chan is their corporate relationship manager, and owns the facility."
+ },
+ {
+  "n": 4,
+  "caption": "Commercial Lending ▸ Commercial facility request",
+  "vo": "Bruno opens a commercial facility request. It's a two-step guided form, starting with the borrower, its group, the facility type and what the money is for."
+ },
+ {
+  "n": 5,
+  "caption": "Amount, tenor and pricing",
+  "vo": "Then the amount, tenor and pricing. Twelve months, a two percent margin over the Genesis PLR, plus the arrangement and commitment fees. No side spreadsheet needed."
+ },
+ {
+  "n": 6,
+  "caption": "CF-2026-000024 is created at Origination and assigned to the corporate RM",
+  "vo": "And the facility is created at Origination, assigned to Bruno. The rate is worked out as PLR plus margin, and the amount already tells us who'll approve it."
+ },
+ {
+  "n": 7,
+  "caption": "Group exposure: every facility of the Doorga Group — now including this one",
+  "vo": "Here's group exposure. Every facility across the Doorga Group, this one included, checked against the group limit before credit takes it on."
+ },
+ {
+  "n": 8,
+  "caption": "The RM moves the request to RM assessment",
+  "vo": "Bruno moves the request to RM assessment, and then tries to push it straight on to Credit memo."
+ },
+ {
+  "n": 9,
+  "caption": "Blocked: the credit memo needs the company background and the security package",
+  "vo": "Not so fast. The memo needs the company background and the security package."
+ },
+ {
+  "n": 10,
+  "caption": "Write the memo on its own form",
+  "vo": "So Bruno writes the memo on its own form. Same record, just a focused view. Company background, SWOT, projections and the security package."
+ },
+ {
+  "n": 11,
+  "caption": "Memo written — Credit memo now accepts the facility",
+  "vo": "Memo done, and now the move goes through."
+ },
+ {
+  "n": 12,
+  "caption": "The credit analyst spreads two years of audited accounts",
+  "vo": "Next, credit spreads two years of audited accounts, one row per financial year."
+ },
+ {
+  "n": 13,
+  "caption": "Sign in as Nadia Peerbux — Credit Analyst",
+  "vo": "That's Nadia Peerbux, our credit analyst, who spreads the financials and grades the risk. And it's all done right here, linked to the facility, rather than in a spreadsheet that drifts out of date the moment it's emailed."
+ },
+ {
+  "n": 14,
+  "caption": "FY 2025: the latest audited year",
+  "vo": "Then FY 2025, the latest audited year. Revenue, EBITDA, interest, tax, debt, cash and equity go in, straight from the audited accounts, along with the annual debt service."
+ },
+ {
+  "n": 15,
+  "caption": "The ratios are calculated for every year",
+  "vo": "And the ratios work themselves out for every year. EBITDA margin, DSCR, net debt to EBITDA, gearing and interest cover."
+ },
+ {
+  "n": 16,
+  "caption": "Back on the facility: the latest DSCR and leverage are read from the spread",
+  "vo": "Back on the facility, the latest DSCR and leverage are pulled from the spread. Nadia sets the risk grade and writes the recommendation."
+ },
+ {
+  "n": 17,
+  "caption": "Credit approval needs a recommendation and a risk grade",
+  "vo": "Credit approval needs a recommendation and a risk grade. Let's try anyway… and the gate holds. So Nadia sets grade two, and recommends approval, fifteen million for twelve months at PLR plus two."
+ },
+ {
+  "n": 18,
+  "caption": "Who approves? Masters ▸ Approval Matrices",
+  "vo": "So who approves? That's in the approval matrix. Up to five million, the Loans Manager. Up to twenty million, the Credit Committee. Above that, the Board Credit Committee."
+ },
+ {
+  "n": 19,
+  "caption": "MUR 15 million falls in the Credit Committee band",
+  "vo": "Fifteen million lands with the Credit Committee. Moving to Credit approval raises the request."
+ },
+ {
+  "n": 20,
+  "caption": "The Credit Committee decides",
+  "vo": "The request carries the amount, the grade and the DSCR."
+ },
+ {
+  "n": 21,
+  "caption": "Sign in as Jean-Marc Desvaux — Credit Committee Member",
+  "vo": "Jean-Marc Desvaux sits on the Credit Committee, approving facilities up to twenty million rupees. The full picture is in the approvals inbox, so nobody needs chasing. Strong cash cover and security. Jean-Marc approves."
+ },
+ {
+  "n": 22,
+  "caption": "Approved — the facility moved itself to Term sheet / offer",
+  "vo": "Approved, and the facility moves itself on to the term sheet stage."
+ },
+ {
+  "n": 23,
+  "caption": "The term sheet was generated and filed on the Docs tab",
+  "vo": "The term sheet is generated and filed on the Docs tab. Amount, tenor, pricing, fees and the security package, ready for the borrower."
+ },
+ {
+  "n": 24,
+  "caption": "Preview the term sheet",
+  "vo": "Let's preview it. Every figure comes straight from the record."
+ },
+ {
+  "n": 25,
+  "caption": "The borrower signs the term sheet",
+  "vo": "The borrower signs, and the RM registers the charges and guarantee."
+ },
+ {
+  "n": 26,
+  "caption": "Sign in as Bruno Chan — Relationship Manager (Corporate)",
+  "vo": "So it's back to Bruno. The borrower has signed, so the facility moves to Security perfection, and then on to Active."
+ },
+ {
+  "n": 27,
+  "caption": "Active: the CRM checks the borrower's KYC is approved",
+  "vo": "Before it goes active, the CRM checks the borrower's KYC. It's approved, so the facility goes live."
+ },
+ {
+  "n": 28,
+  "caption": "Record the covenants the committee set",
+  "vo": "But a live loan still needs watching. Bruno records the covenant the committee set, a DSCR of at least one point two five, tested every year."
+ },
+ {
+  "n": 29,
+  "caption": "A year on: management accounts show DSCR at 1.08x",
+  "vo": "Now, jump a year ahead. The management accounts come in, and DSCR is down to one point oh eight. Bruno records the actual value as a covenant test."
+ },
+ {
+  "n": 30,
+  "caption": "1.08 is below the 1.25 threshold: the result is Breach",
+  "vo": "That's below the threshold, so it's a breach. The RM and the Loans Manager hear about it at once."
+ },
+ {
+  "n": 31,
+  "caption": "The facility counts its covenants in breach",
+  "vo": "The facility counts it, and watch-list reports read that same figure."
+ },
+ {
+  "n": 32,
+  "caption": "The Loans Manager gets the breach alert",
+  "vo": "So what happens to the alert?"
+ },
+ {
+  "n": 33,
+  "caption": "Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income",
+  "vo": "It goes to Rajiv Doorgakant, the Loans Manager. He decides on a waiver or a remedy."
+ },
+ {
+  "n": 34,
+  "caption": "Notifications: “Covenant breach” with the actual value and threshold",
+  "vo": "There it is in his notifications. Covenant breach, with the actual value and the threshold, so he knows how far off it is."
+ },
+ {
+  "n": 35,
+  "caption": "Waiver granted and the terms recorded on the test",
+  "vo": "He grants a one-off waiver, with the terms on the test. The next test date stays on Bruno's calendar."
+ },
+ {
+  "n": 36,
+  "caption": "Commercial Lending",
+  "vo": "Four people, one facility. The CRM checked every gate and routed every decision. Next, collateral and pledges."
+ }
+]

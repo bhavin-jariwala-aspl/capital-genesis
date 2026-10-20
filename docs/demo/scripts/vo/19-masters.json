@@ -1,0 +1,187 @@
+[
+  {
+    "n": 1,
+    "caption": "Masters — reference data",
+    "vo": "Every routing rule, rate, risk weight, approval limit and service level the CRM calculates with lives in one place. That's Masters, and changing them needs no developer."
+  },
+  {
+    "n": 2,
+    "caption": "Sign in as Kevin Lam — CRM Administrator",
+    "vo": "Kevin Lam, our CRM administrator, looks after them."
+  },
+  {
+    "n": 3,
+    "caption": "One tab per master — each row is an ordinary record",
+    "vo": "One tab per master, and each row is an ordinary record. Edit, import, export and audit it like any other data."
+  },
+  {
+    "n": 4,
+    "caption": "Masters are data: change a row and the next calculation uses it",
+    "vo": "Here's the distinction. Masters are data. Change a row, and the next calculation uses it. The Builder is configuration. Fields, forms, stages and workflows."
+  },
+  {
+    "n": 5,
+    "caption": "Website Product Routing: what the client picks on the website",
+    "vo": "Take website product routing. Whatever the client picks on the website goes to a business unit and a queue, with a first-contact target."
+  },
+  {
+    "n": 6,
+    "caption": "Personal loans get a faster first call from today",
+    "vo": "Say personal loans should get a faster first call, from today."
+  },
+  {
+    "n": 7,
+    "caption": "New queue name and first contact within 2 business hours",
+    "vo": "Kevin gives it a new queue name, and first contact within two business hours. It stays Lending, so the same team still gets them."
+  },
+  {
+    "n": 8,
+    "caption": "Saved — no release, no restart",
+    "vo": "Saved. No release, no restart. The very next personal loan enquiry reads the new rule."
+  },
+  {
+    "n": 9,
+    "caption": "Mélissa Bégué asks about a personal loan on the website",
+    "vo": "Let's prove it. Mélissa Bégué asks about a personal loan on the website, using the same Get in touch form the website shows. Watch what happens when Mélissa sends it."
+  },
+  {
+    "n": 10,
+    "caption": "Sent — the enquiry is in the CRM",
+    "vo": "Sent. Routing, scoring and the speed-to-lead clock start the moment it arrives."
+  },
+  {
+    "n": 11,
+    "caption": "On the enquiry: the new queue and the 2-hour first-contact target",
+    "vo": "On Mélissa's enquiry, the new queue and the two-hour target. Read from the routing rule the moment it arrived."
+  },
+  {
+    "n": 12,
+    "caption": "The speed-to-lead clock now allows 2 business hours, not 4",
+    "vo": "So the clock allows two business hours, not four. And Sophie Lagesse in Lending is alerted as the deadline nears."
+  },
+  {
+    "n": 13,
+    "caption": "Enquiries that arrived earlier keep the target they were given",
+    "vo": "Earlier enquiries keep the target they were given. The change applies from the next one on."
+  },
+  {
+    "n": 14,
+    "caption": "The KYC risk score adds up weights from the risk-factor master",
+    "vo": "Now, KYC. The risk score simply adds up weights from the risk-factor master. Country, PEP, product, channel, occupation, ownership and activity."
+  },
+  {
+    "n": 15,
+    "caption": "A case under screening: risk score 102",
+    "vo": "Here's a case under screening, scoring one hundred and two. A South African resident, onboarded without meeting in person."
+  },
+  {
+    "n": 16,
+    "caption": "Country risk 25 comes from the Country master",
+    "vo": "Twenty-five of that is country risk, from the Country master. South Africa is under FATF increased monitoring, the grey list."
+  },
+  {
+    "n": 17,
+    "caption": "Countries (AML risk): a score from 0 to 40 for each country",
+    "vo": "The Countries master scores every country from nought to forty for AML risk. It's updated after each FATF plenary or sanctions change, and black-listed countries score the full forty."
+  },
+  {
+    "n": 18,
+    "caption": "Compliance decides that remote onboarding carries more risk",
+    "vo": "Now suppose Compliance decides remote onboarding carries more risk. So the weight for a non face to face channel goes from ten to fifteen."
+  },
+  {
+    "n": 19,
+    "caption": "The case still shows 102",
+    "vo": "The case still says one hundred and two. Why? Scores are worked out on save, not when a weight changes."
+  },
+  {
+    "n": 20,
+    "caption": "Re-assess the case: open it and save",
+    "vo": "So, re-assess it. Open and save. At the next edit or periodic review, it reads the current weights."
+  },
+  {
+    "n": 21,
+    "caption": "Risk score 107: +5 from the new channel weight",
+    "vo": "One hundred and seven. Five more, from the new channel weight. And the rating, EDD and approver all follow the score."
+  },
+  {
+    "n": 22,
+    "caption": "Approval Matrices: who approves a loan, by amount",
+    "vo": "Approval matrices decide who approves a loan. Up to five million rupees, the Loans Manager. Up to twenty million, the Credit Committee. Above that, the Board."
+  },
+  {
+    "n": 23,
+    "caption": "Each application reads its band from these limits",
+    "vo": "Each application reads its band from here. A thirteen million rupee loan goes to the Credit Committee."
+  },
+  {
+    "n": 24,
+    "caption": "Service Request Catalogue: every request type",
+    "vo": "The service request catalogue lists every request type, with its business unit, its service level in business hours, and whether it needs approval."
+  },
+  {
+    "n": 25,
+    "caption": "A partial prepayment: 40 business hours, approval required",
+    "vo": "A partial prepayment, for instance, gets forty business hours and needs approval. Each request copies these values, and routes the approval to the business-unit head."
+  },
+  {
+    "n": 26,
+    "caption": "Genesis PLR History: the prime lending rate over time",
+    "vo": "The Genesis PLR history tracks the prime lending rate. Loan pricing and each product's rate from figure use the latest one in effect."
+  },
+  {
+    "n": 27,
+    "caption": "Real Estate Loan: “Rate from” = latest PLR 6.825% + the product margin −0.675%",
+    "vo": "On the Real Estate Loan product sheet, rate from is the latest PLR of six point eight two five percent, plus a product margin of minus zero point six seven five."
+  },
+  {
+    "n": 28,
+    "caption": "A new PLR row reprices every variable-rate loan and product",
+    "vo": "A new PLR row reprices every variable-rate loan and product. So add one only after ALCO approves it, with its effective date."
+  },
+  {
+    "n": 29,
+    "caption": "FX Reference Rates: the daily TT board",
+    "vo": "FX reference rates are the daily TT board. The forex desk publishes it each morning, and it converts amounts to rupees and prices FX quotes."
+  },
+  {
+    "n": 30,
+    "caption": "Collateral Types & Haircuts: lending value and LTV alert levels",
+    "vo": "Collateral types and haircuts set lending value and LTV alert levels, for every pledge and margin-call check."
+  },
+  {
+    "n": 31,
+    "caption": "Model Portfolios A–E: the target asset mix for each risk profile",
+    "vo": "And model portfolios A to E set the target asset mix for each risk profile, conservative to aggressive, for wealth mandates."
+  },
+  {
+    "n": 32,
+    "caption": "For this tutorial, restore what we changed",
+    "vo": "Before we go, let's put things back. Every change to a master stays in the record's history anyway."
+  },
+  {
+    "n": 33,
+    "caption": "Non-face-to-face weight back to 10",
+    "vo": "The non face to face weight goes back to ten."
+  },
+  {
+    "n": 34,
+    "caption": "Personal Loan routing back to Retail Loans, 4 business hours",
+    "vo": "Personal loans back to Retail Loans, four hours."
+  },
+  {
+    "n": 35,
+    "caption": "And save the KYC case once more so it reads the restored weight",
+    "vo": "And one more save on the KYC case, so it reads the restored weight."
+  },
+  {
+    "n": 36,
+    "caption": "Back to 102",
+    "vo": "Back to one hundred and two. Everything's as it was."
+  },
+  {
+    "n": 37,
+    "caption": "Masters — reference data",
+    "vo": "That's the idea behind Masters. Change the data, not the system, and the very next calculation uses the new values."
+  }
+]

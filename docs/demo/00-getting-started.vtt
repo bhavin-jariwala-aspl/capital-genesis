@@ -4,113 +4,113 @@ WEBVTT
 Getting started
 How to find your way around the CRM before you work in any module.
 
-00:00:09.000 --> 00:00:15.160
+00:00:09.000 --> 00:00:15.800
 Sign in as Priya Ramdin — Relationship Manager
 Relationship manager — her own book of clients and enquiries
 
-00:00:15.160 --> 00:00:20.320
+00:00:15.800 --> 00:00:20.040
 Your home page opens on the dashboard for your role
 Relationship managers land on My Workbench
 
-00:00:20.320 --> 00:00:26.840
+00:00:20.040 --> 00:00:26.600
 At the top: the Service Levels radiator
 Your items that are breached, at risk or on track — click one to open it
 
-00:00:26.840 --> 00:00:34.640
+00:00:26.600 --> 00:00:36.280
 Below it: My Workbench — open enquiries, next-best actions, reviews and KYC
 Every widget only counts records you are allowed to see
 
-00:00:34.640 --> 00:00:41.200
+00:00:36.280 --> 00:00:43.040
 Switch to any other dashboard you may see from this menu
 Group Executive, Lead Funnel, Lending Pipeline, Wealth…
 
-00:00:41.200 --> 00:00:52.280
+00:00:43.040 --> 00:00:54.840
 The sidebar groups the modules by business area
 Tools · Documents · Client 360 · Lending · Investments · Advisory · Growth · Service · Compliance · Masters
 
-00:00:52.280 --> 00:01:00.320
+00:00:54.840 --> 00:01:04.400
 You only see the modules your role is allowed to use
 An RM sees client, lending, investment and service modules — not the advisory deal room
 
-00:01:00.320 --> 00:01:08.040
+00:01:04.400 --> 00:01:12.040
 Search finds clients, enquiries, applications and more
 By name, number, email or phone — results respect what you may see
 
-00:01:08.040 --> 00:01:13.360
+00:01:12.040 --> 00:01:17.040
 Pick a result to open it
 Here: the client Deepak Seegoolam — the client record comes first
 
-00:01:13.360 --> 00:01:18.360
+00:01:17.040 --> 00:01:22.360
 Open a module, then pick an object from the tabs at the top
 Enquiries & Leads ▸ Enquiries
 
-00:01:18.360 --> 00:01:25.840
+00:01:22.360 --> 00:01:30.560
 The Table view: sort by a column, filter, search, select rows for bulk actions
 Export gives a CSV of what you see
 
-00:01:25.840 --> 00:01:33.840
+00:01:30.560 --> 00:01:38.760
 The Pipeline view: a Kanban board with one column per stage
 Drag a card to another column to move it — gates may ask for missing information first
 
-00:01:33.840 --> 00:01:39.800
+00:01:38.760 --> 00:01:44.520
 Click a record to open its panel
 Header with stage and actions · fields grouped by heading · tabs underneath
 
-00:01:39.800 --> 00:01:45.560
+00:01:44.520 --> 00:01:51.840
 Calculated fields are greyed and update by themselves
 Lead score and grade, indicative rate and instalment
 
-00:01:45.560 --> 00:01:53.440
+00:01:51.840 --> 00:02:00.560
 Related: every record linked to this one
 For a client: applications, KYC cases, mandates, holdings, requests…
 
-00:01:53.440 --> 00:01:58.440
+00:02:00.560 --> 00:02:05.400
 Activity: calls, meetings, emails and notes
 Log your own call or note here
 
-00:01:58.440 --> 00:02:04.200
+00:02:05.400 --> 00:02:11.440
 Tasks: follow-ups with an owner, due date and priority
 Overdue tasks appear on your workbench
 
-00:02:04.200 --> 00:02:12.000
+00:02:11.440 --> 00:02:19.360
 Docs: documents, the document checklist, upload, share and e-signature
 Ask the client for documents with a secure upload link
 
-00:02:12.000 --> 00:02:17.320
+00:02:19.360 --> 00:02:23.560
 Audit: who changed what and when
 Stage changes, approvals with comments and data reveals
 
-00:02:17.320 --> 00:02:25.480
+00:02:23.560 --> 00:02:31.720
 Add a follow-up task on the record
 Tasks tab ▸ new task
 
-00:02:25.480 --> 00:02:28.560
+00:02:31.720 --> 00:02:34.240
 The task is saved on the record and appears on your workbench
 
-00:02:28.560 --> 00:02:32.400
+00:02:34.240 --> 00:02:38.080
 The bell shows new assignments, approvals waiting for you and SLA warnings
 Click a notification to open the record or approval
 
-00:02:35.240 --> 00:02:40.640
+00:02:41.360 --> 00:02:46.760
 Approvals: credit decisions, KYC sign-off and maker-checker steps wait here
 Tools ▸ Approvals — the person who asked can never approve their own request
 
-00:02:43.560 --> 00:02:48.440
+00:02:49.600 --> 00:02:54.480
 My Reminders: personal nudges you can snooze or complete
 Tools ▸ My Reminders
 
-00:02:48.480 --> 00:02:58.960
+00:02:54.520 --> 00:03:05.000
 Personalise: light or dark mode, text size and motion
 The palette icon in the header
 
-00:02:58.960 --> 00:03:11.000
+00:03:05.000 --> 00:03:17.040
 EN | FR switches module, field, stage and picklist names to French
 Useful when working with French-speaking clients
 
-00:03:11.000 --> 00:03:14.960
+00:03:17.040 --> 00:03:21.000
 Sign out from the header when you are done
 Avatar ▸ Security: change password, two-factor authentication, calendar feed
 
-00:03:18.004 --> 00:03:23.400
+00:03:25.004 --> 00:03:31.600
 Pick a module tutorial
 Each module has its own end-to-end video in this folder.

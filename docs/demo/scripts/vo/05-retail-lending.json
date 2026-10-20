@@ -1,0 +1,252 @@
+[
+ {
+  "n": 1,
+  "caption": "Retail Lending",
+  "vo": "A home loan touches a lot of hands. Here's one from the client's first call all the way to disbursement, with every hand-off, check and approval in one record."
+ },
+ {
+  "n": 2,
+  "caption": "Anika Gopaul calls about a home loan",
+  "vo": "It starts with a phone call. Anika Gopaul wants a home loan."
+ },
+ {
+  "n": 3,
+  "caption": "Sign in as Sophie Lagesse — Loans Executive",
+  "vo": "Sophie Lagesse, a loans executive, takes the call. She logs the enquiry while Anika is still on the line, so nothing gets lost between the phone and the system."
+ },
+ {
+  "n": 4,
+  "caption": "What she wants: a real-estate loan of MUR 4.5 million over 20 years",
+  "vo": "What does Anika want? A real-estate loan of four point five million rupees, over twenty years."
+ },
+ {
+  "n": 5,
+  "caption": "Routing assigns lending enquiries round the loans team — this one stays with Sophie",
+  "vo": "Routing shares lending enquiries round the loans team. This one stays with Sophie, and the first-contact SLA clock starts now."
+ },
+ {
+  "n": 6,
+  "caption": "She qualifies on the call — drag the enquiry to Qualified, then Converted",
+  "vo": "She qualifies Anika right there on the call, and drags the enquiry to Qualified, then Converted. That one move creates the client, the KYC case and the loan application."
+ },
+ {
+  "n": 7,
+  "caption": "The loan application is waiting in Retail Lending",
+  "vo": "And here's the application, already at Pre-qualified, with the amount and tenure carried over."
+ },
+ {
+  "n": 8,
+  "caption": "Application captured needs the client's income and the property value",
+  "vo": "Sophie tries to move it on, but the board pushes back. Application captured needs Anika's income and the property value, and it says so."
+ },
+ {
+  "n": 9,
+  "caption": "Open the record from the message and complete it",
+  "vo": "So she opens the record right from the message, and fills in the purpose, income, existing repayments and property value."
+ },
+ {
+  "n": 10,
+  "caption": "Tick the client's consent to the MCIB credit bureau check",
+  "vo": "Then the consent for the MCIB credit check. No consent, no credit report."
+ },
+ {
+  "n": 11,
+  "caption": "The CRM prices the loan and checks eligibility by itself",
+  "vo": "Now watch. The CRM prices the loan by itself. Genesis PLR plus the product margin gives the rate, then the monthly instalment and the total interest."
+ },
+ {
+  "n": 12,
+  "caption": "Loan-to-value, debt-service ratio and eligibility",
+  "vo": "Loan-to-value, debt-service ratio and eligibility, too. Even who approves it. Up to five million, that's the Loans Manager."
+ },
+ {
+  "n": 13,
+  "caption": "Now Application captured is accepted",
+  "vo": "This time the move goes through. The MCIB report is pulled, and Anika gets a status email."
+ },
+ {
+  "n": 14,
+  "caption": "Documents pending: the client is emailed the document checklist",
+  "vo": "At Documents pending, Anika is emailed the checklist of what she needs to send in."
+ },
+ {
+  "n": 15,
+  "caption": "The Docs tab shows the checklist for a real-estate loan",
+  "vo": "The Docs tab shows what's in, and what's still missing."
+ },
+ {
+  "n": 16,
+  "caption": "Send the client a secure upload link",
+  "vo": "Sophie sends a secure upload link. No sign-in, and Anika only sees what's still needed."
+ },
+ {
+  "n": 17,
+  "caption": "Her uploads land on this application and tick off the checklist",
+  "vo": "Her uploads land right here, ticking off the list."
+ },
+ {
+  "n": 18,
+  "caption": "Documents in: Documents complete, then on to credit",
+  "vo": "Documents in, so it's Documents complete, then on to credit. Credit appraisal only takes an eligible application, or one with its policy exceptions on record."
+ },
+ {
+  "n": 19,
+  "caption": "The credit analyst picks up the application",
+  "vo": "Now credit picks it up. Same record, a different person, a different form."
+ },
+ {
+  "n": 20,
+  "caption": "Sign in as Nadia Peerbux — Credit Analyst",
+  "vo": "Meet Nadia Peerbux, our credit analyst. Nadia appraises the risk and recommends a decision."
+ },
+ {
+  "n": 21,
+  "caption": "The MCIB credit report is already on the application",
+  "vo": "The MCIB report is already waiting for Nadia. Score, rating and reference, straight from the bureau."
+ },
+ {
+  "n": 22,
+  "caption": "Switch to the Credit appraisal workbench form",
+  "vo": "Nadia switches to the credit appraisal form, and records the risk grade, the recommendation and the conditions."
+ },
+ {
+  "n": 23,
+  "caption": "Credit approval: the request goes to the right authority for the amount",
+  "vo": "Moving to Credit approval sends the request to the right authority for the amount."
+ },
+ {
+  "n": 24,
+  "caption": "MUR 4.5 million: the Loans Manager decides",
+  "vo": "At four point five million, that's the Loans Manager. Four eyes, so whoever sent it can never approve it."
+ },
+ {
+  "n": 25,
+  "caption": "Sign in as Rajiv Doorgakant — Manager, Loans & Fixed Income",
+  "vo": "So let's sign in as Rajiv Doorgakant, Manager, Loans and Fixed Income. He approves loans up to five million rupees."
+ },
+ {
+  "n": 26,
+  "caption": "Tools ▸ Approvals: grade, DSR, LTV and the analyst's recommendation on one card",
+  "vo": "In his approvals inbox, everything he needs is on one card. The grade, the DSR, the LTV and Nadia's recommendation. No chasing files, no digging through email. He can decide right here."
+ },
+ {
+  "n": 27,
+  "caption": "Approved — the application moved itself to Offer issued",
+  "vo": "Approved. And the application moves itself to Offer issued, with the decision, date and PLR recorded."
+ },
+ {
+  "n": 28,
+  "caption": "The offer letter was generated and filed here",
+  "vo": "The offer letter is generated and filed, and Anika is emailed. If she doesn't accept in thirty days, it lapses."
+ },
+ {
+  "n": 29,
+  "caption": "The client signs the offer — back to the loans executive",
+  "vo": "Anika signs the offer, and it's back to Sophie, to record the signature, the security and the amount to disburse."
+ },
+ {
+  "n": 30,
+  "caption": "Sign in as Sophie Lagesse — Loans Executive",
+  "vo": "So we're signed in as Sophie again. Let's pick it up where the offer left off."
+ },
+ {
+  "n": 31,
+  "caption": "Valuation, notary, fixed charge, life and building insurance",
+  "vo": "She ticks off the security. Valuation, notary, the fixed charge, and life and building insurance, all in place."
+ },
+ {
+  "n": 32,
+  "caption": "Signed offer: move to Offer accepted, then Security & insurance",
+  "vo": "Then the application moves to Offer accepted, then Security and insurance. Anika gets a status email at each milestone."
+ },
+ {
+  "n": 33,
+  "caption": "Ready for disbursement needs perfected security and an approved KYC",
+  "vo": "But Ready for disbursement needs perfected security and an approved KYC. Anika's KYC case is still open, so the move is refused."
+ },
+ {
+  "n": 34,
+  "caption": "Finish the KYC case that was opened at conversion",
+  "vo": "Remember the KYC case from conversion? Let's finish it."
+ },
+ {
+  "n": 35,
+  "caption": "ID, proof of address and source of funds are on file",
+  "vo": "ID, proof of address and source of funds are all on file. Sophie ticks the checks and the FATCA status."
+ },
+ {
+  "n": 36,
+  "caption": "Move it to Screening: sanctions and PEP lists are checked automatically",
+  "vo": "At Screening, sanctions and PEP lists are checked automatically, and the result and its reference go straight onto the case."
+ },
+ {
+  "n": 37,
+  "caption": "Clear — Pending approval sends the case to Compliance",
+  "vo": "She's clear, so Pending approval sends it to Compliance. High-risk clients would go to the MLRO."
+ },
+ {
+  "n": 38,
+  "caption": "Compliance signs off the KYC case",
+  "vo": "Four eyes again. Sophie can't approve her own client."
+ },
+ {
+  "n": 39,
+  "caption": "Sign in as Fatima Hossenbux — Compliance Officer",
+  "vo": "So Fatima Hossenbux, our compliance officer, signs it off."
+ },
+ {
+  "n": 40,
+  "caption": "Tools ▸ Approvals: the KYC case with its risk score and rating",
+  "vo": "In her approvals inbox, the KYC case comes with its risk score and rating, so she knows what she's signing before she approves."
+ },
+ {
+  "n": 41,
+  "caption": "KYC approved — the loans executive tries again",
+  "vo": "KYC approved. Sophie tries again."
+ },
+ {
+  "n": 42,
+  "caption": "Sign in as Sophie Lagesse — Loans Executive",
+  "vo": "Back as Sophie, she moves the application to Ready for disbursement. This time, the gate lets it through, because both the security and the KYC are in order."
+ },
+ {
+  "n": 43,
+  "caption": "An approval request goes to the operations checker",
+  "vo": "Before any money moves, it's maker-checker. Whoever requests a disbursement can't approve it."
+ },
+ {
+  "n": 44,
+  "caption": "Sign in as Ritesh Seewoo — Operations Checker",
+  "vo": "That's Ritesh Seewoo, the operations checker. The second pair of eyes."
+ },
+ {
+  "n": 45,
+  "caption": "Tools ▸ Approvals: the disbursement request, with security and KYC status",
+  "vo": "He sees the disbursement request with the security and KYC status right beside it. Everything checks out, so he approves."
+ },
+ {
+  "n": 46,
+  "caption": "The loan is booked in the core loan system",
+  "vo": "The loan is booked in the core loan system, and the LMS account number comes back onto the application."
+ },
+ {
+  "n": 47,
+  "caption": "The loans executive closes the application as Disbursed",
+  "vo": "Sophie closes it as Disbursed."
+ },
+ {
+  "n": 48,
+  "caption": "Sign in as Sophie Lagesse — Loans Executive",
+  "vo": "One last time as Sophie. She drags the application to Disbursed. Now, this is where a lot of systems stop, and servicing starts from scratch somewhere else. Not here. Let's look at what happened next."
+ },
+ {
+  "n": 49,
+  "caption": "Related: the loan account was opened automatically",
+  "vo": "The loan account opened automatically. Loan Servicing now tracks instalments, arrears and the balance."
+ },
+ {
+  "n": 50,
+  "caption": "One record, the whole journey",
+  "vo": "One record, the whole journey. Five people worked the same application, with no re-keying, and every step audited. Next, commercial lending."
+ }
+]

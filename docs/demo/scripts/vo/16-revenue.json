@@ -1,0 +1,137 @@
+[
+  {
+    "n": 1,
+    "caption": "Revenue Ledger",
+    "vo": "Who earned this revenue, who gets the credit, and does it match the books? At Genesis Capital, one Revenue Ledger answers all three, for every entity."
+  },
+  {
+    "n": 2,
+    "caption": "Most revenue lines are posted by the business that earns them",
+    "vo": "Most lines post themselves, from the business that earns them. An FX deal, say, or a paid advisory invoice."
+  },
+  {
+    "n": 3,
+    "caption": "Sign in as Deepak Mungur — Forex Dealer",
+    "vo": "Let's start on the forex desk, with Deepak Mungur, who books client deals."
+  },
+  {
+    "n": 4,
+    "caption": "Rodrigues Seafood Exports Ltd sells USD 50,000 of export proceeds",
+    "vo": "A client, Rodrigues Seafood Exports, is selling fifty thousand US dollars of export proceeds. Deepak books it at forty-seven point six one, a quarter of a rupee under today's mid rate."
+  },
+  {
+    "n": 5,
+    "caption": "Saved: the deal works out its spread over the mid rate",
+    "vo": "When Deepak saves, the deal works out its own spread. That spread is the desk's income, and it goes straight to the Revenue Ledger."
+  },
+  {
+    "n": 6,
+    "caption": "Growth ▸ Revenue: every fee and income line, by entity, type and month",
+    "vo": "So where does it land? Open Growth, then Revenue. Every fee and income line, by entity, type and month."
+  },
+  {
+    "n": 7,
+    "caption": "Sign in as Shalini Ramtohul — Head of BD & Strategic Partnerships",
+    "vo": "Finance and the Head of BD look after it, so let's sign in as Shalini Ramtohul."
+  },
+  {
+    "n": 8,
+    "caption": "One line per client, product and month — with its source and reconciliation status",
+    "vo": "Each line is one client, one product, one month. Monthly summaries flow in from the loan system, the funds and the brokerage."
+  },
+  {
+    "n": 9,
+    "caption": "Further right: the amount in rupees, the source and the reconciliation status",
+    "vo": "Slide right and you'll see the rupee amount, where it came from, and whether it's reconciled."
+  },
+  {
+    "n": 10,
+    "caption": "The line the dealer's deal just posted",
+    "vo": "And here's the line from Deepak's deal a moment ago. The source says FX deal, automatic. Nobody keyed it in, and nobody had to remember to."
+  },
+  {
+    "n": 11,
+    "caption": "A commercial facility for Moka Textiles Ltd has been arranged",
+    "vo": "Not everything posts itself, though. Genesis has just arranged a commercial facility for Moka Textiles, and Shalini posts the arrangement fee by hand. Open Revenue and click New Revenue."
+  },
+  {
+    "n": 12,
+    "caption": "Bruno Chan manages the client; Priya Ramdin referred the deal",
+    "vo": "Bruno Chan manages the client, but Priya Ramdin referred the deal. So the credit is split, twenty-five percent to Priya as the referring RM."
+  },
+  {
+    "n": 13,
+    "caption": "The fee is converted to rupees and the credit split automatically",
+    "vo": "Save, and the fee is converted to rupees and split for you. Three hundred and eighteen thousand seven hundred and fifty rupees to Bruno, one hundred and six thousand two hundred and fifty to Priya. Fair credit, no spreadsheet."
+  },
+  {
+    "n": 14,
+    "caption": "Month end: enter the figure booked in the accounting system",
+    "vo": "Now, month end. Until the accounting figure is entered, the line sits at awaiting finance figure. So let's enter what accounting actually booked."
+  },
+  {
+    "n": 15,
+    "caption": "Accounting booked MUR 420,000 — a variance of MUR 5,000",
+    "vo": "Accounting booked four hundred and twenty thousand rupees. That's five thousand short, so the line flags a variance to investigate."
+  },
+  {
+    "n": 16,
+    "caption": "Finance finds the missing MUR 5,000 posting and corrects its figure",
+    "vo": "Finance tracks down the missing five thousand rupee posting and corrects its figure. So we edit the line again."
+  },
+  {
+    "n": 17,
+    "caption": "Ledger and accounts agree",
+    "vo": "And now the ledger and the accounts agree. Reconciled."
+  },
+  {
+    "n": 18,
+    "caption": "Narrow the ledger by entity, type and month",
+    "vo": "Need a slice of the ledger? Type any words from the columns, entity, type or month. Every word has to match."
+  },
+  {
+    "n": 19,
+    "caption": "Lending · arrangement fees · 2026-10",
+    "vo": "Lending, arrangement fees, October twenty twenty-six. The count tells you exactly how many lines match."
+  },
+  {
+    "n": 20,
+    "caption": "Forex · 2026-10: the desk's monthly summary and the deals posted automatically",
+    "vo": "Or try Forex for October. There's the desk's monthly summary, right alongside the deals that posted automatically."
+  },
+  {
+    "n": 21,
+    "caption": "Export gives the lines shown as a spreadsheet",
+    "vo": "Export gives you the lines as a spreadsheet, with real names and labels, ready for incentive calculations."
+  },
+  {
+    "n": 22,
+    "caption": "The ledger feeds the management dashboards",
+    "vo": "And the ledger feeds the management dashboards."
+  },
+  {
+    "n": 23,
+    "caption": "Sign in as Anjali Gopee — Chief Operating Officer",
+    "vo": "Let's see them through the eyes of Anjali Gopee, our Chief Operating Officer, who reads group revenue."
+  },
+  {
+    "n": 24,
+    "caption": "Group Executive: revenue by entity and by month",
+    "vo": "Group Executive shows revenue by entity and by month. Lending leads, and Forex already includes today's deal."
+  },
+  {
+    "n": 25,
+    "caption": "Next: the RM League Table",
+    "vo": "Next, the RM League Table. Just pick it from the dashboard menu."
+  },
+  {
+    "n": 26,
+    "caption": "RM League Table: the revenue each RM is credited with",
+    "vo": "Here's the revenue each RM is credited with. And referring RMs get their split in the next chart."
+  },
+  {
+    "n": 27,
+    "caption": "Summary",
+    "vo": "So that's the Revenue Ledger. Revenue posted where it's earned, credited fairly, and reconciled before anyone reports on it. Next, service requests and complaints."
+  }
+]

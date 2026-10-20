@@ -8,8 +8,13 @@ against the running app. The API is used only to look up record ids and to wait 
 
 - The app running locally: `make start` (frontend :5173, backend :3001), on the local demo database.
 - Google Chrome, `ffmpeg` and `ffprobe` on the `PATH` (`brew install ffmpeg`).
-- macOS `say` for the narration (voice `Samantha` by default; pick another with `NARRATION_VOICE`, and the pace in
-  words per minute with `NARRATION_RATE`, default 180).
+- For the narration voice, Kokoro (a neural text-to-speech model that runs locally, free, Apache-2.0), installed once:
+  ```bash
+  mkdir -p .tts && python3.13 -m venv .tts/venv && .tts/venv/bin/pip install kokoro-onnx soundfile
+  curl -L -o .tts/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+  curl -L -o .tts/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+  ```
+  Without it the narration falls back to macOS `say`.
 - Once: `cd docs/demo/scripts && npm install && npx playwright install ffmpeg`.
 
 ## Commands
@@ -69,8 +74,19 @@ longer than 2.5 s are trimmed out of the video automatically.
 
 ## Narration
 
-[`lib/narrate.mjs`](lib/narrate.mjs) reads each caption aloud as it appears, so the voice always says what is on screen.
-When a caption's speech is longer than the time before the next caption, it is spoken a little faster (up to 15 %);
+Each caption cue has a spoken line in [`vo/<slug>.json`](vo), written to be heard rather than read: conversational,
+in the second person, explaining why a step matters (see [`vo/STYLE.md`](vo/STYLE.md)). The on-screen captions stay
+short labels. A line is matched to its cue by the caption's first line, so re-recording a video keeps its lines as
+long as the captions don't change. A cue with no line has its caption read instead (a warning names it), and
+`"vo": ""` keeps a cue silent.
+
+[`lib/narrate.mjs`](lib/narrate.mjs) speaks the lines with Kokoro ([`lib/tts.py`](lib/tts.py), voice `af_heart` by
+default; set `NARRATION_VOICE`, for example `am_michael` or `bf_emma`). `NARRATION_ENGINE=say` uses macOS `say`
+instead. Initialisms are spelled out for the voice (KYC as "K Y C"; FATCA and EBITDA stay words), and the track is
+normalised to −16 LUFS. When a line is longer than the time before the next caption, it is spoken up to 10 % faster;
 if it still does not fit, the video holds that frame until the voice finishes, and the captions, `.srt`/`.vtt` files
-and chapter markers move to match. `assemble` runs it on every video it builds. Running `narrate.mjs` again on a
-narrated video only redoes the audio.
+and chapter markers move to match. `assemble` runs it on every video it builds.
+
+To change the voice-over on a finished video, edit its `vo/<slug>.json` and rebuild with `node run.mjs
+--assemble-only <slug>` (no app needed). Running `narrate.mjs` on its own keeps the frame holds already baked
+into the video, so use it only for changes that don't affect timing, such as trying another voice.
