@@ -350,3 +350,18 @@ describe('WorkflowEngineService — CRM objects without an entity row', () => {
     }));
   });
 });
+
+describe('WorkflowEngineService — encrypted fields', () => {
+  it('an action writing an encrypted field stores ciphertext, as a form save would', async () => {
+    const db = makeDb({ record: eavRecord([]) });
+    db.uiField.findFirst.mockResolvedValue({ data_type: 'string', config: { encrypt: true } });
+    db.uiWorkflow.findUnique.mockResolvedValue(wf([
+      { id: 1, name: 'Set ID', step_type: 'action', order_index: 1, config: { field: 'id_number', value: 'A1234567' }, on_true_id: null, on_false_id: null },
+    ]));
+    await new WorkflowEngineService(db).manualRun(1, { id: 100 });
+    const write = db.recordFieldValue.upsert.mock.calls.find((c) => c[0].where.record_id_field_name.field_name === 'id_number');
+    expect(write).toBeTruthy();
+    expect(write[0].create.str_value).not.toBe('A1234567');
+    expect(require('../src/services/field-protection').decrypt(write[0].create.str_value)).toBe('A1234567');
+  });
+});

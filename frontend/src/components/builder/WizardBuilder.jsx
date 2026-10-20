@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   DndContext,
   closestCenter,
@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { builderService } from '../../services/builder.service';
+import { invalidateMetadata } from '../../utils/invalidate';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import TextArea from '../ui/TextArea';
@@ -130,6 +131,7 @@ function StepEditor({ step, formOptions, onSave, onClose }) {
 }
 
 export default function WizardBuilder({ wizardId, wizardData, onSave: _onSave }) {
+  const qc = useQueryClient();
   const [selectedStep, setSelectedStep] = useState(null);
   const [error, setError] = useState(null);
   const [addingStep, setAddingStep] = useState(false);
@@ -156,25 +158,25 @@ export default function WizardBuilder({ wizardId, wizardData, onSave: _onSave })
 
   const addStepMutation = useMutation({
     mutationFn: (s) => builderService.addWizardStep(wizardId, s),
-    onSuccess: () => { refetch(); setAddingStep(false); setNewStepName(''); },
+    onSuccess: () => { refetch(); invalidateMetadata(qc); setAddingStep(false); setNewStepName(''); },
     onError: (e) => setError(e.message),
   });
 
   const updateStepMutation = useMutation({
     mutationFn: ({ id, ...d }) => builderService.updateWizardStep(id, d),
-    onSuccess: () => { refetch(); setSelectedStep(null); },
+    onSuccess: () => { refetch(); invalidateMetadata(qc); setSelectedStep(null); },
     onError: (e) => setError(e.message),
   });
 
   const deleteStepMutation = useMutation({
     mutationFn: (id) => builderService.deleteWizardStep(id),
-    onSuccess: () => { refetch(); setSelectedStep(null); },
+    onSuccess: () => { refetch(); invalidateMetadata(qc); setSelectedStep(null); },
     onError: (e) => setError(e.message),
   });
 
   const reorderMutation = useMutation({
     mutationFn: (reordered) => builderService.reorderWizardSteps(wizardId, reordered),
-    onSuccess: () => refetch(),
+    onSuccess: () => { refetch(); invalidateMetadata(qc); },
   });
 
   const handleDragEnd = ({ active, over }) => {

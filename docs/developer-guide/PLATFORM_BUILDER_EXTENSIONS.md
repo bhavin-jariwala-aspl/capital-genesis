@@ -33,6 +33,7 @@ October 2026. These are the generic platform capabilities added so that a comple
 | [Checklists and client upload links](#27-document-checklists-and-client-upload-links) | Checklist status on any record; signed, expiring links where a client uploads what is missing | `services/document-checklist.service.js`, `services/upload-link.service.js`, `/api/upload-links`, `/upload/:token` |
 | [Distribution lists and open tracking](#28-distribution-lists-and-open-tracking) | `email_list` step: one template to every member of a list, in their language, with opens counted | `workflow.service.js`, `services/email-tracking.js` |
 | [Website preview](#29-website-preview) | A page showing what a website built on the feeds and forms looks like | `pages/WebsitePreviewPage.jsx`, `/site/:slug` |
+| [Builder metadata guards](#31-builder-metadata-guards) | Renames, deletes and option removals that would break formulas, workflows or stored data are refused, with the reason | `services/metadata-dependencies.js`, `MetadataService`, `GET /api/metadata/fields/:id/usages` |
 
 ---
 
@@ -70,7 +71,18 @@ functions    IF  AND  OR  NOT  CASE  IN  COALESCE  IFBLANK  ISBLANK
 | Workflow condition | operator `expression`, value = formula | When the step runs |
 | Stage entry rule | `stage.config.entry_rule.expression` | On every move into the stage |
 
-**Roll-ups stay current.** When a record with lookup fields is saved (or a workflow writes to one), its parents' formulas are recomputed (`RecordService.recompute` / `#refreshParents`), so `SUM_RELATED` totals follow their children.
+**Roll-ups stay current.** When a record with lookup fields is saved (or a workflow writes to one), its parents' formulas are recomputed (`RecordService.recompute` / `#refreshParents`), so `SUM_RELATED` totals follow their children. Roll-ups (`COUNT_RELATED` / `SUM_RELATED` / `LOOKUP` over children) and child formulas that read a parent through a lookup (`party.kyc_status`) are refreshed on every write path, not only create/update:
+
+| Write | What recomputes |
+|---|---|
+| Lookup re-linked (child moved from A to B) | Both the new parent B and the parent it left, A |
+| Single or bulk delete | The parents' roll-ups, and records reading the deleted ones through a lookup (a trashed record resolves to nothing) |
+| Restore from Trash | The record and its parents/readers — the parent counts it again |
+| Merge / unmerge | Merge: the duplicate's parents stop counting it; the survivor and everything re-pointed to it recompute. Unmerge: both records and those whose lookups were pointed back |
+| Single stage move (`updateRecordStage`) | When the pipeline mirrors the stage into `pipeline.config.status_field`, the mirrored status reaches the record's formulas, parents' roll-ups filtered on it, and readers |
+| Bulk stage move (`bulkUpdateStage`) | Same as a single move: writes the mirrored status and the status-timeline event, propagates, and includes the status in `record.field_changed` |
+
+**`recompute(id, { propagate: true })`.** Plain `recompute(id)` only propagates to parents and readers when the record's own formulas changed. Whenever a *stored* (non-formula) value is written outside `updateRecord` — workflow `action` / `update_related` steps, restore, merge, the stage→status mirror — call it with `{ propagate: true }`; otherwise a parent roll-up that filters on that value never sees the change.
 
 The Builder validates a formula as it is typed (`POST /api/builder/formula/check`) and refuses to save a formula field that does not parse or a lookup without a target.
 
@@ -268,7 +280,7 @@ Clients can also download documents in categories marked `portal_visible`, uploa
 
 ## 14. Record merge, bulk reassign and `updated_by`
 
-- **Merge** (`POST /api/runtime/records/:id/merge { into }`, managers only): fields empty on the survivor are filled from the duplicate; every lookup pointing at the duplicate is re-pointed; the duplicate goes to Trash. The change set is stored on the audit chain, and *Trash ▸ Reverse merge* undoes it within 30 days.
+- **Merge** (`POST /api/runtime/records/:id/merge { into }`, managers only): fields empty on the survivor are filled from the duplicate; every lookup pointing at the duplicate is re-pointed; the duplicate goes to Trash. The duplicate's activities, tasks, reminders, documents and email logs move to the survivor. The change set (including the moved ids) is stored on the audit chain, and *Trash ▸ Reverse merge* undoes it within 30 days — moving back exactly those items (anything added to the survivor since stays). Merge emits `record.deleted` for the duplicate, so on-delete workflows run and its SLA timers stop.
 - **Bulk reassign** (`POST /api/runtime/records/bulk-assign`, managers only): moves records to an active employee; every change is audited.
 - **`records.updated_by`**: stamped by edits, stage moves and bulk operations.
 
@@ -341,7 +353,7 @@ Modules, objects, fields, pipelines and stages take `config.label_fr` (objects a
 
 ## 21. Daily formula refresh
 
-Formulas that read the date (`TODAY`, `NOW`, `AGE`, and anything built on them) would go stale on records nobody edits. The `formula-refresh` scheduler recomputes them once a day, so flags such as "review due" or "days to maturity" stay correct and scheduled workflows see current values.
+Formulas that read the date (`TODAY`, `NOW`, `AGE`, and anything built on them) would go stale on records nobody edits. The `formula-refresh` scheduler recomputes them once a day, so flags such as "review due" or "days to maturity" stay correct and scheduled workflows see current values. It uses plain `recompute` — parents and readers are touched only when something changed.
 
 ## 22. Containers and CI
 
@@ -489,3 +501,26 @@ show a client's web team what they can embed; it is not a CMS.
 | Dashboard KPI tiles ignored the widget format | Raw numbers, and "$" in a MUR workspace | Tiles use the widget's `format`/`decimals` and the workspace currency, compacted |
 | Charts grouped by a text period sorted by value | Months out of order on a revenue trend | Keys shaped `YYYY`, `YYYY-MM`, `YYYY-MM-DD` or `YYYY-Qn` sort by time |
 | Fixed-width chart value axis | Long labels ("MUR 28M") clipped | Axis width follows the longest formatted label |
+
+## 31. Builder metadata guards
+
+`services/metadata-dependencies.js` answers "what uses this?": `fieldUsages(db, field)` and `objectUsages(db, object)` return human-readable "used by" lists. Matching is textual — it can over-report, never under-reports.
+
+- A **field** is used by: formulas of its object naming it; formulas on other objects reading it through a lookup (`party.name`); roll-ups over its object naming it; validation rules of other fields on the object; pipeline stage gates (`required_fields`, `entry_rule`, `four_eyes.field`) and the mirrored `status_field`; object settings `title_field`, `business_unit_field`, `barrier_zone_field`; workflows on the object (trigger config, step configs, `{{name}}`) and other objects' workflows writing through a lookup; assignment rule conditions; dashboard widgets reading the object.
+- An **object** is used by other objects' lookups targeting it, formulas naming it, and dashboard widgets.
+
+`GET /api/metadata/fields/:id/usages` (admin) returns `{ usages, records_with_value }`. `MetadataService` refuses, with a 400 `VALIDATION_ERROR` naming what is in the way:
+
+| Change | Refused when |
+|---|---|
+| Field API-name rename | The field is used; the name is unsafe (same grammar as create) or taken on the object; it is a built-in CRM column of lead/contact/account/opportunity/case. An allowed rename carries `record_field_values.field_name` to the new name |
+| Field `object_id` change | Always |
+| Picklist (select / radio) option removal | Records still hold the value, unless the request sends `option_replacements: { "<removed>": "<remaining>" }`, which moves those records |
+| Field delete | The field is used (deactivate it instead) |
+| Object delete | It holds any records, live or in the Trash (they used to cascade away), or other objects reference it |
+| Object API-name rename | It has records or references; the name is a built-in CRM object name (renaming into or out of one would switch storage); the name is taken |
+| Pipeline stage removal / pipeline delete | Live records sit in that stage / on the pipeline |
+
+Label changes are always allowed. The Genesis Capital vertical installer writes metadata directly and is not affected. In the Builder, removing in-use picklist values opens a "Move to…" dialog (`OptionReplacementDialog`); Edit Field shows usages; Delete Field shows usages and the record count and is disabled while usages exist.
+
+**Caches.** `CacheService.invalidateField` also clears `object:<id>`, because the cached object embeds its field list — before, field edits took up to the 1-hour metadata TTL to reach users. `invalidateObject` also clears `fields:object:<id>` and `pipeline:object:<id>`; validation writes invalidate with the real object id. `RecordService.clearMetadataCaches()` clears the per-process memos (object names, field defaults, PII flags, child-reader map) and is called on every field/object write.

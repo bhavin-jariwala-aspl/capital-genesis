@@ -137,6 +137,7 @@ configuration exercise, not a rewrite.
 | Atomic delete | Soft-delete (`deleted_at`) is source of truth; blob removed best-effort; `purgeDeleted()` reclaims stragglers. |
 | Integrity + dedup | SHA-256 per file; identical bytes for the same owner return the existing document. |
 | Versioning | Re-uploading a same-named file to the same owner increments `version`. |
+| Ownership follows record merge | Merging a duplicate record moves its documents to the surviving record; unmerge moves exactly those back (documents added to the survivor since stay). |
 | Path-traversal safe | Local: resolved path asserted under root. Object: `..` segments rejected (`toObjectKey`). |
 | Tenant isolation | Prisma tenant extension scopes every query; storage keys are tenant-first. Public share/sign routes carry no tenant context and resolve by **unguessable token**, stamping `tenant_id` explicitly on writes. |
 

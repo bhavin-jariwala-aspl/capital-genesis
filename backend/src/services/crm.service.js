@@ -27,7 +27,8 @@ class CrmService {
   constructor(prisma, eventBus = null) {
     this.db = prisma;
     this.eventBus = eventBus;
-    this._objectCache = null; // { lead: id, contact: id, ... }
+    // Per tenant: object ids differ between tenants, and one instance serves them all.
+    this._objectCache = new Map(); // tenantId → { lead: id, contact: id, ... }
   }
 
   // ── Change tracking helpers ────────────────────────────────────────────────
@@ -105,7 +106,9 @@ class CrmService {
   // ── Object-ID cache ───────────────────────────────────────────────────────
 
   async #objectIds() {
-    if (this._objectCache) return this._objectCache;
+    const tenantKey = getTenantId() ?? 'none';
+    const hit = this._objectCache.get(tenantKey);
+    if (hit && hit.until > Date.now()) return hit.ids;
     const rows = await this.db.uiObject.findMany({
       where:  { name: { in: ['lead', 'prospect', 'lead_intake', 'contact', 'client', 'account', 'opportunity', 'case'] } },
       select: { id: true, name: true },
@@ -118,8 +121,9 @@ class CrmService {
     // account module, so we skip creating a record anchor for the account.
     // The crm_accounts row is still created (for FK references) but without
     // a record in the client module that would show as a duplicate with "--".
-    this._objectCache = cache;
-    return this._objectCache;
+    // A short life, so an object added in the Builder is picked up without a restart.
+    this._objectCache.set(tenantKey, { ids: cache, until: Date.now() + 60_000 });
+    return cache;
   }
 
   // ── LEAD ──────────────────────────────────────────────────────────────────

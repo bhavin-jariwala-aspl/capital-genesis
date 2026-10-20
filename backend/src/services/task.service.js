@@ -4,6 +4,9 @@ const { NotFoundError } = require('../utils/errors');
 const PermissionService = require('./permission.service');
 const { ROLE_LEVEL, ADMIN_THRESHOLD, MANAGER_THRESHOLD } = require('../middleware/authenticate');
 
+// Not attached to a record, or attached to one that is not in the Trash.
+const LIVE_RECORD = { OR: [{ record_id: null }, { record: { is: { deleted_at: null } } }] };
+
 class TaskService {
   constructor(prisma) {
     this.db   = prisma;
@@ -57,6 +60,9 @@ class TaskService {
 
     const where = { ...scopeFilter };
     if (recordId)   where.record_id   = Number(recordId);
+    // A task on a record in the Trash leaves every list with its record (it
+    // comes back on restore); a record's own Tasks tab still shows them.
+    else            where.AND = [...(where.AND ?? []), LIVE_RECORD];
     if (employeeId) where.assigned_to = employeeId;
     if (status)     where.status      = status;
 

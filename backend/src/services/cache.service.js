@@ -140,14 +140,20 @@ class CacheService {
     await this.del(
       this.key('object', id),
       this.key('objects', 'module', moduleId),
+      this.key('fields', 'object', id),
+      this.key('pipeline', 'object', id), // embeds the object and its module
     );
     if (moduleId) await this.invalidateModule(moduleId);
   }
 
   async invalidateField(id, objectId) {
+    // `object:<id>` embeds the object's field list (getObject), which is what
+    // the runtime renders — a field change must clear it too, or labels,
+    // options and new fields reach users only when the cache expires.
     await this.del(
       this.key('field', id),
       this.key('fields', 'object', objectId),
+      ...(objectId != null ? [this.key('object', objectId)] : []),
     );
     // Invalidate all forms for this object since field data changed
     await this.delPattern(`form:*`);

@@ -26,6 +26,7 @@ import { recordTitle, initials, gradientFor, apiErrorText, gateFields } from '..
 import clsx from 'clsx';
 import { optionLabel } from '../../utils/metadata-helpers';
 import { newRecordTarget } from '../../utils/newRecordTarget';
+import { invalidateRecordData } from '../../utils/invalidate';
 import {
   Plus, LayoutList, Kanban, Wand2, Download, Upload, Trash2, X,
   History, Activity, CheckSquare, LayoutGrid, Edit, ImageOff, Mail, FileText,
@@ -247,19 +248,41 @@ export default function ModulePage() {
   // The rows the table search leaves (null = no search): the record count and Export follow it.
   const [tableFilter, setTableFilter]   = useState(null);
   const handleTableFilter = useCallback((rows, search) => setTableFilter(rows ? { ids: rows.map((r) => r.id), search } : null), []);
-  const [activeRecord, setActiveRecord] = useState(null);
+  const queryClient = useQueryClient();
+  // The record the 360° panel shows. This is the row as it was when opened
+  // (so the panel appears instantly); `activeRecord` below layers the latest
+  // list row and a fresh read of the record over it, so saves, stage moves and
+  // workflow results show without closing the panel.
+  const [selectedRecord, setActiveRecord] = useState(null);
   // Deep link: `?record=<id>` opens that record's panel (used by related lists
   // and notifications), whatever page of the list it is on.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkId = Number(searchParams.get('record')) || null;
   useEffect(() => {
     if (!deepLinkId) return undefined;
     let cancelled = false;
     runtimeService.getRecord(deepLinkId)
-      .then((res) => { if (!cancelled) setActiveRecord(res?.data ?? res); })
+      .then((res) => {
+        if (cancelled) return;
+        // Seed the panel's own query so it does not read the record twice.
+        queryClient.setQueryData(['runtime-record', String(deepLinkId)], res);
+        setActiveRecord(res?.data ?? res);
+      })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [deepLinkId]);
+  }, [deepLinkId, queryClient]);
+  // Closing the panel also drops `?record=`: otherwise clicking the same search
+  // result or notification again changes nothing and the panel stays shut.
+  const closeRecord = useCallback(() => {
+    setActiveRecord(null);
+    if (searchParams.has('record')) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('record');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [sideTab, setSideTab]           = useState('activity');
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showConvertToProspectModal, setShowConvertToProspectModal] = useState(false);
@@ -378,10 +401,9 @@ export default function ModulePage() {
   }, [activeObject?.id]);
 
   // ── 4. Records (sync EntityStore with React Query) ────────────────────────
-  const queryClient = useQueryClient();
   const setEntityRecords = useEntityStore((s) => s.setRecords);
   const entityRecords = useEntityStore((s) => s.getRecords(activeObject?.id));
-  const { data: recordsData, isLoading: recordsLoading } = useQuery({
+  const { data: recordsData, isLoading: recordsLoading, dataUpdatedAt: recordsUpdatedAt } = useQuery({
     queryKey: ['runtime-records', activeObject?.id],
     queryFn:  async () => {
       const result = await runtimeService.getRecords(activeObject.id);
@@ -394,6 +416,28 @@ export default function ModulePage() {
     enabled:  !!activeObject?.id,
   });
   const records = useMemo(() => recordsData?.data ?? entityRecords ?? [], [recordsData, entityRecords]);
+
+  // The open record, kept current: a fresh read of it (same key the Edit form
+  // uses, so a save there refreshes it) and its row in the refetched list are
+  // layered over the snapshot, newest last — a Kanban move's optimistic row
+  // wins until the record read catches up.
+  const selectedId = selectedRecord?.id ?? null;
+  const { data: selectedFresh, dataUpdatedAt: selectedUpdatedAt } = useQuery({
+    queryKey: ['runtime-record', String(selectedId)],
+    queryFn:  () => runtimeService.getRecord(selectedId),
+    enabled:  selectedId != null,
+  });
+  const activeRecord = useMemo(() => {
+    if (!selectedRecord) return null;
+    const same = (r) => r && Number(r.id) === Number(selectedRecord.id);
+    const row = records.find(same);
+    const fresh = selectedFresh?.data;
+    const layers = [[row, recordsUpdatedAt], [fresh, selectedUpdatedAt]]
+      .filter(([r]) => same(r))
+      .sort((a, b) => a[1] - b[1])
+      .map(([r]) => r);
+    return Object.assign({}, selectedRecord, ...layers);
+  }, [selectedRecord, records, recordsUpdatedAt, selectedFresh, selectedUpdatedAt]);
 
   const moveStage = useMutation({
     mutationFn: ({ id, stageId }) => runtimeService.updateRecordStage(id, stageId),
@@ -420,7 +464,6 @@ export default function ModulePage() {
       const action = result?.data?.automation?.action;
       if (action === 'lead_converted') {
         // Lead was auto-converted — navigate to Clients module
-        queryClient.invalidateQueries({ queryKey: ['runtime-records'] });
         const modules = queryClient.getQueryData(['runtime-modules'])?.data;
         const clientModule = modules?.find(m => m.name === 'clients');
         if (clientModule) navigate(`/module/${clientModule.id}`);
@@ -437,7 +480,8 @@ export default function ModulePage() {
       const completable = err?.response?.data?.error?.code !== 'FOUR_EYES';
       setMoveNotice({ tone: 'error', text: apiErrorText(err, 'Could not move this record.'), recordId: completable ? id : null, need });
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] }),
+    // A move can fire stage workflows and change roll-ups on parent records.
+    onSettled: (_r, _e, { id }) => invalidateRecordData(queryClient, { recordId: id, objectId: activeObject?.id }),
   });
 
   // ── Bulk delete ───────────────────────────────────────────────────────────
@@ -445,7 +489,7 @@ export default function ModulePage() {
     mutationFn: () => runtimeService.bulkDeleteRecords([...selectedIds]),
     onSuccess: () => {
       setSelectedIds(new Set());
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
+      invalidateRecordData(queryClient, { objectId: activeObject?.id });
     },
   });
 
@@ -457,7 +501,7 @@ export default function ModulePage() {
     onSuccess: () => {
       setSelectedIds(new Set());
       setReassignTo('');
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
+      invalidateRecordData(queryClient, { objectId: activeObject?.id });
     },
   });
 
@@ -481,10 +525,9 @@ export default function ModulePage() {
     onSuccess: (_result) => {
       setShowConvertModal(false);
       setActiveRecord(null);
-      // Refresh prospect records to reflect converted status
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
-      // Invalidate ALL record queries so the Clients module shows the new contact
-      queryClient.invalidateQueries({ queryKey: ['runtime-records'] });
+      // Every object's records: the lead shows as converted and the Clients
+      // module shows the new account/contact/opportunity.
+      invalidateRecordData(queryClient, { objectId: activeObject?.id });
 
       // Navigate to the Clients module so the user sees their new client
       const modules = queryClient.getQueryData(['runtime-modules'])?.data;
@@ -501,8 +544,7 @@ export default function ModulePage() {
     onSuccess: () => {
       setShowConvertToProspectModal(false);
       setActiveRecord(null);
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
-      queryClient.invalidateQueries({ queryKey: ['runtime-records'] });
+      invalidateRecordData(queryClient, { objectId: activeObject?.id });
       // Navigate to the Prospects module so the user sees the new prospect
       const modules = queryClient.getQueryData(['runtime-modules'])?.data;
       const prospectModule = modules?.find(m => m.name === 'prospects');
@@ -906,7 +948,7 @@ export default function ModulePage() {
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-6 py-3 border-b border-gray-200/70 dark:border-white/10 bg-white/80 dark:bg-night-1/80 backdrop-blur-xl">
               <div className="flex items-center gap-3 min-w-0">
                 <button
-                  onClick={() => setActiveRecord(null)}
+                  onClick={closeRecord}
                   title="Back"
                   className="inline-flex items-center justify-center h-9 w-9 shrink-0 rounded-xl border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/60 hover:bg-gray-50 dark:hover:bg-white/10 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
                 >
@@ -949,10 +991,9 @@ export default function ModulePage() {
                 {canEdit && (
                   <RecordActions
                     objectId={activeObject?.id} recordId={activeRecord.id} record={activeRecord}
-                    onDone={() => runtimeService.getRecord(activeRecord.id).then((res) => setActiveRecord(res?.data ?? res)).catch(() => {})}
                   />
                 )}
-                {canEdit && <RecordMerge objectName={activeObject?.name} recordId={activeRecord.id} onMerged={() => setActiveRecord?.(null)} />}
+                {canEdit && <RecordMerge objectName={activeObject?.name} recordId={activeRecord.id} onMerged={closeRecord} />}
                 {canEdit && (
                   <Button
                     size="xs" variant="ghost"
@@ -963,7 +1004,7 @@ export default function ModulePage() {
                   </Button>
                 )}
                 <button
-                  onClick={() => setActiveRecord(null)}
+                  onClick={closeRecord}
                   className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white/60 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
                 >
                   <X className="w-4 h-4" />

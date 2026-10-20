@@ -16,8 +16,9 @@ Table and Pipeline.
 
 **Mirroring a status field.** When an object also has a status picklist that should follow its stage, set the
 pipeline's `config.status_field` to `{ "field": "status", "map": { "<stage name>": "<status value>" } }`. Every
-stage change (drag, bulk change, API or workflow) then sets that field too. Genesis Capital uses this on
-*Disbursement*.
+stage change (drag, bulk change, API or workflow) then sets that field too. A bulk stage change behaves exactly
+like a single move: it sets the mirrored status, adds the status-timeline entry, and updates totals and formulas
+that depend on the status. Genesis Capital uses this on *Disbursement*.
 
 ## Where to find it
 
@@ -43,7 +44,8 @@ The page lists every pipeline with its linked object, stages, and active status.
      `Qualified`).
    - Click **Add Stage** to add more. Stages run left to right in the order shown, which is the order columns
      appear on the board.
-   - Click the **X** on a stage row to remove it.
+   - Click the **X** on a stage row to remove it. When editing, a stage that still has live records cannot be
+     removed: the save is refused with "Move the records out of …".
 6. Set **Deletion behaviour** with the toggle. **Soft delete** (on, the default) sends deleted records to the
    Trash for admin recovery; turn it **off** for **hard delete** (permanent). See
    [Trash: recovering deleted records](#trash-recovering-deleted-records).
@@ -60,7 +62,7 @@ The page lists every pipeline with its linked object, stages, and active status.
 
 To edit later, click the **pencil** icon on a pipeline row. To set who can use it, click the **shield**
 (Permissions) icon. To review who changed the pipeline and when, click the **history** (clock) icon. To remove
-it, click the **trash** icon.
+it, click the **trash** icon. A pipeline that still has live records on it cannot be deleted.
 
 Every action on a pipeline and its records — create, edit, stage moves, deletes, restores, and permanent
 deletes — is recorded in an audit trail against the logged-in user. Pipeline-configuration changes are visible
@@ -87,8 +89,8 @@ in the **History** modal; a record's own history is on its detail page.
   clear and concise.
 - Stages are ordered left to right exactly as they appear in the editor; arrange them in the natural flow of your
   process (for example New → Qualified → Won).
-- Removing a stage from a pipeline affects the board columns for that object. Plan stage changes carefully if
-  records already sit in those stages.
+- Removing a stage from a pipeline affects the board columns for that object. A stage with live records on it
+  cannot be removed, so move those records to another stage first.
 - Use the **Permissions** (shield) icon to control which roles can use the pipeline at runtime.
 
 ## How it works at runtime
@@ -136,5 +138,7 @@ pipeline editor (see [Create a pipeline](#create-a-pipeline-step-by-step)):
   and confirm a **Module** and **Object** are selected, then save.
 - **Save Pipeline is greyed out** — you need at least one stage with a label, and an object must be selected. Add
   a labeled stage and pick an object.
+- **"Move the records out of …" when saving** — you removed a stage that still has live records. Move them to
+  another stage on the board (bulk stage change works), then save again. The same applies to deleting a pipeline.
 - **A stage column is missing on the board** — the stage probably had a blank label and was skipped on save.
   Re-open the pipeline, give the stage a label, and save again.

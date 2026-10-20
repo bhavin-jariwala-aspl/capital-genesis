@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { builderService } from '../../services/builder.service';
+import { invalidateMetadata } from '../../utils/invalidate';
 import { useBuilderStore } from '../../store/builderStore';
 import DashboardBuilder from '../../components/builder/DashboardBuilder';
 import BuilderGuide from '../../components/builder/BuilderGuide';
@@ -53,6 +54,7 @@ export default function DashboardBuilderPage() {
     mutationFn: () => builderService.deleteDashboard(Number(dashId)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['builder-dashboards'] });
+      invalidateMetadata(qc, { reloadStore: false });
       navigate('/builder/dashboard', { replace: true });
     },
   });
@@ -103,6 +105,9 @@ export default function DashboardBuilderPage() {
     onSuccess: (savedId) => {
       qc.invalidateQueries({ queryKey: ['builder-dashboards'] });
       qc.invalidateQueries({ queryKey: ['dashboard', String(savedId)] });
+      // Runtime Home reads ['runtime-dashboard', <number>] / ['runtime-dashboards'].
+      invalidateMetadata(qc, { reloadStore: false });
+      qc.invalidateQueries({ queryKey: ['widget-data'] });
       if (isNew) {
         navigate(`/builder/dashboard/${savedId}`, { replace: true });
       }

@@ -7,6 +7,13 @@ const { ValidationError } = require('../utils/errors');
 const CurrencyService = require('./currency.service');
 const { computeInsights } = require('./report-insights');
 
+// Per report model: the rows whose record is not in the Trash.
+const OPTIONAL_LIVE = { OR: [{ record_id: null }, { record: { is: { deleted_at: null } } }] };
+const LIVE_RECORD_FILTER = {
+  crmLead: OPTIONAL_LIVE, crmAccount: OPTIONAL_LIVE, crmOpportunity: OPTIONAL_LIVE, crmCase: OPTIONAL_LIVE,
+  task: OPTIONAL_LIVE, activity: { record: { deleted_at: null } },
+};
+
 const FETCH_CAP = 20000;
 const DRILLDOWN_CAP = 500;
 const DISTINCT_CAP = 200;
@@ -470,6 +477,10 @@ class ReportService {
    *     hierarchy closure means "just me", never "everyone".
    */
   #applyScope(where, source, { scope = 'all', employeeId, teamIds } = {}) {
+    // Rows of records in the Trash leave every report, as they leave every list
+    // (a CRM row or task with no record at all is still counted).
+    const live = LIVE_RECORD_FILTER[source.model];
+    if (live) where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), live];
     if (!source.ownerField || scope === 'all') return;
     const owners = scope === 'team' && teamIds?.length
       ? [...new Set([...teamIds, ...(employeeId ? [employeeId] : [])])]

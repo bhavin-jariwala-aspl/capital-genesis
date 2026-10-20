@@ -122,11 +122,24 @@ class RecordService {
    */
   async #refreshParents(objectId, values, depth = 0) {
     try {
-      const lookups = await this.db.uiField.findMany({
-        where:  { object_id: Number(objectId), is_active: true, field_type: 'lookup' },
-        select: { name: true },
-      });
-      const parentIds = [...new Set(lookups.map((f) => Number(values?.[f.name])).filter((n) => Number.isInteger(n) && n > 0))];
+      const parentIds = await this.#parentIdsOf(objectId, values);
+      await this.#refreshParentIds(objectId, parentIds, depth);
+    } catch (err) {
+      logger?.warn?.('[RecordService] parent formula refresh failed', { objectId, error: err.message });
+    }
+  }
+
+  /** The record ids `values` points at through the object's lookup fields. */
+  async #parentIdsOf(objectId, values) {
+    const lookups = await this.db.uiField.findMany({
+      where:  { object_id: Number(objectId), is_active: true, field_type: 'lookup' },
+      select: { name: true },
+    });
+    return [...new Set(lookups.map((f) => Number(values?.[f.name])).filter((n) => Number.isInteger(n) && n > 0))];
+  }
+
+  async #refreshParentIds(objectId, parentIds, depth = 0) {
+    try {
       // Bulk loads (vertical installs, imports) collect parents and recompute
       // them once at the end instead of once per child.
       if (this.deferredParents) { for (const pid of parentIds) this.deferredParents.add(pid); return; }
@@ -920,14 +933,18 @@ class RecordService {
    * something other than this service changed it — a workflow action, an
    * update_related step. Writes straight to the typed field table; no events.
    */
-  async recompute(recordId) {
+  async recompute(recordId, { propagate = false } = {}) {
     const rec = await this.db.record.findUnique({ where: { id: Number(recordId) }, select: { id: true, object_id: true, tenant_id: true, deleted_at: true } });
     if (!rec || rec.deleted_at) return;
     const formulas = await this.compute.formulaFields(rec.object_id).catch(() => []);
     const data = { ...(await this.#loadData(rec.id)) };
     const changed = formulas.length ? await this.#writeChangedFormulas(rec, data, formulas) : false;
-    if (changed || !formulas.length) await this.#refreshParents(rec.object_id, data);
-    if (changed) await this.#refreshChildren(rec.object_id, rec.id);
+    // `propagate`: a stored (non-formula) value was written behind this service's
+    // back — a workflow setting a status a parent's roll-up filters on, or a
+    // restore from the Trash — so parents and readers follow even when none of
+    // the record's own formulas moved.
+    if (changed || propagate || !formulas.length) await this.#refreshParents(rec.object_id, data);
+    if (changed || propagate) await this.#refreshChildren(rec.object_id, rec.id);
     return changed;
   }
 
@@ -1438,6 +1455,14 @@ class RecordService {
     // A partial patch (one field edited inline, or through the API) still has
     // parents: their lookups are in the stored values, not in the patch.
     if (crmData) await this.#refreshParents(existing.object_id, { ...before, ...crmData });
+    // A lookup moved to another parent (a holding re-linked to another client):
+    // the parent it left must drop it from its roll-ups too.
+    if (crmData) {
+      const left = Object.fromEntries(Object.keys(crmData)
+        .filter((k) => before[k] != null && before[k] !== '' && String(before[k]) !== String(crmData[k] ?? ''))
+        .map((k) => [k, before[k]]));
+      if (Object.keys(left).length) await this.#refreshParents(existing.object_id, left);
+    }
     // Children that read this record's fields through a lookup follow the change.
     if (crmData) await this.#refreshChildren(existing.object_id, Number(id));
     return this.#hydrateCrm(updated);
@@ -1535,6 +1560,9 @@ class RecordService {
     // (`config.status_field: { field, map: { stage_name: value } }`), so a move —
     // a Kanban drag, a bulk change or the API — never leaves the two disagreeing.
     const statusSync = await this.#syncStatusField(updated, tenantId);
+    // The mirrored status is a stored value: formulas reading it, the parents'
+    // roll-ups filtered on it and the children that read it all follow the move.
+    if (statusSync) await this.recompute(updated.id, { propagate: true }).catch(() => {});
     // Audit + workflow fire-and-forget
     this.#audit(id, updatedBy, 'stage_change', {
       old_stage: existing.pipeline_stage_id,
@@ -1699,10 +1727,53 @@ class RecordService {
         data:  { deleted_at: new Date(), deleted_by: deletedBy ?? null },
       });
     if (values) await this.#refreshParents(existing.object_id, values);
+    // Records that read this one through a lookup (`party.kyc_status`) no longer
+    // see it (a trashed record resolves to nothing).
+    await this.#refreshChildren(existing.object_id, Number(id));
     return result;
   }
 
   // ── Bulk operations ────────────────────────────────────────────────────────
+
+  /**
+   * For records about to leave (or re-enter) the live set: the parents each
+   * object's records point at, de-duplicated so a parent shared by many of
+   * them is recomputed once. Objects without lookup fields cost one query.
+   */
+  async #linksOf(recs) {
+    const byObject = new Map();
+    for (const r of recs) {
+      if (!byObject.has(r.object_id)) byObject.set(r.object_id, { parents: new Set(), ids: [] });
+      byObject.get(r.object_id).ids.push(r.id);
+    }
+    try {
+      for (const [objectId, entry] of byObject) {
+        const lookups = await this.db.uiField.findMany({
+          where:  { object_id: Number(objectId), is_active: true, field_type: 'lookup' },
+          select: { name: true },
+        });
+        if (!lookups.length) continue;
+        for (const id of entry.ids) {
+          const values = await this.#loadData(id).catch(() => null);
+          for (const f of lookups) {
+            const pid = Number(values?.[f.name]);
+            if (Number.isInteger(pid) && pid > 0) entry.parents.add(pid);
+          }
+        }
+      }
+    } catch (err) {
+      logger?.warn?.('[RecordService] reading lookups before a bulk change failed', { error: err.message });
+    }
+    return byObject;
+  }
+
+  /** Recompute what `#linksOf` collected: the parents' roll-ups, then each record's readers. */
+  async #refreshLinks(byObject) {
+    for (const [objectId, { parents, ids }] of byObject) {
+      if (parents.size) await this.#refreshParentIds(objectId, [...parents]);
+      for (const id of ids.slice(0, 200)) await this.#refreshChildren(objectId, id);
+    }
+  }
 
   async bulkDelete(ids, deletedBy, viewer, opts = {}) {
     const numIds = await this.#filterAccessibleIds(ids.map(Number), viewer);
@@ -1733,6 +1804,10 @@ class RecordService {
       deletedBy, 'delete',
     );
 
+    // As for a single delete: read where each record points before it goes, so
+    // the parents' roll-ups (and the readers of these records) drop them after.
+    const links = await this.#linksOf(recs);
+
     if (softIds.length) {
       await this.db.record.updateMany({
         where: { id: { in: softIds } },
@@ -1742,6 +1817,7 @@ class RecordService {
     if (hardIds.length) {
       await this.db.record.deleteMany({ where: { id: { in: hardIds } } });
     }
+    await this.#refreshLinks(links);
     // Notify downstream (workflows / integrations) per deleted record.
     for (const r of recs) {
       this.#emit('record.deleted', { objectId: r.object_id, record: { id: r.id }, actorId: deletedBy });
@@ -1789,6 +1865,9 @@ class RecordService {
       data:  { deleted_at: null, deleted_by: null },
     });
     await this.#audit(id, restoredBy, 'restore', { object_id: existing.object_id }, existing.tenant_id);
+    // Back in the live set: its own formulas catch up with what changed while it
+    // was trashed, its parents count it again, and its readers see it again.
+    await this.recompute(Number(id), { propagate: true }).catch(() => {});
     this.#emit('record.updated', { objectId: existing.object_id, record: restored, actorId: restoredBy });
     return restored;
   }
@@ -1817,7 +1896,7 @@ class RecordService {
     // Fetch existing records for workflow triggers
     const existingRecords = await this.db.record.findMany({
       where: { id: { in: numIds } },
-      select: { id: true, object_id: true, pipeline_stage_id: true },
+      select: { id: true, object_id: true, pipeline_stage_id: true, tenant_id: true },
     });
     await this.db.record.updateMany({
       where: { id: { in: numIds } },
@@ -1832,14 +1911,26 @@ class RecordService {
       })),
       updatedBy, 'stage_change',
     );
-    // Emit domain events for each record
+    // A bulk move must leave each record exactly as a single move would: the
+    // pipeline's mirrored status field, the status timeline and whatever reads
+    // the status (formulas, parents' roll-ups) follow the new stage.
+    const stage = newStage && typeof this.db.uiPipelineStage?.findUnique === 'function'
+      ? await this.db.uiPipelineStage.findUnique({ where: { id: newStage }, select: { id: true, label: true, color: true, name: true } }).catch(() => null)
+      : null;
     for (const rec of existingRecords) {
-      const updated = { ...rec, pipeline_stage_id: stageId ? Number(stageId) : null };
+      const updated = { ...rec, pipeline_stage_id: newStage, pipeline_stage: stage };
+      const moved = rec.pipeline_stage_id !== newStage;
+      const tenantId = rec.tenant_id || Number(viewer?.tenant_id) || getTenantId();
+      const statusSync = moved && stage ? await this.#syncStatusField(updated, tenantId).catch(() => null) : null;
+      if (statusSync) await this.recompute(rec.id, { propagate: true }).catch(() => {});
+      if (moved && stage) {
+        this.#recordStatusEvent(rec.id, { status: stage.name, title: stage.label, event_type: 'milestone', changed_by: updatedBy }, tenantId);
+      }
       this.#emit('record.updated', { objectId: rec.object_id, record: updated, actorId: updatedBy });
       this.#emit('record.field_changed', {
         objectId: rec.object_id,
         record:   updated,
-        changed:  { pipeline_stage_id: { old: rec.pipeline_stage_id, new: stageId ?? null } },
+        changed:  { pipeline_stage_id: { old: rec.pipeline_stage_id, new: stageId ?? null }, ...(statusSync ?? {}) },
         actorId:  updatedBy,
       });
     }
@@ -1927,16 +2018,49 @@ class RecordService {
     if (pointing.length) {
       await this.db.recordFieldValue.updateMany({ where: { id: { in: pointing.map((r) => r.id) } }, data: { str_value: String(tgt.id), num_value: tgt.id } });
     }
+    // The duplicate's history and work move with it: one client, one timeline.
+    const moved = await this.#moveRelated(src.id, tgt.id, src.object.name);
     const actor = viewer?.employee_id ?? null;
     await this.db.record.update({ where: { id: src.id }, data: { deleted_at: new Date(), deleted_by: actor } });
     await this.#chain().append({
       entityType: 'record.merge', entityId: src.id, action: 'merge', actor, sensitivity: 'sensitive', tenantId: src.tenant_id,
-      payload: { source: src.id, target: tgt.id, object_id: src.object_id, repointed: pointing.map((r) => r.id), filled: Object.keys(filled) },
+      payload: { source: src.id, target: tgt.id, object_id: src.object_id, repointed: pointing.map((r) => r.id), filled: Object.keys(filled), moved },
     });
-    // Survivor and everything now pointing at it recompute their formulas.
-    await this.recompute(tgt.id).catch(() => {});
+    // The duplicate has left the live set: its timers stop and on-delete automation runs.
+    this.#emit('record.deleted', { objectId: src.object_id, record: src, actorId: actor, merged_into: tgt.id });
+    // The duplicate's own parents stop counting it (it is in the Trash now)…
+    await this.#refreshParents(src.object_id, srcData ?? {});
+    // …while the survivor and everything now pointing at it recompute.
+    await this.recompute(tgt.id, { propagate: true }).catch(() => {});
     for (const rid of [...new Set(pointing.map((r) => r.record_id))].slice(0, 200)) await this.recompute(rid).catch(() => {});
-    return { merged: src.id, into: tgt.id, repointed: pointing.length, filled: Object.keys(filled) };
+    return { merged: src.id, into: tgt.id, repointed: pointing.length, filled: Object.keys(filled), moved: Object.fromEntries(Object.entries(moved).map(([k, v]) => [k, v.length])) };
+  }
+
+  /**
+   * Re-home what hangs off a record (activities, tasks, reminders, documents,
+   * emails) onto another. Returns the moved ids per kind so an unmerge can put
+   * back exactly those — and nothing added to the survivor since.
+   */
+  async #moveRelated(fromId, toId, objectName) {
+    const kinds = [
+      ['activity', { record_id: fromId }, { record_id: toId }],
+      ['task', { record_id: fromId }, { record_id: toId }],
+      ['reminder', { record_id: fromId }, { record_id: toId }],
+      ['document', { entity_type: objectName, entity_id: fromId }, { entity_id: toId }],
+      ['emailLog', { related_record_id: fromId }, { related_record_id: toId }],
+    ];
+    const moved = {};
+    for (const [model, where, data] of kinds) {
+      if (typeof this.db[model]?.findMany !== 'function') continue;
+      try {
+        const ids = (await this.db[model].findMany({ where, select: { id: true } })).map((r) => r.id);
+        if (ids.length) await this.db[model].updateMany({ where: { id: { in: ids } }, data });
+        moved[model] = ids;
+      } catch (err) {
+        logger?.warn?.('[RecordService] moving related items failed', { model, fromId, toId, error: err.message });
+      }
+    }
+    return moved;
   }
 
   /** Reverse a merge within 30 days, from the change set on the audit chain. */
@@ -1947,21 +2071,32 @@ class RecordService {
     if (Date.now() - new Date(evt.created_at).getTime() > 30 * 86400000) throw new ValidationError('Merges can be reversed only within 30 days');
     const undone = await this.db.auditChainEvent.findFirst({ where: { entity_type: 'record.unmerge', entity_id: String(sourceId), seq: { gt: evt.seq } } });
     if (undone) throw new ValidationError('This merge has already been reversed');
-    const { source, target, repointed = [], filled = [] } = evt.payload ?? {};
+    const { source, target, repointed = [], filled = [], moved = {}, object_id: objectId } = evt.payload ?? {};
     const tgt = await this.db.record.findUnique({ where: { id: Number(target) } });
     if (!tgt) throw new NotFoundError('Record');
     await this.#assertAccess(tgt, viewer);
     await this.db.record.update({ where: { id: Number(source) }, data: { deleted_at: null, deleted_by: null } });
+    let repointedRecords = [];
     if (repointed.length) {
+      repointedRecords = (await this.db.recordFieldValue.findMany({ where: { id: { in: repointed }, str_value: String(target) }, select: { record_id: true } })).map((r) => r.record_id);
       await this.db.recordFieldValue.updateMany({ where: { id: { in: repointed }, str_value: String(target) }, data: { str_value: String(source), num_value: Number(source) } });
     }
+    // Activities, tasks, reminders, documents and emails the merge carried over go back.
+    const back = { activity: { record_id: Number(source) }, task: { record_id: Number(source) }, reminder: { record_id: Number(source) }, document: { entity_id: Number(source) }, emailLog: { related_record_id: Number(source) } };
+    for (const [model, ids] of Object.entries(moved)) {
+      if (ids?.length && back[model] && typeof this.db[model]?.updateMany === 'function') {
+        await this.db[model].updateMany({ where: { id: { in: ids } }, data: back[model] }).catch(() => {});
+      }
+    }
+    if (objectId) this.#emit('record.updated', { objectId, record: { id: Number(source), tenant_id: tgt.tenant_id }, actorId: viewer?.employee_id ?? null });
     // Clear the fields the merge filled on the survivor, if still unchanged.
     const [srcData, tgtData] = await Promise.all([this.#loadData(Number(source)), this.#loadData(Number(target))]);
     const clear = filled.filter((f) => String(srcData?.[f] ?? '') === String(tgtData?.[f] ?? ''));
     if (clear.length) await this.db.recordFieldValue.deleteMany({ where: { record_id: Number(target), field_name: { in: clear } } });
     await this.#chain().append({ entityType: 'record.unmerge', entityId: source, action: 'unmerge', actor: viewer?.employee_id ?? null, sensitivity: 'sensitive', tenantId: tgt.tenant_id, payload: { source, target, restored: repointed.length, cleared: clear } });
-    await this.recompute(Number(target)).catch(() => {});
-    await this.recompute(Number(source)).catch(() => {});
+    await this.recompute(Number(target), { propagate: true }).catch(() => {});
+    await this.recompute(Number(source), { propagate: true }).catch(() => {});
+    for (const rid of [...new Set(repointedRecords)].slice(0, 200)) await this.recompute(rid).catch(() => {});
     return { restored: Number(source), repointed: repointed.length, cleared: clear };
   }
 
@@ -2124,5 +2259,14 @@ class RecordService {
     return [headers.map(cell).join(','), ...rows].join('\r\n');
   }
 }
+
+/**
+ * Forget the per-process metadata memos (object names, field defaults, PII
+ * flags, which objects read which) — the Builder calls this on every field or
+ * object write so a change applies at once, not when a TTL runs out.
+ */
+RecordService.clearMetadataCaches = () => {
+  for (const m of [OBJECT_NAMES, FIELD_DEFAULTS, CHILD_READERS, PII_CACHE]) m.clear();
+};
 
 module.exports = RecordService;

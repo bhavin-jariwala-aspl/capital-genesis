@@ -91,13 +91,13 @@ module.exports = async function runtimeRoutes(fastify) {
   const wfEngine    = fastify.workflowEngine;
   const permSvc     = new PermissionService(fastify.prisma);
   const assignSvc   = new AssignmentService(fastify.prisma);
-  const importSvc   = new ImportService(fastify.prisma);
   const crmSvc      = new CrmService(fastify.prisma, fastify.eventBus);
   const productSvc  = new ProductService(fastify.prisma);
   const scoringSvc  = new LeadScoringService(fastify.prisma);
   // RecordService/CrmService produce record.* domain events onto the shared bus;
   // the workflow engine and IntegrationService consume them independently.
   const recSvc      = new RecordService(fastify.prisma, fastify.eventBus, permSvc, assignSvc, scoringSvc);
+  const importSvc   = new ImportService(fastify.prisma, { eventBus: fastify.eventBus, permService: permSvc, assignService: assignSvc, scoringService: scoringSvc });
   // Builder objects are forecast from their own records, read with the viewer's scope.
   const forecastSvc = new ForecastService(fastify.prisma, recSvc);
 
@@ -795,7 +795,7 @@ module.exports = async function runtimeRoutes(fastify) {
     const { csv_data } = req.body ?? {};
     if (!csv_data) throw new ValidationError('csv_data (base64) is required');
     const buffer = Buffer.from(csv_data, 'base64');
-    return ok(await importSvc.executeImport(jobId, buffer));
+    return ok(await importSvc.executeImport(jobId, buffer, req.user));
   });
 
   // ── Assignment trigger (for manual re-assign) ─────────────────────────────

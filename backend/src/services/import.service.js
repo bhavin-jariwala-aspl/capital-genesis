@@ -19,12 +19,18 @@ const STATUS = { PENDING: 'pending', PREVIEWING: 'previewing', IMPORTING: 'impor
 const STRATEGY = { SKIP: 'skip', CREATE: 'create', MERGE: 'merge' };
 
 class ImportService {
-  /** @param {import('@prisma/client').PrismaClient} prisma */
-  constructor(prisma) {
+  /**
+   * @param {import('@prisma/client').PrismaClient} prisma
+   * @param {object} [deps] what an imported record needs to behave like one
+   *   entered by hand: the event bus (on-create workflows, SLA clocks,
+   *   integrations), permissions, assignment rules and lead scoring.
+   */
+  constructor(prisma, { eventBus = null, permService = null, assignService = null, scoringService = null } = {}) {
     this.db     = prisma;
-    this.crmSvc = new CrmService(prisma);
-    // RecordService used only for its #typedValue helpers (no engine injection needed)
-    this._recordSvc = new RecordService(prisma);
+    this.crmSvc = new CrmService(prisma, eventBus);
+    // Each run gets its own RecordService: an import defers parent roll-up
+    // refreshes to the end of the run, which is per-instance state.
+    this._newRecordSvc = () => new RecordService(prisma, eventBus, permService, assignService, scoringService);
   }
 
   // ── Job lifecycle ─────────────────────────────────────────────────────────
@@ -106,7 +112,7 @@ class ImportService {
    * @param {Buffer}   csvBuffer  raw CSV (re-upload required; not stored server-side)
    * @returns {object} execution stats
    */
-  async executeImport(jobId, csvBuffer) {
+  async executeImport(jobId, csvBuffer, viewer = null) {
     const job = await this.#requireJob(jobId, [STATUS.PREVIEWING]);
     const { field_mapping, dedupe_keys, strategy, object_id } = job;
 
@@ -119,20 +125,32 @@ class ImportService {
       const { unique, dupes }     = await this.detectDuplicates(valid, dedupe_keys ?? [], object_id);
 
       let created = 0, merged = 0, skipped = 0;
+      const failed = [];
       const crmType = await this.#resolveCrmType(object_id);
       const ops = [];
 
-      for (const row of unique) {
-        if (crmType) {
-          // Write CRM entity to the relational table via CrmService
-          ops.push(
-            this.#createCrmEntity(crmType, row, job.created_by).then(() => { created++; }),
-          );
-        } else {
-          // Non-CRM custom object: create anchor + persist field values via EAV.
-          ops.push(
-            this.#createCustomRecord(object_id, row, job.created_by).then(() => { created++; }),
-          );
+      if (crmType) {
+        // Write CRM entity to the relational table via CrmService
+        for (const row of unique) ops.push(this.#createCrmEntity(crmType, row, job.created_by).then(() => { created++; }));
+      } else if (unique.length) {
+        // Builder objects go through the record engine, one row at a time (auto-
+        // numbers are allocated in sequence), so an imported row gets what a row
+        // entered by hand gets: validation, defaults, formulas, auto-numbers, the
+        // first pipeline stage, encryption, assignment, audit and workflows. The
+        // parents' roll-ups are recomputed once, after the last row.
+        const recs = this._newRecordSvc();
+        recs.deferParentRefresh();
+        try {
+          for (const [i, row] of unique.entries()) {
+            try {
+              await this.#createCustomRecord(recs, object_id, row, job.created_by, viewer);
+              created++;
+            } catch (err) {
+              failed.push({ row: i + 1, reason: err.message });
+            }
+          }
+        } finally {
+          for (const pid of recs.takeDeferredParents()) await recs.recompute(pid).catch(() => {});
         }
       }
 
@@ -149,10 +167,10 @@ class ImportService {
 
       await Promise.all(ops);
 
-      const stats = { created, merged, skipped, total: valid.length + (strategy !== STRATEGY.MERGE ? dupes.length : 0) };
+      const stats = { created, merged, skipped, failed: failed.length, total: valid.length + (strategy !== STRATEGY.MERGE ? dupes.length : 0) };
       await this.db.importJob.update({
         where: { id: jobId },
-        data:  { status: STATUS.DONE, stats },
+        data:  { status: STATUS.DONE, stats, ...(failed.length ? { error_rows: failed.slice(0, 100) } : {}) },
       });
 
       return stats;
@@ -326,35 +344,17 @@ class ImportService {
   }
 
   /**
-   * Create a thin record anchor for a custom / non-CRM object and persist
-   * all mapped field values in the typed `record_field_values` table.
+   * Create one record of a Builder object through RecordService.
    *
+   * @param {RecordService} recs — the run's record service
    * @param {number} objectId
    * @param {object} row       — field-name → value map from field mapping step
    * @param {string} createdBy
+   * @param {object|null} viewer — the importing user (permissions, tenant)
    */
-  async #createCustomRecord(objectId, row, createdBy) {
-    const record = await this.db.record.create({
-      data: { object_id: Number(objectId), created_by: createdBy ?? null },
-    });
-    // Resolve field type metadata once per record batch (small overhead)
-    const fields = await this.db.uiField.findMany({
-      where:  { object_id: Number(objectId), is_active: true },
-      select: { name: true, data_type: true },
-    });
-    const typeMap = new Map(fields.map(f => [f.name, f.data_type ?? 'string']));
-
-    const fieldOps = Object.entries(row)
-      .filter(([, v]) => v !== undefined && v !== '')
-      .map(([fieldName, value]) => {
-        const dataType = typeMap.get(fieldName) ?? 'string';
-        const typed    = RecordService._typedValuePublic(value, dataType);
-        return this.db.recordFieldValue.create({
-          data: { record_id: record.id, field_name: fieldName, ...typed },
-        });
-      });
-    if (fieldOps.length) await Promise.all(fieldOps);
-    return record;
+  async #createCustomRecord(recs, objectId, row, createdBy, viewer = null) {
+    const data = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined && v !== ''));
+    return recs.createRecord(Number(objectId), null, createdBy ?? null, null, viewer, data);
   }
 }
 

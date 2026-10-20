@@ -41,6 +41,17 @@ to have you aboard.
 - Zustand for global state (auth, theme), React Query for server state
 - Tailwind CSS — avoid dynamic class names that Tailwind JIT cannot detect at build time
 
+### Data Consistency Rules
+
+- After writing a *stored* (non-formula) field value outside `RecordService.updateRecord`, call
+  `RecordService.recompute(id, { propagate: true })` — plain `recompute(id)` does not reach parent roll-ups
+  or readers unless the record's own formulas changed
+- In the frontend, never hand-pick query keys after a mutation: call `invalidateRecordData(queryClient)` or
+  `invalidateMetadata(queryClient)` from `frontend/src/utils/invalidate.js`
+- Before changing metadata (renaming, deleting, removing options), consult `fieldUsages` / `objectUsages` in
+  `backend/src/services/metadata-dependencies.js`
+- New list or report queries over tasks, reminders or activities must exclude rows of records in the Trash
+
 ---
 
 ## Testing

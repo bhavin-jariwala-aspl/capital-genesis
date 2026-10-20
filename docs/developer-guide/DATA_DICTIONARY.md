@@ -872,8 +872,9 @@ forecasting service to compute attainment.
 the field mapping, dedupe config, duplicate-resolution strategy, and result stats.
 **When & how rows are written:** `ImportService.createJob()` inserts with `status='pending'`; `previewImport()` parses
 the CSV, applies mapping, validates/dedupes, and updates to `status='previewing'` with `field_mapping`, `dedupe_keys`,
-`strategy`, `stats`, and up to the first 100 `error_rows`; `executeImport()` writes records (CRM rows via CrmService,
-thin `Record` anchor for non-CRM objects) and updates to `done`/`failed`.
+`strategy`, `stats`, and up to the first 100 `error_rows`; `executeImport()` writes records (CRM rows via CrmService;
+Builder-object rows one at a time through `RecordService.createRecord`) and updates to `done`/`failed`. A row failing
+validation does not abort the run; it is recorded in `error_rows`.
 **What the data represents & notable columns:**
 
 - `object_id` — FK → `ui_objects.id` (cascade, indexed); import target.
@@ -882,7 +883,10 @@ thin `Record` anchor for non-CRM objects) and updates to `done`/`failed`.
 - `field_mapping` — JSON `{ "CSV Header": "field_name" }`.
 - `dedupe_keys` — JSON `["email"]`; fields used for duplicate detection.
 - `strategy` — default `skip`; value set: `skip | create | merge` (duplicate resolution).
-- `stats` — JSON `{ total, created, merged, skipped, errors }`; `error_rows` — JSON `[{ row, errors }]`.
+- `stats` — JSON; after preview `{ total_rows, valid_rows, error_rows, duplicate_rows, unique_rows }`, after
+  execute `{ created, merged, skipped, failed, total }`. `error_rows` — JSON; preview `[{ row, reason }]` with the
+  mapped row and a reason such as "Empty row"; execute `[{ row, reason }]` with row = 1-based position among
+  imported rows (first 100), written only when rows failed.
 - `created_by` — VARCHAR(20) NOT NULL; timestamps.
 
 **Related to:** Belongs to `UiObject`; `created_by` references an employee.
@@ -3117,7 +3121,9 @@ for the SLA dashboard.
 `due_date` for resolution); flags are backfilled to reality but escalations are NOT fired on creation. On update it
 handles pause/resume (extending `due_at`/`warning_at` by paused business-minutes), marks `met`/`canceled`, and on
 threshold crossings sets `warned`/`breached` and fires escalations. Removing the matching policy/target cancels the
-instance.
+instance. Open timers are also canceled when the record is deleted (soft or hard) or merged away
+(`SlaService.cancelForRecords` on `record.deleted`), and by the reconciler when the record is in the Trash or gone;
+restoring the record does not restart them.
 **What the data represents & notable columns:**
 
 - `entity_type` (`case | lead | task`) + `entity_id` + `metric` — `@@unique([entity_type, entity_id, metric])`.

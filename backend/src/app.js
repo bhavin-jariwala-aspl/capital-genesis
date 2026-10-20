@@ -206,6 +206,10 @@ async function buildApp() {
   const slaNow = (_e, p) => { const id = p?.record?.id; if (id) slaService.reconcileRecord(id).catch((err) => fastify.log.warn({ err }, '[sla] record refresh failed')); };
   eventBus.subscribe('record.created', slaNow);
   eventBus.subscribe('record.field_changed', slaNow);
+  eventBus.subscribe('record.deleted', (_e, p) => {
+    const id = p?.record?.id;
+    if (id) slaService.cancelForRecords([id]).catch((err) => fastify.log.warn({ err }, '[sla] cancel on delete failed'));
+  });
 
   // ── Reminder engine (due-sweep turns reminders into notifications) ────────
   const reminderService = new ReminderService(prisma, eventBus);

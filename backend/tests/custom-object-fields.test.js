@@ -311,22 +311,26 @@ describe('ImportService — custom object import writes EAV field values', () =>
     return db;
   }
 
-  it('creates anchor record + EAV rows for each field in a custom object import', async () => {
+  it('creates each imported row through the record engine, with its EAV field values', async () => {
     const db  = makeImportPrisma();
+    db.record.findUnique.mockResolvedValue({ id: 1, object_id: 99, crm_lead: null, crm_contact: null, crm_account: null, crm_opportunity: null, crm_case: null });
+    db.uiObject.findUnique.mockResolvedValue({ name: 'product_catalogue', config: {} }); // a Builder object
     const svc = new ImportService(db);
 
     const csv = Buffer.from('Product Name,SKU\nWidget Pro,WGT-001\nGadget X,GDG-002');
-    await svc.executeImport(1, csv);
+    const stats = await svc.executeImport(1, csv, { tenant_id: 1, employee_id: 'EMP1', role: 'admin' });
 
-    // Two records should have been created (one per unique row)
+    // Two records should have been created (one per unique row), none failed
+    expect(stats).toEqual(expect.objectContaining({ created: 2, failed: 0 }));
     expect(db.record.create).toHaveBeenCalledTimes(2);
+    expect(db.record.create.mock.calls[0][0].data.tenant_id).toBe(1);
 
-    // EAV rows should have been created for each field per record
-    expect(db.recordFieldValue.create).toHaveBeenCalled();
-    const eavCalls = db.recordFieldValue.create.mock.calls;
-    const fieldNames = eavCalls.map(c => c[0].data.field_name).sort();
-    // Each of the 2 records has 2 fields → 4 total EAV create calls
-    expect(eavCalls).toHaveLength(4);
+    // Each of the 2 records has 2 fields → 4 typed EAV writes
+    const rfv = db.recordFieldValue;
+    const fieldNames = [
+      ...(rfv.createMany?.mock?.calls ?? []).flatMap(c => c[0].data.map(d => d.field_name)),
+      ...rfv.upsert.mock.calls.map(c => c[0].create.field_name),
+    ].sort();
     expect(fieldNames).toEqual(['product_name', 'product_name', 'sku', 'sku'].sort());
   });
 

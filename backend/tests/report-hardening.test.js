@@ -1,5 +1,7 @@
 'use strict';
 
+const { stripLive } = require('./helpers/strip-live');
+
 jest.mock('@prisma/client');
 
 const ReportService = require('../src/services/report.service');
@@ -25,7 +27,7 @@ function enginePrisma(rows = OPPS) {
   const delegate = { findMany: jest.fn().mockResolvedValue(rows) };
   return { crmOpportunity: delegate, __d: delegate };
 }
-const whereOf = (prisma, call = 0) => prisma.__d.findMany.mock.calls[call][0].where;
+const whereOf = (prisma, call = 0) => stripLive(prisma.__d.findMany.mock.calls[call][0].where);
 
 function libPrisma(over = {}) {
   return {
@@ -293,7 +295,7 @@ describe('comparison filter composition', () => {
     }, { scope: 'all' });
 
     // Second call is the prior window: the date must be a required AND term.
-    const priorWhere = prisma.__d.findMany.mock.calls[1][0].where;
+    const priorWhere = stripLive(prisma.__d.findMany.mock.calls[1][0].where);
     const json = JSON.stringify(priorWhere);
     expect(json).toContain('close_date');
     expect(priorWhere.OR).toBeUndefined();

@@ -9,6 +9,7 @@ import { runtimeService } from '../../services/metadata.service';
 import { useAuthStore } from '../../store/authStore';
 import { showError, showSuccess } from '../../utils/dialog';
 import { fmtDateTime } from '../../utils/formatters';
+import { invalidateRecordData } from '../../utils/invalidate';
 
 /**
  * Approvals inbox — every workflow approval step (credit decisions, KYC
@@ -85,8 +86,11 @@ export default function ApprovalsPage() {
     onSettled: () => setBusy(null),
     onSuccess: (_r, { action }) => {
       showSuccess(action === 'approve' ? 'Approved — the process continues.' : 'Rejected — the requester has been informed by the workflow.');
-      qc.invalidateQueries({ queryKey: ['approvals'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notif-count'] });
+      // The decision resumes the workflow, which updates the record (status,
+      // stage) — approvals lists included.
+      invalidateRecordData(qc);
     },
     onError: (e) => showError(errText(e)),
   });

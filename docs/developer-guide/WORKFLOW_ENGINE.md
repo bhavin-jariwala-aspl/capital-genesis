@@ -51,6 +51,7 @@ Recent capability changes, newest first. Each is described in full in the sectio
 
 | Capability | What changed | Where |
 | ---------- | ------------ | ----- |
+| **Writes propagate; encrypted fields stay encrypted** | `action` and `update_related` call `RecordService.recompute(..., { propagate: true })`, so a parent roll-up filtered on the written value updates. An `action` setting `pipeline_stage_id` goes through `updateRecordStage`. `config.encrypt` fields written by a step are stored encrypted (they were written in clear text). | [Field storage routing](#field-storage-routing) |
 | **`email_list` step and `{{upload_link}}`** | Email one template to every member of a list held in another object (subscribers of a publication), in each person's language, skipping suppressed people, with optional open tracking. `send_email` templates can use `{{upload_link}}`, a 14-day link where the client uploads the record's missing documents. | [Config keys per step type](#config-keys-per-step-type), [PLATFORM_BUILDER_EXTENSIONS.md §28](PLATFORM_BUILDER_EXTENSIONS.md#28-distribution-lists-and-open-tracking) |
 | **`send_email` and `generate_document` steps** | Email a template to the record (picking a `<template>_<lang>` variant from a language field), and render a merge template filed on the record. | [Config keys per step type](#config-keys-per-step-type) |
 | **Formula conditions** | Operator `expression` evaluates a formula over the whole record (`AND`/`OR`/`IF`/`LOOKUP`…), so multi-field logic no longer needs chained steps. | [Operators Reference](#operators-reference) |
@@ -133,14 +134,14 @@ Step 5 (notification) → on_true_id: null   ← end of chain
 | ------------------ | ------------ | -------------- | ------ |
 | `trigger` | Entry point / pass-through | Returns `on_true_id`. Event matching (`on_create`, etc.) happened earlier in `trigger()`, not here | No |
 | `condition` | Branch on a field comparison | Reads a field (current value, or `_changed.field.old\|new`), compares via `#evaluate`, returns `on_true_id` (match) or `on_false_id` (no match) | No |
-| `action` | Write one field to the record | If **both** `cfg.field` and `cfg.value` are set, interpolates `value`, calls `#writeField` to route it to the store owning that field, then invalidates the field cache. No `value` ⇒ **no-op**; a real CRM column on a record with no entity row ⇒ **no-op** (never shadow-written to EAV) | No |
+| `action` | Write one field to the record | If **both** `cfg.field` and `cfg.value` are set, interpolates `value`, calls `#writeField` to route it to the store owning that field, then invalidates the field cache and calls `recompute(id, { propagate: true })`. Setting `pipeline_stage_id` (by id) goes through `RecordService.updateRecordStage`, like `stage`. No `value` ⇒ **no-op**; a real CRM column on a record with no entity row ⇒ **no-op** (never shadow-written to EAV) | No |
 | `notification` | Create in-app notification rows | Resolves recipients (`#resolveRecipients`), interpolates `{{ }}` in `title`/`message`, bulk-inserts into the `notification` table | No |
 | `delay` | Pause and resume later | Computes resume time from `{duration, unit}` (minutes/hours/days), writes a `WorkflowPendingStep` with `resume_after`, returns `null`. The 60s scheduler (`runScheduled`) resumes from the saved next step | **Yes** |
 | `approval` | Human approve/reject gate | Generates a token, writes a `WorkflowPendingStep` (with reject branch + allowed approver IDs), notifies approvers with a token link, returns `null`. `POST /api/runtime/workflows/approval/:token` resumes it — approve → `on_true_id`, reject → `on_false_id` | **Yes** |
 | `webhook` | Outbound HTTP call | Two modes: **named connection** — `cfg.integration` references a registered integration by name and reuses its URL/secret/headers/retry, logging to its health dashboard (the Salesforce "named credential" pattern); or **ad-hoc** — `cfg.url` posts an interpolated JSON body. Both go through `IntegrationService` (one SSRF policy, one signer, one client). Branches: success → `on_true_id`, failure → `on_false_id` | No |
 | `integration` | Invoke an integration / emit an event | **Dispatch mode** — `cfg.integration` runs a registered integration by name (regardless of its active toggle) with an optional `cfg.field_map` to write the response back onto record fields (enrichment). **Event mode** — `cfg.event` publishes a custom domain event onto the bus that event-subscribed integrations (and other workflows) react to. Branches: success → `on_true_id`, failure → `on_false_id` | No |
 | `create_record` | Create a record in another object | Interpolates `{{ }}` in each `cfg.fields` value. CRM object types → thin `record` anchor + `crm_*` entity row; non-CRM → anchor only | No |
-| `update_related` | Cascade an update to child records | Finds CRM entities in `cfg.object_id` where `cfg.link_field == record.id`, sets `cfg.field` to interpolated `cfg.value` on all of them in one transaction. CRM object types only (non-CRM = no-op) | No |
+| `update_related` | Cascade an update to child records | Finds CRM entities in `cfg.object_id` where `cfg.link_field == record.id`, sets `cfg.field` to interpolated `cfg.value` on all of them in one transaction, then recomputes each with `{ propagate: true }`. CRM object types only (non-CRM = no-op) | No |
 
 ### Config keys per step type
 
@@ -269,6 +270,16 @@ A field that is not a writable CRM column falls through to EAV rather than being
 dropped. Workflow writes go straight to Prisma, **not** through `RecordService`, because
 `RecordService` publishes `record.updated` — which this engine subscribes to, so routing an
 action step through it would re-trigger the workflow that is running.
+
+Because of that, a step that writes must restore what a form save would have done:
+
+- **Propagation.** `action` and `update_related` call `RecordService.recompute(id, { propagate: true })` after
+  writing. Plain `recompute(id)` only reaches parents and readers when the record's own formulas changed, so a step
+  setting a stored status that a parent roll-up filters on never reached the parent.
+- **Stage.** An `action` that sets `pipeline_stage_id` by id goes through `RecordService.updateRecordStage`, exactly
+  like the `stage` pseudo-field (stage gate, mirrored status, timeline, stage events), not a bare column write.
+- **Encryption.** Fields with `config.encrypt` (e.g. Genesis Capital `party.id_number`) are stored encrypted, as a
+  form save stores them.
 
 ---
 

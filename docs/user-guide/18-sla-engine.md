@@ -50,6 +50,12 @@ Targets are keyed to each record type's natural priority field: **cases → prio
 A timer is **met on time** if it completed before its deadline, **met late** otherwise. On-time compliance =
 met-on-time ÷ all completed.
 
+### Deleted and merged records
+
+When a record is deleted (to the Trash or permanently) or merged into another record, its open timers are
+**cancelled**, so it no longer shows as at risk or breached. The engine also cancels any timer whose record is in
+the Trash or gone. Restoring a record from the Trash does **not** restart its cancelled timers.
+
 ## Configure SLAs (admins)
 
 **Builder → Automate → SLA Engine.**

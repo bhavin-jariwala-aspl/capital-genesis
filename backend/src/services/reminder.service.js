@@ -4,6 +4,9 @@ const { NotFoundError, ValidationError } = require('../utils/errors');
 const { ROLE_LEVEL, ADMIN_THRESHOLD, MANAGER_THRESHOLD } = require('../middleware/authenticate');
 const { logger } = require('./logging.service');
 
+// Not attached to a record, or attached to one that is not in the Trash.
+const LIVE_RECORD = { OR: [{ record_id: null }, { record: { is: { deleted_at: null } } }] };
+
 const OPEN_STATUSES = ['pending', 'notified'];
 const VALID_STATUS  = new Set(['pending', 'notified', 'done', 'dismissed', 'cancelled']);
 
@@ -79,6 +82,7 @@ class ReminderService {
     const ids = await this.#visibleEmployeeIds(viewer);
     const where = { ...this.#scopeWhere(ids) };
     if (recordId)   where.record_id = Number(recordId);
+    else            where.AND = [...(where.AND ?? []), LIVE_RECORD];
     if (employeeId) where.employee_id = employeeId;
     if (status)     where.status = status;
     else if (scope === 'open') where.status = { in: OPEN_STATUSES };
@@ -91,7 +95,7 @@ class ReminderService {
 
   /** Reminders targeting the current user — the "My Reminders" agenda feed. */
   async listMine(employeeId, { scope = 'open' } = {}) {
-    const where = { employee_id: employeeId };
+    const where = { employee_id: employeeId, ...LIVE_RECORD };
     if (scope === 'open') where.status = { in: OPEN_STATUSES };
     return this.db.reminder.findMany({
       where,
@@ -192,7 +196,9 @@ class ReminderService {
    */
   async sweepDue(now = new Date(), { batchSize = 500 } = {}) {
     const due = await this.db.reminder.findMany({
-      where:   { status: 'pending', remind_at: { lte: now } },
+      // A reminder on a record in the Trash stays pending (it fires if the
+      // record is restored) instead of notifying about a record nobody can open.
+      where:   { status: 'pending', remind_at: { lte: now }, ...LIVE_RECORD },
       orderBy: { remind_at: 'asc' },
       take:    batchSize,
     });

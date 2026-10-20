@@ -135,7 +135,10 @@ AND/OR tree existed still open and run.
    the source's `dateField` / `ownerField`.
 3. **Build the where clause** from the filter tree. Conditions become entries in a Prisma `AND` /
    `OR` array — never `where[field] = …`.
-4. **Apply the data scope** (`me` / `team` / `all`) on the source's owner field.
+4. **Apply the data scope** (`me` / `team` / `all`) on the source's owner field. The built-in sources
+   Leads, Accounts, Opportunities, Cases, Tasks and Activities also exclude rows of records in the
+   Trash (rows with no record at all are still counted); Builder-object sources already did. A new
+   built-in source over record-linked rows must do the same.
 5. **Select only the referenced columns.** `#buildSelect` walks the filters, groupings, measures,
    columns and sort keys and asks for exactly those, plus `id`. Related fields become a nested
    `select` on the relation.

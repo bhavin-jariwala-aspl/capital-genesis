@@ -82,7 +82,16 @@ values of changed fields inside condition steps.
 **Create Record** can also take `link_field` (a lookup field on the new record that points back to this one),
 `store_as` (a field on this record that receives the new record's id) and `stage` (the starting stage by API
 name). An **Action** on the field `stage` moves the record to the named stage, and the stage's entry rules
-apply. An **Approval** with `exclude_actor: true` never asks the person who triggered it (maker-checker).
+apply. An **Action** that sets `pipeline_stage_id` behaves the same way: it is a real stage move, with the entry
+rules, the mirrored status field and the status timeline. An **Approval** with `exclude_actor: true` never asks the
+person who triggered it (maker-checker).
+
+Values written by **Action** and **Update Related** steps behave like a form save:
+
+- Totals and counts on parent records (roll-ups) and formulas that depend on the changed value update straight
+  away. A workflow that sets a status a parent total filters on is reflected on the parent.
+- Fields set to be encrypted stay encrypted when a workflow writes them.
+- Screens that are open refresh to show the workflow's result shortly after the save.
 
 A workflow with the **Manual** trigger appears as a button on its object's record panel, so users can run it
 on a record.

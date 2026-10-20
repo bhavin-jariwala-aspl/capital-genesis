@@ -69,6 +69,12 @@ module.exports = async function metadataRoutes(fastify) {
     return ok(await svc.getField(Number(req.params.id)));
   });
 
+  // Where a field is used (formulas, stage gates, rules, workflows, widgets) —
+  // what blocks a rename or delete, shown before the admin tries.
+  fastify.get('/fields/:id/usages', { preHandler: [requireAdmin] }, async (req) => {
+    return ok(await svc.getFieldUsages(Number(req.params.id)));
+  });
+
   fastify.post('/fields', { preHandler: [requireAdmin] }, async (req, reply) => {
     reply.code(201);
     return created(await svc.createField(req.body));

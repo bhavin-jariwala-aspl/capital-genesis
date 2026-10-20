@@ -181,6 +181,8 @@ export default function EmailComposeModal({
     onSuccess: () => {
       setSendResult({ success: true, message: 'Email sent successfully!' });
       qc.invalidateQueries({ queryKey: ['activities', recordId] });
+      qc.invalidateQueries({ queryKey: ['audit', recordId] });
+      qc.invalidateQueries({ queryKey: ['widget-data'] });
       closeTimerRef.current = setTimeout(() => onClose?.(), 1500);
     },
     onError: (err) => {

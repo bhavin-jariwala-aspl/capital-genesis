@@ -1,5 +1,7 @@
 'use strict';
 
+const { stripLive } = require('./helpers/strip-live');
+
 jest.mock('@prisma/client');
 
 const ReportService = require('../src/services/report.service');
@@ -60,7 +62,7 @@ describe('ReportService — filters', () => {
         { field: 'amount', op: 'lte', value: 500 },
       ] },
     });
-    const { where } = prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where).toEqual({ AND: [{ amount: { gte: 100 } }, { amount: { lte: 500 } }] });
   });
 
@@ -75,7 +77,7 @@ describe('ReportService — filters', () => {
         ] },
       ] },
     });
-    const { where } = prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where).toEqual({
       AND: [
         { is_closed: false },
@@ -89,24 +91,24 @@ describe('ReportService — filters', () => {
       viz: 'table',
       filters: [{ field: 'owner.employee_name', op: 'equals', value: 'Ann' }],
     });
-    const { where } = prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where).toEqual({ owner: { employee_name: 'Ann' } });
   });
 
   it('accepts the legacy flat filter array', async () => {
     const { prisma } = await run({ viz: 'table', filters: [{ field: 'stage', op: 'equals', value: 'proposal' }] });
-    expect(prisma.__delegate.findMany.mock.calls[0][0].where).toEqual({ stage: 'proposal' });
+    expect(stripLive(prisma.__delegate.findMany.mock.calls[0][0].where)).toEqual({ stage: 'proposal' });
   });
 
   it('warns instead of throwing when a filter names an unavailable field', async () => {
     const res = await run({ viz: 'table', filters: [{ field: 'nope', op: 'equals', value: 1 }] });
     expect(res.meta.warnings.join(' ')).toMatch(/nope/);
-    expect(res.prisma.__delegate.findMany.mock.calls[0][0].where).toEqual({});
+    expect(stripLive(res.prisma.__delegate.findMany.mock.calls[0][0].where)).toEqual({});
   });
 
   it('turns a relative date preset into a bounded window', async () => {
     const { prisma } = await run({ viz: 'table', filters: [{ field: 'close_date', op: 'date_range', value: 'this_year' }] });
-    const clause = prisma.__delegate.findMany.mock.calls[0][0].where.close_date;
+    const clause = stripLive(prisma.__delegate.findMany.mock.calls[0][0].where).close_date;
     expect(clause.gte).toBeInstanceOf(Date);
     expect(clause.lt).toBeInstanceOf(Date);
     expect(clause.gte.getFullYear()).toBe(new Date().getFullYear());
@@ -418,7 +420,7 @@ describe('ReportService — drill-down', () => {
       { source: 'opportunities', group_by: [{ field: 'stage' }], filters: [{ field: 'is_closed', op: 'equals', value: true }] },
       { stage: 'closed_won' },
     );
-    const { where } = prisma.crmOpportunity.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.crmOpportunity.findMany.mock.calls[0][0].where);
     expect(where).toEqual({ AND: [{ is_closed: true }, { stage: 'closed_won' }] });
   });
 
@@ -428,7 +430,7 @@ describe('ReportService — drill-down', () => {
       { source: 'opportunities', group_by: [{ field: 'close_date', period: 'month' }] },
       { close_date: '2026-02' },
     );
-    const clause = prisma.crmOpportunity.findMany.mock.calls[0][0].where.AND[1].close_date;
+    const clause = stripLive(prisma.crmOpportunity.findMany.mock.calls[0][0].where).AND[1].close_date;
     expect(clause.gte.getMonth()).toBe(1);
     expect(clause.lt.getMonth()).toBe(2);
   });
@@ -439,7 +441,7 @@ describe('ReportService — drill-down', () => {
       { source: 'opportunities', group_by: [{ field: 'amount', buckets: [{ label: 'Large', min: 200 }] }] },
       { amount: 'Large' },
     );
-    expect(prisma.crmOpportunity.findMany.mock.calls[0][0].where.AND[1]).toEqual({ amount: { gte: 200 } });
+    expect(stripLive(prisma.crmOpportunity.findMany.mock.calls[0][0].where).AND[1]).toEqual({ amount: { gte: 200 } });
   });
 });
 

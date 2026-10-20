@@ -386,10 +386,15 @@ class SlaService {
       const missing = [...new Set(live.map((i) => i.entity_id))].filter((id) => !openIds.has(id));
       const closedRecs = missing.length
         ? await this.db.record.findMany({
-          where:  { id: { in: missing } },
+          where:  { id: { in: missing }, deleted_at: null },
           select: { id: true, tenant_id: true, created_at: true, updated_at: true, assigned_to: true, pipeline_stage: { select: { name: true } } },
         })
         : [];
+      // A record in the Trash (or gone) keeps no clock: its timers would go on
+      // breaching and escalating to people who can no longer open it.
+      const found = new Set(closedRecs.map((r) => r.id));
+      const gone = missing.filter((id) => !found.has(id));
+      if (gone.length) await this.cancelForRecords(gone);
       const anchors = [...openRecs, ...closedRecs];
       if (!anchors.length) continue;
 
@@ -423,6 +428,17 @@ class SlaService {
       await Promise.all(Array.from({ length: Math.min(6, anchors.length) }, worker));
     }
     return processed;
+  }
+
+  /** Cancel the open timers of records that were deleted (or merged away). */
+  async cancelForRecords(ids) {
+    const list = (ids ?? []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    if (!list.length) return 0;
+    const res = await this.db.slaInstance.updateMany({
+      where: { entity_type: 'record', entity_id: { in: list }, status: { in: ['running', 'paused', 'breached'] } },
+      data:  { status: 'canceled' },
+    });
+    return res?.count ?? 0;
   }
 
   /**

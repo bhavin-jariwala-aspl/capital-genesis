@@ -162,6 +162,10 @@ all create/update/delete/layout mutations require **admin** (`requireAdmin`). PO
 Source: `backend/src/routes/metadata/index.js`. Frontend callers are in `frontend/src/services/metadata.service.js`,
 consumed mainly by the builder pages.
 
+**Dependency guards.** Renames, deletes and picklist-option removals that would break something are refused with a
+400 `VALIDATION_ERROR` whose message names what is in the way (see `backend/src/services/metadata-dependencies.js`).
+The Genesis Capital vertical installer writes metadata directly and is not affected.
+
 | Method & Path | Purpose / Relevance | Auth | When & how it's invoked |
 |---|---|---|---|
 | GET `/api/metadata/modules` | List all modules. | JWT (`authenticate`) | `metadataService.getModules()` — ModuleBuilder, FormBuilder, WizardBuilder, PipelineBuilder, `ObjectPicker` (`frontend/src/pages/builder/*`, `frontend/src/components/ui/ObjectPicker.jsx`). |
@@ -172,13 +176,14 @@ consumed mainly by the builder pages.
 | GET `/api/metadata/objects` | List objects (optional `?module_id`). | JWT (`authenticate`) | `metadataService.getObjects(moduleId)` — ModuleBuilder, FormBuilder, WizardBuilder, PipelineBuilder. |
 | GET `/api/metadata/objects/:id` | Fetch one object. | JWT (`authenticate`) | `metadataService.getObject(id)`. |
 | POST `/api/metadata/objects` | Create an object. | Admin (`requireAdmin`) | `metadataService.createObject()` — ModuleBuilder object create. |
-| PUT `/api/metadata/objects/:id` | Update an object. | Admin (`requireAdmin`) | `metadataService.updateObject()` — ModuleBuilder object edit. |
-| DELETE `/api/metadata/objects/:id` | Delete an object. | Admin (`requireAdmin`) | `metadataService.deleteObject()` — ModuleBuilder object delete. |
+| PUT `/api/metadata/objects/:id` | Update an object. An API-name rename is refused (400) while the object has records or references, for built-in CRM object names, or if the name is taken; label changes are always allowed. | Admin (`requireAdmin`) | `metadataService.updateObject()` — ModuleBuilder object edit. |
+| DELETE `/api/metadata/objects/:id` | Delete an object. Refused (400) while it holds any records (live or in the Trash) or other objects reference it. | Admin (`requireAdmin`) | `metadataService.deleteObject()` — ModuleBuilder object delete. |
 | GET `/api/metadata/fields` | List fields for `?object_id`. | JWT (`authenticate`) | `metadataService.getFields(objectId)` — ModuleBuilder field list, ImportPage column mapping (`frontend/src/pages/runtime/ImportPage.jsx`). |
 | GET `/api/metadata/fields/:id` | Fetch one field. | JWT (`authenticate`) | `metadataService.getField(id)`. |
+| GET `/api/metadata/fields/:id/usages` | What blocks a rename or delete: `{ usages: string[], records_with_value: number }` (from `metadata-dependencies.js` `fieldUsages`). | Admin (`requireAdmin`) | `metadataService.getFieldUsages(id)` — ModuleBuilder Edit Field ("used by") and Delete Field dialogs. |
 | POST `/api/metadata/fields` | Create a field. | Admin (`requireAdmin`) | `metadataService.createField()` — ModuleBuilder field create and FormBuilder inline field add. |
-| PUT `/api/metadata/fields/:id` | Update a field. | Admin (`requireAdmin`) | `metadataService.updateField()` — ModuleBuilder field edit. |
-| DELETE `/api/metadata/fields/:id` | Delete a field. | Admin (`requireAdmin`) | `metadataService.deleteField()` — ModuleBuilder field delete. |
+| PUT `/api/metadata/fields/:id` | Update a field. Refused (400) for: an API-name rename while the field is used, with an unsafe or taken name, or on a built-in CRM column (an allowed rename carries stored values to the new name); an `object_id` change; removing picklist values records still hold, unless the body carries `option_replacements: { "<removed>": "<remaining>" }`, which moves those records. Label changes are always allowed. | Admin (`requireAdmin`) | `metadataService.updateField()` — ModuleBuilder field edit. |
+| DELETE `/api/metadata/fields/:id` | Delete a field. Refused (400) while the field is used (deactivate it instead). | Admin (`requireAdmin`) | `metadataService.deleteField()` — ModuleBuilder field delete. |
 | GET `/api/metadata/forms` | List forms (optional `?object_id`). | JWT (`authenticate`) | `metadataService.getForms(objectId)` — FormBuilder, RecordFormPage (`frontend/src/pages/runtime/RecordFormPage.jsx`). |
 | GET `/api/metadata/forms/:id` | Fetch one form in full (fields + layout). | JWT (`authenticate`) | `metadataService.getForm(id)`. |
 | POST `/api/metadata/forms` | Create a form. | Admin (`requireAdmin`) | `metadataService.createForm()` — FormBuilder save (`frontend/src/pages/builder/FormBuilderPage.jsx`). |
@@ -276,8 +281,8 @@ picker). Full backend file: `backend/src/routes/builder/index.js`.
 | GET `/api/builder/pipelines` | List pipelines, optional `?object_id=` filter | authenticate | `PipelineBuilderPage` loads the pipeline list (`getPipelines`) |
 | GET `/api/builder/pipelines/:id` | Fetch one pipeline with stages | authenticate | Opening a pipeline to edit (`getPipeline`) |
 | POST `/api/builder/pipelines` | Create a pipeline | requireAdmin | "New pipeline" save (`createPipeline`) |
-| PUT `/api/builder/pipelines/:id` | Update pipeline + stages together | requireAdmin | Saving pipeline & its stages (`updatePipelineWithStages`) |
-| DELETE `/api/builder/pipelines/:id` | Delete a pipeline (204) | requireAdmin | Deleting a pipeline (`deletePipeline`) |
+| PUT `/api/builder/pipelines/:id` | Update pipeline + stages together. Removing a stage is refused (400) while live records sit in it | requireAdmin | Saving pipeline & its stages (`updatePipelineWithStages`) |
+| DELETE `/api/builder/pipelines/:id` | Delete a pipeline (204). Refused (400) while live records are on it | requireAdmin | Deleting a pipeline (`deletePipeline`) |
 
 ### Trash (admin record recovery)
 
@@ -507,7 +512,7 @@ Record writes also: compute formula fields, enforce `expression` validation rule
 | GET `/api/runtime/import/jobs/:id` | Fetches one import job (status/progress). | JWT | `runtimeService.getImportJob(id)` — polling job status. |
 | POST `/api/runtime/import/jobs` | Creates an import job; body `{ object_id, filename? }`. 201. | JWT | `runtimeService.createImportJob(body)` — step 1 of the CSV import wizard. |
 | POST `/api/runtime/import/jobs/:id/preview` | Previews mapped/deduped rows; body `{ csv_data(base64), field_mapping, dedupe_keys, strategy }`. | JWT | `runtimeService.previewImport(id, body)` — mapping/preview step of the import wizard. |
-| POST `/api/runtime/import/jobs/:id/execute` | Executes the import; body `{ csv_data(base64) }`. | JWT | `runtimeService.executeImport(id, body)` — final "Import" step of the wizard. |
+| POST `/api/runtime/import/jobs/:id/execute` | Executes the import; body `{ csv_data(base64) }`. Returns `{ created, merged, skipped, failed, total }`; a row failing validation does not abort the run — failed rows are stored on the job as `error_rows: [{ row, reason }]` (1-based, first 100). Builder-object rows go through `RecordService.createRecord`. | JWT | `runtimeService.executeImport(id, body)` — final "Import" step of the wizard. |
 
 ### CRM Relational — Leads
 

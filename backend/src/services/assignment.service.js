@@ -85,14 +85,16 @@ class AssignmentService {
       if (rule.fallback_id) lastFallback = rule.fallback_id;
 
       const assignee = await this.#evaluateRule(rule, fields);
-      if (assignee) {
+      // A named assignee who has left (deactivated) must not keep receiving
+      // records: the rule is passed over, as pool rules already drop them.
+      if (assignee && await this.#isActive(assignee)) {
         await this.#applyAssignment(recordId, objectId, rule.id, assignee, rule.rule_type);
         return assignee;
       }
     }
 
     // No rule matched — use the last fallback if any
-    if (lastFallback) {
+    if (lastFallback && await this.#isActive(lastFallback)) {
       await this.#applyAssignment(recordId, objectId, null, lastFallback, 'fallback');
       return lastFallback;
     }
@@ -139,6 +141,10 @@ class AssignmentService {
 
       switch (rule.rule_type) {
         case 'fixed':
+          if (!(await this.#isActive(rule.assignee_id))) {
+            trace.push({ ...entry, outcome: 'no_match', reason: `${rule.assignee_id} is not an active employee` });
+            break;
+          }
           decision = { assignee: rule.assignee_id, method: 'fixed', rule_id: rule.id };
           trace.push({ ...entry, outcome: 'matched', reason: `Always assigns to ${rule.assignee_id}` });
           break;
@@ -158,7 +164,9 @@ class AssignmentService {
             });
             break;
           }
-          if (rule.assignee_id) {
+          if (rule.assignee_id && !(await this.#isActive(rule.assignee_id))) {
+            trace.push({ ...entry, outcome: 'no_match', reason: `All conditions matched, but ${rule.assignee_id} is not an active employee` });
+          } else if (rule.assignee_id) {
             decision = { assignee: rule.assignee_id, method: 'rule_based', rule_id: rule.id };
             trace.push({ ...entry, outcome: 'matched', reason: 'All conditions matched; named assignee' });
           } else if (eligible.length) {
@@ -202,7 +210,7 @@ class AssignmentService {
       }
     }
 
-    if (!decision && lastFallback) {
+    if (!decision && lastFallback && await this.#isActive(lastFallback)) {
       decision = { assignee: lastFallback, method: 'fallback', rule_id: null };
     }
 
@@ -347,6 +355,14 @@ class AssignmentService {
     } catch {
       return {};
     }
+  }
+
+  /** Whether an employee exists and is active (an unknown id counts as inactive). */
+  async #isActive(employeeId) {
+    if (!employeeId) return false;
+    const emp = await this.db.employee?.findUnique?.({ where: { employee_id: String(employeeId) }, select: { is_active: true } }).catch(() => null);
+    if (emp === undefined) return true; // no employee table wired (unit tests)
+    return Boolean(emp) && emp.is_active !== false;
   }
 
   /**

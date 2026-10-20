@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { runtimeService } from '../../services/metadata.service';
 import { useMetadataStore } from '../../store/metadataStore';
 import WizardRenderer from '../../components/runtime/WizardRenderer';
+import { invalidateRecordData } from '../../utils/invalidate';
 import Button from '../../components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
 
@@ -42,7 +43,7 @@ export default function WizardPage() {
       // Create a new record
       await runtimeService.createRecord({ object_id: wizard.object_id, data: merged });
     }
-    queryClient.invalidateQueries({ queryKey: ['runtime-records', wizard.object_id] });
+    invalidateRecordData(queryClient, { recordId: existingRecordId, objectId: wizard.object_id });
     // WizardRenderer internally shows the success screen after this resolves
   };
 

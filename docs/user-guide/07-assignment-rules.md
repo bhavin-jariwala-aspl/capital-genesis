@@ -88,6 +88,9 @@ To change a rule later, click **Edit** on its row. To remove it, click the trash
 - **Deactivated pool members are skipped** by both Round Robin and Load Balanced, and the rule falls through to
   its fallback. If an entire pool is deactivated and the rule has no fallback, nothing is assigned at all — so
   always set a fallback on your last rule.
+- **Deactivated assignees are passed over too.** If a **Fixed** rule's assignee, or a **Rule Based** rule's named
+  assignee, is deactivated, that rule is skipped and the next rule is tried. A deactivated **Fallback Assignee** is
+  never used: the record stays unassigned. The assignment explanation shows "… is not an active employee".
 - **Duplicates in a pool are removed when you save.** Listing somebody twice to give them a double share does
   not work; give them their own Fixed rule above the round-robin instead.
 - The condition **field name** must match the underlying CRM field name on the record (for example,
@@ -109,6 +112,9 @@ To change a rule later, click **Edit** on its row. To remove it, click the trash
   rules so the more specific one runs earlier.
 - **Round robin keeps picking the same person** — Make sure the Pool Members list has more than one active
   employee.
-- **No assignee at all** — No rule matched and no Fallback Assignee was set. Add a fallback to a catch-all rule.
+- **No assignee at all** — No rule matched and no Fallback Assignee was set, or the fallback is a deactivated
+  employee. Add an active fallback to a catch-all rule.
+- **A rule is ignored even though its conditions match** — its assignee has been deactivated. Pick an active
+  employee for the rule.
 - **An employee is missing from the picker** — They may be inactive. Activate the employee, then reopen the rule
   form.

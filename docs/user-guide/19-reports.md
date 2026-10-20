@@ -373,6 +373,9 @@ Worth covering in training, because these are the things people misread:
   range — before its numbers can be trusted.
 - **The scope switch changes the numbers.** *Mine* and *Everyone* legitimately give different totals
   for the same report.
+- **Records in the Trash are left out.** Leads, Accounts, Opportunities, Cases, Tasks and Activities
+  reports skip rows that belong to a deleted record, as reports on Builder objects already did. A
+  task or activity not linked to any record still counts. Restoring the record brings its rows back.
 
 ---
 

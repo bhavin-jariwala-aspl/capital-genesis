@@ -61,8 +61,12 @@ icon. To remove it, click the **trash** icon and confirm.
    See [22. Business Units & Information Barriers](22-access-and-barriers.md).
 5. Click **Save**. The object is created inside the current module.
 
-Edit, Permissions, and Delete work the same way as for modules (pencil, shield, and trash icons). Deleting an object
-also deletes all of its fields, forms, and pipelines, so do this with care.
+Edit, Permissions, and Delete work the same way as for modules (pencil, shield, and trash icons). To protect your
+data, an object **cannot be deleted** while it holds any records (live or in the Trash) or while another object
+links to it (a lookup or formula that points at it, or a dashboard widget that reads it). The message names what
+is in the way. Changing an object's **Name (Key)** is refused for the same reasons, for the built-in CRM objects
+(lead, contact, account, opportunity, case), and when the name is already taken. The **Label** can always be
+changed.
 
 ## Create a Field: step by step
 
@@ -80,6 +84,42 @@ also deletes all of its fields, forms, and pipelines, so do this with care.
 4. Click **Save**. The field appears in the object's field table.
 
 To change a field, click the **pencil** icon; to remove it, click the **trash** icon and confirm.
+
+### Where a field is used
+
+**Edit Field** lists everything that uses the field, so you can see the impact of a change before you make it. A
+field counts as used by:
+
+- formulas on its object, and formulas or roll-ups on other objects that read it through a lookup;
+- validation rules of other fields on the object;
+- pipeline stage entry rules and the pipeline's mirrored status field;
+- the object's title, business unit and barrier zone settings;
+- workflows and assignment rule conditions;
+- dashboard widgets that read the object.
+
+The list errs on the side of caution: it may show a usage that turns out to be harmless, but it never misses one.
+
+### Renaming, moving and deleting fields
+
+| Change | Rule |
+| --- | --- |
+| Change the **Label** | Always allowed |
+| Change the **Name (Key)** | Refused while the field is used anywhere above, if the name is not a valid key or is already used on the object, and for built-in CRM columns. When allowed, existing record values move to the new name |
+| Move to another object | Not allowed |
+| Delete | **Delete Field** shows the usages and how many records hold a value; it stays disabled while usages exist. Deactivate the field instead |
+
+When the server refuses a change, its message, naming what is in the way, is shown on screen.
+
+### Removing picklist values
+
+You can remove a **Dropdown** or **Radio Group** option that no record uses at any time. If records still hold a
+value you removed, the save is refused ("Values still in use: …", with the number of records) and a **Move to…**
+dialog opens. Pick a remaining value for each removed one, and those records are moved to it when the field saves.
+
+### Changes apply immediately
+
+Edits you make in the Builder (new fields, labels, options, objects, forms, pipelines, wizards and dashboards)
+reach users' screens straight away. There is no longer a delay of several minutes before a change shows up.
 
 ## Reference: field types
 
@@ -134,7 +174,7 @@ Active modules are grouped under their category heading in the left sidebar. The
 ## Tips
 
 - Choose the **Name (Key)** carefully and avoid changing it later, since forms, pipelines, and integrations refer to
-  fields and objects by this key.
+  fields and objects by this key. The Builder refuses a rename while anything still uses the key.
 - Use **Col Span** and **Position** to get a rough layout right away. For full drag-and-drop layout control, build a
   form for the object in the Form Builder.
 - Use **Show in List** to surface the most important fields as columns when users browse records.
@@ -152,7 +192,10 @@ Active modules are grouped under their category heading in the left sidebar. The
   valid `snake_case` key.
 - **A module is missing from the sidebar** — confirm its **Status** is **Active** and that your role has permission to
   see it (check the Permissions shield icon).
-- **Deleting an object removes more than expected** — deleting an object also deletes all of its fields, forms, and
-  pipelines. Export or back up anything you need first.
+- **An object or field cannot be deleted** — it still holds records or is used elsewhere; the message says what.
+  Move or delete the records (including any in the Trash), or remove the usages, first. For a field, deactivating
+  it is usually the better choice.
+- **"Values still in use" when saving options** — records still hold a value you removed. Choose a replacement in
+  the **Move to…** dialog.
 - **A new field does not show on a record screen** — fields you add here are not automatically placed on existing
   forms. Open the object in the Form Builder and add the field to the form layout.

@@ -14,6 +14,7 @@ function makePrisma(overrides = {}) {
     },
     record: {
       create: jest.fn().mockResolvedValue({ id: 99 }),
+      findUnique: jest.fn().mockResolvedValue({ id: 99, object_id: 99 }),
       update: jest.fn().mockResolvedValue({ id: 50 }),
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -32,6 +33,9 @@ function makePrisma(overrides = {}) {
     uiField: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    // RecordService.createRecord (Builder-object rows): audit trail, first stage
+    auditLog:        { create: jest.fn().mockResolvedValue({}) },
+    uiPipelineStage: { findFirst: jest.fn().mockResolvedValue(null) },
     // CRM table stubs (needed by CrmService constructor path)
     crmLead:        { create: jest.fn(), update: jest.fn(), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
     crmContact:     { create: jest.fn(), update: jest.fn(), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
@@ -223,9 +227,10 @@ describe('ImportService — executeImport (skip strategy)', () => {
     prisma.record.create.mockResolvedValue({ id: 99 });
 
     const svc    = new ImportService(prisma);
-    const result = await svc.executeImport(2, Buffer.from(csv));
+    const result = await svc.executeImport(2, Buffer.from(csv), { tenant_id: 1, employee_id: 'EMP-1', role: 'admin' });
 
-    // Both rows are unique (no deduplication), both create thin anchors
+    // Both rows are unique (no deduplication); each goes through RecordService.createRecord
+    expect(prisma.importJob.update.mock.calls.at(-1)[0].data.error_rows).toBeUndefined();
     expect(result.created).toBe(2);
     expect(result.skipped).toBe(0);
     expect(prisma.record.create).toHaveBeenCalledTimes(2);
@@ -285,7 +290,7 @@ describe('ImportService — executeImport (merge strategy)', () => {
     prisma.record.create.mockResolvedValue({ id: 101 });
 
     const svc    = new ImportService(prisma);
-    const result = await svc.executeImport(4, Buffer.from(csv));
+    const result = await svc.executeImport(4, Buffer.from(csv), { tenant_id: 1, employee_id: 'EMP-1', role: 'admin' });
 
     expect(result.created).toBe(1);
     expect(result.merged).toBe(0);

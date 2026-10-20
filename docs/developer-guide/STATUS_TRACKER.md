@@ -91,8 +91,10 @@ The field renders only on the object's **edit** form (it needs a saved
 Events drive everything below the stepper. There are two sources:
 
 - **Automatic** — `RecordService.updateRecordStage` appends a `milestone` event
-  on every pipeline stage change. So once a record moves through its pipeline,
-  the timeline fills in by itself. This is why milestone `value`s should match
+  on every pipeline stage change. Bulk stage moves (`bulkUpdateStage`) behave
+  exactly like a single move and write the event too (before, they wrote no
+  timeline). So once a record moves through its pipeline, the timeline fills in
+  by itself. This is why milestone `value`s should match
   pipeline stage `name`s.
 - **Manual** — `POST /api/runtime/records/:id/status-events` with a body of
   `{ status, title?, description?, location?, event_type?, occurred_at? }`. Use

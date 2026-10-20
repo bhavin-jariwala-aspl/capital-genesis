@@ -24,6 +24,8 @@ export const metadataService = {
   createField: (data)     => wrap(api.post('/metadata/fields', data)),
   updateField: (id, d)    => wrap(api.put(`/metadata/fields/${id}`, d)),
   deleteField: (id)       => del(api.delete(`/metadata/fields/${id}`)),
+  // { usages: string[], records_with_value } — what blocks a rename or delete.
+  getFieldUsages: (id)    => wrap(api.get(`/metadata/fields/${id}/usages`)),
 
   // Forms
   getForms:    (objectId) => wrap(api.get('/metadata/forms', { params: { object_id: objectId } })),

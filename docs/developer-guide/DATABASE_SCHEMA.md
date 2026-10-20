@@ -814,8 +814,8 @@ Bulk import operations for records (CSV, Excel, API) with mapping, dedupe, and s
 | field_mapping | JSON | nullable |
 | dedupe_keys | JSON | nullable |
 | strategy | VARCHAR(20) | default 'skip' (skip, update, merge) |
-| stats | JSON | nullable (total/created/updated/failed) |
-| error_rows | JSON | nullable |
+| stats | JSON | nullable; after execute `{ created, merged, skipped, failed, total }` |
+| error_rows | JSON | nullable; after execute `[{ row, reason }]` (1-based, first 100) |
 | created_by | VARCHAR(20) | FK→employees |
 | created_at / updated_at | DATETIME(3) | |
 | tenant_id | INTEGER | |

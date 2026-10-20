@@ -9,6 +9,7 @@ import Spinner from '../../components/ui/Spinner';
 import Alert from '../../components/ui/Alert';
 import { builderDefaults } from '../../utils/fieldDefaults';
 import { withNeededFields } from '../../utils/record';
+import { invalidateRecordData } from '../../utils/invalidate';
 import { ArrowLeft, Wand2, Mail, Monitor, AlignLeft, FileText } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -194,6 +195,9 @@ export default function RecordFormPage() {
     queryKey: ['runtime-record', recordId],
     queryFn:  () => runtimeService.getRecord(recordId),
     enabled:  isEdit && !!recordId,
+    // Always re-read on open: the record may have changed elsewhere (panel,
+    // workflow, another user). FormRenderer re-populates untouched fields.
+    refetchOnMount: 'always',
   });
   const existingValues = recordData?.data?.data ?? {};
   // A new record starts from the Builder defaults (e.g. Scope = Group-level),
@@ -245,7 +249,9 @@ export default function RecordFormPage() {
       if (context?.tempId && activeObject?.id) {
         confirmOptimisticRecord(activeObject.id, context.tempId, result?.data);
       }
-      queryClient.invalidateQueries({ queryKey: ['runtime-records', activeObject?.id] });
+      // Every record cache, including ['runtime-record', recordId]: re-opening
+      // Edit must prefill the saved values, not the ones from before this save.
+      invalidateRecordData(queryClient, { recordId, objectId: activeObject?.id });
       navigate(backPath);
     },
     onError: (_err, _formData, context) => {

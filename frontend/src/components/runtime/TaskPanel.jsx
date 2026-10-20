@@ -26,6 +26,13 @@ function fmt(date) {
   return d.toLocaleDateString();
 }
 
+/** A task change shows in the record's task list, its audit trail and task dashboards. */
+function invalidateTasks(qc, recordId) {
+  qc.invalidateQueries({ queryKey: ['tasks', recordId] });
+  qc.invalidateQueries({ queryKey: ['audit', recordId] });
+  qc.invalidateQueries({ queryKey: ['widget-data'] });
+}
+
 function AddTaskForm({ recordId, onDone }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -34,7 +41,7 @@ function AddTaskForm({ recordId, onDone }) {
   const create = useMutation({
     mutationFn: () => taskService.createTask({ ...form, record_id: recordId, due_date: form.due_date || undefined }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['tasks', recordId] });
+      invalidateTasks(qc, recordId);
       setForm({ title: '', priority: 'normal', due_date: '', description: '' });
       setOpen(false);
       onDone?.();
@@ -110,12 +117,12 @@ export default function TaskPanel({ recordId }) {
 
   const update = useMutation({
     mutationFn: ({ id, patch }) => taskService.updateTask(id, patch),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['tasks', recordId] }),
+    onSuccess:  () => invalidateTasks(qc, recordId),
   });
 
   const del = useMutation({
     mutationFn: (id) => taskService.deleteTask(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['tasks', recordId] }),
+    onSuccess:  () => invalidateTasks(qc, recordId),
   });
 
   const tasks = data ?? [];

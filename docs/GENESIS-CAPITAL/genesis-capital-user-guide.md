@@ -108,6 +108,11 @@ Toolbar actions: **New** (create a record), **search and filters**, **Export** (
 administrators and managers).
 
 With rows selected you can **Change stage**, **Reassign** (managers — for example when an RM leaves) or **Delete**.
+A bulk stage change behaves like moving each record: a *Status* that follows the stage changes with it and the status
+timeline records the move. Deactivating a user does not hand over their records, tasks or reminders — reassign them.
+
+An import creates each row as a normal record (validation, defaults, formulas, first stage, assignment, workflows).
+Rows that fail validation are skipped, not fatal: the done screen shows a **Failed** count and the first reasons.
 
 ### The record panel
 
@@ -149,8 +154,10 @@ trail. Other roles see the masked value only.
 
 ### Duplicates
 
-Managers can open the duplicate and choose **Merge into…** ▸ pick the record to keep. Linked records move to the record
-kept and the duplicate goes to the Trash. An administrator can **Reverse merge** within 30 days (Builder ▸ Trash).
+Managers can open the duplicate and choose **Merge into…** ▸ pick the record to keep. Linked records, activities,
+tasks, reminders, documents and emails move to the record kept, the duplicate's SLA timers stop, and the duplicate goes
+to the Trash. An administrator can **Reverse merge** within 30 days (Builder ▸ Trash); it moves exactly those items
+back, and roll-ups on both records recompute.
 
 ---
 
@@ -277,6 +284,10 @@ Every regulated category is kept seven years.
 
 Examples: first contact on a website enquiry within **4 business hours**; FX quotes answered fast; data subject
 requests within **30 days**; complaints acknowledged and resolved within the FSC-aligned targets.
+
+A record in the Trash drops out of task and reminder lists, My Reminders and the calendar feed (its own tabs still
+show them), sends no reminder notifications, and its SLA timers are canceled. Restoring it brings its tasks and
+pending reminders back, but not the canceled SLA timers.
 
 ---
 

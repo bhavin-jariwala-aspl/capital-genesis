@@ -396,11 +396,25 @@ class DashboardService {
     const { stages = [], object, object_id, id: _id, created_at, updated_at, ...scalar } = data;
     if (scalar.is_active !== undefined) scalar.is_active = parseBool(scalar.is_active);
 
-    // Update pipeline scalar fields
-    await this.db.uiPipeline.update({ where: { id }, data: scalar });
-
     // Sync stages: upsert existing (by id) + create new + delete removed
     const incomingIds = stages.filter(s => s.id).map(s => s.id);
+    // A removed stage's records would fall off the board (their stage is set to
+    // null) with no gate, timeline entry or automation — so a stage that still
+    // holds live records must be emptied first. Checked before anything is written.
+    const removed = await this.db.uiPipelineStage.findMany({
+      where: { pipeline_id: id, id: { notIn: incomingIds } }, select: { id: true, label: true },
+    });
+    if (removed.length) {
+      const held = [];
+      for (const st of removed) {
+        const n = await this.db.record.count({ where: { pipeline_stage_id: st.id, deleted_at: null } });
+        if (n) held.push(`"${st.label}" (${n} record${n === 1 ? '' : 's'})`);
+      }
+      if (held.length) throw new ValidationError(`Move the records out of ${held.join(', ')} before removing ${held.length === 1 ? 'that stage' : 'those stages'}`);
+    }
+
+    // Update pipeline scalar fields
+    await this.db.uiPipeline.update({ where: { id }, data: scalar });
     // Delete stages not in the incoming list
     await this.db.uiPipelineStage.deleteMany({
       where: { pipeline_id: id, id: { notIn: incomingIds } },
@@ -427,6 +441,9 @@ class DashboardService {
   async deletePipeline(id, actorId = null) {
     const existing = await this.db.uiPipeline.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Pipeline');
+    // Same rule as removing a stage: records on the board must not silently lose their stage.
+    const onBoard = await this.db.record.count({ where: { pipeline_stage: { pipeline_id: id }, deleted_at: null } });
+    if (onBoard) throw new ValidationError(`${onBoard} record(s) are still on this pipeline — move them to another pipeline's stages, or deactivate the pipeline instead`);
     // Audit before the delete (entity_id is not an FK, so the entry persists).
     await this.#auditPipeline('pipeline.delete', id, actorId, {
       name: existing.name, label: existing.label, object_id: existing.object_id,

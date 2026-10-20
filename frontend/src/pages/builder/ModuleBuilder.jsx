@@ -16,6 +16,9 @@ import PageHeader from '../../components/ui/PageHeader';
 import BuilderGuide from '../../components/builder/BuilderGuide';
 import { FIELD_TYPES, MODULE_CATEGORY_OPTIONS, categoryLabel } from '../../utils/constants';
 import { accessService } from '../../services/access.service';
+import { invalidateMetadata } from '../../utils/invalidate';
+import { apiErrorText } from '../../utils/record';
+import OptionReplacementDialog, { parseValuesInUse, optionChoices } from '../../components/builder/OptionReplacementDialog';
 
 // ─── Field type options ──────────────────────────────────────────────────────
 const FIELD_TYPE_OPTIONS = FIELD_TYPES.map(ft => ({ value: ft.field_type, label: ft.label }));
@@ -40,15 +43,17 @@ function ModulesSection({ onSelectModule }) {
   const { data, isLoading } = useQuery({ queryKey: ['modules'], queryFn: () => metadataService.getModules() });
   const modules = data?.data || [];
 
+  // Every save here also refreshes runtime metadata (navigation, record pages
+  // and forms read modules/objects/fields from MetadataStore first).
   const saveMutation = useMutation({
     mutationFn: (d) => editing ? metadataService.updateModule(editing.id, d) : metadataService.createModule(d),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['modules'] }); setModalOpen(false); },
-    onError: (e) => setFormError(e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['modules'] }); invalidateMetadata(qc); setModalOpen(false); },
+    onError: (e) => setFormError(apiErrorText(e)),
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => metadataService.deleteModule(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['modules'] }); setDeleteError(null); },
-    onError: (e) => setDeleteError(e.response?.data?.error?.message || e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['modules'] }); invalidateMetadata(qc); setDeleteError(null); },
+    onError: (e) => setDeleteError(apiErrorText(e)),
   });
 
   const openCreate = () => { setEditing(null); reset({ category: 'crm' }); setFormError(null); setModalOpen(true); };
@@ -150,13 +155,13 @@ function ObjectsSection({ module, onBack, onSelectObject }) {
       const body = { ...d, config: Object.keys(config).length ? config : null };
       return editing ? metadataService.updateObject(editing.id, body) : metadataService.createObject({ ...body, module_id: module.id });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['objects', module.id] }); setModalOpen(false); },
-    onError: (e) => setFormError(e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['objects', module.id] }); invalidateMetadata(qc); setModalOpen(false); },
+    onError: (e) => setFormError(apiErrorText(e)),
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => metadataService.deleteObject(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['objects', module.id] }); setDeleteError(null); },
-    onError: (e) => setDeleteError(e.response?.data?.error?.message || e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['objects', module.id] }); invalidateMetadata(qc); setDeleteError(null); },
+    onError: (e) => setDeleteError(apiErrorText(e)),
   });
 
   const openCreate = () => { setEditing(null); reset({}); setFormError(null); setModalOpen(true); };
@@ -235,6 +240,26 @@ function ObjectsSection({ module, onBack, onSelectObject }) {
 }
 
 // ─── Fields section ───────────────────────────────────────────────────────────
+/** `{ usages, records_with_value }` for a field, or null while unknown (no id, loading, failed). */
+function useFieldUsages(fieldId) {
+  const { data } = useQuery({
+    queryKey: ['field-usages', fieldId],
+    queryFn: () => metadataService.getFieldUsages(fieldId),
+    enabled: !!fieldId,
+    staleTime: 0,
+    retry: false,
+  });
+  return fieldId ? data?.data ?? null : null;
+}
+
+function UsageList({ usages }) {
+  return (
+    <ul className="mt-1 list-disc pl-5 text-xs">
+      {usages.map((u) => <li key={u}>{u}</li>)}
+    </ul>
+  );
+}
+
 function FieldsSection({ object, onBack }) {
   const qc = useQueryClient();
   const delConfirm = useDeleteConfirm();
@@ -247,15 +272,30 @@ function FieldsSection({ object, onBack }) {
   const { data, isLoading } = useQuery({ queryKey: ['fields', object.id], queryFn: () => metadataService.getFields(object.id) });
   const fields = data?.data || [];
 
+  // A save refused because removed picklist values are still held by records:
+  // { payload, conflicts } until the admin maps them to remaining values.
+  const [optionConflict, setOptionConflict] = useState(null);
   const saveMutation = useMutation({
     mutationFn: (d) => editing ? metadataService.updateField(editing.id, d) : metadataService.createField({ ...d, object_id: object.id }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['fields', object.id] }); setModalOpen(false); },
-    onError: (e) => setFormError(e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['fields', object.id] }); invalidateMetadata(qc); setOptionConflict(null); setModalOpen(false); },
+    onError: (e, d) => {
+      const values = editing ? parseValuesInUse(e) : null;
+      if (values) {
+        setOptionConflict({ payload: d, conflicts: [{ key: 'field', label: d.label, values, options: optionChoices(d.options ?? editing.options) }] });
+        return;
+      }
+      setOptionConflict(null);
+      setFormError(apiErrorText(e));
+    },
   });
+  // What refers to the field being edited or deleted (formulas, gates, rules,
+  // workflows, widgets): the API refuses a rename or delete while any do.
+  const editUsages = useFieldUsages(modalOpen ? editing?.id : null);
+  const deleteUsages = useFieldUsages(delConfirm.target?.id);
   const deleteMutation = useMutation({
     mutationFn: (id) => metadataService.deleteField(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['fields', object.id] }); setDeleteError(null); },
-    onError: (e) => setDeleteError(e.response?.data?.error?.message || e.response?.data?.message || e.message),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['fields', object.id] }); invalidateMetadata(qc); setDeleteError(null); },
+    onError: (e) => setDeleteError(apiErrorText(e)),
   });
 
   const openCreate = () => { setEditing(null); reset({ is_required: false, is_readonly: false, show_in_list: false, col_span: 6 }); setFormError(null); setModalOpen(true); };
@@ -298,6 +338,12 @@ function FieldsSection({ object, onBack }) {
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Field' : 'New Field'} size="lg"
         footer={<div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button type="submit" form="field-form" loading={isSubmitting}>Save</Button></div>}>
         {formError && <Alert variant="error" className="mb-3">{formError}</Alert>}
+        {editUsages?.usages?.length > 0 && (
+          <Alert variant="warning" className="mb-3">
+            <p>The API name <code>{editing?.name}</code> cannot change while these use it (the label can):</p>
+            <UsageList usages={editUsages.usages} />
+          </Alert>
+        )}
         <form id="field-form" onSubmit={handleSubmit(d => saveMutation.mutate(d))} className="grid grid-cols-2 gap-3">
           <Input label="Label *" error={errors.label?.message} {...register('label', { required: 'Required' })} />
           <Input label="Name (Key) *" placeholder="snake_case" error={errors.name?.message} {...register('name', { required: 'Required' })} />
@@ -326,9 +372,26 @@ function FieldsSection({ object, onBack }) {
       </Modal>
 
       <Modal isOpen={!!delConfirm.target} onClose={delConfirm.clear} title="Delete Field?" size="sm"
-        footer={<div className="flex justify-end gap-2"><Button variant="secondary" onClick={delConfirm.clear}>Cancel</Button><Button variant="danger" loading={deleteMutation.isPending} onClick={() => { deleteMutation.mutate(delConfirm.target.id); delConfirm.clear(); }}>Delete</Button></div>}>
+        footer={<div className="flex justify-end gap-2"><Button variant="secondary" onClick={delConfirm.clear}>Cancel</Button><Button variant="danger" loading={deleteMutation.isPending} disabled={deleteUsages?.usages?.length > 0} onClick={() => { deleteMutation.mutate(delConfirm.target.id); delConfirm.clear(); }}>Delete</Button></div>}>
         <p className="text-gray-600 dark:text-gray-400">Delete field <strong>{delConfirm.target?.label}</strong>?</p>
+        {deleteUsages?.usages?.length > 0 && (
+          <Alert variant="warning" className="mt-3">
+            <p>It cannot be deleted while these use it — remove the references first, or deactivate the field:</p>
+            <UsageList usages={deleteUsages.usages} />
+          </Alert>
+        )}
+        {deleteUsages?.records_with_value > 0 && (
+          <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{deleteUsages.records_with_value} record{deleteUsages.records_with_value === 1 ? ' holds' : 's hold'} a value in this field.</p>
+        )}
       </Modal>
+
+      <OptionReplacementDialog
+        conflicts={optionConflict?.conflicts}
+        saving={saveMutation.isPending}
+        error={optionConflict ? formError : null}
+        onCancel={() => setOptionConflict(null)}
+        onConfirm={(choices) => { setFormError(null); saveMutation.mutate({ ...optionConflict.payload, option_replacements: choices.field }); }}
+      />
     </div>
   );
 }

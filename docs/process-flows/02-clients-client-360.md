@@ -62,7 +62,7 @@ flowchart TD
 | 4 | Any desk | Create its own records (loan, mandate, order, FX deal…) against the party | Rolls up loans outstanding, AUM, fund holdings, securities value, FX volume, products held, open applications and complaints |
 | 5 | RM | Read the **Related** tab before any client meeting | Shows every linked record; barrier-protected rows show as "N restricted — contact Compliance" |
 | 6 | — | Daily | Raises reminders on key dates: birthday, ID expiry, profile refresh, loan maturity, FMB 2029, mandate review, KYC review; raises next-best actions ([flow 04](04-cross-sell-and-rm-workbench.md)) |
-| 7 | Manager | Found a duplicate: open it ▸ **Merge into…** ▸ pick the record to keep | Moves every linked record to the kept party; the duplicate goes to Trash; reversible for 30 days |
+| 7 | Manager | Found a duplicate: open it ▸ **Merge into…** ▸ pick the record to keep | Moves every linked record, activity, task, reminder, document and email to the kept party; the duplicate's SLA timers stop and it goes to Trash; reversible for 30 days |
 | 8 | Manager | RM leaves: select their clients ▸ **Reassign** | Ownership moves in bulk |
 
 ## Rules and controls

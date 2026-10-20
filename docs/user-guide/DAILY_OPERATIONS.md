@@ -551,6 +551,10 @@ mark it **done**, or **dismiss** it.
 your open reminders grouped into **Overdue / Today / Tomorrow / This Week /
 Later**, where you can also create standalone reminders not tied to a record.
 
+**Deleted records:** reminders on a record in the Trash are hidden from My
+Reminders and do not notify you. They stay pending and fire normally if the
+record is restored.
+
 > **Tasks vs. reminders:** a **task** is assignable work with a status; a
 > **reminder** simply notifies you at a moment in time. Use tasks for "what
 > needs doing", reminders for "ping me then".
@@ -653,6 +657,8 @@ Switch to Pipeline view to see records organized by stage/status.
   names what is missing (by field label), with a link to open the record and complete it.
 - **Stage Columns**: Each column represents a different stage
 - **Stage history**: Every move is logged on the record's timeline and audit trail
+- **Bulk stage change**: Moving several records at once does exactly what a single move does — it updates the
+  mirrored status field and writes the timeline entry for each record
 
 ### Record Side Panel
 
@@ -715,9 +721,37 @@ Action color-coding: create = green · update = blue · delete = red · stage_ch
 1. Select multiple records using checkboxes
 2. Click Delete in the action bar
 3. Confirm deletion in the prompt
-4. Selected records are permanently removed
+4. Selected records disappear from every list; totals on their parent records update straight away
 
-> **Warning:** Bulk delete is permanent and cannot be undone unless you restore from a database backup.
+> **Note:** By default deleted records go to the Trash, where an administrator can restore them. Only objects whose
+> pipeline is set to permanent delete (Pipeline Builder ▸ delete mode) remove records for good.
+
+### Merging Duplicates
+
+When a duplicate is merged into the record you keep (see
+[Merging duplicate records](23-account-records-and-portal.md#merging-duplicate-records)), the duplicate's
+**activities, tasks, reminders, documents and email history** move to the kept record. Totals on parent records
+stop counting the duplicate. Reversing the merge moves exactly those items back; anything added to the kept record
+since stays where it is. Any SLA timers on the duplicate are cancelled.
+
+### Records in the Trash
+
+While a record is in the Trash:
+
+- Its tasks and reminders are left out of task lists, **My Reminders** and the calendar feed. The record's own
+  Tasks and Reminders tabs still show them.
+- Its reminders do not fire. They stay pending and fire if the record is restored.
+- It is left out of reports and of totals on parent records. Restoring it counts it again.
+
+### Screens Stay Up to Date
+
+- Lists, boards, dashboards and related lists refresh by themselves after a save, a stage move, a bulk action, an
+  import, an approval decision or a workflow button. Results of workflows that run after a save appear a moment
+  later.
+- An open record panel follows these changes while it stays open. The **Edit** form always opens with the latest
+  saved values.
+- Totals and counts on a parent record (for example the number of holdings on a client) update when a child record
+  is edited, moved to another parent, deleted, restored or merged.
 
 ---
 
@@ -791,9 +825,11 @@ Each module page has its own **search bar** above the table.
 **Import Features:**
 
 - **Duplicate detection**: Prevents duplicate records based on key fields
-- **Validation**: Checks data format and required fields
+- **Validation**: Each row is checked like a normal save (required fields, validation rules, defaults,
+  formulas, auto-numbers, starting stage, assignment rules and workflows)
 - **Batch processing**: Handles large files efficiently
-- **Error reporting**: Shows any records that failed to import
+- **Error reporting**: A row that fails validation is skipped without stopping the import. The done screen shows
+  a **Failed** count and the first reasons; recent imports show "N created · M failed"
 
 For detailed import instructions, see
 [SYSTEM_CONFIGURATION.md](../admin-guide/SYSTEM_CONFIGURATION.md#data-management).

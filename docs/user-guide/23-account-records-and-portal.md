@@ -46,10 +46,12 @@ Managers and administrators see **Merge into…** on a record's panel.
 3. Confirm.
 
 Empty fields on the record you keep are filled from the duplicate. Every record linked to the duplicate (its
-applications, cases, documents and so on) is moved to the record you keep. The duplicate goes to the Trash.
+applications, cases, documents and so on) is moved to the record you keep, together with its activities, tasks,
+reminders and email history. Totals on related records are recalculated. The duplicate goes to the Trash.
 
 Changed your mind? Within 30 days, an administrator can open **Builder ▸ Trash**, find the duplicate and choose
-**Reverse merge**. The links and fields are put back.
+**Reverse merge**. The links and fields are put back, and the moved activities, tasks, reminders, documents and
+emails return to the duplicate.
 
 ## Reassigning many records
 

@@ -149,6 +149,13 @@ When importing records from a spreadsheet, you no longer have to guess the colum
 2. Click **Download sample CSV**, open it (it opens cleanly in Excel), fill in your rows under the provided headers,
    then upload it back in the same wizard.
 
+### Good to know
+
+- Every row is checked as if it were saved by hand, so validation rules, defaults, formulas and assignment rules
+  all apply.
+- A bad row no longer stops the whole import. The done screen shows how many rows **Failed** and why (the first
+  five reasons), and the import history shows "N created · M failed".
+
 ---
 
 ## 6. Trash — deleted records can be recovered
@@ -179,6 +186,9 @@ pipeline is independent, so you can, say, keep Leads recoverable while making a 
 - Restoring returns the record to exactly where it was, including its pipeline stage.
 - A permanent delete can't be undone — a record must already be in the Trash before it can be purged.
 - End users are never shown the soft/hard setting; it's an admin-only control.
+- While a record is in the Trash, its tasks, reminders and calendar entries are hidden, its reminders don't fire
+  (they fire once it is restored), its SLA timers are cancelled (restoring does not restart them), and it is left
+  out of reports.
 
 ---
 

@@ -109,7 +109,7 @@ node scripts/install-vertical.js genesis-capital --tenant genesis-capital --reco
 ### What the install does
 
 - **First install.** `--create-tenant` creates tenant `genesis-capital` (plan *enterprise*, industry *finance*, timezone `Indian/Mauritius`) and runs the structural onboarding steps. The generic CRM catalogue is not cloned; the pack replaces it.
-- **Re-runs.** The installer is idempotent and diff-based: unchanged metadata is skipped and demo records are matched by `ext_ref`. A re-run reports what it created, updated or left unchanged.
+- **Re-runs.** The installer is idempotent and diff-based: unchanged metadata is skipped and demo records are matched by `ext_ref`. A re-run reports what it created, updated or left unchanged. The installer writes metadata directly, so the Builder's in-use guards (refusing to rename or delete a field, object or stage that is in use) do not affect it.
 - **Staff accounts.** These are created once, with random passwords printed once (or `--password`). Change them at first sign-in.
 - **Workspace settings.** The pack sets the currency (MUR), timezone (`Indian/Mauritius`), date format (DD/MM/YYYY) and app name. Only values that differ are written; note that a re-run resets any of these four an administrator has changed.
 - **Duration.** A full install with demo data takes about 40–60 minutes against a remote database (each write is a network round trip). Upgrades that change only metadata take a few minutes.
@@ -221,11 +221,11 @@ Objects: `party`, `client_group`, `client_relationship`, `party_relationship`, `
 - **C360-FR-03.** Households and groups with aggregated value and group lending limit.
 - **C360-FR-04.** Relationship per business unit, with lifecycle and segment.
 - **C360-FR-05: the party record is the Client 360.**
-  - Roll-ups: loans outstanding, wealth AUM, fund holdings, securities value, FX volume, total relationship value in MUR and USD, products held, open applications, open complaints.
+  - Roll-ups: loans outstanding, wealth AUM, fund holdings, securities value, FX volume, total relationship value in MUR and USD, products held, open applications, open complaints. They stay current when a child is re-linked to another party, deleted, restored from the Trash or merged.
   - Also shown: next-best actions, consents, the KYC badge, and every related record.
 - **C360-FR-06.** Related lists show "N restricted — contact Compliance" instead of hiding barrier-protected rows. The STR register conceals even the count (no tipping-off).
 - **C360-FR-07.** Contact points with verification and preferred flag.
-- **C360-FR-08.** Record merge re-points every child record and is recorded on the audit chain. Unmerge from Trash ("Reverse merge") within 30 days.
+- **C360-FR-08.** Record merge re-points every child record, moves the duplicate's activities, tasks, reminders, documents and emails to the survivor, stops the duplicate's SLA timers, and is recorded on the audit chain. Unmerge from Trash ("Reverse merge") within 30 days moves exactly those items back.
 - **C360-FR-09.** Key dates drive reminders: birthday, ID expiry, profile refresh, loan maturity, FMB 2029, mandate review, KYC review.
 - **C360-FR-10.** VIP / sensitive clients sit in the `VIP_CLIENTS` barrier zone (named users only); views are audited.
 - **C360-FR-11.** Global search covers searchable fields of every object and respects barriers.
@@ -274,7 +274,7 @@ Objects: `loan_application`, `loan_applicant`, `credit_condition`, `loan_offer`,
 | LOAN-FR-09 approval matrix | `approval_matrix` master (by amount band and exception type); `genesis_loan_credit_approval`. |
 | LOAN-FR-10 offer | Offer letter merge template; e-signature in the DMS; daily lapse of unaccepted offers. |
 | LOAN-FR-11 security | Valuation, notary, charge registration, life and building insurance assigned to Genesis Life, pledge; gate before *Ready for disbursement*. |
-| LOAN-FR-12 disbursement | Staged tranches with certificates; checker is never the maker; LMS booking returns the account number. The *Status* picklist follows the pipeline stage on every move (`status_field`), including Kanban drags. |
+| LOAN-FR-12 disbursement | Staged tranches with certificates; checker is never the maker; LMS booking returns the account number. The *Status* picklist follows the pipeline stage on every move (`status_field`), including Kanban drags and bulk stage changes, which also write the status timeline. |
 | LOAN-FR-13 client updates | `genesis_loan_status_update` emails each milestone in EN/FR (portal shows status). |
 | LOAN-FR-14 TAT | *Loan — application to decision* SLA; Lending dashboard. |
 | LOAN-FR-15 decline | Reason codes, decline letter, re-apply date. |
@@ -485,8 +485,8 @@ See §7.
 | X-06 status timeline | Every pipeline records its stage history. |
 | X-07 notifications | In-app, email, and SMS (`send_sms` workflow step through the SMS integration). WhatsApp is not connected (§11). |
 | X-08 masking | `id_number` and income band are shown masked to everyone. Roles holding `view_pii` get a *Reveal* link (the server refuses a reveal to other roles); every reveal writes an audit-chain entry. CSV export stays unmasked for `view_pii` roles. |
-| X-09 bulk operations | Bulk reassign (RM exit), bulk stage change, bulk delete. |
-| X-10 import / migration | `ext_ref` on every object; CSV import matches on it. |
+| X-09 bulk operations | Bulk reassign (RM exit), bulk stage change (mirrors the *Status* field and timeline like a single move), bulk delete (parents' roll-ups refresh). Deactivating an RM does not hand over their records, tasks or reminders; use bulk reassign. |
+| X-10 import / migration | `ext_ref` on every object; CSV import matches on it. Each row goes through the record engine (validation, defaults, formulas, auto-numbers, first stage, encryption, assignment, workflows); rows that fail are reported with reasons and do not stop the import. |
 
 ## 6. Platform enhancements (PRD §14)
 
@@ -507,7 +507,7 @@ See §7.
 | E-13 `updated_by` | **Delivered** | `records.updated_by` is stamped by edits, stage moves and bulk operations. |
 | E-14 Docker and CI | **Delivered** | `backend/Dockerfile`, `frontend/Dockerfile` (nginx), `docker-compose.yml` (MySQL, Redis, API, web), `.github/workflows/ci.yml` (tests, lint, build, images). Infrastructure-as-code for AWS is not included. |
 | E-15 i18n | **Delivered for Builder labels** | See X-02. |
-| E-16 field encryption | **Delivered** | `config.encrypt` stores AES-256-GCM ciphertext; typed reads decrypt; backfill script. |
+| E-16 field encryption | **Delivered** | `config.encrypt` stores AES-256-GCM ciphertext, from form saves and workflow steps alike (`party.id_number`); typed reads decrypt; backfill script. |
 | E-17 maker-checker primitive | **Partial** | Approvals exclude the maker; there is no pending-change diff screen. |
 
 ## 7. Integrations (PRD §12)

@@ -1,5 +1,7 @@
 'use strict';
 
+const { stripLive } = require('./helpers/strip-live');
+
 jest.mock('@prisma/client');
 
 const ReportService = require('../src/services/report.service');
@@ -134,7 +136,7 @@ describe('query construction', () => {
       viz: 'table',
       filters: [{ field: 'owner.branch.branch_name', op: 'equals', value: 'HQ' }],
     });
-    expect(prisma.crmAccount.findMany.mock.calls[0][0].where)
+    expect(stripLive(prisma.crmAccount.findMany.mock.calls[0][0].where))
       .toEqual({ owner: { branch: { branch_name: 'HQ' } } });
   });
 
@@ -308,7 +310,7 @@ describe('guard rails', () => {
       columns: ['annual_revenue'],
       filters: [{ field: 'opportunities.amount', op: 'gt', value: 100 }],
     });
-    expect(prisma.crmAccount.findMany.mock.calls[0][0].where).toEqual({});
+    expect(stripLive(prisma.crmAccount.findMany.mock.calls[0][0].where)).toEqual({});
   });
 
   it('degrades gracefully when the child delegate is unavailable', async () => {
@@ -333,7 +335,7 @@ describe('guard rails', () => {
       { scope: 'all' },
     );
     // AND[0] is the report's own (here empty) filter; the replayed bucket follows it.
-    const { where } = prisma.crmAccount.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.crmAccount.findMany.mock.calls[0][0].where);
     expect(where.AND).toContainEqual({ owner: { region: { region_name: 'West' } } });
   });
 });

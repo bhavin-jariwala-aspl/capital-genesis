@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { builderService } from '../../services/builder.service';
 import { metadataService } from '../../services/metadata.service';
+import { invalidateMetadata } from '../../utils/invalidate';
 import DataTable from '../../components/ui/DataTable';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
@@ -233,6 +234,8 @@ function PipelineModal({ isOpen, onClose, editing, onSaved }) {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['pipelines'] });
       qc.invalidateQueries({ queryKey: ['pipeline-full', editing?.id] });
+      // Runtime boards: ['runtime-pipeline', id] and the object's pipelines in MetadataStore.
+      invalidateMetadata(qc);
       onClose();
       if (!editing) onSaved?.(res.data);
     },
@@ -492,7 +495,7 @@ export default function PipelineBuilderPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => builderService.deletePipeline(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['pipelines'] }),
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['pipelines'] }); invalidateMetadata(qc); },
   });
 
   const openNew  = () => { setEditing(null); setModalOpen(true); };

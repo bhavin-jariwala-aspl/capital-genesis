@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { metadataService } from '../../services/metadata.service';
+import { invalidateMetadata } from '../../utils/invalidate';
 import { useBuilderStore } from '../../store/builderStore';
 import FormBuilder from '../../components/builder/FormBuilder';
 import PublicFormPanel from '../../components/builder/PublicFormPanel';
 import BuilderGuide from '../../components/builder/BuilderGuide';
 import Spinner from '../../components/ui/Spinner';
 import Alert from '../../components/ui/Alert';
+import OptionReplacementDialog, { parseValuesInUse, optionChoices } from '../../components/builder/OptionReplacementDialog';
+import { apiErrorText } from '../../utils/record';
 
 export default function FormBuilderPage() {
   const { formId } = useParams();
@@ -67,9 +70,46 @@ export default function FormBuilderPage() {
   }, [isNew, setCurrentForm]);
 
   // ── Save mutation ────────────────────────────────────────
+  // A save refused because removed picklist values are still held by records:
+  // { payload, conflicts } until the admin picks replacements or cancels.
+  const [optionConflict, setOptionConflict] = useState(null);
+
   const saveMutation = useMutation({
-    mutationFn: async ({ form, fields }) => {
-      // 1. Create UiField records for new fields; persist config updates for existing ones
+    mutationFn: async ({ form, fields, optionReplacements = {} }) => {
+      // 1. Persist config updates on existing fields first. A refusal here
+      // (e.g. a removed picklist value still in use) stops the save before any
+      // new field or form is created, so the retry cannot create duplicates.
+      const existing = fields.filter((f) => !f._isNew);
+      const results = await Promise.allSettled(existing.map((f) => metadataService.updateField(f.field_id, {
+        label:       f.field?.label,
+        field_type:  f.field?.field_type,
+        data_type:   f.field?.data_type,
+        is_required: f.field?.is_required,
+        is_unique:   f.field?.is_unique,
+        placeholder: f.field?.placeholder,
+        help_text:   f.field?.help_text,
+        default_value: f.field?.default_value ?? null,
+        options:     f.field?.options ?? undefined,
+        ...(optionReplacements[f.field_id] ? { option_replacements: optionReplacements[f.field_id] } : {}),
+        config:      f.field?.config ?? {},
+        // Full rule list every time: the API replaces the stored rules with it.
+        validations: (f.field?.validations ?? []).map((v, i) => ({
+          validation_type: v.validation_type, value: v.value ?? null, error_message: v.error_message ?? '', order_index: i,
+        })),
+      })));
+      const conflicts = [];
+      let refusal = null;
+      results.forEach((r, i) => {
+        if (r.status !== 'rejected') return;
+        const values = parseValuesInUse(r.reason);
+        const f = existing[i];
+        if (values) conflicts.push({ key: f.field_id, label: f.field?.label || f.field?.name, values, options: optionChoices(f.field?.options) });
+        else refusal ??= r.reason;
+      });
+      if (refusal) throw refusal;
+      if (conflicts.length) throw Object.assign(new Error('Values still in use'), { optionConflicts: conflicts });
+
+      // 2. Create UiField records for new fields
       const resolvedFields = await Promise.all(
         fields.map(async (f) => {
           if (f._isNew) {
@@ -90,28 +130,11 @@ export default function FormBuilderPage() {
             });
             return { ...f, _isNew: false, field_id: created.data.id };
           }
-          // Persist any config changes (computed fn, trigger fields, etc.) on existing fields
-          await metadataService.updateField(f.field_id, {
-            label:       f.field?.label,
-            field_type:  f.field?.field_type,
-            data_type:   f.field?.data_type,
-            is_required: f.field?.is_required,
-            is_unique:   f.field?.is_unique,
-            placeholder: f.field?.placeholder,
-            help_text:   f.field?.help_text,
-            default_value: f.field?.default_value ?? null,
-            options:     f.field?.options ?? undefined,
-            config:      f.field?.config ?? {},
-            // Full rule list every time: the API replaces the stored rules with it.
-            validations: (f.field?.validations ?? []).map((v, i) => ({
-              validation_type: v.validation_type, value: v.value ?? null, error_message: v.error_message ?? '', order_index: i,
-            })),
-          });
           return f;
         }),
       );
 
-      // 2. Create or update the form record
+      // 3. Create or update the form record
       let savedFormId = form?.id;
       const formPayload = {
         object_id:   selectedObjectId,
@@ -128,7 +151,7 @@ export default function FormBuilderPage() {
         await metadataService.updateForm(savedFormId, formPayload);
       }
 
-      // 3. Persist layout
+      // 4. Persist layout
       const layouts = resolvedFields
         .filter((f) => f.field_id)
         .map((f, idx) => ({
@@ -145,9 +168,16 @@ export default function FormBuilderPage() {
 
       return savedFormId;
     },
+    onError: (err, payload) => {
+      if (err?.optionConflicts) setOptionConflict({ payload, conflicts: err.optionConflicts });
+    },
     onSuccess: (savedId) => {
+      setOptionConflict(null);
       qc.invalidateQueries({ queryKey: ['form-full', String(savedId)] });
       qc.invalidateQueries({ queryKey: ['forms', selectedObjectId] });
+      // Runtime forms: ['runtime-form', id], ['forms', objectId] and the cached
+      // copy in MetadataStore, which record pages read first.
+      invalidateMetadata(qc);
       if (isNew) {
         navigate(`/builder/form/${savedId}`, { replace: true });
       }
@@ -179,7 +209,8 @@ export default function FormBuilderPage() {
       <FormBuilder
         onSave={(payload) => saveMutation.mutate(payload)}
         saving={saveMutation.isPending}
-        saveError={saveMutation.error?.message}
+        // The API's own message (e.g. why a field change was refused), not axios's "status code 400".
+        saveError={saveMutation.error && !saveMutation.error.optionConflicts ? apiErrorText(saveMutation.error, 'The form could not be saved.') : undefined}
         modules={allModules}
         objects={allObjects}
         forms={allForms}
@@ -193,6 +224,16 @@ export default function FormBuilderPage() {
           if (!id || id === 'new') navigate('/builder/form');
           else navigate(`/builder/form/${id}`);
         }}
+      />
+      <OptionReplacementDialog
+        conflicts={optionConflict?.conflicts}
+        saving={saveMutation.isPending}
+        error={saveMutation.error && !saveMutation.error.optionConflicts ? apiErrorText(saveMutation.error) : null}
+        onCancel={() => setOptionConflict(null)}
+        onConfirm={(choices) => saveMutation.mutate({
+          ...optionConflict.payload,
+          optionReplacements: { ...optionConflict.payload.optionReplacements, ...choices },
+        })}
       />
     </div>
   );

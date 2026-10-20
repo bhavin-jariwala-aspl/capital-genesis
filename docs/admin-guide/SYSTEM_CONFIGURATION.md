@@ -194,6 +194,26 @@ required_when: "type == 'Enterprise'"
 - **Indexed**: Improve search performance
 - **Encrypted**: Secure sensitive data
 
+### Changing Fields and Objects Safely
+
+The Builder refuses changes that would break data or configuration, and its message names what is in the way:
+
+- **Field Name (Key) rename or delete**: refused while the field is used (formulas, roll-ups, validation rules,
+  pipeline entry rules or mirrored status, object settings, workflows, assignment conditions, dashboard widgets).
+  **Edit Field** lists the usages; `GET /api/metadata/fields/:id/usages` returns them with the number of records
+  holding a value. A permitted rename carries existing values to the new name. Labels can always change.
+- **Moving a field to another object**: not allowed.
+- **Removing picklist values in use**: the Builder opens a **Move to…** dialog to pick a replacement value; records
+  are moved to it on save.
+- **Object delete or Name (Key) rename**: refused while the object has records (including the Trash) or other
+  objects reference it; renames are also refused for the built-in CRM objects.
+- **Pipeline stage removal or pipeline delete**: refused while live records sit in that stage or pipeline.
+
+The Genesis Capital vertical installer writes metadata directly and is not affected by these checks. Builder edits
+reach users immediately; there is no longer a cache delay. See
+[Modules & Objects](../user-guide/01-modules-and-objects.md#renaming-moving-and-deleting-fields) for the end-user
+view.
+
 ### Custom Field Examples
 
 **Lead Score Field**:
@@ -312,6 +332,8 @@ first matching rule wins. Configure rules in **Builder > Assignment Rules**.
 2. For `rule_based`: checks each condition `{ field, operator, value }` against record data — all must match
 3. First matching rule determines the assignee
 4. If no rule matches, the `fallback_id` from the last evaluated rule is used
+   - A `fixed` or `rule_based` assignee who is deactivated (or unknown) is passed over and the next rule is tried;
+     a deactivated fallback is never used, so the record stays unassigned
 5. Round-robin state is tracked per rule in `round_robin_states` table
 
 ### Pre-configured Rules
@@ -441,6 +463,12 @@ Username: alerts@company.com
 2. **Map** columns to CRM fields using the field mapping UI
 3. **Preview** with duplicate detection results
 4. **Execute** import (skip / create / merge strategy)
+
+Rows for Builder objects are created one at a time through the normal record save: validation, defaults,
+formulas, auto-numbers, the first pipeline stage, field encryption, assignment rules, audit and `on_create`
+workflows and SLA timers. Parent roll-ups are recalculated once at the end. A row that fails validation is skipped,
+not fatal: the result reports created, merged, skipped and failed counts, and the job keeps the first 100 failed
+rows with their reasons (the done screen shows the first five).
 
 **Deduplication Strategies**:
 

@@ -11,6 +11,44 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed — Data consistency across modules (2026-10-20)
+
+- **Roll-ups and derived values follow every write path**, not only a form save: re-linking a child to another parent
+  updates the parent it left; bulk delete, restore from Trash and merge refresh the parents' roll-ups and the records
+  that read the changed one; a workflow step that writes a stored value (a status a roll-up filters on) propagates;
+  deleting a record refreshes the records that read it through a lookup.
+- **Stage and status stay in step.** Bulk stage moves now mirror the pipeline's status field and write the status
+  timeline like a single move; a status mirrored from a stage reaches formulas and parents' roll-ups; a workflow that
+  sets `pipeline_stage_id` moves the record through the stage gate like `stage` does.
+- **Builder changes reach users at once.** Field and validation edits clear the cached object (it embeds the field
+  list — edits used to take up to an hour); in-process metadata memos are cleared on every field/object write.
+- **Builder changes no longer strand data or references.** Renaming a field's API name carries its stored values over
+  and is refused while a formula, stage gate, rule, workflow, widget or object setting names it (new
+  `GET /api/metadata/fields/:id/usages`); a field cannot move objects; deleting a referenced field is refused; removing
+  a picklist value that records hold needs a replacement (`option_replacements`, with a Builder dialog); an object
+  that holds records or is looked up elsewhere cannot be deleted (its records used to cascade away) or renamed;
+  removing a pipeline stage — or a pipeline — with live records on it is refused.
+- **Import** of Builder-object rows goes through the record engine (validation, defaults, formulas, auto-numbers,
+  first stage, tenant stamp, encryption, assignment, audit, workflows, roll-ups once at the end) and reports failed
+  rows with reasons instead of writing raw values (Tools ▸ Import shows a Failed count and the first reasons).
+- **Merge** carries the duplicate's activities, tasks, reminders, documents and emails to the survivor (and back on
+  unmerge, which also recomputes both records and those pointed back), and announces the duplicate's removal so its
+  SLA timers stop.
+- **Records in the Trash** no longer keep SLA timers running, appear through their tasks/reminders in lists and the
+  calendar (ICS) feed, fire reminder notifications, or count in task/activity/CRM reports. Restore does not restart
+  canceled SLA timers.
+- **Assignment** passes over deactivated employees named in fixed/rule-based rules and fallbacks.
+- **CrmService** object-id cache is per tenant with a 60-second life (it was shared across tenants for the process
+  lifetime).
+- **Encrypted fields** written by a workflow step are stored encrypted, as a form save stores them.
+- **UI freshness.** One shared invalidation helper for every record mutation (the workflow action button invalidated
+  a key no query used; edit forms reopened with stale values; imports, approvals and conversions did not refresh
+  lists); the open record panel follows saves, stage moves and workflow results; builder saves refresh runtime
+  metadata. Edit Field shows where a field is used; Delete Field shows usages and records holding a value, and is
+  disabled while usages exist.
+- **Not changed (deferred):** legacy `crm_*` table gaps and lifecycle hand-overs — see
+  [ROADMAP findings #13–14](ROADMAP.md#verified-gaps--findings-code-reviewed). Genesis Capital is unaffected.
+
 ### Added — Tutorial videos, and fixes found while recording them (2026-10-15 → 2026-10-17)
 
 - **Twenty captioned tutorial videos** in `docs/demo/` (getting started + one end-to-end process per module), each

@@ -651,7 +651,7 @@ FormRenderer: handleSubmit(formData)
       → #audit(recordId, employeeId, action, changes)
       → AssignmentService.assign(record)  (if configured)
       → WorkflowEngine.trigger('record.created' | 'record.updated', record)
-  → queryClient.invalidateQueries(['runtime-records', objectId])
+  → invalidateRecordData(queryClient, { recordId, objectId })   (utils/invalidate.js)
   → navigate(backPath)
 ```
 
@@ -664,13 +664,17 @@ FormRenderer: handleSubmit(formData)
 | `modules:all` | `getModules()` | `createModule`, `updateModule`, `deleteModule` |
 | `module:{id}` | `getModule(id)` | `updateModule`, `deleteModule` |
 | `objects:module:{moduleId}` | `getObjects(moduleId)` | `createObject`, `updateObject`, `deleteObject` |
-| `object:{id}` | `getObject(id)` | `updateObject`, `deleteObject` |
+| `object:{id}` | `getObject(id)` | `updateObject`, `deleteObject`, any field write on that object (`invalidateField` — the cached object embeds its field list) |
 | `form:full:{id}` | `getFormFull(id)` | `updateForm`, `deleteForm`, `upsertFormLayout` |
-| `field:{id}` | `getField(id)` | `updateField`, `deleteField`, `createValidation` |
-| `fields:object:{objectId}` | `getFields(objectId)` | any field write on that object |
+| `field:{id}` | `getField(id)` | `updateField`, `deleteField`, validation create/update/delete (with the real object id) |
+| `fields:object:{objectId}` | `getFields(objectId)` | any field write on that object, `invalidateObject` |
+| `pipeline:object:{objectId}` | `DashboardService` pipeline reads (embed the object and module) | pipeline writes, `invalidateObject` |
 
 `getFormForViewer()` (role-filtered form) is **never Redis-cached** — it is computed
 per-request based on the viewer's role.
+
+Separately, `RecordService.clearMetadataCaches()` clears the per-process memos (object names, field
+defaults, PII flags, child-reader map); it is called on every field/object write.
 
 ---
 
@@ -903,8 +907,8 @@ const productId = Number(id); // DO NOT DO THIS
 // React Query v5 — CORRECT
 const mutation = useMutation({
   mutationFn: (data) => runtimeService.createRecord(objectId, data),
-  onSuccess: (result) => {
-    queryClient.invalidateQueries({ queryKey: ['records', objectId] });
+  onSuccess: () => {
+    invalidateRecordData(queryClient);   // never hand-pick query keys — see below
   },
   onError: (error) => {
     console.error('Mutation failed:', error);
@@ -914,6 +918,23 @@ const mutation = useMutation({
 // Use isPending (NOT isLoading — removed in v5)
 if (mutation.isPending) return <Spinner />;
 ```
+
+### Invalidation after mutations — `utils/invalidate.js`
+
+Never hand-pick query keys after a record or metadata mutation; call one of the two helpers.
+Hand-picked keys were how lists went stale: the workflow action button invalidated `['records']`,
+which no query uses; the Edit form reopened with values from before the last save; imports,
+approvals and conversions did not refresh lists; builder saves took up to 5 minutes (React Query)
+/ 30 minutes (metadata store) to reach runtime pages.
+
+| Helper | Used by | What it does |
+| --- | --- | --- |
+| `invalidateRecordData(queryClient)` | Every record mutation — form save, Kanban move, bulk delete/reassign, convert, wizard finish, import, approval decision, workflow action button, Trash restore/unmerge/purge, social mention→lead | Invalidates by prefix: runtime-records, runtime-record, related, audit, status-events, activities, tasks, lookup-label, lookup-search, widget-data, runtime-dashboard, report-run, forecast, approvals, records-trash, lead-score-*, portal-list, sla-dashboard; plus one delayed pass (~1.8 s) for records, related, activities and status events so results of after-save workflows appear |
+| `invalidateMetadata(queryClient)` | Module / Form / Pipeline / Wizard / Dashboard builder saves | Refreshes the runtime metadata keys and reloads the metadata store (bootstrap) |
+
+The open record panel (360° view) re-reads the record, so it follows saves, stage moves and workflow
+results while open. Closing it removes `?record=` from the URL so the same search result or
+notification reopens it.
 
 ### Component Import Convention
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Circle, Copy, Link2, Mail, Check, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import Modal from '../ui/Modal';
@@ -120,8 +120,11 @@ function EmailLink({ recordId, defaultTo, defaultName, onDone }) {
   const [name, setName] = useState(defaultName ?? '');
   const [language, setLanguage] = useState('en');
   const [days, setDays] = useState('14');
+  const qc = useQueryClient();
   const send = useMutation({
     mutationFn: () => uploadLinksService.create(recordId, { days: Number(days), email: { to: to.trim(), name: name.trim() || null, language } }),
+    // The checklist reflects the new link.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['doc-checklist', recordId] }),
   });
   if (send.isSuccess) {
     return (

@@ -223,7 +223,10 @@ Auto-number, formula and computed fields are exempt from the required check (the
 The Form Builder used to lose validation edits: `FormBuilderPage` never sent `validations` on update and
 `MetadataService.updateField` discarded the key. Both are fixed — the builder sends the full list, the
 service replaces the stored rows (top-level writes, so the tenant-scope extension stamps `tenant_id`), and
-`options`, `default_value` and `is_unique` are persisted alongside.
+`options`, `default_value` and `is_unique` are persisted alongside. Validation create/update/delete invalidate
+the metadata cache with the real object id, and removing picklist options that records still hold is refused
+unless replacements are given — see
+[PLATFORM_BUILDER_EXTENSIONS.md §31](PLATFORM_BUILDER_EXTENSIONS.md#31-builder-metadata-guards).
 
 ## Field appearance
 

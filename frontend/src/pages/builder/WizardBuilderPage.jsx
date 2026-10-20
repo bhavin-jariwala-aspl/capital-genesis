@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { builderService } from '../../services/builder.service';
 import { metadataService } from '../../services/metadata.service';
+import { invalidateMetadata } from '../../utils/invalidate';
 import { colors } from '../../utils/theme';
 import WizardBuilder from '../../components/builder/WizardBuilder';
 import DataTable from '../../components/ui/DataTable';
@@ -79,6 +80,8 @@ function WizardFormModal({ isOpen, onClose, editing, onSaved }) {
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['wizards'] });
+      // Runtime: ['runtime-wizards', objectId], ['wizard', id] and MetadataStore.
+      invalidateMetadata(qc);
       onClose();
       if (!editing) onSaved(res.data);
     },
@@ -158,7 +161,7 @@ function WizardList({ onSelect }) {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => builderService.deleteWizard(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['wizards'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['wizards'] }); invalidateMetadata(qc); },
   });
 
   const openNew  = () => { setEditing(null); setModalOpen(true); };

@@ -1,5 +1,7 @@
 'use strict';
 
+const { stripLive } = require('./helpers/strip-live');
+
 jest.mock('@prisma/client');
 
 const ReportService = require('../src/services/report.service');
@@ -135,7 +137,7 @@ describe('date presets', () => {
       viz: 'table',
       filters: { logic: 'AND', conditions: [{ field: 'close_date', op: 'date_range', value: 'this_fiscal_year' }] },
     }, { fiscal_year_start_month: 4 });
-    const { where } = prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where.close_date.gte.getMonth()).toBe(3);
     expect(where.close_date.gte.getDate()).toBe(1);
   });
@@ -180,7 +182,7 @@ describe('prompted filters (runtime parameters)', () => {
       expect.objectContaining({ key: 'stage', label: 'Stage', type: 'enum', op: 'in', multi: true, default: ['proposal'], value: ['proposal'], options: expect.arrayContaining(['proposal']) }),
       expect.objectContaining({ key: 'who', field: 'owner_id', label: 'Owner', value: 'E2', default: 'E1' }),
     ]);
-    const { where } = r.prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(r.prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(JSON.stringify(where)).toContain('"E2"');
   });
 
@@ -212,7 +214,7 @@ describe('dashboard-level (global) filters', () => {
 
   it('accepts an explicit [from, to] pair and reports it on the result meta', async () => {
     const r = await run({ viz: 'table' }, { global: { date_range: ['2026-01-01', '2026-03-31'] } });
-    const { where } = r.prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(r.prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where.created_at.gte).toEqual(new Date('2026-01-01'));
     expect(r.meta.global).toEqual({ date_range: ['2026-01-01', '2026-03-31'] });
   });
@@ -222,7 +224,7 @@ describe('dashboard-level (global) filters', () => {
       viz: 'table',
       filters: { logic: 'OR', conditions: [{ field: 'stage', op: 'equals', value: 'proposal' }, { field: 'stage', op: 'equals', value: 'negotiation' }] },
     }, { global: { date_range: 'this_year' } });
-    const { where } = r.prisma.__delegate.findMany.mock.calls[0][0];
+    const where = stripLive(r.prisma.__delegate.findMany.mock.calls[0][0].where);
     expect(where.AND).toHaveLength(2);
     expect(where.AND[0].OR).toHaveLength(2);
     expect(where.AND[1].created_at).toBeDefined();

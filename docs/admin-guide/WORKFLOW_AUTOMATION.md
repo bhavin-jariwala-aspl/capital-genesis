@@ -43,6 +43,9 @@ two items change what your existing ones can do.
 | **Scheduled workflows can sweep records** | `"per_record": true` runs a scheduled workflow once for every record, which is what any date-driven rule needs ("expiring within 30 days", "payment overdue"). Without it a scheduled workflow runs once with no record and every condition fails. |
 | **Ownership is automatable** | `assigned_to` can be read in conditions and messages, and set by an action step — so a workflow can re-route a record, not just talk about it. |
 | **Action values accept placeholders** | An action can compose a value from other fields, e.g. setting a note to `Escalated {{case_number}}`. |
+| **Workflow writes reach totals and formulas** | Values written by `action` and `update_related` steps now flow into parent roll-ups and dependent formulas, as a form save does. Before, a workflow that set a status a parent total filters on never reached the parent. |
+| **Setting `pipeline_stage_id` is a real stage move** | An `action` step that sets `pipeline_stage_id` now applies the stage entry rules, the mirrored status field, the status timeline and stage events, exactly like an action on `stage`. Before, it was a bare column write. |
+| **Encrypted fields stay encrypted** | A field marked for encryption that a workflow step writes is stored encrypted, as a form save stores it. Before, it was written in clear text. |
 
 > **Known limitation:** the workflow create/edit dialog has no field for trigger configuration, so
 > `interval_minutes` and `per_record` cannot yet be set from the Builder UI. A Scheduled workflow
@@ -635,6 +638,14 @@ Or using `source`:
 > pool assignment is handled by the separate **Assignment Rules** engine (`pool_ids`), which
 > runs automatically on record create. See
 > [Assignment Rules](../user-guide/07-assignment-rules.md).
+
+What a write does next (the same applies to `update_related`):
+
+- **Roll-ups and formulas follow.** The record's formulas, parent totals that count or sum it (including totals
+  filtered on the field you changed) and records that read it through a lookup are recalculated.
+- **Stage moves go through the pipeline.** Setting `stage` (by API name) or `pipeline_stage_id` (by id) is a stage
+  move: entry rules apply, the mirrored status field and the status timeline are updated, and stage events fire.
+- **Encryption is honoured.** Fields marked for encryption are stored encrypted.
 
 **Send Notification:**
 

@@ -5,6 +5,15 @@ const PermissionService = require('./permission.service');
 const { ADMIN_THRESHOLD } = require('../middleware/authenticate');
 const { roleLevelFor } = require('./role-level');
 const { check: checkFormula } = require('./formula');
+const { fieldUsages, objectUsages, describeUsages } = require('./metadata-dependencies');
+const { MODEL_MAP, CRM_FIELDS } = require('./crm-storage-map');
+
+// Lazy: record.service is heavy and only its static cache reset is needed here.
+const clearRecordCaches = () => { try { require('./record.service').clearMetadataCaches(); } catch { /* not loaded */ } };
+
+const OPTION_FIELD_TYPES = new Set(['select', 'radio']);
+const optionValues = (opts) => (Array.isArray(opts) ? opts : [])
+  .map((o) => (typeof o === 'string' ? o : o?.value)).filter((v) => v !== undefined && v !== null).map(String);
 
 // Columns an admin may write on modules / objects. Anything else in the body —
 // tenant_id above all, but also id and timestamps — is dropped, so a crafted
@@ -166,14 +175,43 @@ class MetadataService {
   async updateObject(id, data) {
     const existing = await this.db.uiObject.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Object');
-    const obj = await this.db.uiObject.update({ where: { id }, data: _pick(data, OBJECT_WRITABLE) });
+    const patch = _pick(data, OBJECT_WRITABLE);
+    if (patch.name !== undefined && patch.name !== existing.name) await this.#assertObjectRenamable(existing, patch.name);
+    const obj = await this.db.uiObject.update({ where: { id }, data: patch });
     await this.cache.invalidateObject(id, existing.module_id);
+    clearRecordCaches();
     return obj;
+  }
+
+  /**
+   * An object's API name is how lookups, formulas, widgets and storage routing
+   * find it. It may change only while nothing depends on it: no records (their
+   * data would move storage when the name enters or leaves the first-class CRM
+   * tables) and no references from other objects.
+   */
+  async #assertObjectRenamable(existing, newName) {
+    _assertSafeFieldName(newName);
+    if (MODEL_MAP[existing.name] || MODEL_MAP[newName]) {
+      throw new ValidationError(`"${existing.name}" ${MODEL_MAP[existing.name] ? 'is' : 'would become'} a built-in CRM object, whose API name decides where its data is stored — change its label instead`);
+    }
+    const clash = await this.db.uiObject.findFirst({ where: { name: newName, NOT: { id: existing.id } }, select: { id: true } });
+    if (clash) throw new ValidationError(`Another object is already named "${newName}"`);
+    const count = await this.db.record.count({ where: { object_id: existing.id } });
+    if (count) throw new ValidationError(`The API name of "${existing.label}" cannot change while it holds ${count} record(s) — change its label instead`);
+    const used = await objectUsages(this.db, existing);
+    if (used.length) throw new ValidationError(`The API name "${existing.name}" is used by ${describeUsages(used)} — update those first, or change the label instead`);
   }
 
   async deleteObject(id) {
     const existing = await this.db.uiObject.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Object');
+    // Records cascade with their object (and their values, activities and
+    // history with them), so an object that holds data is never deleted from
+    // the Builder — nor one other objects still point at.
+    const count = await this.db.record.count({ where: { object_id: id } });
+    if (count) throw new ValidationError(`"${existing.label}" holds ${count} record(s) (including any in the Trash). Delete or purge them first, or deactivate the object instead.`);
+    const used = await objectUsages(this.db, existing);
+    if (used.length) throw new ValidationError(`"${existing.label}" is used by ${describeUsages(used)} — remove those references first`);
 
     // Collect child IDs (done outside the transaction to keep the tx short)
     const forms  = await this.db.uiForm.findMany({ where: { object_id: id }, select: { id: true } });
@@ -228,6 +266,7 @@ class MetadataService {
     });
 
     await this.cache.invalidateObject(id, existing.module_id);
+    clearRecordCaches();
   }
 
   // ════════════════════════════════════════════════
@@ -318,6 +357,7 @@ class MetadataService {
       });
     }
     await this.cache.invalidateField(field.id, field.object_id);
+    clearRecordCaches();
     return { ...field, validations: [] };
   }
 
@@ -339,8 +379,21 @@ class MetadataService {
     const { validations, col_span, position, is_readonly, show_in_list,
             id: _fid, created_at, updated_at,
             dependencies_as_source, dependencies_as_target,
+            option_replacements,
             ...rawData } = data;
     const fieldData = { ...rawData };
+    // A field belongs to one object for life: its stored values are keyed by
+    // record of that object, so "moving" it would orphan every one of them.
+    if (fieldData.object_id !== undefined && Number(fieldData.object_id) !== existing.object_id) {
+      throw new ValidationError('A field cannot be moved to another object — create a new field there instead');
+    }
+    delete fieldData.object_id;
+    const renamed = fieldData.name !== undefined && fieldData.name !== existing.name;
+    if (renamed) await this.#assertFieldRenamable(existing, fieldData.name);
+    else delete fieldData.name;
+    const optionMoves = fieldData.options !== undefined
+      ? await this.#planOptionChanges(existing, fieldData.field_type ?? existing.field_type, fieldData.options, option_replacements)
+      : null;
     if (position !== undefined) fieldData.order_index = Number(position);
     // Always merge config so partial updates (e.g. computed-only) don't wipe other config keys
     const base_config  = existing.config ?? {};
@@ -353,6 +406,22 @@ class MetadataService {
       fieldData.config.show_in_list = Boolean(show_in_list);
     }
     const field = await this.db.uiField.update({ where: { id }, data: fieldData });
+    // Stored values follow the field: under its new name, and off option
+    // values that no longer exist onto the ones the admin chose.
+    if (renamed) {
+      // Leftover values of a long-deleted field of the same name would collide.
+      await this.db.recordFieldValue.deleteMany({ where: { field_name: fieldData.name, record: { object_id: existing.object_id } } });
+      await this.db.recordFieldValue.updateMany({
+        where: { field_name: existing.name, record: { object_id: existing.object_id } },
+        data:  { field_name: fieldData.name },
+      });
+    }
+    for (const [from, to] of optionMoves ?? []) {
+      await this.db.recordFieldValue.updateMany({
+        where: { field_name: field.name, str_value: from, record: { object_id: existing.object_id } },
+        data:  { str_value: to },
+      });
+    }
 
     // Replace the field's validation rules when the caller sent a list. The
     // builder always sends the full list, so "replace" is the right semantic;
@@ -373,19 +442,77 @@ class MetadataService {
     }
 
     await this.cache.invalidateField(id, existing.object_id);
+    clearRecordCaches();
     if (Array.isArray(validations)) {
       return this.db.uiField.findUnique({ where: { id }, include: { validations: { orderBy: { order_index: 'asc' } } } });
     }
     return field;
   }
 
+  /** Where a field is used — shown in the Builder before a rename or delete. */
+  async getFieldUsages(id) {
+    const field = await this.db.uiField.findUnique({ where: { id }, select: { id: true, name: true, object_id: true } });
+    if (!field) throw new NotFoundError('Field');
+    const values = await this.db.recordFieldValue.count({ where: { field_name: field.name, record: { object_id: field.object_id, deleted_at: null } } }).catch(() => 0);
+    return { usages: await fieldUsages(this.db, field), records_with_value: values };
+  }
+
+  /**
+   * A field's API name may change only when nothing refers to it by name (the
+   * references live in formulas, gates, rules and workflows, and are not
+   * rewritten); its stored values are carried over by updateField.
+   */
+  async #assertFieldRenamable(existing, newName) {
+    _assertSafeFieldName(newName);
+    const obj = await this.db.uiObject.findUnique({ where: { id: existing.object_id }, select: { name: true } });
+    const crmCols = CRM_FIELDS[obj?.name];
+    if (crmCols && (crmCols.has(existing.name) || crmCols.has(newName))) {
+      throw new ValidationError(`"${existing.name}" is a built-in column of ${obj.name} — its API name cannot change; change the label instead`);
+    }
+    const clash = await this.db.uiField.findFirst({ where: { object_id: existing.object_id, name: newName, NOT: { id: existing.id } }, select: { id: true } });
+    if (clash) throw new ValidationError(`This object already has a field named "${newName}"`);
+    const used = await fieldUsages(this.db, existing);
+    if (used.length) throw new ValidationError(`The API name "${existing.name}" is used by ${describeUsages(used)} — update those first, or change the label instead`);
+  }
+
+  /**
+   * Picklist values removed while records still hold them would leave those
+   * records failing validation on their next save and counted under a value no
+   * report or filter offers. Each removed value in use must be mapped to a
+   * remaining one (`option_replacements: { old: new }`), as in the leading
+   * CRMs' "replace picklist value" step. Returns the [from, to] moves to apply.
+   */
+  async #planOptionChanges(existing, fieldType, nextOptions, replacements) {
+    if (!OPTION_FIELD_TYPES.has(fieldType)) return [];
+    const next = new Set(optionValues(nextOptions));
+    const removed = optionValues(existing.options).filter((v) => !next.has(v));
+    if (!removed.length || !next.size) return [];
+    const map = replacements && typeof replacements === 'object' ? replacements : {};
+    const moves = [];
+    const stranded = [];
+    for (const v of removed) {
+      const n = await this.db.recordFieldValue.count({ where: { field_name: existing.name, str_value: v, record: { object_id: existing.object_id } } });
+      if (!n) continue;
+      const to = map[v];
+      if (to !== undefined && to !== null && next.has(String(to))) moves.push([v, String(to)]);
+      else stranded.push(`"${v}" (${n} record${n === 1 ? '' : 's'})`);
+    }
+    if (stranded.length) {
+      throw new ValidationError(`Values still in use: ${stranded.join(', ')}. Choose a replacement for each (option_replacements) or keep the value.`);
+    }
+    return moves;
+  }
+
   async deleteField(id) {
     const existing = await this.db.uiField.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Field');
+    const used = await fieldUsages(this.db, existing);
+    if (used.length) throw new ValidationError(`"${existing.label || existing.name}" is used by ${describeUsages(used)} — remove those references first, or deactivate the field`);
     // FormFieldLayouts referencing this field have no cascade — delete first
     await this.db.uiFormFieldLayout.deleteMany({ where: { field_id: id } });
     await this.db.uiField.delete({ where: { id } });
     await this.cache.invalidateField(id, existing.object_id);
+    clearRecordCaches();
   }
 
   // ════════════════════════════════════════════════
@@ -539,6 +666,11 @@ class MetadataService {
   // VALIDATIONS
   // ════════════════════════════════════════════════
 
+  async #objectIdOfField(fieldId) {
+    const f = await this.db.uiField.findUnique({ where: { id: Number(fieldId) }, select: { object_id: true } }).catch(() => null);
+    return f?.object_id ?? null;
+  }
+
   async getValidations(fieldId) {
     return this.db.uiValidation.findMany({
       where:   { field_id: fieldId },
@@ -548,13 +680,13 @@ class MetadataService {
 
   async createValidation(data) {
     const v = await this.db.uiValidation.create({ data });
-    await this.cache.invalidateField(data.field_id, null);
+    await this.cache.invalidateField(data.field_id, await this.#objectIdOfField(data.field_id));
     return v;
   }
 
   async updateValidation(id, data) {
     const v = await this.db.uiValidation.update({ where: { id }, data });
-    await this.cache.invalidateField(v.field_id, null);
+    await this.cache.invalidateField(v.field_id, await this.#objectIdOfField(v.field_id));
     return v;
   }
 
@@ -562,7 +694,7 @@ class MetadataService {
     const v = await this.db.uiValidation.findUnique({ where: { id } });
     if (!v) throw new NotFoundError('Validation');
     await this.db.uiValidation.delete({ where: { id } });
-    await this.cache.invalidateField(v.field_id, null);
+    await this.cache.invalidateField(v.field_id, await this.#objectIdOfField(v.field_id));
   }
 
   // ════════════════════════════════════════════════

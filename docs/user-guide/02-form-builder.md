@@ -76,6 +76,10 @@ Enter one option per line as `value: Label`. Saved values must be one of the opt
 list** is ticked. The **Currency** type shows a **Currency** picker and **Allow negative amounts**; **Rating** has a
 **Maximum rating**.
 
+Removing an option no record uses is free. If records still hold a value you removed, saving opens a **Move to…**
+dialog: pick a remaining option for each removed value, and those records are moved to it. See
+[Removing picklist values](01-modules-and-objects.md#removing-picklist-values).
+
 ### Look tab
 
 | Setting | What it does |
@@ -205,8 +209,8 @@ screens. Field order, width, validations, dependencies, and access defined here 
 
 - **The Save Form button is disabled** — you must select both a **Module** and an **Object** first. A reminder banner
   appears until you do.
-- **A red "Save failed" banner appears** — the save could not complete. Check that required field settings (such as
-  Label and Field Type) are valid, then try again.
+- **A red "Save failed" banner appears** — the save could not complete. The banner shows the server's reason, for
+  example a field rename refused because the field is in use. Fix what it names, then try again.
 - **The object dropdown is empty** — the selected module has no objects yet. Create one in
   [Modules & Objects](01-modules-and-objects.md).
 - **Dropdown field shows no choices at runtime** — open the field's **Field** tab and add entries in the **Options**

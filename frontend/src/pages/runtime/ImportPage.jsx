@@ -7,6 +7,8 @@ import { metadataService } from '../../services/metadata.service';
 import Button   from '../../components/ui/Button';
 import Alert    from '../../components/ui/Alert';
 import ObjectPicker, { useAllObjects } from '../../components/ui/ObjectPicker';
+import { invalidateRecordData } from '../../utils/invalidate';
+import { apiErrorText } from '../../utils/record';
 
 const STEPS = ['Upload', 'Map Fields', 'Preview', 'Execute'];
 
@@ -95,6 +97,22 @@ function StepIndicator({ current }) {
   );
 }
 
+// How many refused rows the result and the job tooltip list.
+const FAILED_SHOWN = 5;
+
+/**
+ * Rows the import refused, from a job: `[{ row, reason }]` with `row` the
+ * 1-based position among imported rows. Only a finished job that counted
+ * failures holds execute failures; otherwise `error_rows` are the preview's.
+ */
+function failedRows(job) {
+  // A run with no failures leaves the preview's error_rows in place.
+  if (job?.status !== 'done' || !(job.stats?.failed > 0) || !Array.isArray(job.error_rows)) return [];
+  return job.error_rows
+    .filter((e) => e && e.reason)
+    .map((e) => ({ row: typeof e.row === 'number' ? e.row : '?', reason: String(e.reason) }));
+}
+
 export default function ImportPage() {
   const qc      = useQueryClient();
   const fileRef = useRef(null);
@@ -179,7 +197,7 @@ export default function ImportPage() {
       setJobId(job.data.id);
       setStep(1);
     } catch (e) {
-      setError(e.response?.data?.message ?? e.message);
+      setError(apiErrorText(e));
     }
   };
 
@@ -195,7 +213,7 @@ export default function ImportPage() {
       setPreview(res.data);
       setStep(2);
     } catch (e) {
-      setError(e.response?.data?.message ?? e.message);
+      setError(apiErrorText(e));
     }
   };
 
@@ -203,11 +221,20 @@ export default function ImportPage() {
     setError(null);
     try {
       const res = await runtimeService.executeImport(jobId, { csv_data: fileData });
-      setExecResult(res.data);
+      let result = res.data;
+      // Rows the record engine refused are kept on the job, not in the
+      // execute response: read them back so the admin sees why.
+      if (result?.failed > 0) {
+        const job = await runtimeService.getImportJob(jobId).catch(() => null);
+        result = { ...result, error_rows: failedRows(job?.data) };
+      }
+      setExecResult(result);
       setStep(3);
       qc.invalidateQueries({ queryKey: ['import-jobs'] });
+      // Imported rows belong in the lists, lookups and dashboards now.
+      invalidateRecordData(qc, { objectId });
     } catch (e) {
-      setError(e.response?.data?.message ?? e.message);
+      setError(apiErrorText(e, 'The import could not be run.'));
     }
   };
 
@@ -352,6 +379,12 @@ export default function ImportPage() {
                   <div key={j.id} className="flex items-center gap-3 text-xs bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/[0.07] rounded-xl px-4 py-2.5">
                     <FileText size={13} className="text-gray-400 shrink-0" />
                     <span className="font-medium text-gray-600 dark:text-gray-400 flex-1 truncate">{j.filename}</span>
+                    {j.status === 'done' && j.stats && (
+                      <span className="text-gray-400 shrink-0" title={failedRows(j).slice(0, FAILED_SHOWN).map((e) => `Row ${e.row}: ${e.reason}`).join('\n') || undefined}>
+                        {j.stats.created ?? 0} created
+                        {j.stats.failed > 0 && <span className="text-red-500"> · {j.stats.failed} failed</span>}
+                      </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded-full font-medium
                       ${j.status === 'done' ? 'bg-emerald-100 text-emerald-700' : j.status === 'failed' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
                       {j.status}
@@ -558,7 +591,29 @@ export default function ImportPage() {
               <p className="text-3xl font-bold text-amber-500">{execResult.skipped ?? 0}</p>
               <p className="text-xs text-gray-500 mt-1">Skipped</p>
             </div>
+            <div className="text-center">
+              <p className={`text-3xl font-bold ${execResult.failed ? 'text-red-500' : 'text-gray-300 dark:text-gray-600'}`}>{execResult.failed ?? 0}</p>
+              <p className="text-xs text-gray-500 mt-1">Failed</p>
+            </div>
           </div>
+          {execResult.failed > 0 && (
+            <div className="mx-auto max-w-xl text-left rounded-xl border border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10 px-4 py-3">
+              <p className="text-sm font-semibold text-red-700 dark:text-red-300 flex items-center gap-1.5">
+                <AlertTriangle size={14} />
+                {execResult.failed} row{execResult.failed === 1 ? '' : 's'} not imported
+              </p>
+              {execResult.error_rows?.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs text-red-700 dark:text-red-300">
+                  {execResult.error_rows.slice(0, FAILED_SHOWN).map((e, i) => (
+                    <li key={i}><span className="font-medium">Row {e.row}:</span> {e.reason}</li>
+                  ))}
+                  {execResult.error_rows.length > FAILED_SHOWN && (
+                    <li className="text-red-500/80">…and {execResult.failed - FAILED_SHOWN} more</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
           <Button onClick={reset} variant="secondary">Import another file</Button>
         </div>
       )}

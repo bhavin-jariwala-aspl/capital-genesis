@@ -2,6 +2,9 @@
 
 const crypto = require('crypto');
 
+// Not attached to a record, or attached to one that is not in the Trash.
+const LIVE_RECORD = { OR: [{ record_id: null }, { record: { is: { deleted_at: null } } }] };
+
 /**
  * Personal calendar feed (PRD RM-FR-03) — an iCalendar (RFC 5545) URL a user
  * subscribes to from Outlook, Google or Apple Calendar. It lists their
@@ -140,17 +143,17 @@ class CalendarFeedService {
     const to = new Date(now + 180 * DAY);
     const [activities, tasks, reminders] = await Promise.all([
       this.db.activity.findMany({
-        where: { employee_id: emp.employee_id, scheduled_at: { gte: from, lte: to } },
+        where: { employee_id: emp.employee_id, scheduled_at: { gte: from, lte: to }, record: { deleted_at: null } },
         select: { id: true, type: true, subject: true, description: true, scheduled_at: true, duration_min: true, completed_at: true },
         orderBy: { scheduled_at: 'asc' }, take: 1000,
       }),
       this.db.task.findMany({
-        where: { assigned_to: emp.employee_id, due_date: { gte: from, lte: to }, status: { notIn: ['completed', 'cancelled'] } },
+        where: { assigned_to: emp.employee_id, due_date: { gte: from, lte: to }, status: { notIn: ['completed', 'cancelled'] }, ...LIVE_RECORD },
         select: { id: true, title: true, description: true, due_date: true },
         orderBy: { due_date: 'asc' }, take: 1000,
       }),
       this.db.reminder.findMany({
-        where: { employee_id: emp.employee_id, remind_at: { gte: from, lte: to }, status: { in: ['pending', 'notified'] } },
+        where: { employee_id: emp.employee_id, remind_at: { gte: from, lte: to }, status: { in: ['pending', 'notified'] }, ...LIVE_RECORD },
         select: { id: true, title: true, remind_at: true },
         orderBy: { remind_at: 'asc' }, take: 1000,
       }),

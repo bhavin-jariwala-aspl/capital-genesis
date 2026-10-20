@@ -7,6 +7,7 @@ import TextArea from '../ui/TextArea';
 import Input from '../ui/Input';
 import { runtimeService } from '../../services/metadata.service';
 import { showError, showSuccess } from '../../utils/dialog';
+import { invalidateRecordData } from '../../utils/invalidate';
 
 /** Same rule as the server (backend/src/utils/record-action.js). */
 export function actionAvailable(action, data) {
@@ -56,8 +57,7 @@ export default function RecordActions({ objectId, recordId, record, onDone }) {
       if (result?.error) showError(`${wf.label}: ${result.error}`);
       else showSuccess([wf.success_message, result?.summary].filter(Boolean).join(' ') || `${wf.label} completed.`);
       setAsking(null);
-      qc.invalidateQueries({ queryKey: ['records'] });
-      qc.invalidateQueries({ queryKey: ['related', recordId] });
+      invalidateRecordData(qc, { recordId, objectId });
       onDone?.();
     },
     onError: (err, { wf }) => showError(`${wf.label}: ${err?.response?.data?.error?.message || err.message}`),

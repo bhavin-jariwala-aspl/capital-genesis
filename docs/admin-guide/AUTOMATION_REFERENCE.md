@@ -99,6 +99,15 @@ to debug.
   step runs and accepts a decision only from them.
 - Notify a **role** or a **field**, never a hard-coded employee id. An id breaks the day that person
   changes team, and is the usual reason an alert quietly stops reaching anyone.
+- `action` and `update_related` writes behave like a form save: the record's formulas, the parent
+  roll-ups that count or sum it (including ones filtered on the written field) and records reading it
+  through a lookup are recalculated. A workflow that sets a status used to stop short of the parent's
+  totals.
+- An `action` that sets `pipeline_stage_id` is a stage move, like one on `stage`: entry rules,
+  mirrored status field, status timeline and stage events all apply. It used to be a bare column
+  write that skipped all four.
+- Fields marked for encryption are stored encrypted when a workflow writes them. They used to be
+  written in clear text.
 
 ---
 
@@ -122,6 +131,11 @@ Both pool strategies now filter the pool to **active** employees. A deactivated 
 the rotation and keep receiving records they can no longer sign in to see — work that is silently
 lost until somebody notices the queue. If the whole pool is inactive the rule falls through to its
 fallback; with no fallback, nothing is assigned.
+
+The same now holds for named assignees. A `fixed` rule, or a `rule_based` rule's named assignee, that
+points at a deactivated (or unknown) employee is passed over and the next rule is tried. A deactivated
+fallback is never used: the record stays unassigned rather than going to someone who cannot sign in.
+The explain trace says "… is not an active employee".
 
 Load balancing counts **open records of this rule's own object**, excluding:
 
@@ -289,6 +303,9 @@ once trains everybody to ignore it.
   and it makes breach reporting worthless.
 - Removing a target **cancels** the live timers depending on it. History stays; those records stop
   being measured.
+- Deleting a record (to the Trash or permanently) or merging it away cancels its open timers, and the
+  engine also cancels timers whose record is in the Trash or gone. Restoring the record does **not**
+  restart them.
 - Set targets per priority. One target for everything means your urgent work is too slow or your
   routine work is permanently in breach.
 

@@ -10,6 +10,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import { ArrowLeft, RotateCcw, Trash2, Trash, GitMerge } from 'lucide-react';
 import { runtimeService } from '../../services/metadata.service';
 import { confirmDialog } from '../../utils/dialog';
+import { invalidateRecordData } from '../../utils/invalidate';
 
 const selectCls = 'rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-gray-900 dark:text-white/80 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
 
@@ -62,11 +63,9 @@ export default function RecordsTrashPage() {
     ? allRecords.filter(r => String(r.object?.id) === objectFilter)
     : allRecords;
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['records-trash'] });
-    // Restored/purged records affect the runtime lists + boards (keyed by object).
-    qc.invalidateQueries({ queryKey: ['runtime-records'] });
-  };
+  // Restored/unmerged/purged records affect the runtime lists, boards, related
+  // lists, lookups and dashboards — and this Trash list.
+  const invalidate = () => invalidateRecordData(qc);
 
   const restoreMutation = useMutation({
     mutationFn: (id) => builderService.restoreRecord(id),

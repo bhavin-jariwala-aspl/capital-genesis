@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { socialMediaService } from '../../services/social-media.service';
 import { useAuthStore } from '../../store/authStore';
+import { invalidateRecordData } from '../../utils/invalidate';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Input from '../../components/ui/Input';
@@ -449,7 +450,8 @@ function MentionsTab({ initialAssigned }) {
   });
   const convertMut = useMutation({
     mutationFn: (id) => socialMediaService.convertMentionToLead(id),
-    onSuccess: () => { invalidate(); setError(null); },
+    // The new lead belongs in the Leads list and dashboards.
+    onSuccess: () => { invalidate(); invalidateRecordData(qc); setError(null); },
     onError: (err) => setError(apiError(err, 'Could not convert this mention to a lead.')),
   });
 

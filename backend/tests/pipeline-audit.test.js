@@ -21,7 +21,8 @@ function makePrisma() {
       update:     jest.fn().mockResolvedValue(pipeline),
       delete:     jest.fn().mockResolvedValue(pipeline),
     },
-    uiPipelineStage: { createMany: jest.fn(), deleteMany: jest.fn(), update: jest.fn(), create: jest.fn() },
+    uiPipelineStage: { createMany: jest.fn(), deleteMany: jest.fn(), update: jest.fn(), create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    record:          { count: jest.fn().mockResolvedValue(0) },
     auditLog:        { create: jest.fn().mockResolvedValue({}), findMany: jest.fn().mockResolvedValue([]) },
     $transaction:    jest.fn().mockResolvedValue([]),
   };

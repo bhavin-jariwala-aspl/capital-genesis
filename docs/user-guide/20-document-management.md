@@ -44,6 +44,11 @@ instead. The Preview button appears everywhere a Download button does (the Docum
 document panel, and public share links).
 Admins can hide it — see [Admin setup](#admin-setup-builder--document-management).
 
+### When records are merged
+Merging a duplicate record moves its documents to the record you keep, so nothing is left behind on
+the merged-away record. Unmerging moves those same documents back; documents added to the kept record
+since the merge stay where they are.
+
 ## Share a document & see engagement
 
 Click the **share** action on a document to open **Share & Analytics**:

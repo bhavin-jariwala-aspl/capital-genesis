@@ -5,6 +5,7 @@ const { logger } = require('./logging.service');
 const { tenantContext } = require('../middleware/tenant-scope');
 const IntegrationService = require('./integration.service');
 const { evaluate: evaluateFormula, truthy } = require('./formula');
+const { encrypt: encryptField } = require('./field-protection');
 
 /** Integration errors that a retry cannot fix (missing / inactive / misconfigured). */
 const CONFIG_ERROR = /not found|not active|No connector|unknown provider|CONFIG/i;
@@ -686,7 +687,7 @@ class WorkflowEngineService {
           const written = target ? await this.#writeField(target, field, value) : false;
           crmCache.fields = null; // invalidate — the record was just mutated
           // Formulas (and parents' roll-ups) depending on the field follow it.
-          if (written && field !== 'stage' && this.recordService) await this.recordService.recompute(target.id).catch(() => {});
+          if (written && field !== 'stage' && this.recordService) await this.recordService.recompute(target.id, { propagate: true }).catch(() => {});
           logEntry.result = written
             ? `set ${cfg.field}=${value}`
             : `no-op (could not resolve storage for field '${cfg.field}')`;
@@ -1109,7 +1110,7 @@ class WorkflowEngineService {
           const recordIds = [...new Set(matches.map(m => m.record_id))];
           for (const rid of recordIds) {
             await this.#writeEavFields(rid, cfg.object_id, { [cfg.field]: newValue });
-            if (this.recordService) await this.recordService.recompute(rid).catch(() => {});
+            if (this.recordService) await this.recordService.recompute(rid, { propagate: true }).catch(() => {});
           }
           updatedCount = recordIds.length;
         }
@@ -1806,6 +1807,12 @@ class WorkflowEngineService {
 
     // ── Record-level columns ──────────────────────────────────────────────
     if (RECORD_COLUMNS.has(field)) {
+      // A stage set by id moves the record like `stage` does — gate, mirrored
+      // status, timeline and stage events — not by a bare column write.
+      if (field === 'pipeline_stage_id' && value != null && value !== '' && this.recordService) {
+        await this.recordService.updateRecordStage(recordId, Number(value), null, null);
+        return true;
+      }
       const data = field === 'pipeline_stage_id'
         ? { pipeline_stage_id: value == null || value === '' ? null : Number(value) }
         : { assigned_to: value == null || value === '' ? null : String(value) };
@@ -1865,8 +1872,12 @@ class WorkflowEngineService {
   async #writeEavFields(recordId, objectId, data) {
     const rid = Number(recordId);
     for (const [fieldName, value] of Object.entries(data)) {
-      const dataType = await this.#fieldDataType(objectId, fieldName);
-      const typed    = toTypedValue(value, dataType);
+      const { dataType, encrypt } = await this.#fieldStorage(objectId, fieldName);
+      // An encrypted field (an ID number) is stored the way RecordService stores
+      // it — never in clear because an automation, not a form, wrote it.
+      const typed    = encrypt && value != null && value !== ''
+        ? { str_value: encryptField(String(value)) }
+        : toTypedValue(value, dataType);
       await this.db.recordFieldValue.upsert({
         where:  { record_id_field_name: { record_id: rid, field_name: fieldName } },
         create: { record_id: rid, field_name: fieldName, ...typed },
@@ -1880,16 +1891,16 @@ class WorkflowEngineService {
    * in the right typed column. Falls back to 'string', which is always safe
    * because str_value is populated for every type.
    */
-  async #fieldDataType(objectId, fieldName) {
-    if (!objectId) return 'string';
+  async #fieldStorage(objectId, fieldName) {
+    if (!objectId) return { dataType: 'string', encrypt: false };
     try {
       const field = await this.db.uiField.findFirst({
         where:  { object_id: Number(objectId), name: String(fieldName) },
-        select: { data_type: true, field_type: true },
+        select: { data_type: true, field_type: true, config: true },
       });
-      return field?.data_type ?? 'string';
+      return { dataType: field?.data_type ?? 'string', encrypt: Boolean(field?.config?.encrypt) };
     } catch {
-      return 'string';
+      return { dataType: 'string', encrypt: false };
     }
   }
 

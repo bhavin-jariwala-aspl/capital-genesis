@@ -257,6 +257,11 @@ idempotent — remove it and every tick would insert duplicates.
 `continue`s past them forever. A reopened case does *not* restart its timer; the engine will never
 touch that instance again.
 
+**Deleted records.** When a record is deleted (soft or hard) or merged away, its open timers are
+canceled on `record.deleted` by `SlaService.cancelForRecords`; the reconciler also cancels timers
+whose record is in the Trash or gone. Because `canceled` is terminal, restoring a record from the
+Trash does **not** restart its timers.
+
 ### Creation ([`#createInstance:279`](../../backend/src/services/sla.service.js#L279))
 
 ```js

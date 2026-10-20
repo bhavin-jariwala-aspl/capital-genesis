@@ -59,6 +59,8 @@ export default function RemindersPage() {
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['my-reminders'] });
     qc.invalidateQueries({ queryKey: ['notif-count'] });
+    // The record panels' reminder lists (['reminders', recordId]).
+    qc.invalidateQueries({ queryKey: ['reminders'] });
   }, [qc]);
 
   const create   = useMutation({ mutationFn: () => reminderService.createReminder({ ...form, remind_at: new Date(form.remind_at).toISOString() }), onSuccess: () => { invalidate(); setForm({ title: '', remind_at: presetIso('1h'), priority: 'normal', note: '' }); setShowAdd(false); } });

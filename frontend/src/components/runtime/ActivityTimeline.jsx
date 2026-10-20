@@ -37,6 +37,9 @@ function LogForm({ recordId, onDone, onComposeEmail }) {
     mutationFn: () => activityService.createActivity(recordId, form),
     onSuccess:  () => {
       qc.invalidateQueries({ queryKey: ['activities', recordId] });
+      // Logging an activity is audited and counts on activity dashboards.
+      qc.invalidateQueries({ queryKey: ['audit', recordId] });
+      qc.invalidateQueries({ queryKey: ['widget-data'] });
       setForm({ type: 'note', subject: '', description: '', outcome: '' });
       setOpen(false);
       onDone?.();
@@ -153,7 +156,11 @@ export default function ActivityTimeline({ recordId, objectId, relatedType, reco
 
   const del = useMutation({
     mutationFn: (id) => activityService.deleteActivity(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['activities', recordId] }),
+    onSuccess:  () => {
+      qc.invalidateQueries({ queryKey: ['activities', recordId] });
+      qc.invalidateQueries({ queryKey: ['audit', recordId] });
+      qc.invalidateQueries({ queryKey: ['widget-data'] });
+    },
   });
 
   const activities = data ?? [];
