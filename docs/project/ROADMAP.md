@@ -1,5 +1,11 @@
 # Genesis CRM — Product Roadmap
 
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Project](README.md)** › 1 of 3 · **For:** Everyone
+> ← [Local LLM operations](../developer-guide/ai-reporting/local-llm-operations.md) *(AI reporting)* · [Build effort & capabilities](build-effort-and-capabilities.md) →
+> New to Genesis? Background: [Understanding Genesis › Configure or code?](../understanding/07-configure-or-code.md)
+<!-- /nav:top -->
+
 > **Note (2026-10-13):** the insurance domain (quotes, applications, policies,
 > underwriting, claims, commissions and their pages, APIs and tables) was removed
 > from the product. Genesis is positioned as a CRM; ratings and inventories
@@ -54,17 +60,17 @@ Scored 0–10 where 10 = parity with the best of the top 5.
 | Dimension | Score | Verdict |
 | --------- | :---: | ------- |
 | Low-code / metadata platform | 8 | Real object/field/form/pipeline/dashboard/wizard builders with working drag-drop + verified persistence. Rivals the *core* of Zoho Creator / SF Object Manager. |
-| Core data model & records | 7 | Sophisticated hybrid relational + typed-EAV storage, soft-delete/trash, concurrency-hardened. **Gap: metadata validations are not enforced server-side on write** — integrity leans on the client. |
+| Core data model & records | 7 | Sophisticated hybrid relational + typed-EAV storage, soft-delete/trash, concurrency-hardened. Metadata validations are enforced server-side on write (Sept 2026). **Gap: record reads do not check the object's `can_view`; a field's `can_view: false` hides it on screen only** (finding #16). |
 | Workflow automation | 7 | Genuine event-driven engine: 10 step types, delays, human approvals, multi-pod atomic scheduling. Gap: linear only (no visual branching graph / formula language); step config is raw JSON. |
-| Reporting & charts | 8.5 | **Self-service by design** — a non-technical user builds, shares, schedules and dashboards a report unaided (template gallery, stepped builder, AND/OR filters, value bands, no-code calculated measures, totals, period-over-period, drill-down, folders, emailed subscriptions, CSV/Excel/PDF). At parity with SF/HubSpot/Zoho/D365/Pipedrive on the self-service surface. Remaining gaps: relation paths capped at 2 hops, one primary source per report, no historical snapshots or threshold alerts, and in-JS aggregation caps it at ~20K rows — SMB scale, not warehouse. See [REPORTING.md](../developer-guide/REPORTING.md). |
+| Reporting & charts | 8.5 | **Self-service by design** — a non-technical user builds, shares, schedules and dashboards a report unaided (template gallery, stepped builder, AND/OR filters, value bands, no-code calculated measures, totals, period-over-period, drill-down, folders, emailed subscriptions, CSV/Excel/PDF). At parity with SF/HubSpot/Zoho/D365/Pipedrive on the self-service surface. Remaining gaps: **report sources are fixed typed tables (leads, accounts, opportunities, cases, tasks, activities, SLA), so Builder objects cannot be reported on** (finding #15); relation paths capped at 2 hops, one primary source per report, and in-JS aggregation caps it at ~20K rows — SMB scale, not warehouse. See [reporting.md](../developer-guide/engines/reporting.md). |
 | Sales core (pipeline, forecasting, lead scoring) | 6.5 | Kanban with persisted drag-to-move, weighted forecast + quotas. Forecasting is basic (no scenario / commit-vs-best-case). |
-| Integrations / API | 5 | Framework is excellent (SSRF-guarded delivery, HMAC, idempotency/replay defense). But no marketplace, no OAuth connectors, **every external connector is a stub**, retries are in-process (no durable queue). |
-| Communication (email / notifications) | 4.5 | Real SMTP send (nodemailer) + record-aware merge fields. But SMTP-only (no SendGrid/SES API), no open/click tracking, no campaigns/drip, notifications are **in-app only**. |
+| Integrations / API | 5 | Framework is excellent (SSRF-guarded delivery, HMAC, idempotency/replay defense). But no marketplace, no OAuth connectors, **every external connector is a stub**. Integration-call retries go through the database job queue (Oct 2026). |
+| Communication (email / notifications) | 4.5 | Real SMTP send (nodemailer) + record-aware merge fields. But SMTP-only (no SendGrid/SES API), open tracking only on research distributions, no click tracking, no campaigns/drip, notifications are **in-app only**. |
 | Marketing & social | 3.5 | Social engine is real (Sept 2026): server-side scheduled publishing with failure notifications, per-account sync cadence, token refresh, replies posted to the channel, rule-based inbox routing, keyword-driven priority, mention → lead, campaign roll-ups, `social.*` events. **Connectors are still simulation only** (contract + OAuth wired). No email marketing-campaign engine. |
 | Search | 4 | Correct, permission-scoped global search — but SQL `LIKE %q%`, no ranking or fuzzy matching. (Exception: the DMS has a real MySQL **FULLTEXT** in-document search over `documents(original_filename, description, content_text)`; the gap is global CRM search, not documents.) |
-| Security & compliance | 4.5 | Sound crypto (bcrypt, hashed single-use reset tokens, JWT) and a solid tenant-isolation design. But **no app-level rate limiting, no login brute-force protection, no helmet, request validation largely absent, tenant filter fails *open*** when context is missing. No SOC 2. |
-| Scale / production-readiness | 4 | Single-process in-memory event bus, no job queue, no CI pipeline. Fine for single-pod SMB; not multi-region SaaS. |
-| AI / intelligence | 1 | Essentially none. All five benchmark CRMs ship AI copilots in 2026; Genesis has rule-based lead scoring but no AI layer. |
+| Security & compliance | 4.5 | Sound crypto (bcrypt, hashed single-use reset tokens, JWT) and a solid tenant-isolation design. Login rate limiting and security headers are in place (Sept 2026). But **no general API rate limit, request validation largely absent, raw-SQL paths bypass the tenant filter, object `can_view` not enforced on record reads, plan gates enforced server-side only on workflow and assignment-rule routes**. No SOC 2. |
+| Scale / production-readiness | 4 | Single-process in-memory event bus. A database job queue (integration retries) and a GitHub Actions CI workflow exist. Fine for single-pod SMB; not multi-region SaaS. |
+| AI / intelligence | 1 | Essentially none. All five benchmark CRMs ship AI copilots in 2026; Genesis has rule-based lead scoring and an optional plain-English "Ask" that turns a question into a report (configured model, e.g. self-hosted Ollama), but no AI layer. |
 | Native mobile apps | 0–1 | None. Responsive web only. |
 
 ### Verified Strengths (code-reviewed)
@@ -119,26 +125,31 @@ Prioritised by rating impact. These complement the
 
 | # | Finding | Evidence | Priority |
 | --- | ------- | -------- | -------- |
-| 1 | ~~Server-side validation not enforced on write~~ — **Closed Sept 2026.** `RecordService` enforces `is_required`, field-type formats, admin rules (23 rule types incl. cross-field) and uniqueness before any write through `services/validation-engine.js`; the browser mirrors the same vocabulary. Custom JS remains browser-only by design. See [CONFIGURABILITY.md](../developer-guide/CONFIGURABILITY.md#validation-engine). | `validation-engine.js`, `record.service.js` | Done |
+| 1 | ~~Server-side validation not enforced on write~~ — **Closed Sept 2026.** `RecordService` enforces `is_required`, field-type formats, admin rules (23 rule types incl. cross-field) and uniqueness before any write through `services/validation-engine.js`; the browser mirrors the same vocabulary. Custom JS remains browser-only by design. See [configurability.md](../developer-guide/engines/configurability.md#validation-engine). | `validation-engine.js`, `record.service.js` | Done |
 | 2 | **No AI layer** — biggest 2026 gap vs. the top 5, which are all AI-first. Lead scoring is rule-based only. | No ML/AI services | P0 |
-| 3 | **No live social connector ships** — every platform resolves to `SimulationConnector`. The engine around it is complete as of Sept 2026 (scheduled publishing, sync cadence, token refresh, OAuth callback, replies, routing, lead capture), so a live channel is now a per-platform HTTP implementation plus app review — see [SOCIAL_ENGINE.md](../developer-guide/SOCIAL_ENGINE.md#connector-contract-and-oauth). | `connectors/social/index.js`, `simulation.js` | P1 |
+| 3 | **No live social connector ships** — every platform resolves to `SimulationConnector`. The engine around it is complete as of Sept 2026 (scheduled publishing, sync cadence, token refresh, OAuth callback, replies, routing, lead capture), so a live channel is now a per-platform HTTP implementation plus app review — see [social-engine.md](../developer-guide/engines/social-engine.md#connector-contract-and-oauth). | `connectors/social/index.js`, `simulation.js` | P1 |
 | 4 | **Partly closed Sept 2026.** Login / forgot / reset are rate-limited per account and per IP (Redis-backed, in-memory fallback) and API security headers are set (`helmet`-equivalent). Still open: a general per-token API rate limit for authenticated routes. | `utils/rate-limit.js`, `app.js` | P2 |
 | 5 | **Request-body validation largely absent** outside `auth`/`settings` — most routes pass `req.body` straight into services. | `routes/` | P1 |
 | 6 | **Tenant context now reaches every authenticated handler** (Sept 2026 — `authenticate` installs it synchronously; before this every request ran unscoped). Still open: the extension is deny-by-omission for *unauthenticated* code paths (public share/sign routes scope manually), and raw-SQL paths bypass it. | `middleware/authenticate.js`, `tenant-scope.js` | P2 |
-| 7 | **No durable job queue** — workflow `delay`/`approval` and webhook retries are in-process; in-flight work is lost on a pod crash. | `app.js` schedulers, `integration.service.js` | P1 |
+| 7 | **Partly closed Oct 2026.** Integration calls from workflows retry through the database `job_queue` (leases, back-off, dead-letter). Workflow `delay`/`approval` resume from `WorkflowPendingStep` rows polled every 60s. | `job-queue.service.js`, `workflow.service.js` | P2 |
 | 8 | **Email is SMTP-only** — no transactional-provider API (SendGrid/SES), no open/click tracking, no campaigns/drip; notifications are **in-app only** (no email/push fan-out on escalation). | `email-send.service.js`, `notification.service.js` | P1 |
 | 9 | **Search is SQL `LIKE %q%`** — no full-text index, ranking, or fuzzy/typo tolerance. | `search.service.js` | P2 |
-| 10 | **No CI/CD pipeline** — 323 tests pass locally but no automated gate; test breadth is light on security/isolation adversarial cases. | repo (no CI config) | P2 |
+| 10 | **Partly closed.** `.github/workflows/ci.yml` runs the backend and frontend tests, lint, build and a Docker build. Still open: test breadth is light on security/isolation adversarial cases; no deployment pipeline. | `.github/workflows/ci.yml` | P2 |
 | 11 | ~~Chart-type wiring bug~~ — fixed Aug 2026; charts additionally gained per-widget appearance (palette, legend, number format, sort/top-N, goal line, axis titles) and tenant palettes in Sept 2026. | `ChartRenderer.jsx`, `utils/chart.js` | Done |
-| 12 | ~~Derived data drifts across modules~~ — **Closed Oct 2026.** Roll-ups and formulas follow every write path (re-link, bulk/single delete, restore, merge/unmerge, workflow writes, single and bulk stage moves with the mirrored status field); Builder renames/deletes are refused while the field or object is in use (`GET /api/metadata/fields/:id/usages`); import runs through `RecordService`; trashed records stop SLA timers, reminders and list/report rows; one frontend invalidation helper. See [CHANGELOG](CHANGELOG.md). | `record.service.js`, `metadata-dependencies.js`, `utils/invalidate.js` | Done |
+| 12 | ~~Derived data drifts across modules~~ — **Closed Oct 2026.** Roll-ups and formulas follow every write path (re-link, bulk/single delete, restore, merge/unmerge, workflow writes, single and bulk stage moves with the mirrored status field); Builder renames/deletes are refused while the field or object is in use (`GET /api/metadata/fields/:id/usages`); import runs through `RecordService`; trashed records stop SLA timers, reminders and list/report rows; one frontend invalidation helper. See [CHANGELOG](changelog.md). | `record.service.js`, `metadata-dependencies.js`, `utils/invalidate.js` | Done |
 | 13 | **Legacy first-class CRM tables (lead/contact/account/opportunity/case) still bypass the record engine** — deliberately deferred; the Genesis Capital pack keeps all 91 objects in the generic field store and is unaffected. Open: `CrmService` create/update bypasses `RecordService`; `crm_*.owner_id` vs `records.assigned_to` drift (forecast, report scope and search read `owner_id`); lead conversion does not carry activities/tasks/documents or write record-level links; merge does not re-point `crm_*` foreign keys; `crm_cases.contact_name`/`contact_email` copies are not refreshed. | `crm.service.js`, `record.service.js` | P2 |
 | 14 | **Lifecycle hand-overs** — deactivating an employee does not hand over their open records, tasks or reminders (manual bulk reassign); restoring a record from the Trash does not restart its canceled SLA timers. | `assignment.service.js`, `sla.service.js` | P2 |
+| 15 | **The report builder cannot see Builder objects.** Report sources are fixed typed tables in `report-registry.js` (leads, accounts, opportunities, cases, tasks, activities, SLA). Objects stored in `records` / `record_field_values` — all 91 Genesis Capital objects — can be charted only through dashboard object widgets (`object-analytics.service.js`). The "Ask" feature has the same limit. | `report-registry.js`, `object-analytics.service.js` | P1 |
+| 16 | **Object `can_view` is not enforced on record reads.** Record list and detail reads apply ownership, business-unit and barrier scope but do not check the role's object `can_view`; a field's `can_view: false` hides the field on screen only, and the API still returns it. | `record.service.js`, `permission.service.js` | P1 |
+| 17 | **Plan gates are mostly client-side.** `requireFeature` is enforced on the server only for workflow and assignment-rule create/edit routes; every other plan feature is hidden in the UI (`FeatureGate`) but its API stays callable. | `middleware/require-feature.js`, `routes/builder/index.js` | P2 |
+| 18 | **Portal identity and token.** A portal user is the first non-deleted party whose `email` (or introducer whose `portal_email`) matches; there is no portal account, so two parties sharing an email resolve to one, and changing the email moves access. The `gp1` token is stateless (HMAC, 8 hours) and cannot be revoked before it expires. | `portal.service.js` | P2 |
+| 19 | ~~Builder and configuration defects found in the October audit~~ — **Closed Oct 2026.** The workflow dialog sets trigger settings (watched field, interval, per-record sweep) and has an on/off switch, and the server refuses a schedule that could never run; social-media tokens are stored encrypted and decrypted only for the connector; *Record Permissions* scopes are enforced for roles that have them; *By Role* push notifications reach the workspace's own roles. | `WorkflowBuilderPage.jsx`, `dashboard.service.js`, `social-media.service.js`, `record.service.js`, `routes/builder` | — |
 
 ### Fastest Ratings Movers
 
 The highest-leverage work to close the gap toward the top 5, in order:
 
-1. Enforce metadata validations server-side on record write (finding #1).
+1. ~~Enforce metadata validations server-side on record write (finding #1).~~ Done Sept 2026.
 2. Add app-level rate limiting + `helmet` + login lockout + request-body
    schemas (findings #4, #5).
 3. Wire at least one real external connector with OAuth + secrets management
@@ -194,8 +205,8 @@ list below.
 | Performance | Record list + CSV export are now bounded (safety cap + opt-in `limit`/`offset`); remaining N+1 hotspots (e.g. hierarchy tree/move) still to address | Partly addressed (Jul 2026) |
 | Security & compliance | Closed SSRF (resolved-IP validation), DDL-injection (field-name grammar), and cross-tenant sequence scoping. SOC 2 / pen-testing still outstanding | Partly addressed (Jul 2026) |
 | Tenant isolation | Shared-instance `_requestTenantId` fallback **removed** — isolation is now ALS-only; proven with a 100-concurrent-request no-leak test. Also fixes the platform-admin cross-tenant bypass | Done (Jul 2026) |
-| CI/CD | Tests pass locally (276 backend + 34 frontend); no CI pipeline configured | Open |
-| Async workflows | `delay` / `approval` steps need a job queue for true async execution | Open |
+| CI/CD | GitHub Actions CI runs tests, lint and build; no deployment pipeline | Partly addressed |
+| Async workflows | `delay` / `approval` resume from a 60s poll of `WorkflowPendingStep`; integration retries use the database job queue | Partly addressed (Oct 2026) |
 | Auto-numbering | Record EAV auto-numbers use an in-process lock (safe single-instance); a DB sequence/`FOR UPDATE` is needed for multi-pod | Open |
 | Observability | Central `LoggingService` not yet wired to an external monitoring sink | Open |
 | Frontend hygiene | `react-hooks/exhaustive-deps` and dead imports cleaned — **0 lint warnings** | Done (Jul 2026) |
@@ -239,7 +250,7 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
 - **Typed EAV storage** — `record_field_values` table stores custom-object field values in typed columns
   (`str_value`, `num_value`, `bool_value`, `date_value`, `json_value`)
 - **Cross-object global search** — all five CRM relational tables + custom objects searched in parallel
-- **Permission management** — `ui_permissions` + `operational_permissions` tables, fully enforced server-side
+- **Permission management** — `ui_permissions` + `operational_permissions` tables; operational scope is enforced server-side, object `can_view` on record reads is not (finding #16)
 - **Reusable UI component library** — `ObjectPicker`, `EmployeePicker`, `EmployeeMultiPicker`, hooks
 - **Lead scoring product surface** — backend API routes (10 endpoints),
   builder rules page, runtime analytics/rankings page, sidebar navigation,
@@ -255,8 +266,8 @@ data model reflects what ships. Each is a genuine roadmap candidate and should b
   Kanban drag-and-drop auto-trigger lead conversion (Lead → Prospect →
   Client) with frontend navigation
 - Working frontend build, 0 lint errors, 0 lint warnings
-- Frontend Vitest test suite: 34 tests across 6 suites
-- Backend Jest test suite: 289 tests across 20 suites
+- Frontend Vitest test suite: 49 test files
+- Backend Jest test suite: 95 test files
 
 ---
 
@@ -402,18 +413,18 @@ Productized features (v2.4.0):
 
 ## Enterprise Feature Implementation (ROADMAP.md — March 2026)
 
-Genesis CRM has been elevated to enterprise-grade status with 8 major enterprise feature sets:
+Eight enterprise feature sets were planned. Only three are built:
 
-1. **Email Marketing & Campaign Management** — Campaign automation, segmentation, tracking
-2. **Calendar Integration & Meeting Management** — Event management, resource booking, external sync architecture
-3. **Advanced Analytics & Custom Reporting** — Self-service report builder, report-backed dashboards, automated emailed delivery
-4. **Contract & Deal Management** — Contract lifecycle, digital signatures, approval workflows
-5. **Territory Management & Sales Teams** — Territory assignment, team management, quota tracking
-6. **Customer Self-Service** — knowledge base (portal authentication, requests and uploads shipped October 2026)
-7. **Social Media Integration** — Multi-platform management, social listening, lead generation
-8. **Partner/Channel Management** — Partner lifecycle, deal registration, performance tracking
+1. **Email Marketing & Campaign Management** — not built (see [Deferred Domains](#deferred-domains-schema-removed-july-2026--to-be-built-when-prioritised))
+2. **Calendar Integration & Meeting Management** — not built; each user has a read-only calendar feed link
+3. **Advanced Analytics & Custom Reporting** — built: self-service report builder (fixed typed sources only, finding #15), report-backed dashboards, automated emailed delivery
+4. **Contract & Deal Management** — not built; document e-signature ships in the DMS
+5. **Territory Management & Sales Teams** — not built; quotas ship with forecasting
+6. **Customer Self-Service** — partly built: the client and introducer portal (October 2026); no knowledge base
+7. **Social Media Integration** — built: multi-platform management, listening, mention → lead (connectors simulated)
+8. **Partner/Channel Management** — not built
 
-**Database expansion:** 50+ new models, schema grew from 1,357 to 3,400+ lines.
+The tables scaffolded for the unbuilt sets were removed in July 2026.
 
 ---
 
@@ -450,11 +461,9 @@ CRM" while preserving metadata flexibility.
    - Campaign management with budget tracking, platform targeting, and status lifecycle
    - Mention monitoring with sentiment tracking and response management
 
-4. **Calendar & Meeting Management**
-   - Calendar integration (Google Calendar, Outlook, CalDAV)
-   - Meeting scheduling with availability checking
-   - Video meeting links (Zoom, Teams) integration
-   - Meeting activity auto-logging via Activity Timeline
+4. **Calendar & Meeting Management** (Not built)
+   - Built: a per-user read-only calendar feed link (`calendar-feed.service.js`) and meetings as Activity Timeline entries
+   - Not built: two-way calendar sync, availability checking, video meeting links
 
 5. **Specialized CRM UI Components** (Partially Implemented)
    - Lead management interface with scoring visualization — **done**: score
@@ -462,10 +471,10 @@ CRM" while preserving metadata flexibility.
    - Product catalog with search and filtering
    - Pipeline view with forecasting dashboard
 
-6. **Web-to-Lead Forms** (Planned)
-   - External form builder with field mapping
-   - Lead routing using existing assignment engine
-   - Source tracking and attribution
+6. **Web-to-Lead Forms** (Implemented October 2026)
+   - Any Builder form publishes as a web form (`/f/<key>`) that creates records of its object
+   - Routing through the assignment engine
+   - UTM and source capture
 
 ---
 
@@ -477,28 +486,28 @@ CRM" while preserving metadata flexibility.
 | --- | --- | --- |
 | 1 | Contact Management | `CrmContact`, `CrmAccount`, `CrmAssociation` |
 | 2 | Lead Management | `CrmLead`, `CrmLeadConversion`, `LeadScoringRule`, `LeadScore` |
-| 3 | Opportunity / Deal Management | `CrmOpportunity`, `DealStage`, `DealStageHistory`, `DealCompetitor` |
+| 3 | Opportunity / Deal Management | `CrmOpportunity`, pipelines (`UiPipeline`, `UiPipelineStage`) |
 | 4 | Pipeline Management | `UiPipeline`, `UiPipelineStage`, `PipelineBuilderPage` |
 | 5 | Account Management | `CrmAccount` with owner relations |
 | 6 | Task & Activity Tracking | `Task`, `Activity`, `ActivityTimeline` |
 | 7 | Email Integration | `EmailTemplate`, `EmailLog`, `EmailComposeModal`, `email-send.service` |
-| 8 | Email Campaigns / Marketing | `EmailCampaign`, `CampaignRecipient`, `CampaignEmailSend`, `EmailList`, `EmailClickEvent`, `EmailUnsubscribe` |
+| 8 | Email Campaigns / Marketing | **Not built** — models removed July 2026 (see Deferred Domains) |
 | 9 | Product Catalog | `Product`, `ProductsPage` |
 | 10 | Sales Forecasting | `Quota`, `ForecastPage`, `forecast.service` |
-| 11 | Dashboards & Analytics | `UiDashboard`, `UiChart`, `UiDashboardWidget`, `CustomReport` (report-backed widgets), `analytics.service` dataset catalogue. The `KpiDefinition` / `KpiValue` / `AnalyticDashboard` stack was pruned before use — KPI figures are reports with the `kpi` visualization. See [DASHBOARD_ANALYTICS.md](../developer-guide/DASHBOARD_ANALYTICS.md) |
+| 11 | Dashboards & Analytics | `UiDashboard`, `UiChart`, `UiDashboardWidget`, `CustomReport` (report-backed widgets), `analytics.service` dataset catalogue. The `KpiDefinition` / `KpiValue` / `AnalyticDashboard` stack was pruned before use — KPI figures are reports with the `kpi` visualization. See [dashboard-analytics.md](../developer-guide/engines/dashboard-analytics.md) |
 | 12 | Workflow Automation | `UiWorkflow`, `UiWorkflowStep`, `WorkflowPendingStep` (conditions, delays, approvals, webhooks) |
-| 13 | Reports (self-service) | `CustomReport`, `ReportExecution`, `ReportFolder`, `ReportSubscription`, `ReportFavorite`; `report-registry`, `report.service`, `report-templates` (26 starters), `report-library.service`, `report-schedule.service`; `ReportsPage`, `ReportBuilderPage`, `components/reports/*`. Template gallery, stepped builder, AND/OR filter trees, value bands, no-code calculated measures, totals/subtotals, period-over-period, conditional formatting, drill-down, folders/favourites, visibility (private/team/roles/everyone) with role-clamped data scope, emailed subscriptions, CSV/Excel/PDF. **Any saved report is a dashboard widget.** See [REPORTING.md](../developer-guide/REPORTING.md) |
-| 14 | Document Management System (DMS) | Standalone module — `Document`, `DocumentFolder`, `DocumentShareLink`, `DocumentViewEvent`, `DocumentTemplate`, `DocumentSignatureRequest`, `DocumentSignatory`, `UiDocumentCategory`, `UiDocumentChecklist`; `DocumentsPage`, `DocumentBuilderPage`, `SharedDocumentPage`, `SignDocumentPage`, `DocumentPanel`. Pluggable storage (local/S3/Azure/GCS), dedup+versioning, folders, in-document full-text search, builder (categories/checklists), merge templates, tracked public sharing + analytics, **native e-signature** with certificate. See [DOCUMENT_MANAGEMENT.md](../developer-guide/DOCUMENT_MANAGEMENT.md) |
+| 13 | Reports (self-service) | `CustomReport`, `ReportExecution`, `ReportFolder`, `ReportSubscription`, `ReportFavorite`; `report-registry`, `report.service`, `report-templates` (26 starters), `report-library.service`, `report-schedule.service`; `ReportsPage`, `ReportBuilderPage`, `components/reports/*`. Template gallery, stepped builder, AND/OR filter trees, value bands, no-code calculated measures, totals/subtotals, period-over-period, conditional formatting, drill-down, folders/favourites, visibility (private/team/roles/everyone) with role-clamped data scope, emailed subscriptions, CSV/Excel/PDF. **Any saved report is a dashboard widget.** See [reporting.md](../developer-guide/engines/reporting.md) |
+| 14 | Document Management System (DMS) | Standalone module — `Document`, `DocumentFolder`, `DocumentShareLink`, `DocumentViewEvent`, `DocumentTemplate`, `DocumentSignatureRequest`, `DocumentSignatory`, `UiDocumentCategory`, `UiDocumentChecklist`; `DocumentsPage`, `DocumentBuilderPage`, `SharedDocumentPage`, `SignDocumentPage`, `DocumentPanel`. Pluggable storage (local/S3/Azure/GCS), dedup+versioning, folders, in-document full-text search, builder (categories/checklists), merge templates, tracked public sharing + analytics, **native e-signature** with certificate. See [document-management.md](../developer-guide/engines/document-management.md) |
 | 15 | Role-Based Access Control | `Role`, `UiPermission`, `OperationalPermission`, `PermissionsBuilderPage` |
-| 16 | Case / Ticket Management | `CrmCase`, `CustomerCase`, `CaseMessage`, `CaseEscalation` |
-| 17 | Knowledge Base | `KnowledgeArticle`, `KnowledgeCategory`, `ArticleFeedback` |
-| 18 | Customer Self-Service Portal | `CustomerPortalUser`, `PortalSession`, `ServiceRequest` |
-| 19 | Territory Management | `Territory`, `TerritoryAssignment`, `TerritoryMember`, `TerritoryRule`, `TerritoryPerformance` |
-| 20 | Sales Team Management | `SalesTeam`, `SalesTeamMember`, `TeamMeeting`, `TeamPerformance` |
-| 21 | Calendar & Meeting Management | `CalendarEvent`, `CalendarAttendee`, `MeetingNote`, `MeetingRoom`, `RoomBooking` |
-| 22 | Contract Management | `Contract`, `ContractTemplate`, `ContractApproval`, `ContractSignature`, `ContractMilestone`, `ContractAmendment`, `ContractRenewal` |
-| 23 | Partner / Channel Management | `Partner`, `PartnerContact`, `PartnerOpportunity`, `PartnerCertification`, `PartnerPortalUser`, `ChannelConflict` |
-| 24 | Social Media Integration | `SocialMediaAccount`, `SocialMediaPost`, `SocialMediaMention`, `SocialMediaCampaign`, `SocialMediaLead`, `SocialListeningKeyword`, `CompetitorSocialActivity` — **Full-stack: service, API, control panel** |
+| 16 | Case / Ticket Management | `CrmCase`, SLA engine (`SlaPolicy`, `SlaInstance`, `SlaEscalation`) |
+| 17 | Knowledge Base | **Not built** — models removed July 2026 |
+| 18 | Customer Self-Service Portal | Client and introducer portal (`portal.service.js`, `routes/portal`): one-time email code, own records, requests, uploads, messages; no portal tables (finding #18) |
+| 19 | Territory Management | **Not built** — models removed July 2026 |
+| 20 | Sales Team Management | **Not built** — models removed July 2026 (interim: `EmployeeHierarchy`) |
+| 21 | Calendar & Meeting Management | **Not built** — models removed July 2026 (per-user calendar feed link only) |
+| 22 | Contract Management | **Not built** — models removed July 2026 (document e-signature ships in the DMS) |
+| 23 | Partner / Channel Management | **Not built** — models removed July 2026 |
+| 24 | Social Media Integration | `SocialMediaAccount`, `SocialMediaPost`, `SocialMediaMention`, `SocialMediaCampaign`, `SocialListeningKeyword` — **Full-stack: service, API, control panel** |
 | 25 | Data Import | `ImportJob`, `ImportPage` |
 | 26 | Lead Assignment / Round Robin | `AssignmentRule`, `RoundRobinState`, `AssignmentLog` |
 | 27 | Notifications | `Notification`, `notification.service` |
@@ -507,7 +516,7 @@ CRM" while preserving metadata flexibility.
 | 30 | Form Builder (Low-Code) | `UiForm`, `FormBuilder`, `FormRenderer`, `WizardBuilder` |
 | 31 | Integration Framework | `Integration`, `IntegrationLog`, `IntegrationBuilderPage` |
 | 32 | Search | `search.service`, full-text index support |
-| 33 | Customer Feedback | `CustomerFeedback`, `ArticleFeedback` |
+| 33 | Customer Feedback | **Not built** as a module — models removed; CSAT/NPS can be fields on a Builder object |
 | 34 | Record Trash & Recovery | Soft-delete for records (`records.deleted_at`), admin-only Trash with restore / permanent-delete (`RecordsTrashPage`, `/builder/trash/records`), per-pipeline soft/hard **Deletion behaviour** toggle (`ui_pipelines.config.delete_mode`) |
 
 ### Missing Modules (13 gaps — needed for 9.0+)
@@ -516,15 +525,15 @@ CRM" while preserving metadata flexibility.
 | --- | --- | --- | --- | --- |
 | 1 | **Live Chat / Chatbot** | Salesforce, HubSpot, Zoho, Freshsales | No models or services for real-time chat, chatbots, or conversational AI. Table stakes for modern CRMs. | P0 |
 | 2 | **Invoicing & Billing** | Zoho, Freshsales, Dynamics | No quote, `Invoice`, `Payment`, or billing lifecycle models. No quote-to-cash cycle. | P0 |
-| 3 | **Full Marketing Automation** | HubSpot, Salesforce Pardot, Zoho | Email campaigns exist but missing: landing pages, A/B testing, multi-channel journeys (SMS, WhatsApp), marketing attribution, web forms with tracking. | P0 |
+| 3 | **Full Marketing Automation** | HubSpot, Salesforce Pardot, Zoho | No email campaign engine (models removed July 2026); also missing: landing pages, A/B testing, multi-channel journeys (SMS, WhatsApp), marketing attribution, web forms with tracking. | P0 |
 | 4 | ~~**Web Forms / Form-to-Lead**~~ | HubSpot, Salesforce, Zoho | **Delivered (October 2026):** any Builder form publishes as a branded web form (`/f/<key>`) creating records of its object, with CAPTCHA, honeypot, consent, UTM capture, routing, and staff sharing by email or link (Tools ▸ Web forms). Remaining: an embeddable JS snippet and A/B testing. | — |
 | 5 | **Telephony / CTI Integration** | Salesforce, Freshsales, Dynamics | No click-to-call, VoIP, IVR, or CTI adapter framework (call tracking is via the Activity Timeline, type: call). | P1 |
 | 6 | **AI / ML Features** | Salesforce Einstein, Zoho Zia, HubSpot | Lead scoring is manual/rule-based. No predictive scoring, sentiment analysis, deal insights, or AI recommendations. | P1 |
-| 7 | **SLA Management** | Salesforce, Dynamics, Freshdesk | Cases exist but no SLA policy, response time tracking, or escalation rules based on SLA breaches. | P1 |
+| 7 | ~~**SLA Management**~~ | Salesforce, Dynamics, Freshdesk | **Delivered:** SLA policies and targets on any object, business-hours calendars, pause/resume, warning/breach escalations, SLA Board (`sla.service.js`). | — |
 | 8 | **Subscription / Recurring Revenue Mgmt** | Salesforce, Zoho | No ARR/MRR tracking, subscription lifecycle, or renewal revenue models beyond contracts. | P2 |
 | 9 | **Project Management** | Zoho, Dynamics | No project, milestone tracking, or Kanban for post-sale project delivery. | P2 |
 | 10 | **Inventory Management** | Zoho, Dynamics | Products exist but no `Warehouse`, `StockLevel`, `PurchaseOrder` models. | P2 |
-| 11 | **Surveys / NPS** | HubSpot, Salesforce, Zoho | `CustomerFeedback` exists but no structured survey builder or NPS/CSAT scoring system. | P2 |
+| 11 | **Surveys / NPS** | HubSpot, Salesforce, Zoho | No survey builder or NPS/CSAT system (CSAT/NPS can only be fields on a Builder object). | P2 |
 | 12 | **Mobile App / Offline Access** | All major CRMs | No evidence of a mobile-specific build (React Native, PWA config, etc.). | P2 |
 | 13 | **Data Enrichment** | HubSpot, Salesforce, ZoomInfo integrations | No models or services for automatic company/contact data enrichment from third-party sources. | P2 |
 
@@ -536,10 +545,9 @@ CRM" while preserving metadata flexibility.
 | --- | ------ |
 | Live Chat / Chatbot Missing | Every major CRM competitor ships real-time chat; absence is immediately visible to evaluators |
 | Invoicing & Billing Missing | No quote-to-cash cycle; users must leave Genesis to complete deals |
-| Full Marketing Automation Missing | Email campaigns are a start, but multi-channel journeys, landing pages, and attribution are expected |
+| Full Marketing Automation Missing | No email campaign engine; multi-channel journeys, landing pages, and attribution are expected |
 | Mobile Gap | Responsive web only, no native mobile apps |
-| Lead Capture Gap | No web-to-lead forms or external lead routing |
-| CI Pipeline | Tests pass locally; GitHub Actions not configured |
+| Report builder blind to Builder objects | Reports cover only fixed typed tables; customers who model their business as Builder objects can chart it on dashboards but not report on it (finding #15) |
 | Async Workflow Steps | `delay` and `approval` steps work today via a `WorkflowPendingStep` table polled by a 60s scheduler; a dedicated job queue (e.g. BullMQ) would give lower-latency, higher-scale resumption |
 
 ---
@@ -572,7 +580,7 @@ Close the three highest-impact gaps that separate Genesis from full-featured CRM
 
 4. **WhatsApp Business Channel** — the conversational channel clients ask for
    first. Design and step-by-step plan:
-   [SOCIAL_MEDIA.md → WHATSAPP INTEGRATION](../admin-guide/SOCIAL_MEDIA.md#whatsapp-integration)
+   [social-media.md → WHATSAPP INTEGRATION](../administration/social-media.md#whatsapp-integration)
    - Live WhatsApp Cloud API connector registered in `LIVE_CONNECTORS`
      (the connector contract and OAuth round-trip already exist)
    - **Embedded Signup** onboarding so each tenant brings its own WABA, number,
@@ -591,7 +599,7 @@ Close the three highest-impact gaps that separate Genesis from full-featured CRM
 
 5. **Paid Campaign Analytics (Meta Marketing API)** — measure engagement and
    revenue per campaign, not just per post. Design:
-   [SOCIAL_MEDIA.md → Meta Ads & Campaign Analytics](../admin-guide/SOCIAL_MEDIA.md#meta-ads--campaign-analytics)
+   [social-media.md → Meta Ads & Campaign Analytics](../administration/social-media.md#meta-ads--campaign-analytics)
    - Separate `MetaAdsConnector` (`ads_read`; its own App Review submission,
      distinct from the page publishing scopes)
    - `platform_campaign_id` / `ad_account_id` on `SocialMediaCampaign` and a
@@ -621,12 +629,7 @@ Add AI-powered intelligence and complete the service management suite.
    - AI-powered next-best-action recommendations
    - Smart field auto-fill and data deduplication
 
-2. **SLA Management**
-   - SLA policy definitions (response time, resolution time per priority)
-   - Automatic SLA timer tracking on cases
-   - Escalation rules triggered by SLA breach
-   - SLA compliance dashboards and reports
-   - Models: `SlaPolicy`, `SlaPolicyRule`, `SlaTimer`, `SlaEscalation`
+2. **SLA Management** — *delivered*: `SlaPolicy`, `SlaTarget`, `SlaInstance`, `SlaEscalation`, `SlaBusinessHours`, the SLA Board and the `sla` report source.
 
 3. **Telephony / CTI Integration**
    - Click-to-call from any phone field
@@ -724,7 +727,7 @@ control cost.
 | ---------- | --------- | ---------- |
 | **CRM copilot (tool-use agent)** — "create a lead for Acme", "show my overdue tasks", "advance the Globex deal" — Claude calls existing services under the user's RBAC/tenant scope | `crm/record/task/search/report` services, `permission.service` | Opus |
 | **Natural-language reports** — "pipeline by stage for Q3 as a bar chart" → a saved report/chart | `report.service`, `report-registry`, `UiChart` | Opus |
-| **WhatsApp / channel chatbot** — the same tool-use agent over WhatsApp (see [SOCIAL_MEDIA — WHATSAPP INTEGRATION](../admin-guide/SOCIAL_MEDIA.md#whatsapp-integration)) | WhatsApp connector + copilot | Sonnet/Opus |
+| **WhatsApp / channel chatbot** — the same tool-use agent over WhatsApp (see [SOCIAL_MEDIA — WHATSAPP INTEGRATION](../administration/social-media.md#whatsapp-integration)) | WhatsApp connector + copilot | Sonnet/Opus |
 | **Global semantic search** — embeddings-backed retrieval to replace SQL `LIKE %q%` (finding #9) | `search.service` | embeddings + Haiku |
 
 ### C. Content Generation
@@ -852,7 +855,7 @@ sources feeding one canonical event record.
 | Mechanism | Backed by (existing) | Notes |
 | --------- | -------------------- | ----- |
 | **Agent-logged (manual)** — one-click "log life event" from the record's Activity Timeline | `activity.service`, `record.service` | Baseline; must be one click, not a buried form |
-| **Client self-service** — clients update milestones in the portal; periodic "annual check-in" review forms | `CustomerPortalUser`, `ServiceRequest`, `email-send.service` | Turns the client into a capture source |
+| **Client self-service** — clients update milestones in the portal; periodic "annual check-in" review forms | client portal (`portal.service`), `email-send.service` | Turns the client into a capture source |
 | **Derived / computed (highest ROI)** — a scheduler runs rules over data already held (DOBs, contract dates, anniversaries) | same 60s scheduler pattern as `WorkflowPendingStep`; `record.service` typed-EAV/date values; `Reminder` model | "Any client turning 65 in 90 days" is a *query*, not new data collection |
 | **External signals / enrichment** — job change, business formation, property records | Data Enrichment adapter (Missing Modules #13; e.g. the connected Lusha MCP), `integration.service` | Lower-confidence → a lead to verify, not a fact to act on |
 | **AI extraction (future)** — NLP over call notes / emails auto-suggests "possible life event detected" | AI catalog §C/§D above, `ai.service` | Lands as *unverified*, routed for confirmation |
@@ -915,10 +918,10 @@ the assignment loop.
 - Invoicing & billing (planned — Phase 7)
 - Full marketing automation with journeys (planned — Phase 7)
 - AI / ML features — predictive scoring, sentiment analysis (planned — Phase 8)
-- SLA management for cases (planned — Phase 8)
+- SLA management (complete)
 - Telephony / CTI integration (planned — Phase 8)
-- Web forms / form-to-lead capture (planned — Phase 8)
-- Field-level security via `ui_permissions` (complete)
+- Web forms / form-to-lead capture (complete, October 2026)
+- Field-level security via `ui_permissions` (partial — hides fields on screen; the API still returns them, finding #16)
 - Operational scope permissions via `operational_permissions` (complete)
 - Assignment audit and admin governance (complete)
 - Retryable webhook infrastructure (complete)
@@ -965,6 +968,21 @@ That is the most realistic path to a defensible `7/10` product score — and wit
 
 ## Related Guides
 
-- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
-- **Architecture**: [../developer-guide/ARCHITECTURE_AND_SETUP.md](../developer-guide/ARCHITECTURE_AND_SETUP.md)
-- **Workflow Engine**: [../developer-guide/WORKFLOW_ENGINE.md](../developer-guide/WORKFLOW_ENGINE.md)
+- **Changelog**: [changelog.md](changelog.md)
+- **Architecture**: [../developer-guide/architecture-and-setup.md](../developer-guide/architecture-and-setup.md)
+- **Workflow Engine**: [../developer-guide/engines/workflow-engine.md](../developer-guide/engines/workflow-engine.md)
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Next** | [Build effort & capabilities](build-effort-and-capabilities.md) — No-code envelope and effort estimates for new processes |
+| **Previous** | [Local LLM operations](../developer-guide/ai-reporting/local-llm-operations.md) *(AI reporting)* |
+| **Background** | [Understanding Genesis › Configure or code?](../understanding/07-configure-or-code.md) |
+| **On these journeys** | [Decision-maker](../README.md#decision-maker) (step 8 of 8) |
+| **Lost?** | [Docs roadmap](../README.md) · [Project](README.md) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

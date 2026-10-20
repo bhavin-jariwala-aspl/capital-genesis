@@ -70,6 +70,8 @@ const ISSUED_AUTO_NUMBERS = new Map();
 
 /** Roles' wide-visibility objects, cached briefly per tenant and role. */
 const WIDE_SCOPE = new Map();
+// tenant|role → the role's explicit "Record Permissions" row (or null), for 30 s.
+const RECORD_SCOPE = new Map();
 
 /** Per-object field defaults, cached briefly (metadata changes rarely). */
 const FIELD_DEFAULTS = new Map();
@@ -892,7 +894,13 @@ class RecordService {
     const level = viewer.role_level ?? ROLE_LEVEL[role] ?? Number.POSITIVE_INFINITY; // unknown level = least privilege, never admin
     if (level <= ADMIN_THRESHOLD) return {};
     let own;
-    if (level <= MANAGER_THRESHOLD) {
+    const explicit = await this.#recordScope(viewer);
+    if (explicit) {
+      // An admin set this role's record view scope: it replaces the level default.
+      const ids = await this.#scopeOwnerIds(explicit.view_scope, employee_id);
+      if (ids === null) return {};
+      own = ids.length ? [{ created_by: { in: ids } }, { assigned_to: { in: ids } }] : [];
+    } else if (level <= MANAGER_THRESHOLD) {
       // Managers: records their team created or owns.
       const ids = await this.#teamIds(employee_id);
       own = [{ created_by: { in: ids } }, { assigned_to: { in: ids } }];
@@ -902,7 +910,8 @@ class RecordService {
     }
     // Objects whose permission gives this role every record (back-office desks).
     const wide = await this.#wideObjectIds(role);
-    return { OR: [...own, ...(wide.length ? [{ object_id: { in: wide } }] : [])] };
+    const or = [...own, ...(wide.length ? [{ object_id: { in: wide } }] : [])];
+    return or.length ? { OR: or } : { id: { in: [] } };
   }
 
   async #teamIds(employeeId) {
@@ -926,6 +935,79 @@ class RecordService {
     const ids = rows.map((r) => r.entity_id);
     WIDE_SCOPE.set(key, { until: Date.now() + 30_000, ids });
     return ids;
+  }
+
+  /**
+   * The role's explicit row in Builder ▸ Permissions ▸ Record Permissions, or
+   * null. Record scopes apply only where an admin has set them: without a row
+   * a role keeps the level-based behaviour (and object "all records" scopes).
+   */
+  async #recordScope(viewer) {
+    const role = String(viewer?.role ?? '');
+    const key = `${getTenantId() ?? viewer?.tenant_id ?? ''}|${role}`;
+    const hit = RECORD_SCOPE.get(key);
+    if (hit && hit.until > Date.now()) return hit.row;
+    const found = this.db.operationalPermission?.findFirst
+      ? await this.db.operationalPermission.findFirst({ where: { entity_type: 'record', role_name: role } }).catch(() => null)
+      : null;
+    const row = found?.entity_type === 'record' ? found : null;
+    RECORD_SCOPE.set(key, { until: Date.now() + 30_000, row });
+    return row;
+  }
+
+  /** Employee ids a scope covers for this viewer; null = every record, [] = none. */
+  async #scopeOwnerIds(scope, employeeId) {
+    switch (scope) {
+      case 'all': return null;
+      case 'own': return [employeeId];
+      case 'team': {
+        const rows = await this.db.employeeHierarchy.findMany({
+          where:  { ancestor_id: employeeId, depth: 1 },
+          select: { descendant_id: true },
+        });
+        return [employeeId, ...rows.map((r) => r.descendant_id)];
+      }
+      case 'hierarchy': return this.#teamIds(employeeId);
+      default: return [];
+    }
+  }
+
+  /**
+   * Enforce the role's record scope for one action on one record (or on a new
+   * record, for `create`). No-op for admins and for roles with no explicit row.
+   */
+  async #assertRecordScope(action, viewer, record = null) {
+    if (!viewer) return;
+    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? Number.POSITIVE_INFINITY;
+    if (level <= ADMIN_THRESHOLD) return;
+    const row = await this.#recordScope(viewer);
+    if (!row) return;
+    const scope = row[`${action}_scope`] ?? 'none';
+    if (scope === 'none') throw new AuthorizationError(`Your role (${viewer.role}) may not ${action} records`);
+    if (action === 'create' || scope === 'all') return;
+    const ids = await this.#scopeOwnerIds(scope, viewer.employee_id);
+    if (ids && !ids.includes(record?.created_by) && !ids.includes(record?.assigned_to)) {
+      const whose = { own: 'your own', team: "your team's", hierarchy: 'your hierarchy’s' }[scope] ?? 'these';
+      throw new AuthorizationError(`Your role may only ${action} ${whose} records`);
+    }
+  }
+
+  /** Of these ids, the ones the viewer's record scope allows `action` on (bulk operations). */
+  async #filterByRecordScope(ids, action, viewer) {
+    if (!ids.length || !viewer) return ids;
+    const level = viewer.role_level ?? ROLE_LEVEL[viewer.role] ?? Number.POSITIVE_INFINITY;
+    if (level <= ADMIN_THRESHOLD) return ids;
+    const row = await this.#recordScope(viewer);
+    if (!row) return ids;
+    const scope = row[`${action}_scope`] ?? 'none';
+    if (scope === 'none') return [];
+    const owners = await this.#scopeOwnerIds(scope, viewer.employee_id);
+    if (owners === null) return ids;
+    const rows = await this.db.record.findMany({
+      where:  { id: { in: ids }, OR: [{ created_by: { in: owners } }, { assigned_to: { in: owners } }] },
+      select: { id: true },
+    });
+    return rows.map((r) => r.id);
   }
 
   /**
@@ -980,6 +1062,13 @@ class RecordService {
     if (!this.scope.canSee(await this.scope.forViewer(viewer), record)) throw new NotFoundError('Record');
     if (level <= ADMIN_THRESHOLD) return;
     if (record.object_id != null && (await this.#wideObjectIds(role)).includes(Number(record.object_id))) return;
+
+    const explicit = await this.#recordScope(viewer);
+    if (explicit) {
+      const ids = await this.#scopeOwnerIds(explicit.view_scope, employee_id);
+      if (ids !== null && !ids.includes(record.created_by) && !ids.includes(record.assigned_to)) throw new NotFoundError('Record');
+      return;
+    }
 
     if (level <= MANAGER_THRESHOLD) {
       const allowed = new Set(await this.#teamIds(employee_id));
@@ -1336,6 +1425,7 @@ class RecordService {
 
   async createRecord(objectId, stageId, createdBy, assignedTo = null, viewer = null, crmData = null, { draft = false } = {}) {
     await this.#assertObjectEditPermission(objectId, viewer);
+    await this.#assertRecordScope('create', viewer);
     // Resolve tenant �� explicit from JWT, or fall back to AsyncLocalStorage middleware
     const tenantId = Number(viewer?.tenant_id) || getTenantId();
     if (!tenantId) {
@@ -1398,6 +1488,10 @@ class RecordService {
     if (!existing) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
+    await this.#assertRecordScope('edit', viewer, existing);
+    if (assignedTo !== undefined && (assignedTo ?? null) !== (existing.assigned_to ?? null)) {
+      await this.#assertRecordScope('assign', viewer, existing);
+    }
 
     // A form opened by a viewer who sees personal data masked sends the mask
     // back unchanged — never let "••••0123" overwrite the real value.
@@ -1547,6 +1641,7 @@ class RecordService {
     if (!existing) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
+    await this.#assertRecordScope('edit', viewer, existing);
     if (stageId && Number(stageId) !== existing.pipeline_stage_id) await this.#assertStageGate(existing.id, stageId, updatedBy ?? viewer?.employee_id ?? null);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     const updated = await this.db.record.update({
@@ -1658,6 +1753,7 @@ class RecordService {
     if (!existing) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
+    await this.#assertRecordScope('edit', viewer, existing);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     return this.#recordStatusEvent(id, {
       ...data,
@@ -1708,6 +1804,7 @@ class RecordService {
     if (!existing || existing.deleted_at) throw new NotFoundError('Record');
     await this.#assertAccess(existing, viewer);
     await this.#assertObjectEditPermission(existing.object_id, viewer);
+    await this.#assertRecordScope('delete', viewer, existing);
     const mode = opts.mode ?? await this.#resolvePipelineDeleteMode(existing.object_id);
     const tenantId = Number(viewer?.tenant_id) || existing.tenant_id || getTenantId();
     // ── Emit domain event: record.deleted (before delete so data is accessible) ──
@@ -1776,7 +1873,7 @@ class RecordService {
   }
 
   async bulkDelete(ids, deletedBy, viewer, opts = {}) {
-    const numIds = await this.#filterAccessibleIds(ids.map(Number), viewer);
+    const numIds = await this.#filterByRecordScope(await this.#filterAccessibleIds(ids.map(Number), viewer), 'delete', viewer);
     if (!numIds.length) return { deleted: 0 };
 
     // Resolve mode per record from its object's pipeline (cached per object so a
@@ -1889,7 +1986,7 @@ class RecordService {
   }
 
   async bulkUpdateStage(ids, stageId, updatedBy, viewer) {
-    const numIds = await this.#filterAccessibleIds(ids.map(Number), viewer);
+    const numIds = await this.#filterByRecordScope(await this.#filterAccessibleIds(ids.map(Number), viewer), 'edit', viewer);
     if (!numIds.length) return { updated: 0 };
     // Every record must pass the target stage's gate; a bulk move is all-or-nothing.
     for (const rid of numIds) await this.#assertStageGate(rid, stageId, updatedBy ?? viewer?.employee_id ?? null);
@@ -1963,7 +2060,7 @@ class RecordService {
   /** Reassign many records to one owner (e.g. when an RM leaves). */
   async bulkAssign(ids, assignedTo, updatedBy, viewer) {
     this.#assertManager(viewer, 'reassign records in bulk');
-    const numIds = await this.#filterAccessibleIds((ids ?? []).map(Number), viewer);
+    const numIds = await this.#filterByRecordScope(await this.#filterAccessibleIds((ids ?? []).map(Number), viewer), 'assign', viewer);
     if (!numIds.length) return { updated: 0 };
     const owner = assignedTo ? await this.db.employee.findUnique({ where: { employee_id: String(assignedTo) }, select: { employee_id: true, is_active: true } }) : null;
     if (assignedTo && (!owner || owner.is_active === false)) throw new ValidationError('The new owner is not an active employee');
@@ -1995,6 +2092,8 @@ class RecordService {
     if (!src || src.deleted_at || !tgt || tgt.deleted_at) throw new NotFoundError('Record');
     await this.#assertAccess(src, viewer);
     await this.#assertAccess(tgt, viewer);
+    await this.#assertRecordScope('delete', viewer, src);   // the source goes to the Trash
+    await this.#assertRecordScope('edit', viewer, tgt);
     if (src.object_id !== tgt.object_id) throw new ValidationError('Only records of the same object can be merged');
     await this.#assertObjectEditPermission(src.object_id, viewer);
 
@@ -2268,5 +2367,8 @@ class RecordService {
 RecordService.clearMetadataCaches = () => {
   for (const m of [OBJECT_NAMES, FIELD_DEFAULTS, CHILD_READERS, PII_CACHE]) m.clear();
 };
+
+/** Forget cached record scopes — call after Builder ▸ Permissions saves a record row. */
+RecordService.clearRecordScopeCache = () => RECORD_SCOPE.clear();
 
 module.exports = RecordService;

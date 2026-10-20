@@ -41,6 +41,40 @@ function assertWorkflowTriggerable(wf) {
       + 'Pick an object, or use the "scheduled" or "manual" trigger instead.',
     );
   }
+  // The scheduler skips a workflow with no interval, so one saved without it
+  // looks active and never runs.
+  if (trigger === 'scheduled') {
+    const cfg = wf.trigger_config ?? {};
+    if (!(Number(cfg.interval_minutes) >= 1)) {
+      throw new ValidationError('A scheduled workflow needs an interval of at least 1 minute (trigger_config.interval_minutes) — without one the scheduler never runs it.');
+    }
+    if (cfg.per_record && !wf.object_id) {
+      throw new ValidationError('A per-record scheduled workflow sweeps the records of one object — pick the object.');
+    }
+  }
+}
+
+/**
+ * Normalise `trigger_config` from a form or API body: parse a JSON string,
+ * coerce the keys the engine reads to their types, and keep every other key
+ * (manual workflows carry `show_when`, `inputs`, `success_message`). Returns
+ * `undefined` when the body does not mention it, so an update leaves it alone.
+ */
+function normalizeTriggerConfig(raw) {
+  if (raw === undefined) return undefined;
+  if (raw === null || raw === '') return null;
+  let cfg = raw;
+  if (typeof cfg === 'string') {
+    try { cfg = JSON.parse(cfg); } catch { throw new ValidationError('trigger_config must be a JSON object'); }
+  }
+  if (typeof cfg !== 'object' || Array.isArray(cfg)) throw new ValidationError('trigger_config must be a JSON object');
+  const out = { ...cfg };
+  if ('field' in out) { if (out.field) out.field = String(out.field); else delete out.field; }
+  if ('derived' in out) { if (parseBool(out.derived)) out.derived = true; else delete out.derived; }
+  if ('interval_minutes' in out) out.interval_minutes = Math.round(Number(out.interval_minutes)) || 0;
+  if ('per_record' in out) { if (parseBool(out.per_record)) out.per_record = true; else delete out.per_record; }
+  if ('limit' in out) { if (Number(out.limit) > 0) out.limit = Math.min(Math.round(Number(out.limit)), 5000); else delete out.limit; }
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -486,6 +520,8 @@ class DashboardService {
         ? { object_id: Number(wfData.object_id) } : {}),
       ...(wfData.is_active !== undefined && { is_active: parseBool(wfData.is_active) }),
     };
+    const cfg = normalizeTriggerConfig(wfData.trigger_config);
+    if (cfg !== undefined) normalized.trigger_config = cfg;
     assertWorkflowTriggerable(normalized);
     const wf = await this.db.uiWorkflow.create({ data: normalized });
     if (steps?.length) {
@@ -504,10 +540,13 @@ class DashboardService {
     }
     // Validate against the merged row: a caller may be changing only the
     // trigger, leaving an existing object binding in place (or vice versa).
+    const cfg = normalizeTriggerConfig(wfData.trigger_config);
+    if (cfg === undefined) delete wfData.trigger_config; else wfData.trigger_config = cfg;
     const current = await this.db.uiWorkflow.findUnique({
       where:  { id: Number(id) },
-      select: { trigger_type: true, object_id: true },
+      select: { trigger_type: true, object_id: true, trigger_config: true },
     });
+    if (!current) throw new NotFoundError('Workflow');
     assertWorkflowTriggerable({ ...current, ...wfData });
     const wf = await this.db.uiWorkflow.update({ where: { id }, data: wfData });
     return wf;
@@ -647,4 +686,5 @@ class DashboardService {
 module.exports = DashboardService;
 module.exports.WORKFLOW_TRIGGERS = WORKFLOW_TRIGGERS;
 module.exports.OBJECT_BOUND_TRIGGERS = OBJECT_BOUND_TRIGGERS;
+module.exports.normalizeTriggerConfig = normalizeTriggerConfig;
 module.exports.assertWorkflowTriggerable = assertWorkflowTriggerable;

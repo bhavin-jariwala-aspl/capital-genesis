@@ -25,7 +25,7 @@ export const platformService = {
   // ── Onboarding ─────────────────────────────────────────────
   // `onboardTenant` creates the tenant AND everything that makes it usable in
   // one request; the rest support the wizard's live feedback and the
-  // per-tenant setup checklist. See docs/admin-guide/TENANT_ONBOARDING.md.
+  // per-tenant setup checklist. See docs/platform-operations/tenant-onboarding.md.
   onboardTenant:     (data)   => api.post(`${BASE}/tenants/onboard`, data).then(r => r.data),
   getProvisioningSteps: ()    => api.get(`${BASE}/tenants/provisioning-steps`).then(r => r.data),
   checkTenantSlug:   (slug)   => api.get(`${BASE}/tenants/check-slug`, { params: { slug } }).then(r => r.data),

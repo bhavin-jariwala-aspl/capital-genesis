@@ -1,6 +1,12 @@
 # Genesis Capital CRM — Implementation
 
-Implementation record for [GENESIS_Capital_CRM_PRD.md](GENESIS_Capital_CRM_PRD.md), October 2026. For staff: the [Genesis Capital user guide](genesis-capital-user-guide.md) explains how to use the CRM and what every term means. It covers all 25 PRD modules (M01–M25), the cross-cutting requirements (§9), the platform enhancements (§14) and the integrations (§12), with demo data across the whole application.
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Genesis Capital workspace](README.md)** › 3 of 5 · **For:** Implementers, engineers
+> ← [Product requirements (PRD)](product-requirements.md) · [Demo pitch and Q&A](demo-pitch.md) →
+> New to Genesis? Background: [Understanding Genesis › Configure or code?](../understanding/07-configure-or-code.md)
+<!-- /nav:top -->
+
+Implementation record for [product-requirements.md](product-requirements.md), October 2026. For staff: the [Genesis Capital user guide](user-guide.md) explains how to use the CRM and what every term means. It covers all 25 PRD modules (M01–M25), the cross-cutting requirements (§9), the platform enhancements (§14) and the integrations (§12), with demo data across the whole application.
 
 **Approach.** Genesis is a **vertical pack**: Builder metadata installed into its own tenant (`genesis-capital`). There are no Genesis-specific pages, routes or tables.
 
@@ -8,14 +14,14 @@ Implementation record for [GENESIS_Capital_CRM_PRD.md](GENESIS_Capital_CRM_PRD.m
 - Every process is a Builder workflow, assignment rule, SLA policy or stage gate.
 - Every calculation is a Builder formula.
 
-Where the platform could not express a requirement, the platform was extended generically, so every tenant gets the capability. See [Platform Builder Extensions](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md).
+Where the platform could not express a requirement, the platform was extended generically, so every tenant gets the capability. See [Platform Builder Extensions](../developer-guide/engines/platform-builder-extensions.md).
 
 Pack source: `backend/prisma/verticals/genesis-capital/`.
 
 | File | Contents |
 |---|---|
 | `objects.js`, `objects-lending.js`, `objects-investments.js`, `objects-advisory-fx.js`, `objects-growth.js`, `objects-compliance.js` | The 91 objects: fields, formulas, validations, pipelines, forms |
-| `modules.js` | The 18 modules, plus external references, portal sections, website feeds and French labels |
+| `modules.js` | The 19 modules, plus external references, portal sections, website feeds and French labels |
 | `options.js`, `master-data.js`, `masters.js` | Picklists, the product catalogue and other masters, roles, staff, business units, barrier zones |
 | `automation.js`, `automation-phase2.js` | Workflows, assignment rules, SLA policies, sandbox integrations, object permissions |
 | `content.js`, `content-phase2.js` | Document categories, checklists, merge and email templates, wizards, dashboards, public forms |
@@ -80,8 +86,8 @@ Use this only in demo environments; in production each user sets their own passw
 |---|---|
 | Modules (sidebar sections) | 19 |
 | Objects | 91 |
-| Fields (including formulas and roll-ups) | 1,406 |
-| Workflows | 72 |
+| Fields (including formulas and roll-ups) | about 1,476 |
+| Workflows | 89 (27 on create, 36 on field change, 23 scheduled, 3 manual) |
 | Assignment rules / SLA policies | 22 / 13 |
 | Object permission entries | 208 |
 | Roles / staff logins | 17 / 22 |
@@ -118,7 +124,7 @@ node scripts/install-vertical.js genesis-capital --tenant genesis-capital --reco
 
 When a prospect's own users are to try the CRM, build a separate hosted installation with its own database, named
 accounts, two-factor sign-in, a test mail inbox and demo data only; never share a developer machine or the
-development database. Steps, settings, reset and close-down: [CLIENT_SANDBOX.md](CLIENT_SANDBOX.md).
+development database. Steps, settings, reset and close-down: [client-sandbox.md](client-sandbox.md).
 
 ### Environment for production
 
@@ -201,7 +207,7 @@ Objects: `enquiry`, `web_event`, `referral`.
 | LEAD-FR-03 duplicates | `mobile_e164` normalisation; matches existing parties by email, mobile, national ID and BRN (`existing_party_*` formulas); conversion links rather than duplicates. |
 | LEAD-FR-04 assignment | Six rules route enquiries by business unit. `genesis_enquiry_existing_client_rm` sends an existing client's enquiry to their primary RM. |
 | LEAD-FR-05 wizards | Real estate application, investor questionnaire, wealth, advisory and FX qualification wizards. |
-| LEAD-FR-06 scoring | `lead_score` and grade A–F formulas: amount band, existing client, completeness, age-tenure feasibility. |
+| LEAD-FR-06 scoring | `score` and `grade` (A–F) formulas on the enquiry: amount band, existing client, completeness (mobile, email), marketing consent, referral or introducer channel. The platform's lead-scoring engine is not used. Age-tenure feasibility is checked on the loan application. |
 | LEAD-FR-07 SLA | *Enquiry — speed to lead*: first contact within the product's business hours; warning and escalation. |
 | LEAD-FR-08 statuses | New → Contacted → Qualified → Converted / Disqualified / Nurture. Disqualification needs a reason code (gate). |
 | LEAD-FR-09 conversion | `genesis_enquiry_conversion` creates or links the party, the entity relationship, the KYC case and the consent record and, for loans, the loan application. |
@@ -650,13 +656,13 @@ Records are back-dated (`created_at`), so dashboards show trends. On top of the 
   analytics, for example information memoranda sent to investors and monthly reports. Offer letters, mandate
   agreements and engagement letters have e-signature requests, signed or awaiting signature.
 - **Access history.** Six wall-crossings (approved, rejected, pending) and an audit-chain baseline (see
-  [Access & Barriers](../user-guide/22-access-and-barriers.md#worked-example-genesis-capital)).
+  [Access & Barriers](../builder-guide/10-business-units-and-barriers.md#worked-example-genesis-capital)).
 
 Every sample document is marked SPECIMEN; no real client data is used.
 
 ## 12. Demo walk-through
 
-For a client meeting, use the scripted pitch, timings and Q&A in [DEMO_PITCH.md](DEMO_PITCH.md). The steps below are
+For a client meeting, use the scripted pitch, timings and Q&A in [demo-pitch.md](demo-pitch.md). The steps below are
 the short technical version.
 
 1. **Website to loan.** Submit the website form (`/f/<key>`, printed by the installer) for *Real Estate Loan*. It is routed to Lending, acknowledged in the client's language and timed by the speed-to-lead SLA. Move it to *Converted*: the party, KYC case and application appear. Follow the application through MCIB, approval, offer, security and disbursement (the checker must be another user, for example GCOPS1). The LMS returns the account number.
@@ -683,6 +689,7 @@ the short technical version.
 | Two-way calendar sync, Outlook add-in | RM-FR-03 | Microsoft 365 / Google OAuth credentials (the one-way feed works now) |
 | WhatsApp | E-09, I-12 | A Meta WhatsApp Business account |
 | Live screening, MCIB, LMS, TA, OMS, FX dealing, SMS providers | §12 | Provider contracts and credentials; integrations run on the sandbox simulator |
+| Self-service reports on the Genesis objects | M22 | The report builder reads only the platform's fixed tables (tasks, activities, SLA and the unused CRM tables); the 15 dashboards cover the Genesis objects. Extending the report builder is on the roadmap |
 | Full-text search engine | E-10 | Not required at current volumes |
 | Per-tenant uniqueness of staff ID and email | E-11 | A planned constraint migration on the shared database |
 | Pending-change diff screen for maker-checker | E-17 | Approvals already exclude the maker |
@@ -692,7 +699,7 @@ the short technical version.
 
 ## 14. Verification
 
-- `backend`: `npx jest`. 79 suites (about 1,230 tests), including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for upload links, expert routing, subscriber distribution, portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
+- `backend`: `npx jest`. 95 test files, including `genesis-capital-pack.test.js` (every reference in the pack resolves), plus tests for upload links, expert routing, subscriber distribution, portal, auth hardening, field protection, job queue, calendar feed, public feeds, workflow steps and record visibility.
 - **Live business flows**, driven through the API against the installed workspace, with each step performed by the
   role that owns it:
   - *Lending, 14 steps:* website enquiry (French), routing, French acknowledgement, speed-to-lead SLA, conversion
@@ -702,5 +709,21 @@ the short technical version.
   - *Desks:* fund order maker-checker to TA confirmation; suitability block; FX quote to deal with dealing
     reference; advisory conflict check invisible to the trading desk; complaint acknowledgement; restricted-list
     block; introducer referral through the portal to a routed enquiry.
-- `frontend`: `npx vitest run` (29 files, about 310 tests, including the web form, Web forms page, upload links, portal, Kanban views and theming), `npm run lint`, `npm run build`.
+- `frontend`: `npx vitest run` (49 test files, including the web form, Web forms page, upload links, portal, Kanban views and theming), `npm run lint`, `npm run build`.
 - CI runs all of the above on every push (`.github/workflows/ci.yml`).
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Next** | [Demo pitch and Q&A](demo-pitch.md) — Running a client demonstration: scenes, links, talk tracks, expected questions |
+| **Previous** | [Product requirements (PRD)](product-requirements.md) |
+| **Background** | [Understanding Genesis › Configure or code?](../understanding/07-configure-or-code.md) |
+| **Related** | [Product requirements (PRD)](product-requirements.md) · [Platform Builder extensions](../developer-guide/engines/platform-builder-extensions.md) · [Step 8 — Codebase tour](../understanding/08-codebase-tour.md) |
+| **On these journeys** | [CRM administrator](../README.md#crm-administrator) (step 7 of 7) · [Implementer / presenter](../README.md#implementer--presenter) (step 3 of 7) |
+| **Lost?** | [Docs roadmap](../README.md) · [Genesis Capital workspace](README.md) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

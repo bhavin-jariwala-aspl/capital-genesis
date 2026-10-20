@@ -6,6 +6,7 @@ const { AppError, NotFoundError, ValidationError, ConflictError } = require('../
 const { getConnector, getConnectorStatus, PLATFORMS } = require('../connectors/social');
 const { tenantContext } = require('../middleware/tenant-scope');
 const { logger } = require('./logging.service');
+const { encrypt, decrypt } = require('./field-protection');
 const AssignmentService = require('./assignment.service');
 const SocialAssignmentService = require('./social-assignment.service');
 
@@ -80,6 +81,28 @@ const assertPlatforms = (platforms) => {
   if (!Array.isArray(platforms)) throw new ValidationError('platforms must be an array');
   for (const p of platforms) assertOneOf(p, PLATFORMS, 'platform');
 };
+
+
+// ── Credential storage ──────────────────────────────────────────────────────
+// Platform tokens are stored AES-256-GCM encrypted (`enc:v1:…`, the same scheme
+// as protected record fields) and decrypted only when handed to a connector.
+// `decrypt` passes a plain value through, so rows written before encryption
+// keep working and are sealed the next time their tokens are written.
+const TOKEN_FIELDS = ['access_token', 'refresh_token'];
+
+/** Encrypt the token fields of a create/update payload, in place. */
+function sealTokens(data) {
+  for (const k of TOKEN_FIELDS) if (data[k]) data[k] = encrypt(String(data[k]));
+  return data;
+}
+
+/** A copy of an account row with usable tokens, for a connector call only. */
+function openTokens(account) {
+  if (!account) return account;
+  const out = { ...account };
+  for (const k of TOKEN_FIELDS) if (out[k]) out[k] = decrypt(out[k]);
+  return out;
+}
 
 class SocialMediaService {
   /**
@@ -182,7 +205,7 @@ class SocialMediaService {
     if (data.sync_frequency !== undefined) assertOneOf(data.sync_frequency, VALID_SYNC_FREQ, 'sync_frequency');
 
     const account = await this.db.socialMediaAccount.create({
-      data: {
+      data: sealTokens({
         platform:            data.platform,
         account_name:        data.account_name.trim(),
         account_id:          data.account_id.trim(),
@@ -198,7 +221,7 @@ class SocialMediaService {
         auto_monitoring:     data.auto_monitoring ?? true,
         managed_by:          data.managed_by ?? null,
         tenant_id:           data.tenant_id,
-      },
+      }),
     });
     return this.#publicAccount(account);
   }
@@ -223,7 +246,7 @@ class SocialMediaService {
     if (update.account_type !== undefined)   assertOneOf(update.account_type, VALID_ACCOUNT_TYPES, 'account_type');
     if (update.sync_frequency !== undefined) assertOneOf(update.sync_frequency, VALID_SYNC_FREQ, 'sync_frequency');
 
-    const account = await this.db.socialMediaAccount.update({ where: { id }, data: update });
+    const account = await this.db.socialMediaAccount.update({ where: { id }, data: sealTokens(update) });
     return this.#publicAccount(account);
   }
 
@@ -258,12 +281,12 @@ class SocialMediaService {
     if (tokenData?.access_token) {
       const updated = await this.db.socialMediaAccount.update({
         where: { id },
-        data: {
+        data: sealTokens({
           access_token:      tokenData.access_token,
           refresh_token:     tokenData.refresh_token ?? undefined,
           token_expires_at:  tokenData.token_expires_at !== undefined ? toDateOrNull(tokenData.token_expires_at) : undefined,
           connection_status: 'active',
-        },
+        }),
       });
       return this.#publicAccount(updated);
     }
@@ -277,18 +300,18 @@ class SocialMediaService {
   async #refreshToken(account) {
     const connector = getConnector(account.platform);
     try {
-      const t = await connector.refreshToken(account);
+      const t = await connector.refreshToken(openTokens(account));
       const expiresAt = t.expires_in
         ? new Date(Date.now() + Number(t.expires_in) * 1000)
         : toDateOrNull(t.token_expires_at);
       const updated = await this.db.socialMediaAccount.update({
         where: { id: account.id },
-        data: {
+        data: sealTokens({
           access_token:      t.access_token,
           refresh_token:     t.refresh_token ?? account.refresh_token,
           token_expires_at:  expiresAt,
           connection_status: 'active',
-        },
+        }),
       });
       this.#emit('social.account.token_refreshed', { account_id: account.id, platform: account.platform, tenant_id: account.tenant_id });
       return updated;
@@ -358,7 +381,7 @@ class SocialMediaService {
   async getOAuthAuthorizeUrl(accountId, redirectUri) {
     const account = await this.getAccount(accountId);
     const state = this.#signState({ account_id: account.id, tenant_id: account.tenant_id, exp: Date.now() + OAUTH_STATE_TTL_MS });
-    const url = getConnector(account.platform).getAuthUrl(account, { redirectUri, state });
+    const url = getConnector(account.platform).getAuthUrl(openTokens(account), { redirectUri, state });
     return { url, state, platform: account.platform, connector: getConnector(account.platform).name };
   }
 
@@ -373,15 +396,15 @@ class SocialMediaService {
     return tenantContext.run({ tenantId: tenant_id }, async () => {
       const account = await this.getAccount(Number(account_id));
       const connector = getConnector(account.platform);
-      const t = await connector.handleCallback(code, account);
+      const t = await connector.handleCallback(code, openTokens(account));
       const updated = await this.db.socialMediaAccount.update({
         where: { id: account.id },
-        data: {
+        data: sealTokens({
           access_token:      t.access_token,
           refresh_token:     t.refresh_token ?? account.refresh_token,
           token_expires_at:  t.expires_in ? new Date(Date.now() + Number(t.expires_in) * 1000) : toDateOrNull(t.token_expires_at),
           connection_status: 'active',
-        },
+        }),
       });
       this.#emit('social.account.connected', { account_id: account.id, platform: account.platform, tenant_id });
       return this.#publicAccount(updated);
@@ -507,7 +530,7 @@ class SocialMediaService {
     if (post.status === 'published') {
       const account = await this.getAccount(post.account_id);
       try {
-        await getConnector(account.platform).deletePost(account, post.platform_post_id);
+        await getConnector(account.platform).deletePost(openTokens(account), post.platform_post_id);
       } catch (err) {
         throw new AppError(`Platform refused to delete the post: ${err.message}`, 502, 'PLATFORM_DELETE_FAILED');
       }
@@ -546,7 +569,7 @@ class SocialMediaService {
         throw new Error(`account ${account.display_name} is ${account.connection_status}`);
       }
       account = await this.#ensureFreshToken(account);
-      const result = await getConnector(account.platform).publish(account, post);
+      const result = await getConnector(account.platform).publish(openTokens(account), post);
 
       const published = await this.db.socialMediaPost.update({
         where: { id: postId },
@@ -808,7 +831,7 @@ class SocialMediaService {
         const account = await this.getAccount(mention.account_id);
         try {
           await this.#ensureFreshToken(account);
-          await getConnector(account.platform).sendReply(account, mention.post_url ?? String(mention.id), content);
+          await getConnector(account.platform).sendReply(openTokens(account), mention.post_url ?? String(mention.id), content);
         } catch (err) {
           if (err instanceof AppError) throw err;
           throw new AppError(`Reply could not be delivered to ${account.platform}: ${err.message}`, 502, 'REPLY_FAILED');
@@ -1020,7 +1043,7 @@ class SocialMediaService {
 
     let synced = 0;
     for (const post of posts) {
-      const metrics = await connector.getPostEngagement(account, post.platform_post_id);
+      const metrics = await connector.getPostEngagement(openTokens(account), post.platform_post_id);
       await this.db.socialMediaPost.update({ where: { id: post.id }, data: { engagement_metrics: metrics } });
       synced++;
     }
@@ -1046,7 +1069,7 @@ class SocialMediaService {
     }
     const connector = getConnector(account.platform);
     const from = since ?? account.last_sync_at ?? new Date(Date.now() - 86400000);
-    const incoming = await connector.getMentions(account, from);
+    const incoming = await connector.getMentions(openTokens(account), from);
 
     const keywords = await this.db.socialListeningKeyword.findMany({
       where: { tenant_id: account.tenant_id, is_active: true },
@@ -1223,7 +1246,7 @@ class SocialMediaService {
   /** Refresh follower/following/post counts from the platform. */
   async syncAccountMetrics(accountId) {
     const account = await this.getAccount(accountId);
-    const metrics = await getConnector(account.platform).getProfileMetrics(account);
+    const metrics = await getConnector(account.platform).getProfileMetrics(openTokens(account));
     const updated = await this.db.socialMediaAccount.update({
       where: { id: accountId },
       data: {
@@ -1346,3 +1369,5 @@ SocialMediaService.SYNC_INTERVAL_MS = SYNC_INTERVAL_MS;
 SocialMediaService.PUBLISHABLE_STATUSES = PUBLISHABLE_STATUSES;
 
 module.exports = SocialMediaService;
+module.exports.sealTokens = sealTokens;
+module.exports.openTokens = openTokens;

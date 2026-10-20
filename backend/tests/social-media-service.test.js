@@ -39,6 +39,7 @@ jest.mock('../src/connectors/social', () => {
 const { _connector: connector } = require('../src/connectors/social');
 const SocialMediaService = require('../src/services/social-media.service');
 const { AppError, ValidationError, ConflictError } = require('../src/utils/errors');
+const { decrypt, isEncrypted } = require('../src/services/field-protection');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -191,8 +192,47 @@ describe('accounts', () => {
     const a = await svc.refreshAccountToken(1, {});
     expect(connector.refreshToken).toHaveBeenCalledTimes(1);
     expect(a.has_access_token).toBe(true);
-    expect(db._rows.accounts[0].access_token).toBe('at-fresh');
+    expect(isEncrypted(db._rows.accounts[0].access_token)).toBe(true);
+    expect(decrypt(db._rows.accounts[0].access_token)).toBe('at-fresh');
     expect(db._rows.accounts[0].token_expires_at).toBeInstanceOf(Date);
+  });
+
+  it('stores tokens encrypted on every write path', async () => {
+    const db = makePrisma();
+    const { svc } = makeSvc(db);
+    const base = { account_name: 'a', account_id: '1', display_name: 'A', account_type: 'business', tenant_id: 7, platform: 'facebook' };
+    await svc.createAccount({ ...base, access_token: 'tok', refresh_token: 'rtok' });
+    const created = db.socialMediaAccount.create.mock.calls[0][0].data;
+    expect(isEncrypted(created.access_token)).toBe(true);
+    expect(decrypt(created.refresh_token)).toBe('rtok');
+
+    await svc.updateAccount(1, { access_token: 'edited' });
+    expect(decrypt(db._rows.accounts[0].access_token)).toBe('edited');
+
+    await svc.refreshAccountToken(1, { access_token: 'pasted', refresh_token: 'rt-pasted' });
+    expect(isEncrypted(db._rows.accounts[0].access_token)).toBe(true);
+    expect(decrypt(db._rows.accounts[0].refresh_token)).toBe('rt-pasted');
+  });
+
+  it('hands connectors the decrypted token, never ciphertext', async () => {
+    const db = makePrisma({ accounts: [account({ refresh_token: 'rt' })] });
+    const { svc } = makeSvc(db);
+    await svc.refreshAccountToken(1, {});                        // stored encrypted now
+    expect(isEncrypted(db._rows.accounts[0].access_token)).toBe(true);
+    db._rows.posts.push(post());
+    await svc.publishPost(10);
+    const [acct] = connector.publish.mock.calls[0];
+    expect(acct.access_token).toBe('at-fresh');
+    expect(acct.refresh_token).toBe('rt');
+  });
+
+  it('still works with a token stored before encryption', async () => {
+    const db = makePrisma({ accounts: [account({ access_token: 'legacy-plain', refresh_token: 'rt-plain' })] });
+    const { svc } = makeSvc(db);
+    await svc.refreshAccountToken(1, {});
+    expect(connector.refreshToken.mock.calls[0][0].refresh_token).toBe('rt-plain');
+    expect(decrypt(db._rows.accounts[0].refresh_token)).toBe('rt-plain'); // sealed on the way back
+    expect(isEncrypted(db._rows.accounts[0].refresh_token)).toBe(true);
   });
 
   it('refuses a connector refresh when no refresh token is stored', async () => {
@@ -416,7 +456,8 @@ describe('runSyncCycle', () => {
     const { svc } = makeSvc(db);
     await svc.runSyncCycle({ now: NOW });
     expect(connector.refreshToken).toHaveBeenCalledTimes(1);
-    expect(db._rows.accounts[0].access_token).toBe('at-fresh');
+    expect(decrypt(db._rows.accounts[0].access_token)).toBe('at-fresh');
+    expect(connector.getProfileMetrics.mock.calls[0][0].access_token).toBe('at-fresh'); // the sync used the refreshed token, decrypted
   });
 
   it('marks an expired account without a refresh token "expired" and skips it next time', async () => {
@@ -629,7 +670,9 @@ describe('OAuth state', () => {
     const a = await svc.completeOAuth({ code: 'c1', state });
     expect(connector.handleCallback).toHaveBeenCalledWith('c1', expect.objectContaining({ id: 1 }));
     expect(a.has_access_token).toBe(true);
-    expect(db._rows.accounts[0]).toMatchObject({ access_token: 'at2', refresh_token: 'rt2', connection_status: 'active' });
+    expect(db._rows.accounts[0]).toMatchObject({ connection_status: 'active' });
+    expect(decrypt(db._rows.accounts[0].access_token)).toBe('at2');
+    expect(decrypt(db._rows.accounts[0].refresh_token)).toBe('rt2');
     await expect(svc.completeOAuth({ state })).rejects.toThrow(/authorization code/);
   });
 });

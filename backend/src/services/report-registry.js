@@ -36,7 +36,7 @@
  *    revenue counts an account with three deals three times.
  *
  * Arbitrary user-defined joins are intentionally not supported — see
- * docs/developer-guide/REPORTING.md#the-join-model.
+ * docs/developer-guide/engines/reporting.md#the-join-model.
  *
  * Field types: string | enum | number | currency | percent | date | boolean
  * Field flags:

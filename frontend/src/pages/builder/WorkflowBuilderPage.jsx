@@ -11,6 +11,7 @@ import TextArea from '../../components/ui/TextArea';
 import Select from '../../components/ui/Select';
 import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
+import Checkbox from '../../components/ui/Checkbox';
 import { Plus, Pencil, Trash2, Play, GitBranch, Settings, Bell, Clock, CheckSquare, ArrowDown, ChevronDown, Globe, FilePlus, RefreshCw, Shield, Workflow } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import BuilderGuide from '../../components/builder/BuilderGuide';
@@ -43,9 +44,69 @@ const TRIGGER_HELP = {
   on_update:     'Fires on every save. Put a condition first, or the workflow does its work again on each edit.',
   field_changed: 'Fires only when a field you name actually changes. Condition steps can read the previous value, which is how you detect a transition rather than a state.',
   on_delete:     'Fires before the record is removed, so its field values are still readable.',
-  scheduled:     'Swept every 60 seconds. With trigger_config.per_record it runs once per live record — the pattern for renewal and follow-up date sweeps.',
+  scheduled:     'Runs on a fixed interval. Tick "once for every record" to sweep an object — the pattern for renewal and follow-up date checks.',
   manual:        'Never fires on its own. Run it from the canvas or the API — the safe way to test a chain before making it automatic.',
 };
+
+const INTERVAL_UNITS = [
+  { value: '1',    label: 'minutes' },
+  { value: '60',   label: 'hours' },
+  { value: '1440', label: 'days' },
+];
+
+/** Show an interval in the largest unit that divides it exactly. */
+function splitInterval(minutes) {
+  const m = Number(minutes) || 0;
+  if (m && m % 1440 === 0) return { every: m / 1440, unit: '1440' };
+  if (m && m % 60 === 0) return { every: m / 60, unit: '60' };
+  return { every: m || '', unit: '1' };
+}
+
+/**
+ * Row → form values. `trigger_config` is edited through named controls, so it
+ * is spread into flat fields here and rebuilt by `toPayload`.
+ */
+export function toForm(row = {}) {
+  const cfg = row.trigger_config ?? {};
+  const { every, unit } = splitInterval(cfg.interval_minutes);
+  return {
+    name: row.name ?? '', label: row.label ?? '', description: row.description ?? '',
+    trigger_type: row.trigger_type ?? 'on_create',
+    object_id: row.object_id ?? '',
+    is_active: row.id ? row.is_active !== false : true,
+    tc_field: cfg.field ?? '', tc_derived: !!cfg.derived,
+    tc_every: every, tc_unit: unit, tc_per_record: !!cfg.per_record, tc_limit: cfg.limit ?? '',
+  };
+}
+
+/**
+ * Form values → API body. Keys the form does not edit (a manual workflow's
+ * `show_when`, `inputs`, `success_message`) are carried over from the row.
+ */
+export function toPayload(d, row) {
+  const cfg = { ...(row?.trigger_config ?? {}) };
+  for (const k of ['field', 'derived', 'interval_minutes', 'per_record', 'limit']) delete cfg[k];
+  const scheduled = d.trigger_type === 'scheduled';
+  if (d.trigger_type === 'field_changed') {
+    if (d.tc_field) cfg.field = d.tc_field;
+    if (d.tc_derived) cfg.derived = true;
+  }
+  if (scheduled) {
+    cfg.interval_minutes = Math.round((Number(d.tc_every) || 0) * Number(d.tc_unit || 1));
+    if (d.tc_per_record) {
+      cfg.per_record = true;
+      if (Number(d.tc_limit) > 0) cfg.limit = Number(d.tc_limit);
+    }
+  }
+  const bound = OBJECT_BOUND_TRIGGERS.includes(d.trigger_type) || (scheduled && d.tc_per_record);
+  return {
+    name: d.name, label: d.label, description: d.description,
+    trigger_type: d.trigger_type,
+    object_id: bound && d.object_id ? Number(d.object_id) : null,
+    is_active: !!d.is_active,
+    trigger_config: Object.keys(cfg).length ? cfg : null,
+  };
+}
 
 const STEP_OVERVIEW = [
   { icon: Play,        color: 'bg-green-100 text-green-700 border-green-300',   label: 'Trigger',        desc: 'Defines the event that starts the workflow (on_create, on_update, scheduled, etc.)' },
@@ -144,6 +205,7 @@ function WorkflowList({ onSelect }) {
   const [editing, setEditing] = useState(null);
   const [formError, setFormError] = useState(null);
   const [permTarget, setPermTarget] = useState(null);
+  const [listError, setListError] = useState(null);
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm();
 
   const { data, isLoading } = useQuery({ queryKey: ['workflows'], queryFn: () => builderService.getWorkflows() });
@@ -162,16 +224,39 @@ function WorkflowList({ onSelect }) {
   const objectName = (id) => objects.find((o) => o.id === Number(id))?.label ?? (id ? `#${id}` : '—');
 
   const triggerType = watch('trigger_type') || 'on_create';
+  const perRecord = !!watch('tc_per_record');
+  const watchedObject = watch('object_id');
   const needsObject = OBJECT_BOUND_TRIGGERS.includes(triggerType);
+  const showObject = needsObject || (triggerType === 'scheduled' && perRecord);
+
+  // The fields of the chosen object, for the "which field" picker.
+  const { data: fieldsData } = useQuery({
+    queryKey: ['metadata-fields', Number(watchedObject)],
+    queryFn: () => metadataService.getFields(Number(watchedObject)),
+    enabled: triggerType === 'field_changed' && !!watchedObject,
+    staleTime: 300_000,
+  });
+  const objectFields = fieldsData?.data || [];
+
+  const openForm = (row = null) => { setEditing(row); reset(toForm(row ?? {})); setFormError(null); setModalOpen(true); };
 
   const saveMutation = useMutation({
-    mutationFn: (d) => editing ? builderService.updateWorkflow(editing.id, d) : builderService.createWorkflow(d),
+    mutationFn: (d) => {
+      const body = toPayload(d, editing);
+      return editing ? builderService.updateWorkflow(editing.id, body) : builderService.createWorkflow(body);
+    },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['workflows'] });
       setModalOpen(false);
       if (!editing) onSelect(res.data);
     },
     onError: (e) => setFormError(e.response?.data?.message || e.message),
+  });
+  // On/off without opening the form. The server re-checks that the workflow can fire.
+  const toggleMutation = useMutation({
+    mutationFn: (row) => builderService.updateWorkflow(row.id, { is_active: !row.is_active }),
+    onSuccess: () => { setListError(null); qc.invalidateQueries({ queryKey: ['workflows'] }); },
+    onError: (e) => setListError(e.response?.data?.message || e.message),
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => builderService.deleteWorkflow(id),
@@ -191,13 +276,25 @@ function WorkflowList({ onSelect }) {
           : <span className="text-gray-600 dark:text-white/60">{objectName(v)}</span>
       ),
     },
-    { key: 'is_active', header: 'Status', render: v => <Badge variant={v ? 'success' : 'secondary'}>{v ? 'Active' : 'Inactive'}</Badge> },
+    {
+      key: 'is_active', header: 'Status',
+      render: (v, row) => (
+        <button
+          type="button"
+          onClick={() => toggleMutation.mutate(row)}
+          disabled={toggleMutation.isPending}
+          title={v ? 'Click to switch this workflow off' : 'Click to switch this workflow on'}
+        >
+          <Badge variant={v ? 'success' : 'secondary'}>{v ? 'Active' : 'Inactive'}</Badge>
+        </button>
+      ),
+    },
     {
       key: 'id', header: '', render: (_, row) => (
         <div className="flex gap-2 justify-end">
           <Button size="xs" variant="ghost" onClick={() => onSelect(row)}>Open</Button>
           <button title="Permissions" onClick={() => setPermTarget(row)} className="p-1 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded"><Shield className="w-4 h-4 text-purple-400" /></button>
-          <button onClick={() => { setEditing(row); reset(row); setFormError(null); setModalOpen(true); }} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded"><Pencil className="w-4 h-4 text-gray-500" /></button>
+          <button onClick={() => openForm(row)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded"><Pencil className="w-4 h-4 text-gray-500" /></button>
           <button onClick={() => deleteMutation.mutate(row.id)} className="p-1 hover:bg-red-50 dark:hover:bg-red-500/10 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
         </div>
       ),
@@ -213,7 +310,7 @@ function WorkflowList({ onSelect }) {
         subtitle="Automate actions when records are created, updated, or reach a stage."
         className="!mb-4"
         actions={(
-          <Button onClick={() => { setEditing(null); reset({}); setFormError(null); setModalOpen(true); }}>
+          <Button onClick={() => openForm()}>
             <Plus className="w-4 h-4 mr-1.5" />New Workflow
           </Button>
         )}
@@ -222,6 +319,8 @@ function WorkflowList({ onSelect }) {
       <BuilderGuide section="/builder/workflow" />
 
       <WorkflowStepReference />
+
+      {listError && <Alert variant="error" className="mb-3">{listError}</Alert>}
 
       <DataTable icon={Workflow} title="Workflows" columns={columns} data={workflows} loading={isLoading} />
 
@@ -255,14 +354,40 @@ function WorkflowList({ onSelect }) {
             {...register('trigger_type', { required: true })}
           />
 
-          {needsObject ? (
+          {triggerType === 'scheduled' && (
+            <div className="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-white/10">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Run every" type="number" min={1} required
+                  error={errors.tc_every?.message}
+                  {...register('tc_every', { required: 'How often should it run?', min: { value: 1, message: 'At least 1' } })}
+                />
+                <Select label="Unit" options={INTERVAL_UNITS} {...register('tc_unit')} />
+              </div>
+              <Checkbox
+                label="Run once for every record of an object"
+                help="Each run checks every live record in turn — conditions can then read that record's fields."
+                {...register('tc_per_record')}
+              />
+              {perRecord && (
+                <Input
+                  label="At most this many records per run" type="number" min={1} max={5000} placeholder="500"
+                  {...register('tc_limit')}
+                />
+              )}
+            </div>
+          )}
+
+          {showObject ? (
             <Select
               label="Object" required
               placeholder="Choose the object this watches…"
               options={objects.map((o) => ({ value: o.id, label: `${o.label}${o.module?.label ? ` — ${o.module.label}` : ''}` }))}
               error={errors.object_id?.message}
-              help="A record-triggered workflow is matched by object. Without one it can never fire."
-              {...register('object_id', { required: 'Pick the object whose records this workflow watches' })}
+              help={needsObject
+                ? 'A record-triggered workflow is matched by object. Without one it can never fire.'
+                : 'The object whose records each run sweeps.'}
+              {...register('object_id', { required: 'Pick the object whose records this workflow works on' })}
             />
           ) : (
             <p className="rounded-lg bg-gray-50 p-2.5 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400">
@@ -270,6 +395,28 @@ function WorkflowList({ onSelect }) {
               nothing to pick here.
             </p>
           )}
+
+          {triggerType === 'field_changed' && (
+            <div className="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-white/10">
+              <Select
+                label="Field"
+                options={[{ value: '', label: 'Any field (fires on every change)' }, ...objectFields.map((f) => ({ value: f.name, label: f.label || f.name })), { value: 'pipeline_stage_id', label: 'Stage (pipeline)' }]}
+                disabled={!watchedObject}
+                help={watchedObject ? 'The workflow fires only when this field actually changes.' : 'Pick the object first.'}
+                {...register('tc_field')}
+              />
+              <Checkbox
+                label="Also fire when a formula or roll-up recalculates this field"
+                {...register('tc_derived')}
+              />
+            </div>
+          )}
+
+          <Checkbox
+            label="Active — runs automatically"
+            help="Switch off to stop a workflow without deleting it."
+            {...register('is_active')}
+          />
 
           <TextArea label="Description" help="Why this automation exists. The next admin will thank you." {...register('description')} rows={2} />
         </form>

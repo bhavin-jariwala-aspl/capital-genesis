@@ -1,0 +1,8 @@
+{
+  "name": "genesis-tutorial-videos",
+  "private": true,
+  "type": "module",
+  "description": "Records the Genesis CRM module tutorial videos in docs/genesis-capital/videos/ (Playwright + ffmpeg).",
+  "scripts": { "record": "node run.mjs" },
+  "dependencies": { "playwright": "1.48.2" }
+}

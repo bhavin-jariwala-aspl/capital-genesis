@@ -12,7 +12,7 @@
  * a row the builder could not, and a wrong answer is a wrong *report* the user
  * can see and fix, not a wrong number they cannot.
  *
- * Pipeline (docs/developer-guide/AI_REPORTING.md):
+ * Pipeline (docs/developer-guide/ai-reporting/ask-genesis.md):
  *
  *   message ─► catalogue selection (lexical, deterministic)
  *           ─► plan (LLM, grammar-constrained to ReportPlan JSON schema)

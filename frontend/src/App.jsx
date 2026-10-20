@@ -167,7 +167,7 @@ function App() {
               <Route path="/documents" element={<DocumentsPage />} />
               {/* Report authoring is deliberately OUTSIDE the admin-only /builder guard
                   below: the whole point of the feature is that any user builds their
-                  own reports. See docs/developer-guide/REPORTING.md. */}
+                  own reports. See docs/developer-guide/engines/reporting.md. */}
               <Route path="/reports/new" element={<ReportBuilderPage />} />
               <Route path="/reports/:id/edit" element={<ReportBuilderPage />} />
             </Route>

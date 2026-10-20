@@ -655,7 +655,7 @@ class TenantProvisioningService {
 
 /** Stable string for a row's natural key, used to pair source and target rows. */
 function keyOf(row, columns) {
-  return columns.map((c) => String(row[c] ?? '')).join(' ');
+  return columns.map((c) => String(row[c] ?? '')).join('\u0000'); // NUL: a separator no column value can contain
 }
 
 module.exports = TenantProvisioningService;

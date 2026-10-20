@@ -18,7 +18,7 @@ import { settingsService } from '../services/settings.service';
  *     synchronous call at ~40 existing call sites.
  *
  * NOTE: this is a *display* currency, not a transaction currency. Amounts are
- * stored as entered and never converted. See docs/developer-guide/CURRENCY.md.
+ * stored as entered and never converted. See docs/developer-guide/engines/currency.md.
  */
 
 /** Shape the three raw setting values into the state the formatters need. */

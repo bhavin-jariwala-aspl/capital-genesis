@@ -20,7 +20,7 @@
 const LeadScoringService = require('../src/services/lead-scoring.service');
 const { leadScoreGrade } = require('../src/utils/lead-grade');
 const DashboardService = require('../src/services/dashboard.service');
-const { assertWorkflowTriggerable, WORKFLOW_TRIGGERS, OBJECT_BOUND_TRIGGERS } = DashboardService;
+const { assertWorkflowTriggerable, normalizeTriggerConfig, WORKFLOW_TRIGGERS, OBJECT_BOUND_TRIGGERS } = DashboardService;
 const slaRoutes = require('../src/routes/sla/index');
 const { assertPolicyShape, DEFAULT_POLICIES, ESCALATION_ACTIONS } = slaRoutes;
 const SlaService = require('../src/services/sla.service');
@@ -169,13 +169,41 @@ describe('workflow trigger validation', () => {
 
   it('allows scheduled and manual workflows without an object', () => {
     // The scheduler sweeps across objects; a manual run is invoked by id.
-    expect(() => assertWorkflowTriggerable({ trigger_type: 'scheduled' })).not.toThrow();
+    expect(() => assertWorkflowTriggerable({ trigger_type: 'scheduled', trigger_config: { interval_minutes: 60 } })).not.toThrow();
     expect(() => assertWorkflowTriggerable({ trigger_type: 'manual' })).not.toThrow();
+  });
+
+  it('refuses a scheduled workflow the scheduler would never run', () => {
+    // runScheduled() skips a workflow whose interval is missing or zero, so it
+    // used to save, show "Active" and do nothing.
+    for (const trigger_config of [undefined, null, {}, { interval_minutes: 0 }, { interval_minutes: 'x' }]) {
+      expect(() => assertWorkflowTriggerable({ trigger_type: 'scheduled', trigger_config }))
+        .toThrow(/needs an interval/);
+    }
+  });
+
+  it('refuses a per-record sweep with no object to sweep', () => {
+    expect(() => assertWorkflowTriggerable({ trigger_type: 'scheduled', trigger_config: { interval_minutes: 1440, per_record: true } }))
+      .toThrow(/pick the object/);
+    expect(() => assertWorkflowTriggerable({ trigger_type: 'scheduled', object_id: 3, trigger_config: { interval_minutes: 1440, per_record: true } }))
+      .not.toThrow();
   });
 
   it('rejects a trigger the engine has no branch for', () => {
     expect(() => assertWorkflowTriggerable({ trigger_type: 'on_monday', object_id: 1 }))
       .toThrow(/trigger_type must be one of/);
+  });
+
+  it('normalises trigger_config from a form and keeps keys it does not know', () => {
+    expect(normalizeTriggerConfig(undefined)).toBeUndefined();          // body did not mention it
+    expect(normalizeTriggerConfig('')).toBeNull();
+    expect(normalizeTriggerConfig('{"interval_minutes":"90","per_record":"true","limit":"9999"}'))
+      .toEqual({ interval_minutes: 90, per_record: true, limit: 5000 });
+    expect(normalizeTriggerConfig({ field: '', derived: false })).toBeNull(); // "any field" → no filter
+    expect(normalizeTriggerConfig({ field: 'stage', derived: 'true' })).toEqual({ field: 'stage', derived: true });
+    expect(normalizeTriggerConfig({ show_when: { field: 'x' }, inputs: [1] })).toEqual({ show_when: { field: 'x' }, inputs: [1] });
+    expect(() => normalizeTriggerConfig('{oops')).toThrow(/JSON object/);
+    expect(() => normalizeTriggerConfig([1])).toThrow(/JSON object/);
   });
 
   it('treats 0 and an empty string as no object', () => {

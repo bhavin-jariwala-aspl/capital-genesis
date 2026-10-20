@@ -24,7 +24,7 @@ const {
  *
  * NOTE: this is a *display* currency, not a transaction currency. Amounts are
  * stored as entered; nothing here converts between currencies. See
- * docs/developer-guide/CURRENCY.md for where that boundary sits.
+ * docs/developer-guide/engines/currency.md for where that boundary sits.
  */
 
 const TTL_MS = 5 * 60 * 1000;

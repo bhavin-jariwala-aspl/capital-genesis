@@ -3,7 +3,7 @@
 /**
  * Genesis Capital — the financial-services vertical pack.
  *
- * Implements docs/GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md — all 25 modules and
+ * Implements docs/genesis-capital/product-requirements.md — all 25 modules and
  * every product on genesis-capital.demo — entirely as Builder metadata. Install with:
  *
  *   node scripts/install-vertical.js genesis-capital --create-tenant [--demo]

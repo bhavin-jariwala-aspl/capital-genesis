@@ -491,6 +491,7 @@ module.exports = async function builderRoutes(fastify) {
       entityType, roleName, req.body ?? {}, actorId,
     );
     accessScope.invalidate();
+    if (entityType === 'record') RecordService.clearRecordScopeCache();
     await auditChain.append({ entityType: `permission.operational.${entityType}`, entityId: roleName, action: 'set', actor: actorId, sensitivity: 'sensitive', payload: req.body ?? {} });
     return ok(result);
   });
@@ -653,15 +654,20 @@ module.exports = async function builderRoutes(fastify) {
         select: { employee_id: true },
       });
     } else if (target_type === 'role') {
-      const roles = Array.isArray(target_value) ? target_value : [target_value];
-      employees = await fastify.prisma.employee.findMany({
-        where: { is_active: true, role: { name: { in: roles } } },
+      // `Employee.role` holds the role's name as plain text (roles are tenant-scoped
+      // and looked up by name), so match it directly — not through a relation.
+      const roles = (Array.isArray(target_value) ? target_value : [target_value]).filter(Boolean).map(String);
+      employees = roles.length ? await fastify.prisma.employee.findMany({
+        where: { is_active: true, role: { in: roles } },
         select: { employee_id: true },
-      });
+      }) : [];
     } else {
-      // target_type === 'employee'
-      const ids = Array.isArray(target_value) ? target_value : [target_value];
-      employees = ids.map(id => ({ employee_id: id }));
+      // target_type === 'employee' — only active staff of this workspace receive it.
+      const ids = (Array.isArray(target_value) ? target_value : [target_value]).filter(Boolean).map(String);
+      employees = ids.length ? await fastify.prisma.employee.findMany({
+        where: { is_active: true, employee_id: { in: ids } },
+        select: { employee_id: true },
+      }) : [];
     }
 
     const recipientIds = employees.map(e => e.employee_id);

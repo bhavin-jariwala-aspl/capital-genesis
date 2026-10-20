@@ -1,5 +1,11 @@
 # Contributing to Genesis CRM
 
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Developer guide](README.md#core-reading-in-order)** › 9 of 9 · **For:** Engineers
+> ← [Design system](design-system.md) · [Platform Builder extensions](engines/platform-builder-extensions.md) *(Engine references)* →
+> New to Genesis? Background: [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md)
+<!-- /nav:top -->
+
 Thank you for your interest in contributing to Genesis CRM! We welcome contributions from the community and are pleased
 to have you aboard.
 
@@ -8,7 +14,7 @@ to have you aboard.
 ## Quick Start
 
 1. **Fork the repository** and clone your fork locally
-2. **Set up your development environment** following [ARCHITECTURE_AND_SETUP.md](ARCHITECTURE_AND_SETUP.md)
+2. **Set up your development environment** following [architecture-and-setup.md](architecture-and-setup.md)
 3. **Create a feature branch** from main: `git checkout -b feature/your-feature-name`
 4. **Make your changes** with clear, focused commits
 5. **Test your changes** thoroughly
@@ -23,7 +29,7 @@ to have you aboard.
 - Follow the existing code patterns and conventions
 - Use meaningful variable and function names
 - Add comments for complex logic only — self-evident code needs no comment
-- Ensure consistent formatting (ESLint enforced)
+- Ensure consistent formatting (ESLint runs on the frontend: `npm run lint`)
 
 ### Backend Conventions
 
@@ -65,14 +71,14 @@ npm test          # Run all tests
 
 - Write unit tests for all service methods
 - Tests live in `backend/tests/`
-- Keep 145+ tests green — do not submit PRs that reduce coverage
+- Keep the suite (95 test files, Jest) green — do not submit PRs that reduce coverage
+- The suite mocks the database; it needs no MySQL
 
 ### Frontend Tests
 
 ```bash
 cd frontend
-npm test          # Run Vitest suite
-npm run test:ui   # Vitest UI
+npm test          # Run Vitest suite (vitest run)
 ```
 
 - Tests live in `frontend/tests/`
@@ -110,7 +116,7 @@ npm run test:ui   # Vitest UI
 
 1. **Update documentation** for new features or behavior changes
 2. **Add/update tests** for your changes
-3. **Ensure builds pass** locally (`npm run build` in both frontend and backend)
+3. **Ensure the frontend builds** locally (`npm run build` in `frontend/`; the backend has no build step)
 4. **Ensure lint passes** (`npm run lint` in frontend)
 5. **Write clear commit messages** explaining the *why*, not just the *what*
 6. **Submit PR** with detailed description of changes and motivation
@@ -148,7 +154,7 @@ Before submitting, verify your changes respect these principles:
 
 ## Getting Help
 
-- Check the [Knowledge Base Index](../INDEX.md)
+- Check the [Knowledge Base Index](../README.md)
 - Review existing issues and discussions
 - Ask questions in discussions or create an issue
 
@@ -164,3 +170,18 @@ backgrounds and experience levels.
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Next** | [Platform Builder extensions](engines/platform-builder-extensions.md) *(Engine references)* — Formulas, lookups, record actions, stage gates, BUs, barriers, audit chain, web forms, packs, portal, MFA, job queue |
+| **Previous** | [Design system](design-system.md) |
+| **Background** | [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md) |
+| **On these journeys** | [Engineer](../README.md#engineer) (step 9 of 9) |
+| **Lost?** | [Docs roadmap](../README.md) · [Developer guide](README.md#core-reading-in-order) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

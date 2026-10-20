@@ -1,0 +1,1231 @@
+{
+  "_about": "Single source of truth for the documentation roadmap. Edit this file, then run `node docs/tools/build-nav.mjs` to refresh the navigation blocks in every document, the section tables of contents and the journeys in docs/README.md. Paths are relative to docs/.",
+  "concepts": {
+    "1": {
+      "path": "understanding/01-what-genesis-is.md",
+      "title": "What Genesis is"
+    },
+    "2": {
+      "path": "understanding/02-building-blocks.md",
+      "title": "The building blocks"
+    },
+    "3": {
+      "path": "understanding/03-how-data-is-stored.md",
+      "title": "How data is stored and read"
+    },
+    "4": {
+      "path": "understanding/04-how-a-request-travels.md",
+      "title": "How a request travels"
+    },
+    "5": {
+      "path": "understanding/05-who-sees-what.md",
+      "title": "Who sees what"
+    },
+    "6": {
+      "path": "understanding/06-what-happens-automatically.md",
+      "title": "What happens automatically"
+    },
+    "7": {
+      "path": "understanding/07-configure-or-code.md",
+      "title": "Configure or code?"
+    },
+    "8": {
+      "path": "understanding/08-codebase-tour.md",
+      "title": "Codebase tour"
+    }
+  },
+  "sections": [
+    {
+      "id": "understanding",
+      "title": "Understanding Genesis",
+      "readme": "understanding/README.md",
+      "anchor": "",
+      "for": "Everyone — start here",
+      "docs": [
+        {
+          "path": "understanding/01-what-genesis-is.md",
+          "title": "Step 1 — What Genesis is",
+          "for": "Everyone",
+          "summary": "The platform vs the Genesis Capital configuration, who uses it, what it is built with"
+        },
+        {
+          "path": "understanding/02-building-blocks.md",
+          "title": "Step 2 — The building blocks",
+          "for": "Everyone",
+          "summary": "Workspace, module, object, field, record, stage, form, lookup and role — and how they fit"
+        },
+        {
+          "path": "understanding/03-how-data-is-stored.md",
+          "title": "Step 3 — How data is stored and read",
+          "for": "Everyone (Part B: engineers)",
+          "summary": "Blueprint + envelope + values; why crm_* tables are empty; read/write paths; SQL recipes"
+        },
+        {
+          "path": "understanding/04-how-a-request-travels.md",
+          "title": "Step 4 — How a request travels",
+          "for": "Everyone (Part B: engineers)",
+          "summary": "Sign-in, tokens, the tenant filter on every query, API groups, caching"
+        },
+        {
+          "path": "understanding/05-who-sees-what.md",
+          "title": "Step 5 — Who sees what",
+          "for": "Everyone (Part B: admins, engineers)",
+          "summary": "The seven access locks, from workspace to personal-data masking, and known gaps"
+        },
+        {
+          "path": "understanding/06-what-happens-automatically.md",
+          "title": "Step 6 — What happens automatically",
+          "for": "Everyone (Part B: engineers)",
+          "summary": "What runs after a save: formulas, assignment, workflows, SLA timers, schedulers, audit"
+        },
+        {
+          "path": "understanding/07-configure-or-code.md",
+          "title": "Step 7 — Configure or code?",
+          "for": "Everyone",
+          "summary": "Builder vs vertical pack vs platform code: who can make which change"
+        },
+        {
+          "path": "understanding/08-codebase-tour.md",
+          "title": "Step 8 — Codebase tour",
+          "for": "Engineers",
+          "summary": "Folder layout, five files to read first, how to trace any feature, tests"
+        }
+      ],
+      "toc": false
+    },
+    {
+      "id": "getting-started",
+      "title": "Getting started",
+      "readme": "getting-started/README.md",
+      "anchor": "",
+      "for": "Anyone installing or running Genesis",
+      "docs": [
+        {
+          "path": "getting-started/installation.md",
+          "title": "Installation & setup",
+          "for": "Administrators, engineers",
+          "summary": "Install, configure, seed the Genesis Capital demo, sign in, local demo database, common issues",
+          "concept": "8",
+          "related": [
+            "developer-guide/architecture-and-setup.md",
+            "platform-operations/aws-deployment.md"
+          ]
+        }
+      ],
+      "toc": false
+    },
+    {
+      "id": "genesis-capital",
+      "title": "Genesis Capital workspace",
+      "readme": "genesis-capital/README.md",
+      "anchor": "",
+      "for": "Genesis Capital staff, implementers, presenters",
+      "docs": [
+        {
+          "path": "genesis-capital/user-guide.md",
+          "title": "Genesis Capital user guide",
+          "for": "Genesis Capital staff",
+          "summary": "Navigation, records, approvals, documents, every module and journey, glossary",
+          "concept": "2",
+          "related": [
+            "genesis-capital/process-flows/README.md",
+            "genesis-capital/videos/README.md",
+            "using-the-crm/daily-operations.md"
+          ]
+        },
+        {
+          "path": "genesis-capital/product-requirements.md",
+          "title": "Product requirements (PRD)",
+          "for": "Implementers, product owners",
+          "summary": "What Genesis Capital asked for, module by module",
+          "concept": "1",
+          "related": [
+            "genesis-capital/implementation.md",
+            "genesis-capital/process-flows/00-purpose.md"
+          ]
+        },
+        {
+          "path": "genesis-capital/implementation.md",
+          "title": "Implementation",
+          "for": "Implementers, engineers",
+          "summary": "How the PRD was built: modules, products, dashboards, portal, install, roles, logins, demo data",
+          "concept": "7",
+          "related": [
+            "genesis-capital/product-requirements.md",
+            "developer-guide/engines/platform-builder-extensions.md",
+            "understanding/08-codebase-tour.md"
+          ]
+        },
+        {
+          "path": "genesis-capital/demo-pitch.md",
+          "title": "Demo pitch and Q&A",
+          "for": "Presenters",
+          "summary": "Running a client demonstration: scenes, links, talk tracks, expected questions",
+          "concept": "1",
+          "related": [
+            "genesis-capital/videos/README.md",
+            "genesis-capital/client-sandbox.md",
+            "genesis-capital/process-flows/00-purpose.md"
+          ]
+        },
+        {
+          "path": "genesis-capital/client-sandbox.md",
+          "title": "Client sandbox",
+          "for": "Implementers, operators",
+          "summary": "Building, running, resetting and closing a hosted sandbox for a client's testers",
+          "concept": "7",
+          "related": [
+            "platform-operations/aws-deployment.md",
+            "platform-operations/tenant-onboarding.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "process-flows",
+      "title": "Process flows",
+      "readme": "genesis-capital/process-flows/README.md",
+      "anchor": "",
+      "for": "Business users, analysts, implementers",
+      "docs": [
+        {
+          "path": "genesis-capital/process-flows/00-purpose.md",
+          "title": "00 — Purpose",
+          "for": "Management, everyone",
+          "summary": "Why Genesis Capital uses this CRM: the problems it solves and what it gives each desk",
+          "concept": "1"
+        },
+        {
+          "path": "genesis-capital/process-flows/01-products-and-services.md",
+          "title": "01 — Products & Services",
+          "for": "Business users",
+          "summary": "The product catalogue and how products route enquiries",
+          "concept": "2"
+        },
+        {
+          "path": "genesis-capital/process-flows/02-clients-client-360.md",
+          "title": "02 — Clients (Client 360)",
+          "for": "Business users",
+          "summary": "One client record for the group, relationships, the Client 360 view",
+          "concept": "3"
+        },
+        {
+          "path": "genesis-capital/process-flows/03-enquiries-and-leads.md",
+          "title": "03 — Enquiries & Leads",
+          "for": "Business users",
+          "summary": "Capture, routing, qualification and conversion of enquiries",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/04-cross-sell-and-rm-workbench.md",
+          "title": "04 — Cross-sell & RM Workbench",
+          "for": "Business users",
+          "summary": "Opportunities, next-best actions, meeting notes and RM targets",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/05-retail-lending.md",
+          "title": "05 — Retail Lending",
+          "for": "Business users",
+          "summary": "Loan application to approval and disbursement",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/06-commercial-lending.md",
+          "title": "06 — Commercial Lending",
+          "for": "Business users",
+          "summary": "Credit facilities, financial spreads and covenants",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/07-collateral-and-pledges.md",
+          "title": "07 — Collateral & Pledges",
+          "for": "Business users",
+          "summary": "Collateral, valuations, links and margin calls",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/08-loan-servicing.md",
+          "title": "08 — Loan Servicing",
+          "for": "Business users",
+          "summary": "Loan accounts, PLR changes, notifications and collections",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/09-wealth-management.md",
+          "title": "09 — Wealth Management",
+          "for": "Business users",
+          "summary": "Risk profiles, suitability, mandates and AUM",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/10-investment-funds.md",
+          "title": "10 — Investment Funds",
+          "for": "Business users",
+          "summary": "Funds, share classes, NAV, orders and holdings",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/11-trading-solutions.md",
+          "title": "11 — Trading Solutions",
+          "for": "Business users",
+          "summary": "Securities accounts, client orders, IOIs and research",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/12-corporate-advisory.md",
+          "title": "12 — Corporate Advisory",
+          "for": "Business users",
+          "summary": "Mandates, conflict checks, deal teams, insider lists, fees",
+          "concept": "5"
+        },
+        {
+          "path": "genesis-capital/process-flows/13-forex-desk.md",
+          "title": "13 — Forex Desk",
+          "for": "Business users",
+          "summary": "FX profiles, quotes, deals and rate alerts",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/14-marketing-and-consent.md",
+          "title": "14 — Marketing & Consent",
+          "for": "Business users",
+          "summary": "Campaigns, segments, events, subscriptions and consent",
+          "concept": "5"
+        },
+        {
+          "path": "genesis-capital/process-flows/15-introducers.md",
+          "title": "15 — Introducers",
+          "for": "Business users",
+          "summary": "Introducers, referrals and commissions",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/16-revenue.md",
+          "title": "16 — Revenue",
+          "for": "Business users",
+          "summary": "Revenue entries and how they roll up",
+          "concept": "3"
+        },
+        {
+          "path": "genesis-capital/process-flows/17-service-and-complaints.md",
+          "title": "17 — Service & Complaints",
+          "for": "Business users",
+          "summary": "Service requests, complaints and service levels",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/18-kyc-and-compliance.md",
+          "title": "18 — KYC & Compliance",
+          "for": "Business users, compliance",
+          "summary": "KYC cases, screening, reliance, STRs, registers and data-subject requests",
+          "concept": "5"
+        },
+        {
+          "path": "genesis-capital/process-flows/19-masters.md",
+          "title": "19 — Masters",
+          "for": "Administrators",
+          "summary": "Reference lists: rates, countries, routing, approval matrix",
+          "concept": "2"
+        },
+        {
+          "path": "genesis-capital/process-flows/20-tools.md",
+          "title": "20 — Tools",
+          "for": "Business users",
+          "summary": "Approvals, reminders, reports, access & barriers, SLA board, documents, web forms",
+          "concept": "6"
+        },
+        {
+          "path": "genesis-capital/process-flows/21-client-and-introducer-portal.md",
+          "title": "21 — Client & Introducer Portal",
+          "for": "Business users",
+          "summary": "What clients and introducers see and do in the portal",
+          "concept": "5"
+        }
+      ],
+      "toc": false
+    },
+    {
+      "id": "videos",
+      "title": "Tutorial videos",
+      "readme": "genesis-capital/videos/README.md",
+      "anchor": "",
+      "for": "Everyone who prefers to watch",
+      "docs": [
+        {
+          "path": "genesis-capital/videos/README.md",
+          "title": "Tutorial videos",
+          "for": "Everyone",
+          "summary": "Twenty captioned videos: getting started and one end-to-end process per module",
+          "concept": "2",
+          "related": [
+            "genesis-capital/user-guide.md",
+            "genesis-capital/process-flows/README.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "using",
+      "title": "Using the CRM",
+      "readme": "using-the-crm/README.md",
+      "anchor": "",
+      "for": "Staff who work in the CRM every day",
+      "docs": [
+        {
+          "path": "using-the-crm/daily-operations.md",
+          "title": "Daily operations",
+          "for": "All staff",
+          "summary": "Navigation, records, search, pipelines, tasks, activities, import and export",
+          "concept": "2",
+          "related": [
+            "genesis-capital/user-guide.md"
+          ]
+        },
+        {
+          "path": "using-the-crm/whats-new.md",
+          "title": "What's new — how-to",
+          "for": "All staff",
+          "summary": "Plain-language how-to for recent features",
+          "concept": "2"
+        },
+        {
+          "path": "using-the-crm/reports.md",
+          "title": "Reports",
+          "for": "All staff",
+          "summary": "Building, sharing and scheduling reports — and which data they can use",
+          "concept": "3",
+          "related": [
+            "builder-guide/05-dashboard-builder.md",
+            "developer-guide/engines/reporting.md"
+          ]
+        },
+        {
+          "path": "using-the-crm/documents.md",
+          "title": "Documents",
+          "for": "All staff",
+          "summary": "Upload, folders, search, sharing, templates and e-signature",
+          "concept": "2",
+          "related": [
+            "developer-guide/engines/document-management.md"
+          ]
+        },
+        {
+          "path": "using-the-crm/my-account-and-record-tools.md",
+          "title": "My account, record tools, portal",
+          "for": "All staff",
+          "summary": "Your profile and sign-in security, merge and bulk tools, the client portal",
+          "concept": "5",
+          "related": [
+            "genesis-capital/process-flows/21-client-and-introducer-portal.md"
+          ]
+        },
+        {
+          "path": "using-the-crm/products-and-services.md",
+          "title": "Products & Services catalogue",
+          "for": "All staff",
+          "summary": "Genesis Capital's product catalogue (the financial_product object) and how rates are set",
+          "concept": "2",
+          "related": [
+            "genesis-capital/process-flows/01-products-and-services.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "builder",
+      "title": "Builder guide",
+      "readme": "builder-guide/README.md",
+      "anchor": "",
+      "for": "CRM administrators configuring the workspace",
+      "docs": [
+        {
+          "path": "builder-guide/01-modules-and-objects.md",
+          "title": "Modules & objects",
+          "for": "Administrators",
+          "summary": "Create modules, objects and fields — the blueprint",
+          "concept": "2",
+          "related": [
+            "developer-guide/engines/platform-builder-extensions.md"
+          ]
+        },
+        {
+          "path": "builder-guide/02-form-builder.md",
+          "title": "Form builder",
+          "for": "Administrators",
+          "summary": "Lay out create/edit forms, validations, dependencies",
+          "concept": "2",
+          "related": [
+            "developer-guide/engines/configurability.md"
+          ]
+        },
+        {
+          "path": "builder-guide/03-pipeline-builder.md",
+          "title": "Pipeline builder",
+          "for": "Administrators",
+          "summary": "Stages, stage gates, Kanban, delete mode",
+          "concept": "2"
+        },
+        {
+          "path": "builder-guide/04-wizards.md",
+          "title": "Wizards",
+          "for": "Administrators",
+          "summary": "Guided multi-step data capture",
+          "concept": "2"
+        },
+        {
+          "path": "builder-guide/05-dashboard-builder.md",
+          "title": "Dashboard builder",
+          "for": "Administrators",
+          "summary": "Widgets, charts and role home dashboards",
+          "concept": "3",
+          "related": [
+            "developer-guide/engines/dashboard-analytics.md",
+            "using-the-crm/reports.md"
+          ]
+        },
+        {
+          "path": "builder-guide/06-permissions.md",
+          "title": "Permissions",
+          "for": "Administrators",
+          "summary": "What each role may view and edit",
+          "concept": "5",
+          "related": [
+            "administration/permissions-and-roles.md"
+          ]
+        },
+        {
+          "path": "builder-guide/07-roles-and-levels.md",
+          "title": "Roles & levels",
+          "for": "Administrators",
+          "summary": "Roles and the fixed level ladder",
+          "concept": "5",
+          "related": [
+            "administration/permissions-and-roles.md"
+          ]
+        },
+        {
+          "path": "builder-guide/08-employees.md",
+          "title": "Employees",
+          "for": "Administrators",
+          "summary": "Staff accounts, activation, passwords",
+          "concept": "5"
+        },
+        {
+          "path": "builder-guide/09-org-chart.md",
+          "title": "Org chart",
+          "for": "Administrators",
+          "summary": "Reporting lines that drive manager visibility and escalation",
+          "concept": "5"
+        },
+        {
+          "path": "builder-guide/10-business-units-and-barriers.md",
+          "title": "Business units & barriers",
+          "for": "Administrators, compliance",
+          "summary": "Legal-entity scope, information barriers, wall crossings",
+          "concept": "5",
+          "related": [
+            "developer-guide/security.md"
+          ]
+        },
+        {
+          "path": "builder-guide/11-assignment-rules.md",
+          "title": "Assignment rules",
+          "for": "Administrators",
+          "summary": "Who gets a new record: fixed, rules, round robin, load balanced",
+          "concept": "6",
+          "related": [
+            "administration/automation-reference.md"
+          ]
+        },
+        {
+          "path": "builder-guide/12-workflows.md",
+          "title": "Workflows",
+          "for": "Administrators",
+          "summary": "When X happens and Y is true, do Z",
+          "concept": "6",
+          "related": [
+            "administration/workflow-automation.md",
+            "administration/automation-reference.md"
+          ]
+        },
+        {
+          "path": "builder-guide/13-lead-scoring-rules.md",
+          "title": "Lead scoring rules",
+          "for": "Administrators",
+          "summary": "Rule-based scores and grades — and which object they apply to",
+          "concept": "6",
+          "related": [
+            "developer-guide/engines/lead-scoring.md"
+          ]
+        },
+        {
+          "path": "builder-guide/14-sla-engine.md",
+          "title": "SLA engine",
+          "for": "Administrators",
+          "summary": "Service-level policies, targets, business hours and escalations",
+          "concept": "6",
+          "related": [
+            "developer-guide/engines/sla-engine.md"
+          ]
+        },
+        {
+          "path": "builder-guide/15-email-templates.md",
+          "title": "Email templates",
+          "for": "Administrators",
+          "summary": "Templates with merge fields",
+          "concept": "6"
+        },
+        {
+          "path": "builder-guide/16-push-notifications.md",
+          "title": "Push notifications",
+          "for": "Administrators",
+          "summary": "Sending notifications to staff devices",
+          "concept": "6"
+        },
+        {
+          "path": "builder-guide/17-integrations.md",
+          "title": "Integrations",
+          "for": "Administrators",
+          "summary": "Inbound and outbound webhooks and connectors",
+          "concept": "6"
+        },
+        {
+          "path": "builder-guide/18-integration-health.md",
+          "title": "Integration health",
+          "for": "Administrators",
+          "summary": "Monitoring deliveries, failures and retries",
+          "concept": "6"
+        },
+        {
+          "path": "builder-guide/19-social-media.md",
+          "title": "Social media",
+          "for": "Administrators",
+          "summary": "Accounts, publishing, the inbox and listening",
+          "concept": "6",
+          "related": [
+            "administration/social-media.md"
+          ]
+        },
+        {
+          "path": "builder-guide/20-appearance.md",
+          "title": "Appearance & branding",
+          "for": "Administrators",
+          "summary": "Colours, logo, fonts, density, chart palette",
+          "concept": "7",
+          "related": [
+            "developer-guide/engines/configurability.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "title": "Administration",
+      "readme": "administration/README.md",
+      "anchor": "",
+      "for": "CRM administrators",
+      "docs": [
+        {
+          "path": "administration/system-configuration.md",
+          "title": "System configuration",
+          "for": "Administrators",
+          "summary": "Modules, fields, users, settings, import, integrations, monitoring — the overview",
+          "concept": "7"
+        },
+        {
+          "path": "administration/permissions-and-roles.md",
+          "title": "Permissions & roles",
+          "for": "Administrators",
+          "summary": "The permission model end to end",
+          "concept": "5",
+          "related": [
+            "builder-guide/06-permissions.md",
+            "developer-guide/security.md"
+          ]
+        },
+        {
+          "path": "administration/automation-reference.md",
+          "title": "Automation reference",
+          "for": "Administrators",
+          "summary": "Workflow vs assignment vs scoring vs SLA: which to use, full vocabulary, shipped rules, guard rails",
+          "concept": "6"
+        },
+        {
+          "path": "administration/workflow-automation.md",
+          "title": "Workflow automation",
+          "for": "Administrators",
+          "summary": "Workflow concepts, testing, patterns, troubleshooting",
+          "concept": "6",
+          "related": [
+            "developer-guide/engines/workflow-engine.md"
+          ]
+        },
+        {
+          "path": "administration/social-media.md",
+          "title": "Social media administration",
+          "for": "Administrators",
+          "summary": "Accounts, OAuth, publishing, routing; Meta/WhatsApp go-live plans",
+          "concept": "6",
+          "related": [
+            "developer-guide/engines/social-engine.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "title": "Platform operations",
+      "readme": "platform-operations/README.md",
+      "anchor": "",
+      "for": "Platform operators (super administrators) and DevOps",
+      "docs": [
+        {
+          "path": "platform-operations/platform-administration.md",
+          "title": "Platform administration",
+          "for": "Platform operators",
+          "summary": "Tenants, plans, flags, security, analytics, impersonation, audit",
+          "concept": "4"
+        },
+        {
+          "path": "platform-operations/tenant-onboarding.md",
+          "title": "Tenant onboarding",
+          "for": "Platform operators",
+          "summary": "The onboarding wizard, eight provisioning steps, readiness, API",
+          "concept": "7"
+        },
+        {
+          "path": "platform-operations/plans-and-features.md",
+          "title": "Plans & features",
+          "for": "Platform operators",
+          "summary": "Plans, the feature catalogue, per-tenant grants, where gates are enforced",
+          "concept": "5"
+        },
+        {
+          "path": "platform-operations/aws-deployment.md",
+          "title": "AWS deployment",
+          "for": "DevOps",
+          "summary": "Deploying Genesis on AWS",
+          "concept": "4",
+          "related": [
+            "getting-started/installation.md",
+            "genesis-capital/client-sandbox.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dev-core",
+      "title": "Developer guide",
+      "readme": "developer-guide/README.md",
+      "anchor": "core-reading-in-order",
+      "for": "Engineers",
+      "docs": [
+        {
+          "path": "developer-guide/architecture-and-setup.md",
+          "title": "Architecture & setup",
+          "for": "Engineers",
+          "summary": "Stack, structure, runtime loading pipeline, patterns, troubleshooting",
+          "concept": "4"
+        },
+        {
+          "path": "developer-guide/database-schema.md",
+          "title": "Database schema",
+          "for": "Engineers",
+          "summary": "Every table's columns, types and relationships; SQL recipes for record data",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/data-dictionary.md",
+          "title": "Data dictionary",
+          "for": "Engineers",
+          "summary": "Why each table exists and when its rows are written",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/api-reference.md",
+          "title": "API reference",
+          "for": "Engineers, integrators",
+          "summary": "Every endpoint, its purpose and who calls it",
+          "concept": "4"
+        },
+        {
+          "path": "developer-guide/security.md",
+          "title": "Security",
+          "for": "Engineers, security reviewers",
+          "summary": "Auth, RBAC, tenant isolation, PII, input validation, known gaps",
+          "concept": "5"
+        },
+        {
+          "path": "developer-guide/metadata-configuration.md",
+          "title": "Metadata configuration details",
+          "for": "Engineers",
+          "summary": "How metadata (modules, objects, fields, forms) is configured and rendered",
+          "concept": "2"
+        },
+        {
+          "path": "developer-guide/performance-optimization.md",
+          "title": "Performance optimisation",
+          "for": "Engineers",
+          "summary": "Metadata caching and optimistic UI",
+          "concept": "4"
+        },
+        {
+          "path": "developer-guide/design-system.md",
+          "title": "Design system",
+          "for": "Frontend engineers",
+          "summary": "Tokens, shared components, patterns, new-page checklist",
+          "concept": "8"
+        },
+        {
+          "path": "developer-guide/contributing.md",
+          "title": "Contributing",
+          "for": "Engineers",
+          "summary": "Code style, testing, pull requests",
+          "concept": "8"
+        }
+      ]
+    },
+    {
+      "id": "engines",
+      "title": "Engine references",
+      "readme": "developer-guide/engines/README.md",
+      "anchor": "",
+      "for": "Engineers and advanced administrators",
+      "docs": [
+        {
+          "path": "developer-guide/engines/platform-builder-extensions.md",
+          "title": "Platform Builder extensions",
+          "for": "Engineers, implementers",
+          "summary": "Formulas, lookups, record actions, stage gates, BUs, barriers, audit chain, web forms, packs, portal, MFA, job queue",
+          "concept": "7"
+        },
+        {
+          "path": "developer-guide/engines/configurability.md",
+          "title": "Configurability engine",
+          "for": "Engineers",
+          "summary": "Theming, server-side validation, field appearance, form overrides",
+          "concept": "7"
+        },
+        {
+          "path": "developer-guide/engines/workflow-engine.md",
+          "title": "Workflow engine",
+          "for": "Engineers",
+          "summary": "Triggers, steps, operators, functions, storage routing",
+          "concept": "6"
+        },
+        {
+          "path": "developer-guide/engines/sla-engine.md",
+          "title": "SLA engine",
+          "for": "Engineers",
+          "summary": "Reconcile loop, policy matching, timers, business hours, escalations",
+          "concept": "6"
+        },
+        {
+          "path": "developer-guide/engines/lead-scoring.md",
+          "title": "Lead scoring engine",
+          "for": "Engineers",
+          "summary": "Triggers, rule evaluation, grading",
+          "concept": "6"
+        },
+        {
+          "path": "developer-guide/engines/reporting.md",
+          "title": "Reporting engine",
+          "for": "Engineers",
+          "summary": "Report sources, filters, measures, snapshots, scheduling",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/engines/dashboard-analytics.md",
+          "title": "Dashboard analytics",
+          "for": "Engineers",
+          "summary": "How dashboard widgets read live data, including Builder objects",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/engines/document-management.md",
+          "title": "Document management",
+          "for": "Engineers",
+          "summary": "Storage providers, folders, search, sharing, templates, e-signature",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/engines/social-engine.md",
+          "title": "Social engine",
+          "for": "Engineers",
+          "summary": "Publish/sync schedulers, mentions, connectors, the scheduler registry",
+          "concept": "6"
+        },
+        {
+          "path": "developer-guide/engines/currency.md",
+          "title": "Currency",
+          "for": "Engineers",
+          "summary": "Display currency resolution and switching",
+          "concept": "4"
+        },
+        {
+          "path": "developer-guide/engines/application-settings.md",
+          "title": "Application settings",
+          "for": "Engineers",
+          "summary": "Tenant-wide settings model and API",
+          "concept": "7"
+        },
+        {
+          "path": "developer-guide/engines/status-tracker.md",
+          "title": "Status tracker",
+          "for": "Engineers, administrators",
+          "summary": "Building the status stepper field",
+          "concept": "2"
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI reporting",
+      "readme": "developer-guide/ai-reporting/README.md",
+      "anchor": "",
+      "for": "Engineers and decision-makers interested in AI",
+      "docs": [
+        {
+          "path": "developer-guide/ai-reporting/ask-genesis.md",
+          "title": "Ask Genesis (what is built)",
+          "for": "Engineers, administrators",
+          "summary": "Natural-language reporting on a local model: how it works and how to run it",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/ai-reporting/llm-primer.md",
+          "title": "LLM primer",
+          "for": "Everyone curious about AI",
+          "summary": "Large language models explained for the team",
+          "concept": "1"
+        },
+        {
+          "path": "developer-guide/ai-reporting/architecture-study.md",
+          "title": "AI reporting architecture study",
+          "for": "Architects",
+          "summary": "Architecture and feasibility study",
+          "concept": "3"
+        },
+        {
+          "path": "developer-guide/ai-reporting/implementation-walkthrough.md",
+          "title": "LLM implementation walkthrough",
+          "for": "Engineers",
+          "summary": "Step-by-step plan for building AI reporting",
+          "concept": "8"
+        },
+        {
+          "path": "developer-guide/ai-reporting/local-llm-operations.md",
+          "title": "Local LLM operations",
+          "for": "DevOps, engineers",
+          "summary": "Acquiring, adapting and operating a local model",
+          "concept": "4"
+        }
+      ]
+    },
+    {
+      "id": "project",
+      "title": "Project",
+      "readme": "project/README.md",
+      "anchor": "",
+      "for": "Everyone tracking the product",
+      "docs": [
+        {
+          "path": "project/roadmap.md",
+          "title": "Roadmap",
+          "for": "Everyone",
+          "summary": "What is done, what is next, known gaps and backlog",
+          "concept": "7"
+        },
+        {
+          "path": "project/build-effort-and-capabilities.md",
+          "title": "Build effort & capabilities",
+          "for": "Architects, decision-makers",
+          "summary": "No-code envelope and effort estimates for new processes",
+          "concept": "7"
+        },
+        {
+          "path": "project/changelog.md",
+          "title": "Changelog",
+          "for": "Everyone",
+          "summary": "What changed in each release",
+          "concept": "8"
+        }
+      ]
+    }
+  ],
+  "journeys": [
+    {
+      "id": "decision-maker",
+      "title": "Decision-maker",
+      "who": "Management, product owners, buyers — \"what is this and is it right for us?\"",
+      "time": "1 hour",
+      "steps": [
+        [
+          "understanding/01-what-genesis-is.md",
+          "The platform and the Genesis Capital configuration"
+        ],
+        [
+          "understanding/02-building-blocks.md",
+          "The vocabulary you'll hear"
+        ],
+        [
+          "genesis-capital/process-flows/00-purpose.md",
+          "The business problems it solves"
+        ],
+        [
+          "understanding/07-configure-or-code.md",
+          "What your team can change without developers"
+        ],
+        [
+          "understanding/03-how-data-is-stored.md",
+          "Where the data lives (Part A)"
+        ],
+        [
+          "understanding/05-who-sees-what.md",
+          "How access and compliance controls work (Part A)"
+        ],
+        [
+          "project/build-effort-and-capabilities.md",
+          "Effort to add a new process"
+        ],
+        [
+          "project/roadmap.md",
+          "What is done and what is next"
+        ]
+      ]
+    },
+    {
+      "id": "staff",
+      "title": "Genesis Capital staff",
+      "who": "Relationship managers, loans, compliance, operations — \"how do I do my job in it?\"",
+      "time": "2 hours, then per desk",
+      "steps": [
+        [
+          "understanding/01-what-genesis-is.md",
+          "What the CRM is"
+        ],
+        [
+          "understanding/02-building-blocks.md",
+          "Modules, records, stages — the words on screen"
+        ],
+        [
+          "genesis-capital/user-guide.md",
+          "Navigation, records, approvals, documents, glossary"
+        ],
+        [
+          "genesis-capital/videos/README.md",
+          "Watch the getting-started video and your module's video"
+        ],
+        [
+          "genesis-capital/process-flows/README.md",
+          "Read the process flow for your desk"
+        ],
+        [
+          "using-the-crm/daily-operations.md",
+          "Search, tasks, import and export in depth"
+        ],
+        [
+          "using-the-crm/reports.md",
+          "Reports"
+        ],
+        [
+          "using-the-crm/documents.md",
+          "Documents and e-signature"
+        ],
+        [
+          "using-the-crm/my-account-and-record-tools.md",
+          "Your account, record tools and the client portal"
+        ]
+      ]
+    },
+    {
+      "id": "administrator",
+      "title": "CRM administrator",
+      "who": "Configures the workspace in the Builder — \"how do I change it?\"",
+      "time": "1 day",
+      "steps": [
+        [
+          "understanding/README.md",
+          "Steps 1–7 (Part A of each, plus Part B of step 5)"
+        ],
+        [
+          "administration/system-configuration.md",
+          "The administration overview"
+        ],
+        [
+          "builder-guide/README.md",
+          "In order: blueprint → access → automation → channels → look"
+        ],
+        [
+          "administration/permissions-and-roles.md",
+          "The permission model end to end"
+        ],
+        [
+          "administration/automation-reference.md",
+          "Choosing between workflow, assignment, scoring and SLA"
+        ],
+        [
+          "administration/workflow-automation.md",
+          "Workflow patterns and troubleshooting"
+        ],
+        [
+          "genesis-capital/implementation.md",
+          "How the Genesis Capital workspace is configured"
+        ]
+      ]
+    },
+    {
+      "id": "operator",
+      "title": "Platform operator",
+      "who": "Runs the SaaS: workspaces, plans, hosting — \"how do I run it for customers?\"",
+      "time": "half a day",
+      "steps": [
+        [
+          "understanding/01-what-genesis-is.md",
+          "Platform vs workspace"
+        ],
+        [
+          "understanding/04-how-a-request-travels.md",
+          "Sign-in, tokens and the tenant filter"
+        ],
+        [
+          "understanding/05-who-sees-what.md",
+          "Workspace isolation and plans"
+        ],
+        [
+          "getting-started/installation.md",
+          "Install and seed"
+        ],
+        [
+          "platform-operations/platform-administration.md",
+          "The platform console"
+        ],
+        [
+          "platform-operations/tenant-onboarding.md",
+          "Onboarding a new customer"
+        ],
+        [
+          "platform-operations/plans-and-features.md",
+          "Plans, features and overrides"
+        ],
+        [
+          "platform-operations/aws-deployment.md",
+          "Hosting on AWS"
+        ],
+        [
+          "genesis-capital/client-sandbox.md",
+          "Running a client sandbox"
+        ]
+      ]
+    },
+    {
+      "id": "implementer",
+      "title": "Implementer / presenter",
+      "who": "Delivers or demonstrates Genesis Capital — \"how was it built and how do I show it?\"",
+      "time": "1 day",
+      "steps": [
+        [
+          "understanding/README.md",
+          "Steps 1–3 and 7"
+        ],
+        [
+          "genesis-capital/product-requirements.md",
+          "What the client asked for"
+        ],
+        [
+          "genesis-capital/implementation.md",
+          "How it was built, installed and seeded"
+        ],
+        [
+          "genesis-capital/process-flows/README.md",
+          "Every module's end-to-end process"
+        ],
+        [
+          "genesis-capital/videos/README.md",
+          "Twenty captioned walk-throughs to show or share"
+        ],
+        [
+          "genesis-capital/demo-pitch.md",
+          "Running the demonstration and answering questions"
+        ],
+        [
+          "genesis-capital/client-sandbox.md",
+          "Letting the client's testers try it"
+        ]
+      ]
+    },
+    {
+      "id": "engineer",
+      "title": "Engineer",
+      "who": "Develops, supports or integrates — \"how does it work inside?\"",
+      "time": "2–3 days",
+      "steps": [
+        [
+          "understanding/README.md",
+          "All eight steps, both parts"
+        ],
+        [
+          "getting-started/installation.md",
+          "Run it locally"
+        ],
+        [
+          "developer-guide/architecture-and-setup.md",
+          "Architecture and the runtime loading pipeline"
+        ],
+        [
+          "developer-guide/database-schema.md",
+          "Tables and SQL recipes"
+        ],
+        [
+          "developer-guide/data-dictionary.md",
+          "Why each table exists"
+        ],
+        [
+          "developer-guide/api-reference.md",
+          "Endpoints"
+        ],
+        [
+          "developer-guide/security.md",
+          "Security and known gaps"
+        ],
+        [
+          "developer-guide/engines/README.md",
+          "The engine for the feature you are working on"
+        ],
+        [
+          "developer-guide/contributing.md",
+          "How to contribute"
+        ]
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI evaluator",
+      "who": "Anyone evaluating or extending \"Ask Genesis\"",
+      "time": "half a day",
+      "steps": [
+        [
+          "developer-guide/ai-reporting/ask-genesis.md",
+          "What is built and how to run it"
+        ],
+        [
+          "developer-guide/ai-reporting/llm-primer.md",
+          "LLMs explained"
+        ],
+        [
+          "developer-guide/ai-reporting/architecture-study.md",
+          "The architecture study"
+        ],
+        [
+          "developer-guide/ai-reporting/implementation-walkthrough.md",
+          "The build walkthrough"
+        ],
+        [
+          "developer-guide/ai-reporting/local-llm-operations.md",
+          "Operating a local model"
+        ]
+      ]
+    }
+  ]
+}

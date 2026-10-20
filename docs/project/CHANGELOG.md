@@ -1,5 +1,11 @@
 # Genesis CRM — Changelog
 
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Project](README.md)** › 3 of 3 · **For:** Everyone
+> ← [Build effort & capabilities](build-effort-and-capabilities.md)
+> New to Genesis? Background: [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md)
+<!-- /nav:top -->
+
 All notable changes to Genesis CRM are documented in this file.
 
 The format is based on
@@ -47,13 +53,13 @@ and this project adheres to
   metadata. Edit Field shows where a field is used; Delete Field shows usages and records holding a value, and is
   disabled while usages exist.
 - **Not changed (deferred):** legacy `crm_*` table gaps and lifecycle hand-overs — see
-  [ROADMAP findings #13–14](ROADMAP.md#verified-gaps--findings-code-reviewed). Genesis Capital is unaffected.
+  [ROADMAP findings #13–14](roadmap.md#verified-gaps--findings-code-reviewed). Genesis Capital is unaffected.
 
 ### Added — Tutorial videos, and fixes found while recording them (2026-10-15 → 2026-10-17)
 
-- **Twenty captioned tutorial videos** in `docs/demo/` (getting started + one end-to-end process per module), each
+- **Twenty captioned tutorial videos** in `docs/genesis-capital/videos/` (getting started + one end-to-end process per module), each
   with an English subtitle track, chapters and `.srt`/`.vtt` files, and the Playwright scripts that re-record them
-  (`docs/demo/scripts/`). Recording drove every module through the UI as each persona; the problems it exposed were
+  (`docs/genesis-capital/videos/scripts/`). Recording drove every module through the UI as each persona; the problems it exposed were
   fixed in the platform or the Genesis Capital pack rather than worked around. Highlights:
 - **Security.** `GET /auth/me` no longer returns the MFA secret, recovery codes or reset token. Rate limits and audit
   IPs no longer trust a client-supplied `X-Forwarded-For`; set `TRUST_PROXY` behind a load balancer. Personal-data
@@ -101,7 +107,7 @@ and this project adheres to
 
 ### Docs (2026-10-15)
 
-- New `docs/GENESIS-CAPITAL/CLIENT_SANDBOX.md`: how to host a sandbox for a client's own testers (separate
+- New `docs/genesis-capital/client-sandbox.md`: how to host a sandbox for a client's own testers (separate
   installation and database, production settings, persona accounts with forced password reset and two-factor sign-in,
   test mail inbox, smoke test, reset and close-down). Linked from the demo pitch, implementation notes, deployment
   guide and docs index.
@@ -164,7 +170,7 @@ and this project adheres to
   A record of the object being opened now stays open.
 - The home page accepts `?dashboard=<id>`, and choosing a dashboard updates the address, so a dashboard can be
   linked or bookmarked. A dashboard the viewer cannot see falls back to their first one.
-- `docs/GENESIS-CAPITAL/DEMO_PITCH.md` gives the exact link, account and demo record for every scene.
+- `docs/genesis-capital/demo-pitch.md` gives the exact link, account and demo record for every scene.
 
 ### Fixed — Theme reaches every screen (2026-10-14)
 
@@ -262,8 +268,8 @@ and this project adheres to
 ### Added — Genesis Capital full scope and platform hardening (2026-10-14)
 
 The Genesis Capital vertical now covers all 25 PRD modules and all 22 products on genesis-capital.demo, with
-demo data across the application. Details: [GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md),
-[PLATFORM_BUILDER_EXTENSIONS.md §12–22](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md#12-personal-data-protection).
+demo data across the application. Details: [genesis-capital/implementation.md](../genesis-capital/implementation.md),
+[PLATFORM_BUILDER_EXTENSIONS.md §12–22](../developer-guide/engines/platform-builder-extensions.md#12-personal-data-protection).
 
 #### Genesis pack (configuration only)
 
@@ -314,9 +320,9 @@ demo data across the application. Details: [GENESIS-CAPITAL/IMPLEMENTATION.md](.
 
 Generic platform capabilities, so an industry CRM can be configured in the Builder rather than coded,
 and the first vertical built on them: Genesis Capital (Phase 0 + Phase 1 MVP of
-`docs/GENESIS-CAPITAL/GENESIS_Capital_CRM_PRD.md`). Details:
-[PLATFORM_BUILDER_EXTENSIONS.md](../developer-guide/PLATFORM_BUILDER_EXTENSIONS.md),
-[GENESIS-CAPITAL/IMPLEMENTATION.md](../GENESIS-CAPITAL/IMPLEMENTATION.md).
+`docs/genesis-capital/product-requirements.md`). Details:
+[platform-builder-extensions.md](../developer-guide/engines/platform-builder-extensions.md),
+[genesis-capital/implementation.md](../genesis-capital/implementation.md).
 
 - **Formula language** (`services/formula.js`): a safe parser/evaluator, with no `eval`. It powers formula
   fields, `expression` validation rules, workflow `expression` conditions and stage entry rules. Includes
@@ -450,9 +456,9 @@ build-vs-reuse table for the UI — the answer being one new `/conversations` ro
 thread, with tenant lists, audience pickers and analytics reusing what already exists.
 
 No code changed. Documentation only:
-[SOCIAL_MEDIA.md](../admin-guide/SOCIAL_MEDIA.md) (new **Meta Ads & Campaign Analytics** section, expanded
-WhatsApp sections), [SOCIAL_ENGINE.md](../developer-guide/SOCIAL_ENGINE.md) (known gaps, roll-up caveat),
-[12-social-media.md](../user-guide/12-social-media.md), [ROADMAP.md](ROADMAP.md) (Phase 7 items 4 and 5).
+[social-media.md](../administration/social-media.md) (new **Meta Ads & Campaign Analytics** section, expanded
+WhatsApp sections), [social-engine.md](../developer-guide/engines/social-engine.md) (known gaps, roll-up caveat),
+[19-social-media.md](../builder-guide/19-social-media.md), [roadmap.md](roadmap.md) (Phase 7 items 4 and 5).
 
 ### Fixed — Every deployed plan sold one feature out of thirty-seven (September 2026)
 
@@ -1103,9 +1109,9 @@ engines underneath were hardened. Nothing here needs a migration or a redeploy.
 
 #### Docs
 
-- New [CONFIGURABILITY.md](../developer-guide/CONFIGURABILITY.md) and
-  [user-guide/21-appearance.md](../user-guide/21-appearance.md); Form Builder and Dashboard Builder guides
-  updated; [SECURITY.md](../developer-guide/SECURITY.md) gained sections for each hardening item; roadmap rows
+- New [configurability.md](../developer-guide/engines/configurability.md) and
+  [builder-guide/20-appearance.md](../builder-guide/20-appearance.md); Form Builder and Dashboard Builder guides
+  updated; [security.md](../developer-guide/security.md) gained sections for each hardening item; roadmap rows
   #1, #4, #6, #12 updated.
 
 **Tests:** backend 830 (new `validation-engine`, `record-validation`, `authenticate-tenant-context`,
@@ -1167,7 +1173,7 @@ one defect that made it unusable and several documented features that did not ex
 - **`SchedulerRegistry`** (`utils/scheduler.js`) — replaces five hand-rolled interval blocks in `app.js` for
   the workflow, SLA, reminder, report-delivery and social loops; adds the overlap guard the SLA and social loops
   lacked, and reports every loop's last run, duration, result and error on `GET /health` under `schedulers`.
-- **Docs** — new [SOCIAL_ENGINE.md](../developer-guide/SOCIAL_ENGINE.md) (engine internals, connector contract,
+- **Docs** — new [social-engine.md](../developer-guide/engines/social-engine.md) (engine internals, connector contract,
   events, benchmark against the top-5 CRMs, invariants); rewritten user guide and admin guide sections;
   API reference updated.
 
@@ -1200,10 +1206,10 @@ and Pipedrive all ship out of the box, adapted to the life-insurance object mode
 one implements is recorded on the workflow's own description, so the coverage claim is auditable
 from inside the Builder.
 
-See [Workflows](../user-guide/06-workflows.md#what-ships-out-of-the-box) for the catalogue,
-[Workflow Automation](../admin-guide/WORKFLOW_AUTOMATION.md#built-in-workflows) for the three step
+See [Workflows](../builder-guide/12-workflows.md#what-ships-out-of-the-box) for the catalogue,
+[Workflow Automation](../administration/workflow-automation.md#built-in-workflows) for the three step
 shapes they are built from, and the
-[Workflow Engine Technical Reference](../developer-guide/WORKFLOW_ENGINE.md#shipped-workflow-catalogue)
+[Workflow Engine Technical Reference](../developer-guide/engines/workflow-engine.md#shipped-workflow-catalogue)
 for the installer.
 
 #### Fixed — workflows on non-CRM objects were silently doing nothing
@@ -1264,13 +1270,13 @@ that read record fields.
 
 #### Documented
 
-- [Workflows](../user-guide/06-workflows.md#the-workflows-in-detail) — a full plain-English
+- [Workflows](../builder-guide/12-workflows.md#what-ships-out-of-the-box) — a full plain-English
   explanation of each of the 18 workflows: what it is for, when it fires, what it does step by step,
   and which settings to change.
-- [Workflow Automation](../admin-guide/WORKFLOW_AUTOMATION.md#tuning-the-built-in-workflows) — a
+- [Workflow Automation](../administration/workflow-automation.md#tuning-the-built-in-workflows) — a
   tuning reference for every adjustable threshold, timing and recipient role, plus the two edits
   that break a workflow quietly (removing an approval guard, removing the conversion latch).
-- [Workflow Engine](../developer-guide/WORKFLOW_ENGINE.md) — **Part 4 — Extending the Engine**: the
+- [Workflow Engine](../developer-guide/engines/workflow-engine.md) — **Part 4 — Extending the Engine**: the
   complete file-by-file procedure for adding a step type, operator, trigger type or storage backend,
   testing conventions, and a verified enhancement backlog.
 
@@ -1282,8 +1288,8 @@ blocked that: the report builder assumed some analytical vocabulary, and **dashb
 a saved report at all** — a widget could only point at one of ~45 datasets hard-coded in
 `analytics.service.js`, so every new dashboard number needed a developer and a release.
 
-See [Reporting Engine](../developer-guide/REPORTING.md) for the implementation and the CRM
-benchmark, and [Reports](../user-guide/19-reports.md) for the end-user guide (which includes a
+See [Reporting Engine](../developer-guide/engines/reporting.md) for the implementation and the CRM
+benchmark, and [Reports](../using-the-crm/reports.md) for the end-user guide (which includes a
 suggested 90-minute on-site training run).
 
 #### Any saved report is now a dashboard widget
@@ -1396,7 +1402,7 @@ therefore unanswerable: *"which region writes the most premium?"* (needs policy 
 
 Implemented in two parts, matching how Salesforce separates report-type paths from roll-up summary
 fields. Full rationale and the benchmark in
-[REPORTING.md](../developer-guide/REPORTING.md#the-join-model).
+[reporting.md](../developer-guide/engines/reporting.md#the-join-model).
 
 #### Curated multi-hop to-one paths
 
@@ -1478,7 +1484,7 @@ the *source catalogue* in admin setup.
   admin guard, and `Sidebar.test.jsx` asserts the invariant: a non-admin sees Reports and no Builder
   section, and the admin shortcut never targets `/builder/*`.
 
-Documented in [REPORTING.md](../developer-guide/REPORTING.md#where-it-lives-in-the-navigation-and-why),
+Documented in [reporting.md](../developer-guide/engines/reporting.md#where-it-lives-in-the-navigation-and-why),
 including why an admin **"Reporting sources"** screen — the Salesforce *Report Types* equivalent, and
 the one piece of reporting that would legitimately belong under `Builder` — has not been built.
 
@@ -1596,7 +1602,7 @@ Migration `20260817120000_add_report_self_service` — **additive only**, no dro
 
 ### Known limitations
 
-Documented in [REPORTING.md](../developer-guide/REPORTING.md#benchmark): one relation hop only, one
+Documented in [reporting.md](../developer-guide/engines/reporting.md#benchmark): one relation hop only, one
 source per report, no dashboard-wide cross-filtering, no historical snapshots, no threshold alerts,
 and a 20 000-row fetch cap.
 
@@ -1653,7 +1659,7 @@ number on a dashboard was a snapshot frozen at seed/authoring time. Widgets now 
 ### Docs — Client Life-Event Capture proposed-feature catalog (July 2026)
 
 - Added a **Client Life-Event Capture — Proposed Feature Catalog** section to
-  [ROADMAP.md](ROADMAP.md#client-life-event-capture--proposed-feature-catalog):
+  [roadmap.md](roadmap.md#client-life-event-capture--proposed-feature-catalog):
   architect-level guidance on *why / when / how* Genesis should capture client life
   events (marriage, new baby, home purchase, retirement, bereavement, …) — the highest-ROI
   buying and re-underwriting triggers for the insurance vertical. Covers the business case,
@@ -2068,9 +2074,9 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
   (`{ eventName: workflowId }`, resolved in the owning tenant's context) and re-publishes onto the domain bus.
 - **Single outbound-delivery path** — the workflow `webhook` step now delivers through `IntegrationService.deliver()`,
   so all outbound HTTP shares one SSRF policy, one signing scheme, and one HTTP client.
-- **Docs:** [Integrations](../user-guide/09-integrations.md), [SYSTEM_CONFIGURATION](../admin-guide/SYSTEM_CONFIGURATION.md),
-  [SECURITY](../developer-guide/SECURITY.md), [API_REFERENCE](../developer-guide/API_REFERENCE.md),
-  [WORKFLOW_ENGINE](../developer-guide/WORKFLOW_ENGINE.md).
+- **Docs:** [Integrations](../builder-guide/17-integrations.md), [SYSTEM_CONFIGURATION](../administration/system-configuration.md),
+  [SECURITY](../developer-guide/security.md), [API_REFERENCE](../developer-guide/api-reference.md),
+  [WORKFLOW_ENGINE](../developer-guide/engines/workflow-engine.md).
 
 #### Distinct Lead object — Lead → Prospect → Client lifecycle
 
@@ -2088,8 +2094,8 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
 - **Seed:** Leads module + `lead_intake` object (14 fields, create form), a 4-stage qualification pipeline, and sample
   leads. **Note:** the new object's metadata is per-tenant — fresh installs get it via `db:reset`; existing tenants
   must be provisioned (Builder or an idempotent seed).
-- **Docs:** [DATABASE_SCHEMA](../developer-guide/DATABASE_SCHEMA.md), [DATA_DICTIONARY](../developer-guide/DATA_DICTIONARY.md)
-  (incl. the Lead-vs-Prospect rationale vs. top-5 CRMs), and [API_REFERENCE](../developer-guide/API_REFERENCE.md).
+- **Docs:** [DATABASE_SCHEMA](../developer-guide/database-schema.md), [DATA_DICTIONARY](../developer-guide/data-dictionary.md)
+  (incl. the Lead-vs-Prospect rationale vs. top-5 CRMs), and [API_REFERENCE](../developer-guide/api-reference.md).
 
 #### Conversion gating — Prospect → Client requires complete required fields
 
@@ -2153,7 +2159,7 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
     send is via the existing SMTP transport (preview-mode when `SMTP_HOST` is unset).
   - **Schema:** `employees.reset_token` + `reset_token_expires` columns
     (migration `20260706120000_add_password_reset`).
-  - **Docs:** [First Login & password reset](../getting-started/INSTALLATION.md#resetting-a-forgotten-password).
+  - **Docs:** [First Login & password reset](../getting-started/installation.md#resetting-a-forgotten-password).
 
 #### Configurable reporting module
 
@@ -2172,7 +2178,7 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
   /api/reports/:id/run`, and `POST /api/reports/export` (CSV). Verified end-to-end against live data.
 - **Sample data:** `npm run db:seed` (and `scripts/setup-report-samples.js`) create 7–9 starter reports — Pipeline by
   Stage, Leads by Source, Cases by Priority, Premium by Product, Commission Summary, and more.
-- **Docs:** new [Reports guide](../user-guide/19-reports.md) with a top-5-CRM benchmark.
+- **Docs:** new [Reports guide](../using-the-crm/reports.md) with a top-5-CRM benchmark.
 
 ### Fixed
 
@@ -2225,8 +2231,8 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
   Critical/Priority case policy, a standard case policy, Speed-to-Lead, and Task Due), and 6 sample support cases. It
   runs the real engine twice (start timers → resolve two cases → settle) so the seeded board shows a realistic spread
   across on-track, at-risk, breached, met-on-time and met-late — with a live compliance %.
-- **Docs:** new [SLA Engine guide](../user-guide/18-sla-engine.md) with a top-5-CRM benchmark, plus a plain-language
-  [how-to guide](../user-guide/NEW_FEATURES_HOW_TO.md); indexed in the docs index and user-guide README.
+- **Docs:** new [SLA Engine guide](../builder-guide/14-sla-engine.md) with a top-5-CRM benchmark, plus a plain-language
+  [how-to guide](../using-the-crm/whats-new.md); indexed in the docs index and user-guide README.
 
 #### Interactive organization chart (admin)
 
@@ -2244,7 +2250,7 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
   `EmployeeHierarchy` closure table via `HierarchyService.getOrgGraph()`. The
   browser assembles the (multi-root) forest, so the chart always reflects the
   same hierarchy that powers Team/Hierarchy permission scopes.
-- **Docs:** new [user guide](../user-guide/17-org-chart.md); cross-linked from the
+- **Docs:** new [user guide](../builder-guide/09-org-chart.md); cross-linked from the
   Employees guide and the docs index.
 
 ### Removed
@@ -2387,7 +2393,7 @@ A robustness sweep across the Builder's Automate & Connect features. Highlights:
 
 #### Documentation
 
-- Created `docs/project/Configuration_Details.md` — comprehensive reference
+- Created `docs/developer-guide/metadata-configuration.md` — comprehensive reference
   documenting which screens are metadata-driven, hybrid, or hardcoded, with
   recommendations for future development
 
@@ -4333,8 +4339,21 @@ production-ready CRM platform:
 
 ## Related Guides
 
-- **Roadmap**: [ROADMAP.md](ROADMAP.md)
+- **Roadmap**: [roadmap.md](roadmap.md)
 - **Getting Started**:
-  [../getting-started/INSTALLATION.md](../getting-started/INSTALLATION.md)
+  [../getting-started/installation.md](../getting-started/installation.md)
 - **Developer Architecture**:
-  [../developer-guide/ARCHITECTURE_AND_SETUP.md](../developer-guide/ARCHITECTURE_AND_SETUP.md)
+  [../developer-guide/architecture-and-setup.md](../developer-guide/architecture-and-setup.md)
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Previous** | [Build effort & capabilities](build-effort-and-capabilities.md) |
+| **Background** | [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md) |
+| **Lost?** | [Docs roadmap](../README.md) · [Project](README.md) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

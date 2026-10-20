@@ -1,5 +1,11 @@
 # Genesis CRM — Security Implementation
 
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Developer guide](README.md#core-reading-in-order)** › 5 of 9 · **For:** Engineers, security reviewers
+> ← [API reference](api-reference.md) · [Metadata configuration details](metadata-configuration.md) →
+> New to Genesis? Background: [Understanding Genesis › Who sees what](../understanding/05-who-sees-what.md)
+<!-- /nav:top -->
+
 ## Overview
 
 This document provides a comprehensive analysis of the security features implemented in the Genesis CRM platform. The
@@ -14,10 +20,10 @@ security.
 
 **Implementation**: `backend/src/plugins/jwt.js`, `backend/src/middleware/authenticate.js`
 
-- **JWT Token Management**: Secure token generation with configurable expiry (default 8 hours)
+- **JWT Token Management**: Secure token generation with configurable expiry (default 8 hours, `JWT_EXPIRY`)
 - **Token Verification**: Middleware-based JWT verification on all protected routes
 - **Configuration**: Environment-based JWT secret management (`JWT_SECRET`, `JWT_EXPIRY`)
-- **Refresh and revocation (October 2026)**: rotating refresh tokens and per-user revocation; see [Sessions, two-factor and personal data](#sessions-two-factor-and-personal-data-october-2026)
+- **Refresh and revocation (October 2026)**: rotating refresh tokens (14 days, `REFRESH_TOKEN_TTL_DAYS`) and per-user revocation; see [Sessions, two-factor and personal data](#sessions-two-factor-and-personal-data-october-2026)
 
 ```javascript
 // Fastify JWT plugin with secure configuration
@@ -70,8 +76,8 @@ await db.employee.update({
 });
 ```
 
-> **Hardening TODO**: `forgot-password` is currently unthrottled. Add rate limiting
-> (per-IP and per-account) before production to prevent reset-email flooding.
+`forgot-password` and `reset-password` are rate limited per IP — see
+[Login brute-force protection](#login-brute-force-protection-sept-2026).
 
 ### Role-Based Access Control (RBAC)
 
@@ -115,39 +121,38 @@ const BUILTIN_ROLE_LEVEL = Object.freeze({
 Controls access to system configuration:
 
 - **Entities**: modules, objects, fields, forms, pipelines, wizards
-- **Granularity**: `can_view` and `can_edit` permissions per role
+- **Granularity**: `can_view` and `can_edit` permissions per role; on objects also `view_scope`
+  (own & team, or all records)
 - **Inheritance**: Child entities inherit parent permissions
+- See [Known gaps](#known-gaps) for where `can_view` is not enforced
 
 #### 2. Operational Permissions (`operational_permissions`)
 
-Controls data access based on scope:
+Controls data access based on scope, per role and `entity_type` (`task`, `activity`, `record`). Two
+further rows act as switches: `view_pii` (see unmasked personal data) and `barrier_override` (pass
+information barriers).
 
-- **View Scope**: `own` | `team` | `hierarchy` | `all`
+`record` rows (Builder ▸ Permissions ▸ Record Permissions) apply to business records only for roles
+that have one: `view_scope` replaces the level-based record filter in `RecordService.#ownerOnlyFilter`
+/ `#assertAccess`, and `create_scope`, `edit_scope`, `delete_scope`, `assign_scope` are checked by
+`#assertRecordScope` on create, update, stage moves, status events, delete and merge, and by
+`#filterByRecordScope` on bulk actions. Roles without a row keep the level behaviour; admins are never
+restricted. The rows are cached 30 s and the cache is cleared when one is saved.
+
+- **View Scope**: `none` | `own` | `team` | `hierarchy` | `all`
 - **Edit/Delete Scope**: Granular modification control
 - **Assignment Scope**: Controls record assignment capabilities
-- **Default Fallbacks**: Sensible defaults when no explicit permissions exist
+- **Default Fallbacks**: by role level when no row exists (`defaultPermsForLevel`)
 
 ```javascript
-const DEFAULT_OPERATIONAL_PERMS = {
-  super_admin: {
-    view_scope: "all",
-    create_scope: "all",
-    edit_scope: "all",
-    delete_scope: "all",
-    assign_scope: "all",
-  },
-  user: {
-    view_scope: "own",
-    create_scope: "own",
-    edit_scope: "own",
-    delete_scope: "own",
-    assign_scope: "none",
-  },
-  // ... other roles
-};
+function defaultPermsForLevel(level) {
+  if (level <= ADMIN_THRESHOLD)   return { view_scope: 'all', create_scope: 'all', edit_scope: 'all', delete_scope: 'all', assign_scope: 'all' };
+  if (level <= MANAGER_THRESHOLD) return { view_scope: 'hierarchy', create_scope: 'own', edit_scope: 'hierarchy', delete_scope: 'own', assign_scope: 'team' };
+  return { view_scope: 'own', create_scope: 'own', edit_scope: 'own', delete_scope: 'own', assign_scope: 'none' };
+}
 ```
 
-For complete permission model documentation, see [../admin-guide/PERMISSIONS_AND_ROLES.md](../admin-guide/PERMISSIONS_AND_ROLES.md).
+For complete permission model documentation, see [../administration/permissions-and-roles.md](../administration/permissions-and-roles.md).
 
 ---
 
@@ -180,28 +185,8 @@ const commonProps = {
   calls inside `$transaction` blocks must also pass `tenant_id` explicitly as a
   safety net (see Architecture doc for the required pattern).
 
-  > ⚠️ **The extension is currently inert on most routes.** It reads the tenant from
-  > `AsyncLocalStorage`, but `authenticate` calls `tenantContext.enterWith()` *after*
-  > `await request.jwtVerify()`. After that await the hook resumes in a child async
-  > context which Fastify discards, so the store never reaches the handler:
-  > `getTenantId()` returns `null` and the extension **skips scoping entirely** —
-  > reads run unscoped across all tenants, and creates fail with
-  > `Argument 'tenant' is missing`. Verified empirically in August 2026 against the
-  > shared instance.
-  >
-  > `tests/tenant-als-propagation.test.js` passes only because its preHandler calls
-  > `enterWith` with **no preceding await**, so it does not exercise the real path.
-  >
-  > **Mitigation status:** the reporting routes work around this locally by wrapping
-  > each handler in `tenantContext.run({ tenantId })` (see
-  > [REPORTING.md](REPORTING.md#tenant-scoping--a-local-workaround)), and the
-  > scheduled-report sweeper does the same since it has no request. **Every other
-  > route is still affected.** The fix is to verify the JWT synchronously
-  > (`request.server.jwt.verify(token)`) and set `request.user` + `enterWith` in a
-  > non-async preHandler — deferred because enabling real scoping will begin filtering
-  > queries that currently return cross-tenant rows, which needs its own change and
-  > regression pass (watch the `role.findFirst({ tenant_id: null })` global-role
-  > fallbacks and the `platform/index.js` bypass).
+  The tenant reaches the extension through `AsyncLocalStorage`; see
+  [Tenant Isolation — context propagation fixed](#tenant-isolation--context-propagation-fixed-sept-2026).
 
 ### Silent Failure Observability (v3.1.2+)
 
@@ -326,8 +311,8 @@ viewer's browser at a host of their choosing and carried credentials in a config
 copied between dashboards and cached in Redis.
 
 The mode has been **removed entirely**, along with `fetchExternal`; the descriptor no longer
-resolves. Widgets now read from a saved report or a built-in dataset, both server-side and
-tenant-scoped. Note this was a *browser-side* fetch, so it was never an SSRF vector against
+resolves. Widgets now read from a saved report, a built-in dataset or an object aggregate, all
+server-side and tenant-scoped. Note this was a *browser-side* fetch, so it was never an SSRF vector against
 the backend — the outbound-webhook guard below remains the single policy for server-side
 outbound requests.
 
@@ -416,7 +401,7 @@ The `scopedHandler` wrapper remains on reporting and social as a belt-and-braces
 `RecordService` on every create/update through `services/validation-engine.js` — before any write. Custom
 JavaScript validators are **never executed on the server**. Failures return
 `{ error: { code: 'VALIDATION_ERROR', message, details: [{ field, message }] } }`. See
-[CONFIGURABILITY.md → Validation engine](CONFIGURABILITY.md#validation-engine).
+[configurability.md → Validation engine](engines/configurability.md#validation-engine).
 
 ## Login brute-force protection (Sept 2026)
 
@@ -561,7 +546,7 @@ rows it cannot remap (a `ui_permissions` row for an entity type outside the plan
 rather than copied with a foreign id, that the template tenant is left untouched, and that no
 business-data model appears in the clone plan at all.
 
-See [../admin-guide/TENANT_ONBOARDING.md](../admin-guide/TENANT_ONBOARDING.md).
+See [../platform-operations/tenant-onboarding.md](../platform-operations/tenant-onboarding.md).
 
 ## Dead authorization code removed (September 2026)
 
@@ -611,8 +596,9 @@ role from `/builder` that the server would admit. It now compares `role_level`.
 per plugin. The prefix gate matches the **declared route pattern** (`request.routeOptions.url`),
 never user-supplied path text, longest prefix first. A refusal is a 403 carrying
 `code: FEATURE_NOT_ENTITLED` and `details: [{ feature, label, min_plan }]`. Platform admins pass
-every gate. Applied to gated route families and to the write paths of the Workflow and
-Assignment builders. (The `MODULE_FEATURE` map that hid plan-excluded shipped modules from
+every gate. Today `requireFeature` is applied only to the write paths of the Workflow builder
+(`auto_workflows`) and the Assignment builder (`auto_assignment`); `featureGateByPrefix` is not
+registered on any plugin. (The `MODULE_FEATURE` map that hid plan-excluded shipped modules from
 bootstrap was removed with the insurance modules, its only entries; every remaining module is
 Builder metadata and is filtered by role.) The client's own gating
 (`FeatureGate`, `useEntitlements`) fails **open** until bootstrap delivers; the server never does.
@@ -620,7 +606,7 @@ Builder metadata and is filtered by role.) The client's own gating
 
 ## Access segmentation, public forms and formula safety (October 2026)
 
-Full design: [PLATFORM_BUILDER_EXTENSIONS.md](PLATFORM_BUILDER_EXTENSIONS.md).
+Full design: [platform-builder-extensions.md](engines/platform-builder-extensions.md).
 
 - **Business units and information barriers** add two filters on top of owner/hierarchy scope,
   applied in `RecordService` (list, get, bulk, related, lookup), global search, object analytics and
@@ -766,4 +752,39 @@ response headers) have shipped — see the sections above. What remains:
 
 ---
 
-Document Version: 1.2 — Last Updated: October 13, 2026
+## Known gaps
+
+Verified against the code in October 2026.
+
+- **Object `can_view` is not enforced on record reads.** `GET /api/runtime/records` and
+  `/records/:id` check ownership, team, business unit and barrier scope (`RecordService.#assertAccess`),
+  but not the role's `ui_permissions.can_view` on the object. The check exists only on the metadata
+  routes (`/runtime/module/:id`, `/runtime/object/:id`, …) that drive navigation.
+- **Field `can_view: false` hides a field on screen only.** It is applied when forms are built for the
+  viewer (`MetadataService.getFormForViewer` omits it); record payloads still carry the value. Use `pii` / `encrypt` for data that must not reach
+  the browser.
+- **Plan gates are server-side only on workflow and assignment-rule writes.** Every other plan
+  feature is hidden by the client (`FeatureGate`) but reachable through the API.
+- **Portal tokens cannot be revoked and do not re-check the tenant.** A `gp1.` token is valid until
+  it expires (8 hours): portal handlers verify only its signature and expiry. Nothing records issued
+  tokens, and a suspended tenant's portal sessions keep working until then (new sign-ins are refused,
+  because the workspace lookup requires `status = 'active'`).
+
+---
+
+Document Version: 1.3 — Last Updated: October 20, 2026
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Next** | [Metadata configuration details](metadata-configuration.md) — How metadata (modules, objects, fields, forms) is configured and rendered |
+| **Previous** | [API reference](api-reference.md) |
+| **Background** | [Understanding Genesis › Who sees what](../understanding/05-who-sees-what.md) |
+| **On these journeys** | [Engineer](../README.md#engineer) (step 7 of 9) |
+| **Lost?** | [Docs roadmap](../README.md) · [Developer guide](README.md#core-reading-in-order) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

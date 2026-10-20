@@ -1,5 +1,11 @@
 # Genesis CRM — Installation & Setup Guide
 
+<!-- nav:top -->
+> **[Docs roadmap](../README.md)** › **[Getting started](README.md)** › 1 of 1 · **For:** Administrators, engineers
+> ← [Step 8 — Codebase tour](../understanding/08-codebase-tour.md) *(Understanding Genesis)* · [Genesis Capital user guide](../genesis-capital/user-guide.md) *(Genesis Capital workspace)* →
+> New to Genesis? Background: [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md)
+<!-- /nav:top -->
+
 > **Who is this guide for?**
 > New developers and administrators setting up Genesis CRM for the first time.
 > Follow this guide step-by-step for your initial setup.
@@ -26,11 +32,11 @@ Administrators can change the entire data model from the browser without touchin
 
 | Layer | Technology |
 | ----- | ---------- |
-| Frontend | React 18 + Vite + TailwindCSS + React Query |
-| Backend | Node.js + Fastify + Prisma ORM |
+| Frontend | React 18 + Vite 7 + TailwindCSS 3 + React Query v5 + Zustand |
+| Backend | Node.js + Fastify 5 + Prisma ORM 6 |
 | Database | MySQL 8.0+ |
 | Cache | Redis (optional) |
-| Authentication | JWT with configurable expiry |
+| Authentication | JWT access token (8h) + rotating refresh token (14 days), optional TOTP MFA |
 
 The backend listens on **port 3001** by default. The frontend dev server listens on **port 5173** by default.
 
@@ -40,7 +46,7 @@ The backend listens on **port 3001** by default. The frontend dev server listens
 
 | Tool | Minimum Version | Check |
 | ---- | --------------- | ----- |
-| Node.js | 18.0+ | `node --version` |
+| Node.js | 20.19+ (Vite 7); the Docker images use Node 22 | `node --version` |
 | npm | 9.0+ | `npm --version` |
 | MySQL | 8.0+ | `mysql --version` |
 | Git | 2.0+ | `git --version` |
@@ -126,6 +132,8 @@ APP_URL="http://localhost:5173"
 ```
 
 **Minimum required change:** set `DATABASE_URL` to point to your MySQL instance and set a real `JWT_SECRET`.
+For production also set `FIELD_ENCRYPTION_KEY` (32 bytes, 64 hex chars or base64) — without it the key for
+encrypted fields is derived from `JWT_SECRET`.
 
 **Optional — AI reporting ("Ask Genesis").** Natural-language report building on a local model. Off
 by default; everything else works without it.
@@ -140,7 +148,7 @@ LLM_THINKING=false
 ```
 
 The model only ever produces a report *config* (never SQL) and answers are limited to the data the
-user can already see — see [AI_REPORTING.md](../developer-guide/AI_REPORTING.md).
+user can already see — see [ask-genesis.md](../developer-guide/ai-reporting/ask-genesis.md).
 
 ### Step 3: Set Up the Database
 
@@ -182,7 +190,7 @@ milliseconds instead of the 10–60 s they took over the remote connection. The 
 # Local MySQL (Homebrew mysql@8.4) — copy of the AWS RDS "genesis" schema, used for demos.
 DATABASE_URL="mysql://genesis:genesis_local@127.0.0.1:3306/genesis"
 # AWS RDS (shared) — to switch back, comment the line above and uncomment this one.
-# DATABASE_URL="mysql://admin:<password>@smartsure-mysql.ckwh4wdl5opw.us-east-2.rds.amazonaws.com:3306/genesis"
+# DATABASE_URL="mysql://admin:<password>@<rds-endpoint>:3306/genesis"
 ```
 
 To switch databases, swap which `DATABASE_URL` line is commented, then run `make restart`.
@@ -204,7 +212,7 @@ in it. To take a new copy, stop the app first. This replaces all local data:
 
 ```bash
 make stop
-mysqldump -h smartsure-mysql.ckwh4wdl5opw.us-east-2.rds.amazonaws.com -u admin -p \
+mysqldump -h <rds-endpoint> -u admin -p \
   --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces \
   --column-statistics=0 genesis > genesis.sql
 mysql -uroot -e "DROP DATABASE genesis; CREATE DATABASE genesis CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -232,7 +240,7 @@ Then load a dump as above.
 
 The seed script empties the database, creates the platform layer (plans, feature flags, security policy,
 rate limits) and installs the **Genesis Capital** workspace from its vertical pack — 19 modules, 91 objects,
-72 workflows, 15 dashboards, 22 staff accounts and about 2,300 demo records. It finishes by creating the
+89 workflows, 15 dashboards, 22 staff accounts and about 2,300 demo records. It finishes by creating the
 platform administrator `PLATFORM01`.
 
 ```bash
@@ -351,10 +359,11 @@ Every workspace account uses the demo password **`GenesisDemo#2026`**; the platf
 > **Employee ID is case-sensitive** — use uppercase exactly as shown.
 
 All 22 accounts, what each demonstrates, and how to change the demo password:
-[GENESIS-CAPITAL/IMPLEMENTATION.md §0](../GENESIS-CAPITAL/IMPLEMENTATION.md#0-signing-in-to-the-genesis-demo).
+[genesis-capital/implementation.md §0](../genesis-capital/implementation.md#0-signing-in-to-the-genesis-demo).
 
-After login your session is stored in the browser. It expires after
-8 hours (configurable via `JWT_EXPIRY` in `.env`). With **Remember me** checked the
+After login your session is stored in the browser. The access token expires after
+8 hours (configurable via `JWT_EXPIRY` in `.env`) and is renewed with a rotating refresh
+token that lasts 14 days (`REFRESH_TOKEN_TTL_DAYS`). With **Remember me** checked the
 session is kept in `localStorage` and survives a browser restart; unchecked, it is
 kept in `sessionStorage` and is discarded when the tab or browser closes.
 
@@ -388,17 +397,17 @@ kept in `sessionStorage` and is discarded when the tab or browser closes.
 
 Once your installation is working:
 
-- **Daily Operations** — [user-guide/DAILY_OPERATIONS.md](../user-guide/DAILY_OPERATIONS.md) — Learn to navigate and use
+- **Daily Operations** — [using-the-crm/daily-operations.md](../using-the-crm/daily-operations.md) — Learn to navigate and use
   CRM features
-- **Administrator Setup** — [admin-guide/SYSTEM_CONFIGURATION.md](../admin-guide/SYSTEM_CONFIGURATION.md) — Configure
+- **Administrator Setup** — [administration/system-configuration.md](../administration/system-configuration.md) — Configure
   modules, permissions, and workflows
-- **Development** — [developer-guide/ARCHITECTURE_AND_SETUP.md](../developer-guide/ARCHITECTURE_AND_SETUP.md) —
+- **Development** — [developer-guide/architecture-and-setup.md](../developer-guide/architecture-and-setup.md) —
   Technical details and customization
 
 ### Quick Links (after setup)
 
 - **Dashboard:** <http://localhost:5173/dashboard>
-- **Sales Module:** <http://localhost:5173/module/1>
+- **A module:** `http://localhost:5173/module/<moduleId>` (open one from the sidebar)
 - **Builder Studio:** <http://localhost:5173/builder> (admin only)
 
 ### Common Issues
@@ -422,4 +431,20 @@ Once your installation is working:
 - Check JWT_SECRET is set in `.env`
 - Clear browser storage and try again
 
-For more detailed troubleshooting, see [developer-guide/ARCHITECTURE_AND_SETUP.md](../developer-guide/ARCHITECTURE_AND_SETUP.md#troubleshooting).
+For more detailed troubleshooting, see [developer-guide/architecture-and-setup.md](../developer-guide/architecture-and-setup.md#troubleshooting).
+
+<!-- nav:bottom -->
+
+---
+
+### Where to next
+
+| | |
+|---|---|
+| **Next** | [Genesis Capital user guide](../genesis-capital/user-guide.md) *(Genesis Capital workspace)* — Navigation, records, approvals, documents, every module and journey, glossary |
+| **Previous** | [Step 8 — Codebase tour](../understanding/08-codebase-tour.md) *(Understanding Genesis)* |
+| **Background** | [Understanding Genesis › Codebase tour](../understanding/08-codebase-tour.md) |
+| **Related** | [Architecture & setup](../developer-guide/architecture-and-setup.md) · [AWS deployment](../platform-operations/aws-deployment.md) |
+| **On these journeys** | [Platform operator](../README.md#platform-operator) (step 4 of 9) · [Engineer](../README.md#engineer) (step 2 of 9) |
+| **Lost?** | [Docs roadmap](../README.md) · [Getting started](README.md) · [Understanding Genesis](../understanding/README.md) |
+<!-- /nav:bottom -->

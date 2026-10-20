@@ -162,6 +162,17 @@ export default function PermissionsBuilderPage() {
               </button>
             ))}
           </div>
+          {activeTab === 'record' && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+              <p className="font-semibold">Record scopes apply only to roles you save here.</p>
+              <p className="mt-1 text-xs">
+                A saved role is limited to these scopes for every business record: what it sees, and which records it may
+                create, edit, delete or reassign. Roles you have not saved keep their level&apos;s behaviour — managers see their
+                team, other roles their own records — and an object&apos;s <em>Records: all</em> permission still lets a role see
+                every record of that object. Admins are never restricted.
+              </p>
+            </div>
+          )}
           <div className="bg-white dark:bg-night-2 rounded-xl border border-gray-200 dark:border-white/[0.07] shadow-sm p-6">
             <OperationalPermissionPanel entityType={activeTab} />
           </div>

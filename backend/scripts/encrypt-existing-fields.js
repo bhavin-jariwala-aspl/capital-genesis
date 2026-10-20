@@ -2,10 +2,12 @@
 'use strict';
 
 /**
- * Encrypt values stored before a field was marked `config.encrypt` (PRD
- * DATA-FR-02). Every Builder field with `config.encrypt: true` is visited and
- * its plaintext EAV values are rewritten as `enc:v1:` ciphertext. Values that
- * are already encrypted are skipped, so the script is safe to run repeatedly.
+ * Encrypt values stored in plain text before encryption applied to them:
+ *   - record values of every Builder field marked `config.encrypt` (PRD DATA-FR-02);
+ *   - social-media account tokens (`access_token`, `refresh_token`), which the
+ *     API has written encrypted since October 2026.
+ * Values that are already encrypted are skipped, so the script is safe to run
+ * repeatedly.
  *
  *   node scripts/encrypt-existing-fields.js            # dry run: counts only
  *   node scripts/encrypt-existing-fields.js --apply    # write the ciphertext
@@ -28,8 +30,8 @@ async function main() {
   try {
     const fields = (await db.uiField.findMany({ select: { id: true, name: true, object_id: true, config: true } }))
       .filter((f) => f.config && f.config.encrypt === true);
-    if (!fields.length) { console.log('No fields are marked for encryption.'); return; }
     let total = 0;
+    if (!fields.length) console.log('No fields are marked for encryption.');
     for (const f of fields) {
       const rows = await db.recordFieldValue.findMany({
         where: { field_name: f.name, str_value: { not: null }, record: { object_id: f.object_id } },
@@ -44,6 +46,23 @@ async function main() {
         await db.recordFieldValue.updateMany({ where: { id: r.id, str_value: r.str_value }, data: { str_value: encrypt(r.str_value) } });
       }
     }
+
+    // Social-media credentials (all tenants — this runs without a tenant context).
+    const accounts = await db.socialMediaAccount.findMany({ select: { id: true, access_token: true, refresh_token: true } });
+    let tokens = 0;
+    for (const a of accounts) {
+      const data = {};
+      for (const k of ['access_token', 'refresh_token']) if (a[k] && !isEncrypted(a[k])) data[k] = encrypt(a[k]);
+      if (!Object.keys(data).length) continue;
+      tokens += Object.keys(data).length;
+      if (apply) {
+        // Guarded write: only replace the exact values we read.
+        await db.socialMediaAccount.updateMany({ where: { id: a.id, access_token: a.access_token, refresh_token: a.refresh_token }, data });
+      }
+    }
+    console.log(`  social-media accounts: ${tokens} plaintext token(s) across ${accounts.length} account(s)`);
+    total += tokens;
+
     console.log(apply ? `Encrypted ${total} value(s).` : `${total} value(s) would be encrypted. Re-run with --apply to write them.`);
   } finally {
     await db.$disconnect();

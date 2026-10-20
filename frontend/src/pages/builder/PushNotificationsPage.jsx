@@ -20,12 +20,6 @@ const TARGET_OPTIONS = [
   { value: 'employee', label: 'Specific Employees' },
 ];
 
-const ROLE_OPTIONS = [
-  { value: 'admin',   label: 'Admin' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'user',    label: 'User' },
-];
-
 const emptyForm = () => ({
   title: '', body: '', link: '', target_type: 'all', roles: [], employee_ids: [],
 });
@@ -38,6 +32,16 @@ export default function PushNotificationsPage() {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['push-notifications'],
     queryFn: () => builderService.getPushNotifications().then(r => r.data || []),
+  });
+
+  // The workspace's own roles plus the system ones — Genesis Capital staff all
+  // hold custom roles (rm, compliance_officer…), so a fixed list missed them.
+  const { data: roleOptions = [] } = useQuery({
+    queryKey: ['roles-for-push'],
+    queryFn: () => builderService.getRoles().then(r => (r.data || [])
+      .filter(x => x.name !== 'platform_admin')
+      .map(x => ({ value: x.name, label: x.label || x.name }))),
+    enabled: modalOpen,
   });
 
   const { data: employees = [] } = useQuery({
@@ -212,7 +216,7 @@ export default function PushNotificationsPage() {
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Select Roles</label>
               <div className="flex flex-wrap gap-2">
-                {ROLE_OPTIONS.map(r => (
+                {roleOptions.map(r => (
                   <label key={r.value} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                     <input
                       type="checkbox"

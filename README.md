@@ -4,10 +4,10 @@
 
 > **Genesis Capital** — the shipped demo workspace is a complete financial-services CRM (lending, wealth,
 > funds, securities, advisory, forex, compliance) built entirely as Builder metadata: 19 modules, 91 objects,
-> 72 workflows, 15 dashboards, a client and introducer portal, French labels and about 2,300 demo records. See
-> [docs/GENESIS-CAPITAL/IMPLEMENTATION.md](docs/GENESIS-CAPITAL/IMPLEMENTATION.md) and the
-> [user guide](docs/GENESIS-CAPITAL/genesis-capital-user-guide.md). Presenting it? See the
-> [demo pitch and Q&A guide](docs/GENESIS-CAPITAL/DEMO_PITCH.md).
+> 89 workflows, 15 dashboards, a client and introducer portal, French labels and about 2,300 demo records. See
+> [docs/genesis-capital/implementation.md](docs/genesis-capital/implementation.md) and the
+> [user guide](docs/genesis-capital/user-guide.md). Presenting it? See the
+> [demo pitch and Q&A guide](docs/genesis-capital/demo-pitch.md).
 
 Genesis CRM is a comprehensive, metadata-driven Customer Relationship Management platform that
 combines powerful customization capabilities with enterprise-grade features. Built for organizations
@@ -18,8 +18,8 @@ market-leading platforms.
 
 - **🎯 Fully Visual Configuration** — No coding required for forms, workflows, dashboards,
   or custom objects
-- **🔧 Complete Enterprise Feature Set** — Email marketing, territory management, customer portals,
-  social integration, and more
+- **🔧 Complete Enterprise Feature Set** — Workflows, SLAs, documents and e-signature, a client portal,
+  information barriers, social integration, and more
 - **⚡ Metadata-Driven Architecture** — Every UI element is configurable and stored in your database
 - **🚀 Real-Time Adaptability** — Changes appear instantly without deployments
 - **📊 Reporting Your Team Owns** — Non-technical staff build, share and schedule their own
@@ -60,9 +60,11 @@ Shipped and wired end-to-end:
    no-code calculated measures, truthful totals, period-over-period comparison, drill-down to the
    underlying records, folders and favourites, role/team sharing that never widens data scope, and
    emailed subscriptions. **Any saved report is also a dashboard widget** (`UiDashboard`, 19 chart
-   types), so a new dashboard number never needs a developer. CSV / Excel / PDF export. See
-   [REPORTING.md](docs/developer-guide/REPORTING.md) and the
-   [user guide](docs/user-guide/19-reports.md)
+   types), so a new dashboard number never needs a developer. CSV / Excel / PDF export. Report sources are
+   tasks, activities, SLA timers and the typed CRM objects; objects built in the Builder (all of Genesis Capital's)
+   are reported on through dashboard widgets. See
+   [REPORTING.md](docs/developer-guide/engines/reporting.md) and the
+   [user guide](docs/using-the-crm/reports.md)
 2. **Social Media Integration** — Multi-platform management, scheduling, and
    lead capture (`social-media.service`)
 3. **Email & Templates** — Transactional send + dynamic templates with variable
@@ -79,7 +81,7 @@ Shipped and wired end-to-end:
 
 > **Roadmap (not yet implemented):** email marketing campaigns, contract management, territory
 > management, a knowledge base, SSO and two-way calendar sync. See
-> [docs/project/ROADMAP.md](docs/project/ROADMAP.md).
+> [docs/project/roadmap.md](docs/project/roadmap.md).
 
 ### **📈 Essential CRM Capabilities**
 
@@ -114,15 +116,22 @@ Shipped and wired end-to-end:
 
 Complete documentation is organized in the [docs/](docs/) knowledge base.
 
-**[→ docs/INDEX.md](docs/INDEX.md)** — Start here. Find any guide by role or topic.
+**[→ docs/understanding/](docs/understanding/README.md)** — New here? Start with the eight-step guide to how Genesis works —
+what it is, how data is stored and read, who sees what, what runs automatically — with a business track and an
+engineering track.
+
+**[→ docs/README.md](docs/README.md)** — Find any guide by role or topic.
 
 | Section | Audience | Key Guides |
 | ------- | -------- | ---------- |
-| [Getting Started](docs/getting-started/) | Everyone | Installation, demo accounts |
-| [User Guide](docs/user-guide/) | Sales Teams | Daily operations, products, reports |
-| [Admin Guide](docs/admin-guide/) | Admins | Configuration, permissions, workflows |
-| [Developer Guide](docs/developer-guide/) | Developers | Architecture, API, security, contributing |
-| [Project](docs/project/) | All | Changelog, roadmap |
+| [Understanding Genesis](docs/understanding/README.md) | Everyone — start here | Eight steps: concepts, data storage, request flow, access, automation, configure vs code, codebase |
+| [Documentation roadmap](docs/README.md) | Everyone | A reading path per role, find-by-question, every document |
+| [Genesis Capital](docs/genesis-capital/README.md) | Staff, implementers, presenters | User guide, PRD, implementation, demo pitch, sandbox |
+| [Process flows](docs/genesis-capital/process-flows/README.md) · [Videos](docs/genesis-capital/videos/README.md) | Business users | One flow and one video per module |
+| [User guide](docs/using-the-crm/README.md) | Staff · administrators | Using the CRM · the Builder guide in build order |
+| [Admin guide](docs/administration/README.md) | Administrators · platform operators | Configuration concepts, automation, permissions · tenants, plans, hosting |
+| [Developer guide](docs/developer-guide/README.md) | Engineers | Architecture, schema, API, security, engine references |
+| [Getting started](docs/getting-started/README.md) · [Project](docs/project/README.md) | Everyone | Installation · roadmap and changelog |
 
 ## 🚀 Quick Start
 
@@ -155,7 +164,7 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
    The demo laptop uses a local MySQL 8.4 copy of the AWS RDS database
    (`mysql://genesis:genesis_local@127.0.0.1:3306/genesis`); the RDS URL is kept, commented out, in `backend/.env`.
    Credentials, switching back and refreshing the copy:
-   [Local demo database](docs/getting-started/INSTALLATION.md#local-demo-database-macos).
+   [Local demo database](docs/getting-started/installation.md#local-demo-database-macos).
 
 3. **Install and run — one command for both servers:**
 
@@ -181,7 +190,7 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
    - Frontend: <http://localhost:5173>
    - Backend API: <http://localhost:3001> (health check at `/health`)
    - Sign in as `GCADMIN` / `GenesisDemo#2026` (workspace admin) or `PLATFORM01` / `Platform@123`
-     (platform console). All demo accounts: [INSTALLATION.md](docs/getting-started/INSTALLATION.md#demo-accounts-created-by-the-seed-script)
+     (platform console). All demo accounts: [INSTALLATION.md](docs/getting-started/installation.md#demo-accounts-created-by-the-seed-script)
 
 ## 🎯 Use Cases
 
@@ -196,7 +205,7 @@ Complete documentation is organized in the [docs/](docs/) knowledge base.
 
 ## Contributing
 
-We welcome contributions! See [docs/developer-guide/CONTRIBUTING.md](docs/developer-guide/CONTRIBUTING.md) for guidelines.
+We welcome contributions! See [docs/developer-guide/contributing.md](docs/developer-guide/contributing.md) for guidelines.
 
 ## 📄 License
 

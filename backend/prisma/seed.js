@@ -185,7 +185,7 @@ async function main() {
   console.log(`🎉  Seed complete — workspace #${tenant.id} ${tenant.slug}${demo ? ' with demo data' : ''}`);
   console.log('  Platform console:  PLATFORM01 / Platform@123 (SEED_PLATFORM_PASSWORD)');
   console.log(`  Workspace admin:   GCADMIN    / ${staffPassword} (SEED_STAFF_PASSWORD)`);
-  console.log('  All 22 staff accounts: docs/GENESIS-CAPITAL/IMPLEMENTATION.md §0');
+  console.log('  All 22 staff accounts: docs/genesis-capital/implementation.md §0');
   console.log('  Restart the backend so it drops cached data.');
   console.log('══════════════════════════════════════════════════════');
 }
