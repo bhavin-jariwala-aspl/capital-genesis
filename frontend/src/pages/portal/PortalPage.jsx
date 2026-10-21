@@ -12,6 +12,7 @@ import { portalClient, portalToken } from '../../services/portal.service';
 import { fmtDate, fmtCurrency } from '../../utils/formatters';
 import { useWorkspaceBranding } from '../../hooks/useWorkspaceBranding';
 import { useCurrencyStore } from '../../store/currencyStore';
+import StaffPreviewBar from '../../components/layout/StaffPreviewBar';
 
 /**
  * Client & introducer portal (/portal/:slug) — PRD M23 / M19.
@@ -311,7 +312,12 @@ export default function PortalPage() {
   if (signedIn && (me.error?.response?.status === 401 || views.error?.response?.status === 401)) { portalToken.clear(slug); setSignedIn(false); }
 
   if (workspace.isError) return <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">This portal is not available.</div>;
-  if (!signedIn) return <SignIn slug={slug} api={api} workspace={workspace.data} onSignedIn={() => { setSignedIn(true); qc.invalidateQueries(); }} />;
+  if (!signedIn) return (
+    <>
+      <SignIn slug={slug} api={api} workspace={workspace.data} onSignedIn={() => { setSignedIn(true); qc.invalidateQueries(); }} />
+      <StaffPreviewBar pageKey="portal" slug={slug} />
+    </>
+  );
 
   const who = me.data;
   return (
@@ -357,6 +363,7 @@ export default function PortalPage() {
           </div>
         )}
       </main>
+      <StaffPreviewBar pageKey="portal" slug={slug} />
     </div>
   );
 }

@@ -523,7 +523,7 @@ All external systems are Builder integrations. In this environment they use the 
 | # | System | How |
 |---|---|---|
 | I-01 | Website in | Six public forms (§M01), also shareable by staff from **Tools ▸ Web forms**. |
-| I-02 | Website out | `GET /api/public/feeds/genesis-capital/{fx-rates, fund-nav, nav-history, plr}`: cached, read-only and open to any origin. The fields are configured on the object (`config.public_feed`); personal data is never published. `nav-history` (up to 500 points, oldest first) drives a performance chart. `/site/genesis-capital` is a website preview built only from these feeds and the published forms. |
+| I-02 | Website out | `GET /api/public/feeds/genesis-capital/{fx-rates, fund-nav, nav-history, plr}`: cached, read-only and open to any origin. The fields are configured on the object (`config.public_feed`); personal data is never published. `nav-history` (up to 500 points, oldest first) drives a performance chart. `/site/genesis-capital` is a website preview built only from these feeds and the published forms; staff reach it from **Tools ▸ Web forms ▸ Your public pages** or the `/site` shortcut. |
 | I-03 | Loan management system | `genesis_lms`: disbursement booking returns the account number; `loan_account` holds the daily snapshot. |
 | I-04 | Transfer agent | `genesis_ta`: fund orders. |
 | I-05 | OMS / CDS | `genesis_oms`: client orders. |
@@ -678,7 +678,9 @@ the short technical version.
    approve with a comment; the application moves to *Offer issued* and the PDF offer letter appears in its documents.
 10. **Documents.** Open a loan application's Docs tab: the checklist shows which items are in, each with its
     review status. *Copy client link* and open it in a private window: upload a PDF and the item turns received.
-11. **Website.** Open `/site/genesis-capital`: rate board, PLR, fund NAVs with a performance chart, and the forms.
+11. **Website.** Open `/site/genesis-capital` (or `/site` while signed in, or **Tools ▸ Web forms ▸ Your public
+    pages ▸ Open**): rate board, PLR, fund NAVs with a performance chart, and the forms. Signed in, a bar at the
+    bottom names the page and links **Back to CRM**; visitors do not see it.
 12. **Research.** Open a research publication and press *Send to subscribers*; the opens count rises as clients read it.
 
 ## 13. Not delivered, or needs the client's accounts
@@ -709,7 +711,7 @@ the short technical version.
   - *Desks:* fund order maker-checker to TA confirmation; suitability block; FX quote to deal with dealing
     reference; advisory conflict check invisible to the trading desk; complaint acknowledgement; restricted-list
     block; introducer referral through the portal to a routed enquiry.
-- `frontend`: `npx vitest run` (49 test files, including the web form, Web forms page, upload links, portal, Kanban views and theming), `npm run lint`, `npm run build`.
+- `frontend`: `npx vitest run` (50 test files, including the web form, Web forms page, public-page shortcuts, upload links, portal, Kanban views and theming), `npm run lint`, `npm run build`.
 - CI runs all of the above on every push (`.github/workflows/ci.yml`).
 
 <!-- nav:bottom -->

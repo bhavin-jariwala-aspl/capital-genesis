@@ -493,6 +493,11 @@ from `nav-history` (click a fund to chart it), and cards for every published for
 `/api/public/feeds/:slug/*` and `/api/public/workspaces/:slug/forms`, and wears the workspace theme. Its purpose is to
 show a client's web team what they can embed; it is not a CMS.
 
+Staff reach it (and the portal) without knowing the slug: `/site` and `/portal` redirect a signed-in user to their own
+workspace (`employee.tenant_slug`); the Web forms page lists both under "Your public pages"; and
+`components/layout/StaffPreviewBar.jsx` shows a floating "Back to CRM" bar only when the viewer is signed in to the
+workspace the slug names. The names and audiences live in `utils/publicPages.js`.
+
 ## 30. Fixes made alongside
 
 | Defect | Effect before | Fix |

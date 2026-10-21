@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
-  Calculator, Check, ClipboardList, Copy, ExternalLink, FileText, Globe, Mail, MessageSquare, Newspaper, PhoneCall, Send,
+  Calculator, Check, ClipboardList, Copy, ExternalLink, FileText, Globe, Mail, MessageSquare, Newspaper, PhoneCall, Send, ShieldCheck,
 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
@@ -14,6 +14,8 @@ import Alert from '../../components/ui/Alert';
 import Badge from '../../components/ui/Badge';
 import { webFormsService } from '../../services/webForms.service';
 import { apiErrorText } from '../../utils/record';
+import { useAuthStore } from '../../store/authStore';
+import { PUBLIC_PAGES, publicPath, publicUrl } from '../../utils/publicPages';
 
 /**
  * Web forms — every published public form (/f/<key>) of the workspace, for any
@@ -163,6 +165,51 @@ function FormCard({ form, onEmail }) {
   );
 }
 
+const PAGE_ICONS = { site: Globe, portal: ShieldCheck };
+
+/**
+ * The workspace's other public pages — its website preview and its client
+ * portal — with the same Copy / Open actions as a form, so nobody has to know
+ * or type the workspace's address (/site/<workspace>, /portal/<workspace>).
+ */
+function PublicPages() {
+  const slug = useAuthStore((s) => s.employee?.tenant_slug);
+  const [copied, setCopied] = useState(null);
+  if (!slug) return null;
+  const copy = async (key) => {
+    if (await copyText(publicUrl(key, slug))) { setCopied(key); setTimeout(() => setCopied(null), 2000); }
+  };
+  return (
+    <section aria-labelledby="public-pages" className="space-y-3">
+      <h2 id="public-pages" className="text-sm font-semibold text-gray-900 dark:text-white">Your public pages</h2>
+      <div className="grid gap-4 md:grid-cols-2">
+        {PUBLIC_PAGES.map((p) => {
+          const Icon = PAGE_ICONS[p.key];
+          return (
+            <div key={p.key} className="card flex flex-col p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300"><Icon className="h-5 w-5" /></span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{p.label}</h3>
+                  <p className="mt-0.5 text-sm text-gray-500 dark:text-white/60">{p.description}</p>
+                  <p className="mt-2 truncate font-mono text-xs text-gray-400 dark:text-white/40" title={publicUrl(p.key, slug)}>{publicPath(p.key, slug)}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-white/50">{p.audience}</p>
+                </div>
+              </div>
+              <div className="mt-auto flex flex-wrap gap-2 pt-4">
+                <Button size="sm" variant="secondary" onClick={() => copy(p.key)} aria-live="polite">
+                  {copied === p.key ? <><Check className="mr-1.5 h-4 w-4" />Copied</> : <><Copy className="mr-1.5 h-4 w-4" />Copy link</>}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => window.open(publicPath(p.key, slug), '_blank', 'noopener')} title="Open in a new tab"><ExternalLink className="mr-1.5 h-4 w-4" />Open</Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function WebFormsPage() {
   const { data, isLoading, error } = useQuery({ queryKey: ['web-forms'], queryFn: webFormsService.list });
   const forms = data?.data ?? [];
@@ -176,6 +223,8 @@ export default function WebFormsPage() {
         title="Web forms"
         subtitle="Share a form with a client when they ask for one: email it, or copy the link to paste into a chat or message."
       />
+      <PublicPages />
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Forms</h2>
       {isLoading ? <div className="flex justify-center py-16"><Spinner /></div>
         : error ? <Alert variant="error">{apiErrorText(error, 'Could not load the web forms.')}</Alert>
           : forms.length === 0 ? (

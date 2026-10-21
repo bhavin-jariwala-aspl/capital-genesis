@@ -8,6 +8,7 @@ import { useBootstrap } from './hooks/useBootstrap';
 import AppLayout from './components/layout/AppLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import FeatureGate from './components/layout/FeatureGate';
+import { OwnWorkspaceRedirect } from './components/layout/StaffPreviewBar';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import DialogHost from './components/ui/DialogHost';
 
@@ -135,6 +136,9 @@ function App() {
             <Route path="/upload/:token" element={<UploadPage />} />
             {/* What the workspace website shows when fed by the CRM */}
             <Route path="/site/:slug" element={<WebsitePreviewPage />} />
+            {/* Slug-less shortcuts: a signed-in user lands on their own workspace's page */}
+            <Route path="/site" element={<OwnWorkspaceRedirect pageKey="site" />} />
+            <Route path="/portal" element={<OwnWorkspaceRedirect pageKey="portal" />} />
           
           {/* Protected Routes */}
           <Route element={token ? <AppLayout /> : <Navigate to="/login" replace />}>

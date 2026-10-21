@@ -69,7 +69,8 @@ Managers and administrators can select records in a list, pick a person in **Rea
 ## The client and introducer portal
 
 Your clients and introducers have their own sign-in at `/portal/<your-workspace>`. It is separate from the staff
-sign-in.
+sign-in. To see it or send its link, open **Tools ▸ Web forms ▸ Your public pages** (or type `/portal` after the CRM
+address while signed in); the website preview (`/site`) is listed there too.
 
 - **Signing in.** They enter their email address and receive a 6-digit code. Only addresses that are on a client
   record (or on an introducer's *portal email*) can sign in.

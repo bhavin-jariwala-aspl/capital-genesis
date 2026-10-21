@@ -17,6 +17,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added — Easier access to the website preview and portal (2026-10-21)
+
+- **Your public pages** on **Tools ▸ Web forms**: the website preview (`/site/<workspace>`) and the client & introducer
+  portal (`/portal/<workspace>`), each with its address, who sees it, **Copy link** and **Open**.
+- **Shortcuts** `/site` and `/portal` take a signed-in user to their own workspace's page (signed out → sign-in; a
+  platform admin with no workspace → home).
+- **Staff preview bar** on both pages, shown only to staff signed in to that workspace: names the page and its
+  audience and links **Back to CRM**. Clients and visitors never see it.
+
 ### Fixed — Data consistency across modules (2026-10-20)
 
 - **Roll-ups and derived values follow every write path**, not only a form save: re-linking a child to another parent

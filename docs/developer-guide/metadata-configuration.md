@@ -135,7 +135,7 @@ configurable.
 | Reports | `ReportsPage.jsx` | 604 | Report library, saved report definitions |
 | Access | `AccessPage.jsx` | 306 | Business units and information-barrier zones |
 | SLA Dashboard | `SlaDashboardPage.jsx` | 291 | SLA policies and targets |
-| Web Forms | `WebFormsPage.jsx` | 198 | Web form definitions |
+| Web Forms | `WebFormsPage.jsx` | 247 | Share published forms; "Your public pages" (website preview, portal) |
 | Reminders | `RemindersPage.jsx` | 174 | Reminder rules |
 | Approvals | `ApprovalsPage.jsx` | 126 | Workflow approval steps |
 
@@ -199,10 +199,10 @@ code-authenticated pages that render outside the app shell.
 
 | Screen | File | Lines | Notes |
 |---|---|---|---|
-| Client Portal | `portal/PortalPage.jsx` | 362 | Client portal (`/portal/:slug`), email one-time code sign-in |
+| Client Portal | `portal/PortalPage.jsx` | 369 | Client portal (`/portal/:slug`), email one-time code sign-in; shows `StaffPreviewBar` to the workspace's own staff |
 | Public Form | `PublicFormPage.jsx` | 360 | Published web form (`/f/:key`) |
 | Login | `Login.jsx` | 327 | Authentication form |
-| Website Preview | `WebsitePreviewPage.jsx` | 237 | Public site preview (`/site/:slug`) |
+| Website Preview | `WebsitePreviewPage.jsx` | 239 | Public site preview (`/site/:slug`); shows `StaffPreviewBar` to the workspace's own staff |
 | Organization Settings | `OrganizationSettings.jsx` | 225 | Workspace settings, rendered generically from the settings schema |
 | Sign Document | `SignDocumentPage.jsx` | 199 | Public e-signature page (`/sign/:token`) |
 | Reset Password | `ResetPassword.jsx` | 157 | Password reset (`/reset-password`) |
@@ -304,6 +304,7 @@ Public (no auth):
   /portal/:slug                                     → PortalPage (client portal)
   /upload/:token                                    → UploadPage
   /site/:slug                                       → WebsitePreviewPage
+  /site, /portal                                    → OwnWorkspaceRedirect (signed in → own tenant_slug; else /login)
 
 Runtime:
   /                                                 → RuntimeHome (dashboard)

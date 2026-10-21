@@ -613,6 +613,11 @@ form filled in from the website. Links you share are tagged as coming from the C
 the prime lending rate, fund prices with a performance chart, and every published form. No sign-in is needed. The
 website team can use the same data feeds (listed at the bottom of the page).
 
+You do not need to remember the address. **Tools ▸ Web forms ▸ Your public pages** lists the website preview and the
+client portal with **Copy link** and **Open**, and typing `/site` or `/portal` after the CRM address while signed in
+opens your own workspace's page. When you view either page while signed in, a bar at the bottom names the page, says
+who sees it, and takes you **Back to CRM**. Clients and visitors never see that bar.
+
 ### The portal
 
 `/portal/<workspace>` — for Genesis, `/portal/genesis-capital`.

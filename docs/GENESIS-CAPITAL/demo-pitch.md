@@ -146,7 +146,8 @@ All 22 accounts: [implementation.md §0](implementation.md#0-signing-in-to-the-g
 | Builder: pipelines (rename a stage) | <http://localhost:5173/builder/pipeline> |
 | Builder: forms (add a field) | <http://localhost:5173/builder/form> |
 | Client portal | <http://localhost:5173/portal/genesis-capital> |
-| Web forms (share a form with a client) | <http://localhost:5173/web-forms> |
+| Web forms (share a form with a client; links to the website preview and portal) | <http://localhost:5173/web-forms> |
+| Shortcuts to your own workspace's website preview / portal (signed in) | <http://localhost:5173/site> · <http://localhost:5173/portal> |
 
 ---
 

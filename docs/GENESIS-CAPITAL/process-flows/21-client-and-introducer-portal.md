@@ -8,6 +8,10 @@
 
 **Address:** `/portal/<workspace>` (demo: `/portal/genesis-capital`) · website preview: `/site/<workspace>`
 
+**Staff shortcut:** signed in to the CRM, open **Tools ▸ Web forms ▸ Your public pages**, or type `/portal` or `/site`
+after the CRM address. Either way you land on your own workspace's page. A bar at the bottom of the page, shown only to
+staff of that workspace, names the page and who sees it, and links **Back to CRM**.
+
 ## What it is for
 
 A secure website where clients follow and act on their business with the group, and introducers submit and follow
@@ -64,7 +68,7 @@ New loan applications start from the website forms (calculator or enquiry), not 
 
 `/site/<workspace>` shows, with no sign-in, the FX rate board, the PLR, fund NAVs with a performance chart and every
 published form — all straight from the CRM. The same read-only feeds (FX rates, fund NAV, NAV history, PLR) can drive
-the public website. Personal data is never published.
+the public website. Personal data is never published. Staff reach it the same way as the portal (above).
 
 ## Related flows
 

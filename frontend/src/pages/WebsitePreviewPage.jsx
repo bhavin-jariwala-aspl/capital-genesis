@@ -9,6 +9,7 @@ import Spinner from '../components/ui/Spinner';
 import BrandLogo from '../components/ui/BrandLogo';
 import { useWorkspaceBranding } from '../hooks/useWorkspaceBranding';
 import { useAppearanceStore } from '../store/appearanceStore';
+import StaffPreviewBar from '../components/layout/StaffPreviewBar';
 
 /**
  * WebsitePreviewPage — /site/:slug. What a workspace's public website shows
@@ -232,6 +233,7 @@ export default function WebsitePreviewPage() {
           <Code2 className="h-3.5 w-3.5" /> Website feeds: <code className="rounded bg-gray-100 px-1 dark:bg-white/10">/api/public/feeds/{slug}/fx-rates · fund-nav · nav-history · plr</code>
         </p>
       </main>
+      <StaffPreviewBar pageKey="site" slug={slug} />
     </div>
   );
 }

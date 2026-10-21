@@ -87,6 +87,8 @@ passwords.
 - [ ] A Docs-tab upload link opens from another device and accepts a PDF.
 - [ ] A portal sign-in code arrives in the test inbox (§4.4).
 - [ ] `/site/genesis-capital` shows rates, PLR and the NAV chart.
+- [ ] Signed in as staff, `/site` and `/portal` open the workspace's pages, and **Tools ▸ Web forms ▸ Your public
+  pages** copies and opens both links.
 
 ---
 

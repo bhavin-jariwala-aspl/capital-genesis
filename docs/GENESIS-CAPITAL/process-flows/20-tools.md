@@ -117,6 +117,8 @@ Regulated categories are kept seven years. **Document Management** in the sideba
 2. **Email to client** (EN / FR, optional product and note), **Copy link**, or **Open**.
 3. **Talk to**: name the staff member the client will deal with; the enquiry is assigned to them.
 4. Submissions become records and are routed like any website form ([flow 03](03-enquiries-and-leads.md)).
+5. **Your public pages** (top of the page): the **Website preview** and the **Client & introducer portal**, each with
+   its address, who sees it, **Copy link** and **Open**, so nobody has to know the workspace's address.
 
 ## G. Reports and dashboards
 
